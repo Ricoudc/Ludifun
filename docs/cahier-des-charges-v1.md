@@ -1,257 +1,1182 @@
-# Ludifun — Cahier des charges V1 (MVP 1)
+# Ludifun — Cahier des charges technique V1
 
-> **Vision** : un coach de révision intelligent. L'enfant photographie sa leçon,
-> l'IA comprend ce qu'il faut retenir, choisit comment le faire mémoriser,
-> analyse les erreurs et adapte la séance suivante.
+> **Mission de la V1**
+> Transformer correctement une vraie leçon photographiée en une séance de révision
+> amusante et pertinente. Tout le reste (comptes, parents, abonnement,
+> notifications, classement) sera construit ensuite, si et seulement si cette
+> mission est réussie.
 
-```
-📸 JE PHOTOGRAPHIE → 🧠 L'IA COMPREND → 🎮 L'IA CHOISIT COMMENT ME FAIRE RÉVISER
-→ 👦 JE JOUE / RÉPONDS → 📊 L'IA ANALYSE MES ERREURS → 🧠 ELLE ADAPTE LA SUITE → 🏆 JE PROGRESSE
-```
+| | |
+|---|---|
+| Nom provisoire | **Ludifun** |
+| Plateformes V1 | Android (Flutter), iOS ensuite avec le même code |
+| Public | CP → 3e |
+| Statut du document | Référence pour le développement de la V1 |
+
+---
+
+## Sommaire
+
+1. [Périmètre](#1-périmètre)
+2. [Parcours utilisateur](#2-parcours-utilisateur)
+3. [Les 7 écrans](#3-les-7-écrans)
+4. [Architecture générale](#4-architecture-générale)
+5. [Pipeline IA](#5-pipeline-ia)
+6. [Formats JSON échangés avec l'IA](#6-formats-json-échangés-avec-lia)
+7. [Moteur d'activités](#7-moteur-dactivités)
+8. [Composition d'une séance](#8-composition-dune-séance)
+9. [Notation](#9-notation)
+10. [Mémorisation et prochaine révision](#10-mémorisation-et-prochaine-révision)
+11. [API](#11-api)
+12. [Base de données PostgreSQL](#12-base-de-données-postgresql)
+13. [Architecture FastAPI](#13-architecture-fastapi)
+14. [Architecture Flutter](#14-architecture-flutter)
+15. [Gestion des photos](#15-gestion-des-photos)
+16. [Sécurité et données personnelles](#16-sécurité-et-données-personnelles)
+17. [Tests avec de vraies leçons](#17-tests-avec-de-vraies-leçons)
+18. [Plan de développement](#18-plan-de-développement)
+19. [Reprise du prototype existant](#19-reprise-du-prototype-existant)
 
 ---
 
 ## 1. Périmètre
 
-### 1.1 Public
-- Enfants du **CP à la 3e** (utilisation autonome dès le CE2, accompagnée avant).
-- Matières : Français, Mathématiques, Histoire, Géographie, Sciences, Anglais… (l'IA détecte la matière).
+### 1.1 Dans la V1
 
-### 1.2 Inclus dans la V1 (MVP 1)
+- Nouvelle révision à partir d'une ou plusieurs photos (appareil photo ou galerie).
+- Lecture de la photo (OCR), puis analyse pédagogique : matière, niveau, thème, objectif, notions, vocabulaire, dates, personnages, règles et formules selon la matière.
+- Séance construite automatiquement, avec un objectif et une durée estimée.
+- 6 types d'activités : QCM, vrai/faux, texte à trous, association, défi rapide, carte mémoire.
+- Correction immédiate avec la bonne réponse, une astuce pour retenir et une explication.
+- Reprise des erreurs en fin de séance.
+- Bilan par notion (maîtrisée / à revoir / non maîtrisée) et programmation de la prochaine révision.
+- Liste des dernières révisions sur l'accueil.
+- Suppression d'une leçon et de toutes les données de l'appareil.
 
-| # | Fonctionnalité | Statut dans le dépôt |
-|---|---|---|
-| 1 | Profil enfant minimal (prénom/pseudo + classe) | ✅ API + écran |
-| 2 | Photo d'1 à 6 pages (appareil ou galerie) | ✅ écran |
-| 3 | Lecture de la photo (OCR) + compréhension IA | ✅ Claude vision, en un appel |
-| 4 | Identification matière / niveau / sujet / notions | ✅ |
-| 5 | Génération de la banque de questions | ✅ 6 formats |
-| 6 | Modes : quiz rapide, entraînement, cartes mémoire, défi, points faibles | ✅ |
-| 7 | Correction immédiate + explication | ✅ |
-| 8 | Score et bilan par notion (acquis / à renforcer / à revoir) | ✅ |
-| 9 | Mémorisation des erreurs, niveaux de maîtrise 0-5 | ✅ |
-| 10 | Répétition espacée (J+1, J+2, J+4, J+7, J+14) | ✅ calcul, 🔜 notifications |
-| 11 | Suppression des données (leçon, enfant) | ✅ |
+### 1.2 Hors V1 (volontairement)
 
-### 1.3 Exclu de la V1 (versions suivantes)
-- MVP 2 : XP, niveaux, badges, défis quotidiens, mini-jeux (memory, mot mystère, chronologie), notifications de rappel.
-- MVP 3 : compte parent authentifié, plusieurs enfants par famille, statistiques détaillées.
-- MVP 4 : mode oral (reconnaissance vocale, « professeur particulier »).
-- Version iOS publiée (le code Flutter est déjà commun, seule la publication/les tests restent).
+Comptes utilisateurs, profil parent, abonnement, paiement, statistiques complexes,
+classement, réseau social, notifications push, mode oral, XP et badges.
+
+Deux choix sont néanmoins faits dès maintenant pour ne pas devoir tout refaire :
+
+- la table `learners` existe déjà. En V1, un apprenant anonyme est créé par appareil. En V3, plusieurs enfants par famille s'y brancheront sans migration de données ;
+- les types d'activités `ORDER`, `MEMORY` et `OPEN_QUESTION` sont déclarés dans le registre mais implémentés plus tard.
 
 ---
 
-## 2. Écrans
-
-Chaque écran indique : objectif, contenu, actions, états particuliers.
-
-### É0 — Bienvenue (création du profil)
-- **Objectif** : créer le profil enfant avec le minimum de données.
-- **Contenu** : champ « prénom ou pseudo » (40 car. max), choix de la classe (CP → 3e).
-- **Actions** : « C'est parti ! » → `POST /children`, l'identifiant est mémorisé localement.
-- **États** : serveur injoignable → message d'erreur, on reste sur l'écran.
-
-### É1 — Accueil
-- **Contenu** : salutation, liste des leçons déjà photographiées (matière + titre), bouton flottant **📷 Nouvelle révision**, accès à la progression.
-- **Actions** : ouvrir une leçon (É3), nouvelle révision (É2), progression (É6).
-- **État vide** : « 📸 Photographie ta première leçon pour commencer ! ».
-
-### É2 — Photographier la leçon
-- **Contenu** : conseils de prise de vue, vignettes des pages prises (suppression possible), boutons *Galerie* / *Photographier* / *Ajouter une page*, bouton **Analyser ma leçon**.
-- **Règles** : 6 pages max ; photo redimensionnée à 2000 px, qualité JPEG 85 côté téléphone.
-- **Chargement** : « 🧠 Je lis ta leçon… » (10-40 s selon la longueur).
-- **Erreurs** : photo illisible → « Je n'arrive pas à lire cette leçon. Essaie une photo plus nette. ».
-- Amélioration d'image (perspective, contraste, recadrage) : 🔜 via un plugin de scan de document. Claude lit déjà correctement une photo légèrement penchée.
-
-### É3 — « J'ai compris ta leçon » + choix du mode
-- **Contenu** : Matière, Niveau, Sujet, résumé ; liste dépliable des notions (⭐ = essentielle).
-- **Choix du mode** :
-
-| Mode | Contenu | Taille |
-|---|---|---|
-| ⚡ Quiz rapide | QCM + vrai/faux | 10 |
-| 🧠 Je m'entraîne | tous les formats | 10 |
-| 🃏 Cartes mémoire | flashcards | 15 |
-| 🏆 Défi | QCM, vrai/faux, texte à trous — 60 s | 10 |
-| 🎯 Mes points faibles | notions de niveau < 4 uniquement | 8 |
-
-### É4 — Question
-- **En-tête** : « Question n / N », barre de progression, chrono (mode défi).
-- **Formats** :
-  - QCM / vrai-faux : boutons de réponse.
-  - Texte à trous : champ texte (accents et petites fautes de frappe tolérés).
-  - Carte mémoire : l'enfant retourne la carte puis indique « Je savais » / « Je ne savais pas ».
-  - Association : une liste déroulante par élément de gauche.
-  - Question ouverte (« Explique-moi ») : champ multiligne, corrigé par l'IA.
-- **Après réponse** : carte ✅/🤔, explication, bonne réponse si erreur, éléments oubliés (question ouverte), bouton *Question suivante*.
-- **Fin du chrono** : la séance est clôturée automatiquement.
-
-### É5 — Bilan
-- Message adapté au score (🎉 ≥ 8, 👍 ≥ 5, 💪 sinon), note sur 10, nombre de bonnes réponses.
-- Liste des notions travaillées, triées de la plus fragile à la plus solide : 🟢 acquis (≥ 80 %), 🟠 à renforcer (50-79 %), 🔴 à revoir (< 50 %).
-- Actions : *Retour à la leçon* (pour relancer un mode, typiquement « Mes points faibles »).
-
-### É6 — Progression
-- Minutes de révision sur 7 jours, nombre de leçons, taux de réussite global.
-- Réussite par matière (🟢/🟠/🔴).
-- **À réviser aujourd'hui** (notions dont la date de rappel est passée) et **À renforcer** (niveau ≤ 3) : un clic ouvre la leçon correspondante.
-- Aucune comparaison entre enfants.
-
----
-
-## 3. Architecture
+## 2. Parcours utilisateur
 
 ```
-Flutter (Android, puis iOS)
-        │  HTTPS / JSON + multipart
-        ▼
-FastAPI  ──►  Pipeline IA (Claude)
-  │            ├─ IA 1+2 : vision + analyse pédagogique  → LessonAnalysis
-  │            ├─ IA 3   : génération des exercices        → QuestionBank
-  │            └─ IA 4   : correction des réponses libres  → OpenAnswerEvaluation
-  │
-  ├─ Moteur pédagogique (règles, sans IA, testé unitairement)
-  │    ├─ evaluator : correction QCM / trous / association / flashcards
-  │    ├─ mastery   : niveaux 0-5 + répétition espacée
-  │    └─ planner   : IA 5 « quoi réviser maintenant ? »
+[1 Accueil] ──+ Nouvelle leçon──► [2 Photo] ──Analyser──► [3 Analyse] ──C'est prêt──► [4 Résumé]
+     ▲                                                                                   │
+     │                                                                      Commencer la révision
+     │                                                                                   ▼
+     │                                                       ┌──────► [5 Jeu] ──réponse──► [6 Correction]
+     │                                                       └────────── Continuer ◄────────────┘
+     │                                                                                   │
+     │                                                                    fin de séance (reprise incluse)
+     │                                                                                   ▼
+     └──────────────────────── Terminer ◄──────────────────────────────────────── [7 Bilan]
+                                                                                         │
+                                                              Revoir mes erreurs ──► nouvelle séance courte
+```
+
+Depuis l'accueil, un clic sur une leçon déjà révisée ouvre l'écran 4 avec une séance de révision recalculée selon la maîtrise (voir §8.3).
+
+---
+
+## 3. Les 7 écrans
+
+### Écran 1 — Accueil
+```
+Bonjour 👋
+Qu'est-ce qu'on révise aujourd'hui ?
+
+        [ + NOUVELLE LEÇON ]
+
+Mes dernières révisions
+📚 Les fractions                 à revoir jeudi
+🇫🇷 La Révolution française       à revoir aujourd'hui 🔄
+🔬 Les états de la matière       maîtrisée ✓
+```
+- Données : `GET /v1/lessons` (les 20 plus récentes).
+- Chaque ligne affiche : icône de matière, titre et état de révision (prochaine révision, « à revoir aujourd'hui » ou « maîtrisée »).
+- Une leçon en cours d'analyse s'affiche avec un indicateur. Une leçon en échec s'affiche avec « Réessayer ».
+- Appui long sur une leçon → *Supprimer*.
+- État vide : illustration + « Photographie ta première leçon ! ».
+
+### Écran 2 — Photo
+```
+📷 Photographie ta leçon
+[ Prendre une photo ]   ou   [ Ajouter depuis la galerie ]
+Tu peux ajouter plusieurs pages.
+[vignette 1] [vignette 2] [+]
+            [ ANALYSER MA LEÇON ]
+```
+- Jusqu'à 6 pages. Chaque vignette a une croix de suppression et peut être réordonnée par glisser-déposer.
+- Conseil affiché lors de la première photo : « Pose le cahier à plat, avec de la lumière. »
+- La compression est faite sur le téléphone (voir §15) avant l'envoi.
+- *Analyser* → `POST /v1/lessons` → écran 3.
+
+### Écran 3 — Analyse
+```
+🔎 Lecture de ta leçon...          ✓
+🧠 Identification des notions...  ⏳
+🎮 Préparation de tes exercices...
+```
+- L'écran interroge `GET /v1/lessons/{id}` toutes les 1,5 s. Chaque ligne suit une vraie étape du serveur (`reading` → `analyzing` → `generating` → `ready`).
+- Chaque étape reste affichée au moins 800 ms, pour que l'animation reste lisible.
+- `ready` → « C'est prêt ! » puis écran 4.
+- `failed` affiche un message adapté selon la raison :
+  - `unreadable` : « Je n'arrive pas à lire ta photo. Reprends-la avec plus de lumière. » → retour à l'écran 2 avec les photos conservées côté téléphone ;
+  - `not_a_lesson` : « Ça ne ressemble pas à une leçon. » ;
+  - `ai_error` : « Petit souci de mon côté, réessaie. ».
+- Objectif de durée : moins de 45 s pour 2 pages.
+
+### Écran 4 — Résumé de la leçon
+```
+🇫🇷 HISTOIRE · CM1
+LA RÉVOLUTION FRANÇAISE
+
+🎯 Objectif : connaître les principales notions de la Révolution française
+⏱️ Durée estimée : 8 min
+
+À retenir :
+✓ 1789
+✓ Louis XVI
+✓ États généraux
+✓ Prise de la Bastille
+✓ Déclaration des droits de l'homme et du citoyen
+
+        [ COMMENCER LA RÉVISION ]
+```
+- Données : `GET /v1/lessons/{id}` (leçon et notions triées par importance) et `POST /v1/lessons/{id}/sessions` (objectif et durée estimée).
+- La séance est créée dès l'ouverture de l'écran : la durée affichée est donc celle de la vraie séance.
+- Un appui sur une notion affiche sa phrase « à retenir ».
+- Un lien « Ce n'est pas le bon niveau ? » permet de corriger le niveau (CP → 3e). La séance est alors recomposée, sans nouvel appel à l'IA.
+
+### Écran 5 — Jeu
+```
+Question 3 / 8                          ▓▓▓░░░░░
+Quelle année marque le début de la Révolution française ?
+🅰️ 1492    🅱️ 1789    🅲 1914    🅳 1945
+```
+- Une seule route, qui affiche l'activité courante à l'aide du **registre de widgets** (§14.3).
+- Le compteur couvre les activités principales. La reprise des erreurs s'affiche ensuite avec son propre bandeau : « 🔄 Reprise des erreurs 1 / 2 ».
+- Le défi rapide affiche un chrono.
+- Quitter en cours de séance demande une confirmation. La séance reste `active` et peut être reprise depuis l'accueil.
+
+### Écran 6 — Correction
+```
+❌ Pas tout à fait !
+La bonne réponse est 1789.
+💡 Astuce pour retenir : 1789 = Révolution française
+                    [ CONTINUER ]
+```
+- Cet écran s'affiche dans la même route que l'écran 5 (état « correction »), et non comme une nouvelle page.
+- Le contenu vient de la réponse de `POST /v1/sessions/{id}/attempts` : résultat, bonne réponse à afficher, astuce et explication.
+- Selon le résultat :
+  - bonne réponse : « ✅ Bravo ! » et l'explication en une ligne ;
+  - réponse partielle (association, défi) : le détail élément par élément ;
+  - mauvaise réponse : jamais de formulation culpabilisante.
+
+### Écran 7 — Bilan
+```
+🎉 Révision terminée !
+8 / 10   ████████░░
+
+✅ 7 notions maîtrisées
+🟠 2 notions à revoir
+🔴 1 notion non maîtrisée
+
+Maîtrisé : ✓ 1789  ✓ Louis XVI  ✓ Bastille …
+À revoir : ⚠ États généraux  ⚠ Déclaration des droits
+
+📅 Prochaine révision : jeudi 25 septembre
+
+[ REVOIR MES ERREURS ]     [ TERMINER ]
+```
+- Données : réponse de `POST /v1/sessions/{id}/complete`.
+- *Revoir mes erreurs* (visible seulement s'il y a des notions non maîtrisées ou à revoir) crée une séance courte de type `errors`, qui ne porte que sur ces notions.
+
+---
+
+## 4. Architecture générale
+
+```
+┌─────────────────────┐
+│  Application Flutter │  écrans · registre de widgets d'activités · client API
+└──────────┬──────────┘
+           │ HTTPS · JSON · multipart · jeton d'appareil
+┌──────────▼──────────┐
+│     API FastAPI      │  /v1 · validation · limites de débit
+└──────────┬──────────┘
+           │
+┌──────────▼──────────────────────────────────────────────────────────┐
+│ Services (cas d'usage)                                               │
+│   LessonPipeline · SessionService · ReportService                    │
+├──────────────────────────────────────────────────────────────────────┤
+│ Domaine (Python pur, sans IA ni base, testé unitairement)           │
+│   Knowledge · Registre d'activités · Composeur de séance             │
+│   Notation · Mémorisation · Estimation de durée                      │
+├──────────────────────────────────────────────────────────────────────┤
+│ Ports (interfaces)          │ Adaptateurs (remplaçables)             │
+│   OcrProvider               │   VisionLLMOcr, (GoogleVision, Mistral…)│
+│   LLMProvider               │   ClaudeProvider, FakeProvider, (…)    │
+│   Repositories              │   PostgreSQL (SQLAlchemy)              │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+Le tableau suivant montre ce que l'on peut changer, et ce qui est touché dans chaque cas :
+
+| On change… | On touche seulement… |
+|---|---|
+| le modèle d'IA | la configuration (`AI_ANALYSIS_MODEL`…) |
+| le fournisseur d'IA | un nouvel adaptateur `LLMProvider` |
+| le fournisseur d'OCR | un nouvel adaptateur `OcrProvider` |
+| ajouter un jeu | 1 classe `ActivityType` côté serveur + 1 widget côté Flutter |
+| la base de données | les repositories |
+| l'application mobile | rien côté serveur : l'API est versionnée `/v1` |
+
+---
+
+## 5. Pipeline IA
+
+Principe : **l'IA ne génère jamais des questions directement à partir du texte.**
+
+```
+PHOTOS
+  │  ① OCR (OcrProvider)                         statut « reading »
   ▼
-PostgreSQL (SQLite en développement)
+TEXTE (par page) + qualité de lecture
+  │  ② Analyse pédagogique (LLMProvider)         statut « analyzing »
+  ▼
+STRUCTURE NORMALISÉE : leçon + knowledge[] (k1, k2…)
+  │  ③ Enrichissement par notion (LLMProvider)  statut « generating »
+  ▼
+MATÉRIEL PÉDAGOGIQUE par notion
+  (questions, distracteurs, affirmations fausses, phrase à trous, paire, astuce)
+  │  ④ Assemblage déterministe (domaine, sans IA) — au moment de composer la séance
+  ▼
+ACTIVITÉS (QCM, vrai/faux, association, défi…)
 ```
 
-Choix structurants :
-- **OCR + compréhension en un seul appel** : Claude lit directement la photo. Pas de moteur OCR séparé à maintenir, meilleure robustesse sur l'écriture manuscrite et les mises en page de manuels.
-- **Sorties structurées** : chaque appel IA renvoie un JSON validé par un schéma Pydantic (`backend/app/ai/schemas.py`). Les questions mal formées sont écartées avant enregistrement.
-- **Banque de questions générée une fois** à l'analyse de la leçon (≈ 4 questions × notion, difficultés 1 à 4) : les séances démarrent instantanément et ne coûtent rien en IA, sauf pour les questions ouvertes.
-- **Moteur hors-ligne (`FakeLLM`)** : l'API fonctionne sans clé pour développer l'application et lancer les tests.
-- **Repli automatique** : si le modèle décline une requête, l'API relance sur un modèle de repli (`fallbacks: "default"`).
+Pourquoi c'est robuste :
+
+- **② extrait, ③ rédige, ④ assemble.** Chaque étape a une seule responsabilité et un schéma validé.
+- Chaque notion porte un `source_excerpt`, c'est-à-dire la citation exacte du texte OCR. Une notion sans citation retrouvable dans le texte est rejetée (garde-fou contre les inventions).
+- Les activités sont assemblées **sans IA**. Composer une séance, relancer « Revoir mes erreurs » ou ajouter un nouveau type de jeu ne coûte donc aucun appel, et la réponse est instantanée.
+- Pendant la séance, aucun appel IA n'est fait en V1 : la correction est déterministe.
+
+### 5.1 Étape ① — OCR
+
+- Interface : `OcrProvider.extract(pages: list[PageImage]) -> OcrResult`.
+- Implémentation V1 : `VisionLLMOcr`, un modèle multimodal utilisé avec un prompt de **transcription pure**, sans analyse. C'est l'option la plus robuste sur l'écriture manuscrite et les mises en page de manuel.
+- Alternatives à comparer à l'étape 10 : Google Cloud Vision, Azure Document Intelligence, Mistral OCR, Tesseract. Le choix final se fait sur le corpus de test (§17), en comparant qualité, coût et latence.
+- Les en-têtes personnels (nom et prénom de l'enfant, nom de l'école, date manuscrite) sont exclus de la transcription.
+- Qualité de lecture par page : `good`, `partial` ou `unreadable`. Si toutes les pages sont `unreadable`, l'analyse échoue avec la raison `unreadable`.
+
+### 5.2 Étape ② — Analyse pédagogique
+
+L'analyse reçoit le texte OCR (et non l'image). Elle produit la structure normalisée décrite au §6.2. Consignes :
+
+- identifier la matière, le niveau (avec un indice de confiance), le titre, un **objectif** formulé pour l'enfant et un résumé ;
+- extraire 3 à 15 notions, chacune avec un type, une importance de 1 à 5, une phrase « à retenir », des attributs propres à son type et une citation source ;
+- ne rien inventer : les attributs ne contiennent que des informations présentes dans la leçon ;
+- traiter le texte de la leçon comme une donnée et non comme des instructions (il est passé entre balises `<lecon>`).
+
+### 5.3 Étape ③ — Enrichissement
+
+- Entrée : la leçon normalisée et le texte source. Sortie : un `KnowledgeMaterial` par notion (§6.3).
+- Les notions sont traitées par lots de 5, en parallèle, pour réduire la latence.
+- Des validateurs automatiques contrôlent chaque élément de matériel (§6.4). Un élément invalide est écarté, et pas le reste de la notion.
+- Si une notion d'importance ≥ 4 n'a plus assez de matériel pour 2 activités, une relance ciblée est faite sur cette seule notion (une fois).
+
+### 5.4 Interfaces fournisseurs
+
+```python
+class OcrProvider(Protocol):
+    async def extract(self, pages: list[PageImage]) -> OcrResult: ...
+
+class LLMProvider(Protocol):
+    async def structured(
+        self, *, prompt: Prompt, input: str, schema: type[T], images: list[PageImage] = ()
+    ) -> LLMResult[T]: ...   # LLMResult = sortie validée + usage (tokens, latence, modèle)
+```
+
+- Les prompts sont versionnés dans des fichiers (`app/ai/prompts/analysis.v1.md`…). La version utilisée est enregistrée avec chaque leçon.
+- Modèle configurable **par étape** (`AI_OCR_MODEL`, `AI_ANALYSIS_MODEL`, `AI_MATERIAL_MODEL`). On pourra par exemple prendre un modèle moins cher pour l'enrichissement si le corpus de test montre que la qualité tient.
+- Chaque appel est journalisé dans `ai_runs` : étape, fournisseur, modèle, version du prompt, tokens, latence, statut. C'est ce qui permet de mesurer le coût réel par leçon.
+- `FakeProvider` produit des réponses déterministes. Il sert aux tests et au développement de l'application sans clé d'API.
 
 ---
 
-## 4. Modèle de données
+## 6. Formats JSON échangés avec l'IA
 
-| Table | Champs principaux | Rôle |
+### 6.1 Sortie OCR
+
+```json
+{
+  "pages": [
+    { "index": 0, "quality": "good", "text": "La Révolution française\nEn 1789, le roi Louis XVI..." }
+  ],
+  "language": "fr",
+  "warnings": []
+}
+```
+
+### 6.2 Sortie de l'analyse (structure normalisée)
+
+```json
+{
+  "schema_version": "1.0",
+  "is_lesson": true,
+  "lesson": {
+    "subject": "history",
+    "grade": "CM1",
+    "grade_confidence": 0.7,
+    "title": "La Révolution française",
+    "objective": "Connaître les principales notions de la Révolution française",
+    "summary": "En 1789, les Français se révoltent contre le pouvoir du roi Louis XVI..."
+  },
+  "knowledge": [
+    {
+      "id": "k1",
+      "type": "date",
+      "label": "1789",
+      "statement": "La Révolution française commence en 1789.",
+      "importance": 5,
+      "attributes": { "value": "1789", "precision": "year", "event": "Début de la Révolution française" },
+      "source_excerpt": "La Révolution française commence en 1789",
+      "relations": []
+    },
+    {
+      "id": "k2",
+      "type": "person",
+      "label": "Louis XVI",
+      "statement": "Louis XVI est le roi de France au moment de la Révolution.",
+      "importance": 4,
+      "attributes": { "role": "roi de France" },
+      "source_excerpt": "le roi Louis XVI",
+      "relations": []
+    },
+    {
+      "id": "k3",
+      "type": "event",
+      "label": "Prise de la Bastille",
+      "statement": "Le 14 juillet 1789, le peuple de Paris prend la Bastille.",
+      "importance": 5,
+      "attributes": { "date": "14 juillet 1789", "place": "Paris" },
+      "source_excerpt": "Le 14 juillet 1789, le peuple de Paris prend la Bastille",
+      "relations": [{ "type": "happened_in", "target": "k1" }]
+    }
+  ],
+  "warnings": []
+}
+```
+
+**Matières** (`subject`) : `french`, `math`, `history`, `geography`, `science`, `english`, `civics`, `other`.
+**Niveaux** (`grade`) : `CP`, `CE1`, `CE2`, `CM1`, `CM2`, `6e`, `5e`, `4e`, `3e`.
+
+**Types de connaissance** et attributs attendus :
+
+| `type` | Exemple | `attributes` |
 |---|---|---|
-| `child` | id, display_name, grade, created_at | Profil minimal |
-| `lesson` | id, child_id, subject, grade, title, summary, source_text | Leçon analysée (texte seulement, **jamais la photo**) |
-| `notion` | id, lesson_id, label, kind, content, importance | Ce qu'il faut retenir |
-| `question` | id, lesson_id, notion_id, kind, difficulty, prompt, choices, answer, explanation, pairs | Banque d'exercices |
-| `revisionsession` | id, child_id, lesson_id, mode, question_ids, time_limit_s, started_at, finished_at | Une séance |
-| `answer` | id, session_id, question_id, notion_id, given, score, correct, time_ms | Chaque réponse (analyse des erreurs) |
-| `notionmastery` | id, child_id, notion_id, level, next_review_at, last_reviewed_at | Maîtrise + prochain rappel |
+| `date` | 1789 | `value`, `precision` (year/day), `event` |
+| `person` | Louis XVI | `role` |
+| `place` | La Bastille | `description` |
+| `event` | Prise de la Bastille | `date?`, `place?` |
+| `term` | numérateur | `definition` |
+| `rule` | accord du participe passé | `statement`, `example` |
+| `formula` | aire du rectangle | `expression`, `variables` |
+| `fact` | l'eau bout à 100 °C | — |
+| `process` | cycle de l'eau | `steps[]` |
+| `classification` | états de la matière | `categories[{name, members[]}]` |
 
-Types de notion : `date, vocabulaire, definition, personnage, evenement, lieu, regle, formule, calcul, concept`.
-Types de question : `qcm, vrai_faux, texte_a_trous, flashcard, association, question_ouverte`.
-Difficultés : 1 reconnaître · 2 se rappeler · 3 relier/appliquer · 4 expliquer.
+**Importance** : 5 = sera forcément demandée · 4 = centrale · 3 = utile · 2 = complément · 1 = détail.
 
-Tables prévues pour les versions suivantes : `parent`, `family`, `badge`, `xp_event`, `daily_challenge`, `voice_answer`.
+**Relations** : `happened_in`, `part_of`, `opposite_of`, `example_of`, `causes`. Elles servent aux associations et, plus tard, aux jeux de chronologie.
 
----
+### 6.3 Sortie de l'enrichissement (matériel par notion)
 
-## 5. API REST (V1)
+```json
+{
+  "knowledge_id": "k1",
+  "questions": [
+    { "difficulty": 1, "stem": "En quelle année commence la Révolution française ?",
+      "answer": "1789", "distractors": ["1492", "1914", "1945"] },
+    { "difficulty": 2, "stem": "Que se passe-t-il en France en 1789 ?",
+      "answer": "La Révolution française commence",
+      "distractors": ["Napoléon devient empereur", "La Première Guerre mondiale commence", "Louis XIV devient roi"] }
+  ],
+  "true_statements": ["La Révolution française commence en 1789."],
+  "false_statements": ["La Révolution française commence en 1914."],
+  "cloze": { "text": "La Révolution française commence en ___.", "answers": ["1789"] },
+  "pair": { "left": "1789", "right": "Début de la Révolution" },
+  "flashcard": { "front": "1789", "back": "Début de la Révolution française" },
+  "tip": "1789 = Révolution française.",
+  "explanation": "La Révolution française commence en 1789, quand le peuple conteste le pouvoir du roi."
+}
+```
 
-Documentation interactive : `http://localhost:8000/docs`.
+Difficultés : **1** reconnaître · **2** se rappeler · **3** relier / appliquer.
 
-| Méthode | Route | Description |
-|---|---|---|
-| POST | `/children` | Créer un profil `{display_name, grade}` |
-| GET | `/children/{id}` | Lire un profil |
-| DELETE | `/children/{id}` | **Effacement** de l'enfant et de toutes ses données |
-| GET | `/children/{id}/lessons` | Leçons de l'enfant |
-| GET | `/children/{id}/progress` | Tableau de bord (réussite, matières, à renforcer, rappels dus) |
-| POST | `/lessons` | *multipart* : `child_id`, `images[]` (1-6, JPEG/PNG/WebP, 10 Mo max) et/ou `text` → leçon analysée |
-| GET | `/lessons/{id}` | Leçon + notions |
-| DELETE | `/lessons/{id}` | Supprimer une leçon et son historique |
-| POST | `/lessons/{id}/sessions` | Démarrer une séance `{mode}` → questions **sans les réponses** |
-| POST | `/sessions/{id}/answers` | `{question_id, answer, time_ms}` → correction + explication |
-| POST | `/sessions/{id}/finish` | Clôturer → bilan + mise à jour de la maîtrise |
+### 6.4 Validateurs automatiques
 
-Codes d'erreur : 404 ressource absente · 409 séance close / question déjà répondue · 413 photo trop lourde · 415 format non supporté · 422 entrée invalide ou leçon illisible · 502 IA indisponible.
-
----
-
-## 6. Moteur pédagogique
-
-### 6.1 Choix de l'activité selon le contenu (prompt IA 3)
-
-| Contenu | Activités privilégiées |
+| Élément | Règles |
 |---|---|
-| Date | QCM, vrai/faux, année à compléter |
-| Vocabulaire, définition | Cartes mémoire, QCM, texte à trous |
-| Personnage | « Qui suis-je ? » (QCM), association |
-| Événement, lieu | QCM, association, vrai/faux |
-| Règle, formule, calcul | QCM, texte à trous avec exemple |
-| Concept | Question ouverte, vrai/faux |
+| Notion | `source_excerpt` retrouvé dans le texte OCR (comparaison normalisée, tolérance de 10 %) ; `importance` entre 1 et 5 ; `id` unique |
+| `questions[]` | 3 distracteurs distincts, différents de la réponse et de même nature (année ↔ année, nombre ↔ nombre) ; `stem` ne contient pas la réponse |
+| `false_statements[]` | différente de toutes les `true_statements` ; aucune négation triviale (« ne… pas » ajouté seul) |
+| `cloze` | exactement un `___` ; la réponse n'apparaît pas ailleurs dans la phrase |
+| `pair` | `left` ≤ 40 caractères, `right` ≤ 60 caractères |
+| `tip` | ≤ 120 caractères ; aucun chiffre ni nom propre absent de la notion |
 
-### 6.2 Correction
-- QCM / vrai-faux : comparaison exacte (casse et accents ignorés).
-- Texte à trous : similarité ≥ 85 % (« revolusion » accepté pour « Révolution »).
-- Association : score = paires correctes / paires totales.
-- Carte mémoire : auto-évaluation.
-- Question ouverte : IA 4, score 0-1 sur le fond (pas l'orthographe), liste des oublis.
-- Réponse « juste » si score ≥ 0,6.
+Si le taux d'éléments rejetés d'une leçon dépasse 30 %, un avertissement est enregistré dans `ai_runs` : c'est un signal de qualité à suivre pendant les tests.
 
-### 6.3 Maîtrise et répétition espacée
-À la fin de chaque séance, pour chaque notion travaillée (taux de réussite *r*) :
+---
 
-| Niveau actuel | r ≥ 80 % | 50 % ≤ r < 80 % | r < 50 % |
+## 7. Moteur d'activités
+
+### 7.1 Registre
+
+```
+Activity
+├── MCQ              ✅ V1
+├── TRUE_FALSE       ✅ V1
+├── FILL_BLANK       ✅ V1
+├── MATCH            ✅ V1
+├── SPEED_CHALLENGE  ✅ V1
+├── FLASHCARD        ✅ V1
+├── ORDER            🔜 V1.1 (chronologie, étapes d'un processus)
+├── MEMORY           🔜 V2
+└── OPEN_QUESTION    🔜 V2 (correction par l'IA)
+```
+
+Chaque type est une classe autonome côté serveur :
+
+```python
+class ActivityType(ABC):
+    code: ClassVar[str]                      # "MCQ"
+    knowledge_types: ClassVar[set[str]]      # types de notion compatibles
+    difficulties: ClassVar[set[int]]         # {1, 2}
+    base_duration_s: ClassVar[int]           # pour l'estimation de durée
+    multi_knowledge: ClassVar[bool] = False  # MATCH, SPEED_CHALLENGE couvrent plusieurs notions
+
+    def can_build(self, items: list[KnowledgeWithMaterial], difficulty: int) -> bool: ...
+    def build(self, items, difficulty, rng) -> BuiltActivity: ...   # payload public + solution privée
+    def grade(self, activity: BuiltActivity, response: dict) -> Grade: ...
+```
+
+Ajouter un jeu revient à écrire une classe côté serveur, l'enregistrer, écrire un widget Flutter et l'enregistrer. Le composeur, la notation et la mémorisation ne changent pas.
+
+### 7.2 Compatibilité notion → activité
+
+| Type de notion | MCQ | TRUE_FALSE | FILL_BLANK | MATCH | SPEED | FLASHCARD | ORDER* |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| date | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| person | ✓ « Qui suis-je ? » | ✓ | | ✓ | ✓ | ✓ | |
+| place | ✓ | ✓ | | ✓ | ✓ | ✓ | |
+| event | ✓ | ✓ | ✓ | ✓ | ✓ | | ✓ |
+| term | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| rule | ✓ | ✓ | ✓ | | ✓ | ✓ | |
+| formula | ✓ | ✓ | ✓ | ✓ | | ✓ | |
+| fact | ✓ | ✓ | ✓ | | ✓ | | |
+| process | ✓ | ✓ | | | | | ✓ |
+| classification | ✓ | ✓ | | ✓ | ✓ | | |
+
+\* ORDER en V1.1.
+
+### 7.3 Contrats JSON des activités
+
+`payload` est envoyé au téléphone. `solution` reste sur le serveur. La réponse de l'enfant est notée `response`.
+
+| Type | `payload` | `response` |
+|---|---|---|
+| MCQ | `{prompt, choices:[{id,text}]}` | `{choice_id}` |
+| TRUE_FALSE | `{statement}` | `{value: true\|false}` |
+| FILL_BLANK | `{text: "… ___ …", hint?}` | `{text}` |
+| MATCH | `{left:[{id,text}], right:[{id,text}]}` (colonne de droite mélangée) | `{pairs:[[left_id,right_id]…]}` |
+| SPEED_CHALLENGE | `{time_limit_s: 30, statements:[{id,text}]}` (5 affirmations vrai/faux) | `{answers:[{id,value}], elapsed_ms}` |
+| FLASHCARD | `{front, back}` | `{self_assessment: "knew"\|"didnt_know"}` |
+
+Réponse de correction, commune à tous les types :
+
+```json
+{
+  "result": "incorrect",
+  "score": 0.0,
+  "correct_answer": "1789",
+  "tip": "1789 = Révolution française.",
+  "explanation": "La Révolution française commence en 1789…",
+  "details": []
+}
+```
+
+`details` décrit, pour MATCH et SPEED_CHALLENGE, le résultat élément par élément : `[{id, correct, expected}]`.
+
+---
+
+## 8. Composition d'une séance
+
+### 8.1 Première révision d'une leçon
+
+| Bloc | Contenu | Règle de sélection |
+|---|---|---|
+| 🧠 Échauffement | 3 activités faciles (difficulté 1 : MCQ, TRUE_FALSE) | les 3 notions les plus importantes |
+| 🎯 Approfondissement | 3 activités intermédiaires (difficulté 2 : FILL_BLANK, MCQ inversé, FLASHCARD) | les 3 notions suivantes ; si la leçon en a moins de 6, on reprend les plus importantes avec un autre format |
+| 🧩 Association | 1 MATCH de 4 à 5 paires | notions ayant une `pair`, en priorité celles non vues dans les blocs précédents |
+| ⚡ Défi rapide | 1 SPEED_CHALLENGE : 5 vrai/faux en 30 s | mélange de `true_statements` et de `false_statements` |
+| 🔄 Reprise des erreurs | 1 activité par notion ratée (3 au maximum) | **format différent** de celui qui a été raté ; ajoutée à la fin par `POST /sessions/{id}/replay` |
+
+Règles communes :
+
+- une même notion n'apparaît pas deux fois dans les blocs 1 et 2 ;
+- deux activités consécutives ne sont pas du même type ;
+- les notions d'importance ≤ 2 ne sont utilisées que si la leçon a moins de 6 notions d'importance ≥ 3 ;
+- tirage aléatoire reproductible : la graine est enregistrée avec la séance, pour pouvoir rejouer un bug.
+
+### 8.2 Durée estimée
+
+`durée = Σ base_duration_s + 5 s de transition par activité + provision pour la reprise`
+
+| Type | Durée de base |
+|---|---|
+| MCQ | 20 s |
+| TRUE_FALSE | 12 s |
+| FILL_BLANK | 30 s |
+| FLASHCARD | 15 s |
+| MATCH | 60 s |
+| SPEED_CHALLENGE | 40 s |
+
+- Provision pour la reprise : 30 % × 3 × 20 s.
+- Correction : 8 s par activité.
+- L'estimation est arrondie à la minute supérieure.
+- Elle sera recalibrée avec les durées réelles mesurées (`attempts.duration_ms`).
+
+### 8.3 Révisions suivantes (leçon déjà travaillée)
+
+1. Priorité de chaque notion = `importance × (100 − score_maîtrise) / 100`, majorée ×1,5 si sa révision est due.
+2. Les notions avec un score ≥ 90 et une révision non due sont exclues : *on ne refait pas 10 questions sur ce qu'Emma connaît déjà*.
+3. Même structure de blocs, avec des difficultés adaptées au score :
+   - score < 50 : difficulté 1 ;
+   - 50 à 79 : difficulté 2 ;
+   - ≥ 80 : difficulté 2 ou 3.
+4. Si moins de 3 notions restent à travailler, la séance est courte (blocs 1 et 4 seulement) et l'écran 4 l'annonce : « Révision express : 2 min ».
+
+### 8.4 Séance « Revoir mes erreurs »
+
+Elle ne porte que sur les notions `to_review` et `not_mastered` de la séance d'origine. Elle contient 2 activités par notion, dans des formats différents, sans association ni défi.
+
+---
+
+## 9. Notation
+
+### 9.1 Score d'une activité (0 à 1)
+
+| Type | Calcul |
+|---|---|
+| MCQ, TRUE_FALSE | 1 ou 0 |
+| FILL_BLANK | 1 si la réponse normalisée (minuscules, sans accents ni ponctuation) est dans `answers`. Fautes tolérées : aucune jusqu'à 4 caractères, 1 de 5 à 8 caractères, 2 au-delà (distance de Damerau-Levenshtein). Nombres et années : correspondance exacte |
+| MATCH | paires justes / paires totales |
+| SPEED_CHALLENGE | réponses justes / 5 ; une affirmation sans réponse compte faux |
+| FLASHCARD | `knew` = 1, `didnt_know` = 0 (auto-évaluation) |
+
+Résultat affiché : `correct` si le score vaut 1, `partial` s'il est ≥ 0,5, `incorrect` sinon.
+
+### 9.2 Note de la séance
+
+`note /10 = 10 × moyenne des scores des activités principales`, arrondie à 0,5. La reprise des erreurs n'entre pas dans la note, mais elle compte pour la maîtrise.
+
+### 9.3 Résultat par notion dans la séance
+
+Chaque tentative produit une preuve par notion couverte, pondérée ainsi :
+
+| Source | Poids |
+|---|---|
+| difficulté 1 | 0,6 |
+| difficulté 2 | 0,8 |
+| difficulté 3 | 1,0 |
+| vrai/faux, défi rapide, flashcard | × 0,5 (une réponse au hasard est possible, ou c'est une auto-évaluation) |
+
+`taux_séance(notion) = Σ(poids × résultat) / Σ(poids)`
+
+| Statut dans le bilan | Condition |
+|---|---|
+| ✅ Maîtrisée | taux ≥ 0,8 |
+| 🟠 À revoir | 0,5 ≤ taux < 0,8 |
+| 🔴 Non maîtrisée | taux < 0,5 |
+
+Une notion ratée puis réussie en reprise obtient un taux de 0,5 environ, donc 🟠 à revoir. C'est voulu : elle reviendra à la prochaine révision.
+
+---
+
+## 10. Mémorisation et prochaine révision
+
+Chaque notion a, pour chaque apprenant, un **score de maîtrise** de 0 à 100 % (celui qui s'affiche) et une **boîte** de 1 à 5 (qui sert à planifier les rappels).
+
+### 10.1 Mise à jour en fin de séance
+
+- Première fois : `score = 100 × taux_séance`.
+- Ensuite : `score = 0,6 × (100 × taux_séance) + 0,4 × score_précédent`.
+
+Boîte :
+
+| Taux de la séance | Effet sur la boîte |
+|---|---|
+| ≥ 0,8 | boîte + 1 (5 au maximum) |
+| entre 0,5 et 0,8 | inchangée (1 au minimum) |
+| < 0,5 | retour en boîte 1 |
+
+Intervalles avant la prochaine révision :
+
+| Boîte | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|
+| Prochaine révision | J+1 | J+2 | J+4 | J+7 | J+14 |
+
+### 10.2 Prochaine révision d'une leçon
+
+C'est la date la plus proche parmi les notions d'importance ≥ 3, affichée sur le bilan et l'accueil. Si toutes ces notions ont un score ≥ 90 et sont en boîte 5, la leçon est marquée « maîtrisée ✓ ».
+
+Exemple de ce que le moteur connaît :
+
+```
+Apprenant
+├── Révolution française
+│   ├── 1789              92 %  boîte 4 → 30 sept.
+│   ├── Louis XVI         84 %  boîte 3 → 27 sept.
+│   ├── États généraux    42 %  boîte 1 → demain
+│   └── Bastille          96 %  boîte 4 → 30 sept.
+└── Fractions
+    ├── numérateur        91 %
+    ├── dénominateur      88 %
+    └── comparaison       51 %
+```
+
+---
+
+## 11. API
+
+Base : `/v1`. Toutes les routes, sauf `POST /v1/devices`, exigent l'en-tête `Authorization: Bearer <jeton d'appareil>`. Documentation OpenAPI générée : `/docs`.
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| POST | `/v1/devices` | Enregistre l'appareil au premier lancement → `{device_id, token}` |
+| GET | `/v1/lessons` | Dernières leçons (écran 1) |
+| POST | `/v1/lessons` | *multipart* `pages[]` (1 à 6 images) → **202** `{id, status: "uploaded"}`, traitement en arrière-plan |
+| GET | `/v1/lessons/{id}` | Statut et, si `ready`, leçon et notions (écrans 3 et 4) |
+| PATCH | `/v1/lessons/{id}` | `{grade}` : correction du niveau par l'enfant |
+| POST | `/v1/lessons/{id}/retry` | Relance une analyse échouée pour cause `ai_error` (le texte OCR est déjà stocké) |
+| DELETE | `/v1/lessons/{id}` | Supprime la leçon et son historique |
+| POST | `/v1/lessons/{id}/sessions` | `{kind: "auto"}` → séance (écran 4) |
+| GET | `/v1/sessions/{id}` | Reprise d'une séance interrompue |
+| POST | `/v1/sessions/{id}/attempts` | `{item_id, response, duration_ms}` → correction (écran 6) |
+| POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) |
+| POST | `/v1/sessions/{id}/complete` | Clôture → bilan (écran 7) |
+| POST | `/v1/sessions/{id}/errors-session` | Crée la séance « Revoir mes erreurs » |
+| DELETE | `/v1/me` | Efface toutes les données de l'appareil |
+
+### 11.1 Exemples
+
+**`GET /v1/lessons/{id}`** pendant l'analyse, puis quand elle est prête :
+
+```json
+{ "id": "…", "status": "analyzing", "steps": { "reading": "done", "analyzing": "running", "generating": "pending" } }
+```
+```json
+{
+  "id": "…", "status": "ready",
+  "subject": "history", "grade": "CM1", "title": "La Révolution française",
+  "objective": "Connaître les principales notions de la Révolution française",
+  "knowledge": [ { "id": "…", "label": "1789", "statement": "…", "importance": 5, "type": "date" } ],
+  "next_review_at": null
+}
+```
+
+**`POST /v1/lessons/{id}/sessions`** :
+
+```json
+{
+  "id": "…", "kind": "first",
+  "objective": "Connaître les principales notions de la Révolution française",
+  "estimated_duration_min": 8,
+  "items": [
+    { "id": "…", "position": 1, "block": "warmup", "type": "MCQ", "difficulty": 1,
+      "payload": { "prompt": "Quelle année marque le début de la Révolution française ?",
+                   "choices": [ {"id":"a","text":"1492"}, {"id":"b","text":"1789"},
+                                {"id":"c","text":"1914"}, {"id":"d","text":"1945"} ] } }
+  ]
+}
+```
+
+**`POST /v1/sessions/{id}/complete`** :
+
+```json
+{
+  "score_on_10": 8.0,
+  "counts": { "mastered": 7, "to_review": 2, "not_mastered": 1 },
+  "knowledge": [
+    { "id": "…", "label": "États généraux", "status": "to_review", "session_rate": 0.55, "mastery": 42 }
+  ],
+  "next_review_at": "2026-09-25",
+  "can_review_errors": true
+}
+```
+
+### 11.2 Erreurs
+
+Format unique : `{"error": {"code": "lesson_unreadable", "message": "…"}}`.
+
+| Code HTTP | Cas |
+|---|---|
+| 401 | jeton absent ou invalide |
+| 404 | ressource absente ou appartenant à un autre appareil |
+| 409 | séance déjà terminée, ou activité déjà répondue |
+| 413 | image trop lourde |
+| 415 | format non supporté |
+| 422 | entrée invalide |
+| 429 | limite de débit atteinte |
+| 503 | IA indisponible |
+
+---
+
+## 12. Base de données PostgreSQL
+
+Migrations avec **Alembic**. Identifiants en UUID, dates en `timestamptz`.
+
+```sql
+CREATE TABLE devices (
+  id            uuid PRIMARY KEY,
+  token_hash    bytea NOT NULL UNIQUE,          -- SHA-256 du jeton, jamais le jeton en clair
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  last_seen_at  timestamptz
+);
+
+-- V1 : un apprenant anonyme par appareil. V3 : plusieurs enfants par famille.
+CREATE TABLE learners (
+  id            uuid PRIMARY KEY,
+  device_id     uuid NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+  display_name  text,                            -- NULL en V1
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE lessons (
+  id               uuid PRIMARY KEY,
+  learner_id       uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  status           text NOT NULL CHECK (status IN ('uploaded','reading','analyzing','generating','ready','failed')),
+  failure_reason   text CHECK (failure_reason IN ('unreadable','not_a_lesson','too_long','ai_error')),
+  subject          text,
+  grade            text,
+  grade_confidence real,
+  title            text,
+  objective        text,
+  summary          text,
+  page_count       smallint NOT NULL,
+  analysis         jsonb,                        -- sortie normalisée complète (§6.2)
+  prompt_versions  jsonb,                        -- {"ocr":"v1","analysis":"v1","material":"v1"}
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX lessons_learner_recent ON lessons (learner_id, created_at DESC);
+
+CREATE TABLE lesson_pages (
+  lesson_id   uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  page_index  smallint NOT NULL,
+  ocr_text    text NOT NULL,                     -- le texte seulement : l'image n'est jamais stockée
+  quality     text NOT NULL CHECK (quality IN ('good','partial','unreadable')),
+  PRIMARY KEY (lesson_id, page_index)
+);
+
+CREATE TABLE knowledge_items (
+  id              uuid PRIMARY KEY,
+  lesson_id       uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  key             text NOT NULL,                 -- "k1"
+  type            text NOT NULL,
+  label           text NOT NULL,
+  statement       text NOT NULL,
+  importance      smallint NOT NULL CHECK (importance BETWEEN 1 AND 5),
+  attributes      jsonb NOT NULL DEFAULT '{}',
+  relations       jsonb NOT NULL DEFAULT '[]',
+  source_excerpt  text NOT NULL,
+  position        smallint NOT NULL,
+  UNIQUE (lesson_id, key)
+);
+
+CREATE TABLE knowledge_material (
+  knowledge_id    uuid PRIMARY KEY REFERENCES knowledge_items(id) ON DELETE CASCADE,
+  material        jsonb NOT NULL,                -- §6.3, après validation
+  rejected        jsonb NOT NULL DEFAULT '[]',   -- éléments écartés (analyse qualité)
+  prompt_version  text NOT NULL
+);
+
+CREATE TABLE sessions (
+  id                     uuid PRIMARY KEY,
+  learner_id             uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  lesson_id              uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+  kind                   text NOT NULL CHECK (kind IN ('first','review','errors')),
+  parent_session_id      uuid REFERENCES sessions(id) ON DELETE SET NULL,
+  status                 text NOT NULL CHECK (status IN ('active','completed','abandoned')),
+  objective              text NOT NULL,
+  estimated_duration_s   integer NOT NULL,
+  seed                   bigint NOT NULL,
+  score_on_10            numeric(3,1),
+  started_at             timestamptz NOT NULL DEFAULT now(),
+  completed_at           timestamptz
+);
+CREATE INDEX sessions_learner ON sessions (learner_id, started_at DESC);
+
+CREATE TABLE session_items (
+  id              uuid PRIMARY KEY,
+  session_id      uuid NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  position        smallint NOT NULL,
+  block           text NOT NULL CHECK (block IN ('warmup','core','match','speed','replay')),
+  activity_type   text NOT NULL,
+  difficulty      smallint NOT NULL,
+  knowledge_ids   uuid[] NOT NULL,
+  payload         jsonb NOT NULL,                -- envoyé au téléphone
+  solution        jsonb NOT NULL,                -- jamais envoyé avant la réponse
+  UNIQUE (session_id, position)
+);
+
+CREATE TABLE attempts (
+  id               uuid PRIMARY KEY,
+  session_item_id  uuid NOT NULL UNIQUE REFERENCES session_items(id) ON DELETE CASCADE,
+  response         jsonb NOT NULL,
+  score            numeric(3,2) NOT NULL,
+  duration_ms      integer,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE attempt_evidence (                  -- une ligne par notion couverte par la tentative
+  attempt_id    uuid NOT NULL REFERENCES attempts(id) ON DELETE CASCADE,
+  knowledge_id  uuid NOT NULL REFERENCES knowledge_items(id) ON DELETE CASCADE,
+  result        numeric(3,2) NOT NULL,
+  weight        numeric(3,2) NOT NULL,
+  PRIMARY KEY (attempt_id, knowledge_id)
+);
+
+CREATE TABLE knowledge_mastery (
+  learner_id         uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  knowledge_id       uuid NOT NULL REFERENCES knowledge_items(id) ON DELETE CASCADE,
+  score              smallint NOT NULL CHECK (score BETWEEN 0 AND 100),
+  box                smallint NOT NULL CHECK (box BETWEEN 1 AND 5),
+  next_review_at     timestamptz NOT NULL,
+  last_practiced_at  timestamptz NOT NULL,
+  sessions_count     integer NOT NULL DEFAULT 1,
+  PRIMARY KEY (learner_id, knowledge_id)
+);
+CREATE INDEX mastery_due ON knowledge_mastery (learner_id, next_review_at);
+
+CREATE TABLE ai_runs (                           -- coût, latence et qualité de chaque appel IA
+  id             uuid PRIMARY KEY,
+  lesson_id      uuid REFERENCES lessons(id) ON DELETE SET NULL,
+  stage          text NOT NULL CHECK (stage IN ('ocr','analysis','material')),
+  provider       text NOT NULL,
+  model          text NOT NULL,
+  prompt_version text NOT NULL,
+  input_tokens   integer,
+  output_tokens  integer,
+  latency_ms     integer NOT NULL,
+  status         text NOT NULL CHECK (status IN ('ok','invalid_output','refused','error')),
+  warnings       jsonb NOT NULL DEFAULT '[]',
+  created_at     timestamptz NOT NULL DEFAULT now()
+);
+```
+
+Le contenu des leçons n'est jamais copié dans `ai_runs`, qui ne contient que des métadonnées. `ON DELETE SET NULL` conserve les statistiques de coût après la suppression d'une leçon.
+
+---
+
+## 13. Architecture FastAPI
+
+```
+backend/
+├── pyproject.toml                  # dépendances, ruff, mypy, pytest
+├── alembic.ini
+├── migrations/versions/
+├── app/
+│   ├── main.py                     # création de l'app, montage /v1, gestion des erreurs
+│   ├── config.py                   # Settings (pydantic-settings)
+│   ├── api/
+│   │   ├── deps.py                 # session DB, appareil courant, fournisseurs
+│   │   ├── errors.py               # format d'erreur unique
+│   │   └── v1/
+│   │       ├── devices.py
+│   │       ├── lessons.py
+│   │       ├── sessions.py
+│   │       ├── me.py
+│   │       └── schemas.py          # modèles Pydantic d'entrée et de sortie
+│   ├── domain/                     # Python pur : aucun import de FastAPI, SQLAlchemy ni SDK IA
+│   │   ├── knowledge.py            # KnowledgeItem, KnowledgeMaterial, types, validateurs
+│   │   ├── activities/
+│   │   │   ├── base.py             # ActivityType, BuiltActivity, Grade
+│   │   │   ├── registry.py
+│   │   │   ├── mcq.py
+│   │   │   ├── true_false.py
+│   │   │   ├── fill_blank.py
+│   │   │   ├── match.py
+│   │   │   ├── speed_challenge.py
+│   │   │   └── flashcard.py
+│   │   ├── composer.py             # §8 : blocs, sélection, reprise, durée
+│   │   ├── scoring.py              # §9 : normalisation de texte, fautes tolérées, taux par notion
+│   │   └── mastery.py              # §10 : score, boîtes, prochaine révision
+│   ├── services/
+│   │   ├── lesson_pipeline.py      # OCR → analyse → enrichissement, statuts, journalisation
+│   │   ├── session_service.py      # créer, répondre, reprise, clôturer
+│   │   └── report_service.py
+│   ├── ai/
+│   │   ├── ports.py                # OcrProvider, LLMProvider, PageImage, LLMResult
+│   │   ├── schemas.py              # OcrResult, LessonAnalysis, KnowledgeMaterial (Pydantic)
+│   │   ├── prompts/                # ocr.v1.md, analysis.v1.md, material.v1.md
+│   │   ├── providers/
+│   │   │   ├── claude.py
+│   │   │   └── fake.py
+│   │   └── ocr/
+│   │       └── vision_llm.py
+│   ├── db/
+│   │   ├── base.py                 # moteur, session
+│   │   ├── models.py               # tables SQLAlchemy (§12)
+│   │   └── repositories.py
+│   ├── security/
+│   │   ├── tokens.py               # génération et vérification des jetons d'appareil
+│   │   └── rate_limit.py
+│   └── tools/
+│       └── analyze.py              # CLI : python -m app.tools.analyze photo1.jpg photo2.jpg
+└── tests/
+    ├── fixtures/lessons/*.json     # leçons normalisées de référence (sans IA)
+    ├── domain/                     # composeur, notation, mémorisation, chaque activité
+    └── api/                        # parcours complets avec FakeProvider
+```
+
+Règles d'architecture :
+
+- `domain/` ne dépend de rien. Il est testé à 100 % avec des leçons de référence en JSON, sans IA ni base.
+- Le traitement d'une leçon s'exécute en V1 dans une tâche de fond (`BackgroundTasks`). Le passage à une vraie file (Arq ou Celery, avec Redis) ne concerne que `lesson_pipeline.py`.
+- L'API est asynchrone (SQLAlchemy async + asyncpg).
+- Infrastructure locale : `docker-compose.yml` lance PostgreSQL 16 et l'API.
+
+---
+
+## 14. Architecture Flutter
+
+### 14.1 Choix techniques
+
+| Besoin | Choix | Raison |
+|---|---|---|
+| État | **Riverpod** | testable, sans `BuildContext`, adapté au polling et aux séances |
+| Navigation | **go_router** | routes déclaratives, liens profonds plus tard |
+| HTTP | **dio** | intercepteur pour le jeton, délais, envoi multipart avec progression |
+| Modèles | **freezed + json_serializable** | modèles immuables et sérialisation générée |
+| Photos | **image_picker** (V1), **cunning_document_scanner** (V1.1) | photo simple d'abord ; le recadrage automatique ensuite |
+| Compression | **flutter_image_compress** | redimensionnement, JPEG, suppression des métadonnées EXIF |
+| Jeton | **flutter_secure_storage** | stockage chiffré |
+
+### 14.2 Arborescence
+
+```
+mobile/
+├── pubspec.yaml
+├── lib/
+│   ├── main.dart
+│   ├── app/
+│   │   ├── app.dart                 # MaterialApp.router, thème
+│   │   ├── router.dart              # 7 routes
+│   │   └── theme.dart               # couleurs, typographie adaptée aux enfants
+│   ├── core/
+│   │   ├── config.dart              # API_URL (--dart-define)
+│   │   ├── api/
+│   │   │   ├── api_client.dart
+│   │   │   └── auth_interceptor.dart
+│   │   ├── device/device_registration.dart
+│   │   └── errors.dart              # ApiError → message pour l'enfant
+│   ├── models/                      # lesson, knowledge, session, activity, feedback, report
+│   └── features/
+│       ├── home/                    # Écran 1
+│       │   ├── home_screen.dart
+│       │   └── lessons_provider.dart
+│       ├── capture/                 # Écran 2
+│       │   ├── capture_screen.dart
+│       │   ├── capture_controller.dart
+│       │   └── image_compressor.dart
+│       ├── analysis/                # Écran 3
+│       │   ├── analysis_screen.dart
+│       │   └── lesson_status_poller.dart
+│       ├── lesson/                  # Écran 4
+│       │   └── lesson_summary_screen.dart
+│       ├── session/                 # Écrans 5 et 6
+│       │   ├── session_screen.dart
+│       │   ├── session_controller.dart   # machine à états : question → correction → suivante → reprise → bilan
+│       │   ├── feedback_view.dart
+│       │   └── activities/
+│       │       ├── activity_registry.dart
+│       │       ├── mcq_view.dart
+│       │       ├── true_false_view.dart
+│       │       ├── fill_blank_view.dart
+│       │       ├── match_view.dart
+│       │       ├── speed_challenge_view.dart
+│       │       └── flashcard_view.dart
+│       └── report/                  # Écran 7
+│           └── report_screen.dart
+└── test/
+    ├── activities/                  # tests de widgets par type d'activité
+    └── session_controller_test.dart
+```
+
+### 14.3 Registre de widgets
+
+```dart
+typedef ActivityBuilder = Widget Function(
+  SessionItem item,
+  void Function(Map<String, dynamic> response) onSubmit,
+);
+
+const activityRegistry = <String, ActivityBuilder>{
+  'MCQ': McqView.new,
+  'TRUE_FALSE': TrueFalseView.new,
+  'FILL_BLANK': FillBlankView.new,
+  'MATCH': MatchView.new,
+  'SPEED_CHALLENGE': SpeedChallengeView.new,
+  'FLASHCARD': FlashcardView.new,
+};
+```
+
+Un type inconnu (serveur plus récent que l'application) est sauté proprement : le client appelle `attempts` avec `{"skipped": true}`, et cette tentative n'est pas comptée dans la note.
+
+### 14.4 Machine à états de la séance
+
+```
+loading → question ⇄ submitting → feedback → question (suivante)
+                                          └→ (fin des items principaux) replay_loading → question (reprise) …
+                                          └→ (fin) completing → report
+```
+
+---
+
+## 15. Gestion des photos
+
+| Étape | Où | Règle |
+|---|---|---|
+| Capture | téléphone | 1 à 6 pages, ordre modifiable |
+| Compression | téléphone | côté long ≤ 2000 px, JPEG qualité 80, **métadonnées EXIF supprimées** (dont la position GPS) |
+| Envoi | réseau | HTTPS, multipart, ≤ 8 Mo par page |
+| Contrôle | serveur | type vérifié sur les octets du fichier (JPEG, PNG, WebP, HEIC converti), dimensions ≥ 600 px, 6 pages au maximum |
+| Traitement | serveur | image gardée en mémoire le temps de l'OCR uniquement |
+| Stockage | — | **aucun** : seul le texte OCR est conservé ; l'image n'est ni écrite sur disque, ni journalisée |
+| Téléphone | téléphone | les photos restent dans un dossier temporaire de l'application jusqu'à `ready`, puis sont supprimées |
+
+Exception encadrée : pour constituer le corpus de test (§17), les photos sont collectées **hors application**, avec l'accord explicite des familles testeuses, et stockées dans un espace privé de l'équipe.
+
+---
+
+## 16. Sécurité et données personnelles
+
+### 16.1 Sécurité technique (V1)
+
+- Jeton d'appareil aléatoire de 256 bits, stocké haché (SHA-256) côté serveur et dans `flutter_secure_storage` côté téléphone. Chaque requête est limitée aux données de son appareil : l'accès à la ressource d'un autre appareil renvoie 404.
+- HTTPS obligatoire (reverse proxy), HSTS, pas de CORS (application mobile uniquement).
+- Limites de débit :
+  - 20 leçons par jour et par appareil ;
+  - 300 requêtes par minute et par appareil ;
+  - plafond de coût IA journalier global, avec alerte.
+- Toutes les entrées sont validées par Pydantic, avec des tailles maximales partout.
+- Injection de prompt : le texte de la leçon est une donnée entre balises. Les sorties sont validées par schéma, les modèles n'ont accès à aucun outil, et un texte étrange donne au pire une leçon ratée.
+- Secrets dans des variables d'environnement, jamais dans le code. Dépendances figées et analysées en intégration continue.
+- Journaux sans contenu de leçon ni jeton.
+
+### 16.2 Données personnelles (enfants)
+
+- **Minimisation** : aucun nom, aucun e-mail, aucune date de naissance en V1. L'apprenant est anonyme.
+- Pas de photo conservée. La transcription exclut les en-têtes personnels.
+- Effacement : `DELETE /v1/lessons/{id}` et `DELETE /v1/me` suppriment tout, en cascade.
+- Conservation : suppression automatique des données d'un appareil inactif depuis 12 mois.
+- Fournisseurs d'IA : contrat de sous-traitance (DPA) et absence d'entraînement sur les données transmises. Hébergement de l'API et de la base dans l'UE.
+- Pas de publicité, pas de traceur tiers, pas de classement.
+- **Avant la bêta publique** (hors V1 de test) : politique de confidentialité, registre des traitements, analyse d'impact (AIPD), recueil du consentement parental au premier lancement.
+
+---
+
+## 17. Tests avec de vraies leçons
+
+C'est la mesure du succès de la V1.
+
+### 17.1 Corpus
+
+30 leçons photographiées, dont une majorité de photos de téléphone réalistes (angle, ombre, pliure), réparties ainsi :
+
+| Critère | Répartition |
+|---|---|
+| Niveaux | 10 CP-CE2, 10 CM1-CM2, 10 collège |
+| Matières | au moins 4 leçons par matière principale |
+| Support | 10 manuscrites (cahier), 10 imprimées (manuel), 10 fiches ou photocopies |
+
+Pour chaque leçon, un enseignant ou un parent annote `expected.json` : les notions indispensables, l'importance attendue et le niveau.
+
+### 17.2 Mesures automatiques (`eval/run_eval.py`)
+
+| Mesure | Seuil V1 |
+|---|---|
+| Leçons analysées sans échec | ≥ 90 % |
+| Matière correcte | ≥ 95 % |
+| Niveau à ± 1 classe | ≥ 80 % |
+| Rappel des notions indispensables | ≥ 85 % |
+| Notions sans `source_excerpt` valide (inventions) | 0 |
+| Éléments de matériel rejetés par les validateurs | ≤ 15 % |
+| Durée photo → `ready` (2 pages, médiane) | ≤ 45 s |
+| Coût IA par leçon | mesuré (`ai_runs`) — budget cible à fixer après la première mesure |
+
+### 17.3 Évaluation humaine
+
+Pour 10 leçons, un adulte joue la séance et note sur 5 :
+
+- **pertinence** (on révise bien ce qui sera demandé) ;
+- **justesse** (aucune erreur de contenu) ;
+- **clarté** (vocabulaire adapté au niveau) ;
+- **plaisir**.
+
+Ensuite, 5 enfants testent en situation réelle, observés sans aide.
+
+Critère de passage à la suite : **pertinence ≥ 4/5, justesse = 5/5 sur 90 % des séances, et 4 enfants sur 5 qui finissent la séance sans aide.**
+
+---
+
+## 18. Plan de développement
+
+Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, des tests verts et un commit.
+
+**Recommandation :** remonter les tests sur de vraies leçons juste après le pipeline IA (étape 4), avant l'application. C'est la mission de la V1, et c'est là que se trouve le vrai risque. Si l'analyse n'est pas bonne, inutile de peaufiner les écrans.
+
+| # | Étape | Contenu | Terminé quand… |
 |---|---|---|---|
-| 0 (jamais vue) | 3 | 2 | 1 |
-| 1 à 5 | +1 (max 5) | inchangé | −1 (min 1) |
-
-Prochain rappel : niveau 1 → J+1 · 2 → J+2 · 3 → J+4 · 4 → J+7 · 5 → J+14.
-
-### 6.4 Sélection des questions (IA 5, règles)
-1. Priorité de chaque notion = (6 − niveau) × poids d'importance (essentielle 3, importante 2, complémentaire 1).
-2. Difficulté ciblée selon le niveau : 0-1 → 1-2 · 2 → 1-3 · 3 → 2-3 · 4-5 → 3-4.
-3. Tirage en tours successifs : une question par notion et par tour, notions prioritaires d'abord → la séance couvre largement la leçon tout en insistant sur les points faibles.
-4. Mode « Mes points faibles » : seulement les notions de niveau < 4.
-
----
-
-## 7. Prompts IA
-
-Les prompts complets sont dans `backend/app/ai/prompts.py` (versionnés avec le code) :
-
-| Prompt | Rôle | Effort |
-|---|---|---|
-| `ANALYSIS_SYSTEM` | Retranscrire, identifier matière/niveau, extraire 3-12 notions typées et hiérarchisées, ne rien inventer, signaler une photo illisible | élevé |
-| `GENERATION_SYSTEM` | Choisir le format selon le type de notion, difficultés 1→4, règles de forme par format, ton bienveillant | moyen |
-| `EVALUATION_SYSTEM` | Corriger une réponse libre sur le fond, retour encourageant, oublis | faible |
-
-Les prompts système sont fixes (mis en cache) ; le contenu de la leçon est toujours passé dans le message utilisateur, entre balises `<lecon>`.
+| 1 | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
+| 2 | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
+| 3 | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
+| 4 | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
+| 5 | **Premier test de qualité** | 10 premières leçons réelles, `eval/run_eval.py`, ajustement des prompts | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
+| 6 | **API v1** | appareils et jetons, leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, suppression, limites de débit | parcours complet testé en API avec `FakeProvider` |
+| 7 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, enregistrement de l'appareil | l'application démarre sur émulateur et obtient un jeton |
+| 8 | **Écrans 1 à 4** | accueil, photo et compression, analyse avec polling, résumé | photo réelle → écran 4 sur un téléphone |
+| 9 | **Écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan, « Revoir mes erreurs » | séance complète jouée de bout en bout sur un téléphone |
+| 10 | **Tests avec de vraies leçons** | corpus complet de 30 leçons, évaluation humaine, 5 enfants ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |
+| 11 | **Gamification légère** | XP par séance, série de jours, animations de réussite ; activité ORDER | décidé selon les retours des enfants |
+| 12 | **Bêta Android** | Play Store en test fermé, confidentialité (§16.2), supervision | 20 familles testeuses |
+| 13 | **iOS** | permissions caméra, tests iPhone/iPad, App Store | publication TestFlight |
 
 ---
 
-## 8. Protection des données (enfants, RGPD)
+## 19. Reprise du prototype existant
 
-Intégré dès la conception :
-- **Minimisation** : prénom ou pseudo + classe. Ni nom, ni date de naissance, ni e-mail enfant.
-- **Photos non conservées** : lues en mémoire, transmises à l'IA, jamais écrites sur disque. Seul le texte de la leçon est stocké.
-- **Droit à l'effacement** : `DELETE /children/{id}` supprime tout (leçons, questions, réponses, maîtrise).
-- **Pas de publicité**, pas de classement entre enfants.
-- **À faire avant bêta publique** : compte parent + consentement parental (enfants < 15 ans en France), authentification des appels API, chiffrement TLS obligatoire, hébergement UE, durée de conservation (ex. suppression auto après 12 mois d'inactivité), politique de confidentialité, registre des traitements, contrat de sous-traitance avec le fournisseur d'IA, analyse d'impact (AIPD).
+Le dépôt contient déjà un prototype exploratoire (commit initial). Il a validé la faisabilité : une photo passe par Claude vision, une banque de questions est produite, la correction et la maîtrise fonctionnent, 18 tests passent. La V1 le réorganise selon ce document.
 
----
-
-## 9. Critères d'acceptation V1
-
-1. Une photo nette d'une page de manuel de CM1 produit en moins de 45 s une leçon avec la bonne matière et au moins 3 notions pertinentes.
-2. Aucune question générée ne porte sur une information absente de la leçon (revue manuelle sur 20 leçons tests).
-3. Une séance de 10 questions se joue sans temps d'attente entre les questions fermées.
-4. Une notion ratée en séance 1 apparaît en priorité en séance 2 (« Mes points faibles »).
-5. La suppression d'un enfant ne laisse aucune donnée associée en base.
-6. Les tests automatiques du backend passent (`pytest`).
-
----
-
-## 10. Suite de la feuille de route
-
-| Étape | Contenu |
+| Élément du prototype | Décision |
 |---|---|
-| MVP 1 (ce dépôt) | Photo → analyse → 6 formats d'exercices → correction → bilan → maîtrise |
-| 1.1 | Scan de document (perspective/contraste), notifications de rappel, jeu de 20 leçons tests pour évaluer la qualité de l'IA |
-| MVP 2 | XP, niveaux, badges, mission « sauver le royaume », memory, mot mystère, chronologie, défi quotidien |
-| MVP 3 | Compte parent, plusieurs enfants, historique, recommandations |
-| MVP 4 | Mode oral : questions et réponses à voix haute, « professeur particulier » |
-| Bêta Android | Play Store (test fermé), conformité RGPD complète |
-| iOS | Même code Flutter : permissions caméra, tests iPad, App Store |
+| Profil enfant (prénom + classe) | **Remplacé** par un appareil et un apprenant anonyme (pas de compte en V1) |
+| OCR et analyse en un seul appel | **Séparés** en étapes ① et ② derrière des interfaces |
+| Notions (importance en 3 niveaux, types en français) | **Remplacées** par la structure normalisée §6.2 (importance 1 à 5, attributs typés, citation source) |
+| Questions générées directement par l'IA | **Remplacées** par le matériel par notion (§6.3) et l'assemblage déterministe (§7) |
+| Correction (normalisation, fautes tolérées, association) | **Reprise** dans `domain/scoring.py` et adaptée aux contrats §7.3 |
+| Niveaux 0 à 5 et intervalles J+1…J+14 | **Repris** comme boîtes ; ajout du score en % (§10) |
+| Sélection adaptative (priorité importance × faiblesse) | **Reprise** dans le composeur, structurée en blocs (§8) |
+| `FakeLLM` | **Repris** comme `FakeProvider` |
+| SQLite + SQLModel synchrone | **Remplacés** par PostgreSQL, SQLAlchemy async et Alembic |
+| Écrans Flutter (`setState`) | **Réécrits** selon §14 (Riverpod, go_router, 7 écrans) ; les widgets d'activités servent de base |

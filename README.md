@@ -5,7 +5,11 @@ exercices adaptés (QCM, vrai/faux, texte à trous, cartes mémoire, association
 questions ouvertes), corrige, puis adapte les révisions suivantes à ses erreurs
 (niveaux de maîtrise 0-5 + répétition espacée).
 
-📄 Spécification complète : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
+📄 Cahier des charges technique V1 : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
+
+> ⚠️ Le code actuel est un **prototype exploratoire** qui a validé la faisabilité.
+> La V1 est reconstruite étape par étape selon le plan du cahier des charges (§18) ;
+> ce que l'on garde et ce que l'on remplace est détaillé au §19.
 
 ```
 backend/   API FastAPI + moteur pédagogique + intégration Claude
