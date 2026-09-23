@@ -18,8 +18,8 @@ docker-compose.yml  PostgreSQL + API pour le développement
 |---|---|---|
 | 1 | Socle : structure backend, PostgreSQL, migrations, intégration continue | ✅ |
 | 2 | Domaine : connaissances et activités | ✅ |
-| 3 | Domaine : séance, notation, mémorisation | ⏭️ prochaine |
-| 4 | Pipeline IA | |
+| 3 | Domaine : séance, notation, mémorisation | ✅ |
+| 4 | Pipeline IA | ⏭️ prochaine |
 | 5 | Premier test de qualité sur de vraies leçons | |
 | 6 | API v1 | |
 | 7-9 | Application Flutter | |

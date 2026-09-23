@@ -533,7 +533,7 @@ Réponse de correction, commune à tous les types :
 Règles communes :
 
 - une même notion n'apparaît pas deux fois dans les blocs 1 et 2 ;
-- deux activités consécutives ne sont pas du même type ;
+- deux activités consécutives ne sont pas du même type : le composeur essaie les ordres possibles des notions d'un bloc et leurs formats avant, en dernier recours, d'assouplir la difficulté ;
 - les notions d'importance ≤ 2 ne sont utilisées que si la leçon a moins de 6 notions d'importance ≥ 3 ;
 - tirage aléatoire reproductible : la graine est enregistrée avec la séance, pour pouvoir rejouer un bug.
 
@@ -563,7 +563,7 @@ Règles communes :
    - score < 50 : difficulté 1 ;
    - 50 à 79 : difficulté 2 ;
    - ≥ 80 : difficulté 2 ou 3.
-4. Si moins de 3 notions restent à travailler, la séance est courte (blocs 1 et 4 seulement) et l'écran 4 l'annonce : « Révision express : 2 min ».
+4. Si moins de 3 notions restent à travailler, la séance est courte (blocs 1 et 4 seulement) et l'écran 4 l'annonce : « Révision express : 2 min ». Le défi rapide est alors complété par d'autres notions de la leçon si besoin. S'il ne reste rien à travailler, l'API répond « rien à réviser » (prochaine révision affichée).
 
 ### 8.4 Séance « Revoir mes erreurs »
 
@@ -618,7 +618,7 @@ Chaque notion a, pour chaque apprenant, un **score de maîtrise** de 0 à 100 % 
 
 ### 10.1 Mise à jour en fin de séance
 
-- Première fois : `score = 100 × taux_séance`.
+- Première fois : `score = 100 × taux_séance`, et la boîte de départ est 1 (une notion réussie du premier coup passe donc en boîte 2, rappel à J+2).
 - Ensuite : `score = 0,6 × (100 × taux_séance) + 0,4 × score_précédent`.
 
 Boîte :
@@ -1154,7 +1154,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 |---|---|---|---|
 | 1 ✅ | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
 | 2 ✅ | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
-| 3 | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
+| 3 ✅ | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 | **Premier test de qualité** | 10 premières leçons réelles, `eval/run_eval.py`, ajustement des prompts | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
 | 6 | **API v1** | appareils et jetons, leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, suppression, limites de débit | parcours complet testé en API avec `FakeProvider` |
