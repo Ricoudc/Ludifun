@@ -86,8 +86,8 @@ void main() {
     await tester.tap(find.text('Me connecter'));
     await tester.pumpAndSettle();
     expect(find.text('Mes enfants'), findsOneWidget);
-    expect(find.text('Emma'), findsOneWidget);
-    expect(find.text('CM1 · 1 appareil lié'), findsOneWidget);
+    expect(find.text('Emma · CM1'), findsOneWidget);
+    expect(find.text('📱 1 appareil lié'), findsOneWidget);
     expect(store.credentials, isA<ParentCredentials>());
   });
 
@@ -129,7 +129,7 @@ void main() {
     await tester.tap(find.byType(CheckboxListTile));
     await tester.tap(find.text('Créer mon compte'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Aucun profil pour l\'instant'), findsOneWidget);
+    expect(find.textContaining('Ajoutez le profil de votre enfant'), findsOneWidget);
   });
 
   testWidgets('parent déjà connecté : espace parent direct, puis déconnexion', (tester) async {
@@ -142,7 +142,9 @@ void main() {
     await launch(tester, store);
     expect(find.text('Mes enfants'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Me déconnecter'));
+    await tester.tap(find.byTooltip('Mon compte'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Me déconnecter'));
     await tester.pumpAndSettle();
     expect(find.text('Qui utilise cet appareil ?'), findsOneWidget);
     expect(server.routes, contains('POST /v1/auth/logout'));

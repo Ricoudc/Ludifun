@@ -1,0 +1,42 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/session.dart';
+import '../../models/account.dart';
+import '../../models/parent.dart';
+
+final childrenProvider = FutureProvider.autoDispose<List<Child>>(
+  (ref) => ref.watch(apiProvider).children(),
+);
+
+/// Un enfant de la famille (dans la liste déjà chargée).
+final childProvider = FutureProvider.autoDispose.family<Child?, String>((ref, id) async {
+  final children = await ref.watch(childrenProvider.future);
+  return children.where((c) => c.id == id).firstOrNull;
+});
+
+final dashboardProvider = FutureProvider.autoDispose.family<Dashboard, String>(
+  (ref, childId) => ref.watch(apiProvider).dashboard(childId),
+);
+
+final devicesProvider = FutureProvider.autoDispose.family<List<Device>, String>(
+  (ref, childId) => ref.watch(apiProvider).devices(childId),
+);
+
+/// Libellés des activités pour le parent.
+const activityLabels = {
+  'MCQ': ('🎮', 'Quiz'),
+  'TRUE_FALSE': ('✅', 'Vrai ou faux'),
+  'FILL_BLANK': ('✍️', 'Textes à trous'),
+  'MATCH': ('🔗', 'Associations'),
+  'SPEED_CHALLENGE': ('⚡', 'Défis rapides'),
+  'FLASHCARD': ('🃏', 'Cartes'),
+};
+
+/// Avatars proposés à la création d'un profil.
+const avatars = ['🦊', '🐼', '🦁', '🐸', '🐙', '🦄', '🐯', '🐨', '🐧', '🦉'];
+
+String avatarOf(Child child) => child.avatar ?? child.displayName.characters.first.toUpperCase();
+
+extension on String {
+  Iterable<String> get characters => runes.map(String.fromCharCode);
+}

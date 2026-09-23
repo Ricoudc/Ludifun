@@ -31,8 +31,9 @@ Plan de la V1 : cahier des charges §18.
 | 9 | Socle Flutter : premier lancement, espaces parent et enfant | ✅ |
 | 10 | Espace enfant : liaison (code, QR), accueil, photo, analyse, résumé | ✅ (essai sur téléphone à faire) |
 | 11 | Espace enfant : jeux, correction, reprise des erreurs, bilan | ✅ (essai sur téléphone à faire) |
-| 12 | Application Flutter : espace parent | ⏭️ prochaine |
-| 13-14 | Tests avec de vraies familles, bêta Android | |
+| 12 | Espace parent : compte, enfants, code et QR, tableau de bord, historique | ✅ (essai sur téléphone à faire) |
+| 13 | Tests avec de vraies familles (30 leçons, 5 enfants) | ⏭️ prochaine |
+| 14 | Bêta Android (Play Store, test fermé) | |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).

@@ -10,8 +10,13 @@ import '../features/home/child_home_screen.dart';
 import '../features/lesson/lesson_screen.dart';
 import '../features/link/link_screen.dart';
 import '../features/link/qr_scan_screen.dart';
+import '../features/parent/child_dashboard_screen.dart';
+import '../features/parent/child_form_screen.dart';
+import '../features/parent/child_settings_screen.dart';
+import '../features/parent/link_code_screen.dart';
 import '../features/parent/parent_home_screen.dart';
 import '../features/parent/parent_sign_in_screen.dart';
+import '../features/parent/password_reset_screen.dart';
 import '../features/session/session_screen.dart';
 import '../features/start/splash_screen.dart';
 import '../features/start/start_screen.dart';
@@ -22,11 +27,22 @@ abstract final class Routes {
   static const parentSignIn = '/parent/connexion';
   static const parentRegister = '/parent/inscription';
   static const parentHome = '/parent';
+  static const forgotPassword = '/parent/mot-de-passe-oublie';
+
+  /// Ouvert par le lien de l'e-mail : `ludifun://app/parent/nouveau-mot-de-passe?jeton=…`.
+  static const newPassword = '/parent/nouveau-mot-de-passe';
+  static const addChild = '/parent/enfants/nouveau';
+  static String childDashboard(String childId) => '/parent/enfants/$childId';
+  static String childLink(String childId) => '/parent/enfants/$childId/lier';
+  static String childSettings(String childId) => '/parent/enfants/$childId/reglages';
+  static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
+  static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static const link = '/lier';
   static const scanQr = '/lier/qr';
   static const childHome = '/enfant';
   static const capture = '/enfant/photo';
-  static String analysis(String lessonId) => '/enfant/analyse/$lessonId';
+  static String analysis(String lessonId, {String? childId}) =>
+      childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
   static String session(String sessionId) => '/enfant/seance/$sessionId';
 }
@@ -42,7 +58,9 @@ String? redirect(AsyncValue<Credentials> session, String location) {
     Routes.parentRegister,
     Routes.link,
     Routes.scanQr,
+    Routes.forgotPassword,
   };
+  if (location == Routes.newPassword) return null; // lien de l'e-mail, quel que soit l'espace
   final target = switch (credentials) {
     NoCredentials() => signedOut.contains(location) ? location : Routes.start,
     ParentCredentials() =>
@@ -70,7 +88,47 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.parentRegister,
         builder: (_, _) => const ParentSignInScreen(register: true),
       ),
-      GoRoute(path: Routes.parentHome, builder: (_, _) => const ParentHomeScreen()),
+      GoRoute(path: Routes.forgotPassword, builder: (_, _) => const PasswordResetScreen()),
+      GoRoute(
+        path: Routes.newPassword,
+        builder: (_, state) => PasswordResetScreen(token: state.uri.queryParameters['jeton'] ?? ''),
+      ),
+      GoRoute(
+        path: Routes.parentHome,
+        builder: (_, _) => const ParentHomeScreen(),
+        routes: [
+          GoRoute(path: 'enfants/nouveau', builder: (_, _) => const ChildFormScreen()),
+          GoRoute(
+            path: 'enfants/:id',
+            builder: (_, state) => ChildDashboardScreen(childId: state.pathParameters['id']!),
+            routes: [
+              GoRoute(
+                path: 'lier',
+                builder: (_, state) => LinkCodeScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'reglages',
+                builder: (_, state) => ChildSettingsScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'modifier',
+                builder: (_, state) => ChildFormScreen(childId: state.pathParameters['id']),
+              ),
+              GoRoute(
+                path: 'photo',
+                builder: (_, state) => CaptureScreen(childId: state.pathParameters['id']),
+              ),
+              GoRoute(
+                path: 'analyse/:lesson',
+                builder: (_, state) => AnalysisScreen(
+                  lessonId: state.pathParameters['lesson']!,
+                  childId: state.pathParameters['id'],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       GoRoute(path: Routes.link, builder: (_, _) => const LinkScreen()),
       GoRoute(path: Routes.scanQr, builder: (_, _) => const QrScanScreen()),
       GoRoute(

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../models/account.dart';
 import '../../models/lesson.dart';
+import '../../models/parent.dart';
 import '../../models/session.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
@@ -62,6 +63,75 @@ class LudifunApi {
     ),
   );
 
+  Future<void> requestPasswordReset(String email) => _call(
+    () => _dio.post<Json>('/v1/auth/password-reset', data: {'email': email}, options: _anonymous),
+  );
+
+  Future<void> confirmPasswordReset({required String token, required String newPassword}) => _call(
+    () => _dio.post<void>(
+      '/v1/auth/password-reset/confirm',
+      data: {'token': token, 'new_password': newPassword},
+      options: _anonymous,
+    ),
+  );
+
+  /// Droit à l'effacement : le compte, la famille et tous les enfants.
+  Future<void> deleteAccount() => _call(() => _dio.delete<void>('/v1/parent'));
+
+  Future<Child> createChild({required String displayName, required String grade, String? avatar}) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children',
+          data: {
+            'display_name': displayName,
+            'grade': grade,
+            'avatar': ?avatar,
+            'parental_consent': true,
+          },
+        );
+        return Child.fromJson(r.data!);
+      });
+
+  Future<Child> updateChild(String id, {String? displayName, String? grade, String? avatar}) =>
+      _call(() async {
+        final r = await _dio.patch<Json>(
+          '/v1/children/$id',
+          data: {'display_name': ?displayName, 'grade': ?grade, 'avatar': ?avatar},
+        );
+        return Child.fromJson(r.data!);
+      });
+
+  Future<void> deleteChild(String id) => _call(() => _dio.delete<void>('/v1/children/$id'));
+
+  Future<LinkCode> linkCode(String childId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/link-codes');
+    return LinkCode.fromJson(r.data!);
+  });
+
+  Future<List<Device>> devices(String childId) => _call(() async {
+    final r = await _dio.get<List<dynamic>>('/v1/children/$childId/devices');
+    return [for (final d in r.data!) Device.fromJson(d as Json)];
+  });
+
+  Future<void> revokeDevice(String childId, String deviceId) =>
+      _call(() => _dio.delete<void>('/v1/children/$childId/devices/$deviceId'));
+
+  Future<Dashboard> dashboard(String childId, {int weeks = 4}) => _call(() async {
+    final r = await _dio.get<Json>(
+      '/v1/children/$childId/dashboard',
+      queryParameters: {'weeks': weeks},
+    );
+    return Dashboard.fromJson(r.data!);
+  });
+
+  Future<HistoryPage> history(String childId, {int limit = 20, String? before}) => _call(() async {
+    final r = await _dio.get<Json>(
+      '/v1/children/$childId/history',
+      queryParameters: {'limit': limit, 'before': ?before},
+    );
+    return HistoryPage.fromJson(r.data!);
+  });
+
   Future<List<Child>> children() => _call(() async {
     final r = await _dio.get<List<dynamic>>('/v1/children');
     return [for (final child in r.data!) Child.fromJson(child as Json)];
@@ -105,8 +175,12 @@ class LudifunApi {
     return [for (final lesson in r.data!) LessonSummary.fromJson(lesson as Json)];
   });
 
-  Future<Lesson> lesson(String id) => _call(() async {
-    final r = await _dio.get<Json>('/v1/lessons/$id');
+  /// `childId` : appel par un parent pour l'un de ses enfants.
+  static Map<String, String>? _forChild(String? childId) =>
+      childId == null ? null : {'child_id': childId};
+
+  Future<Lesson> lesson(String id, {String? childId}) => _call(() async {
+    final r = await _dio.get<Json>('/v1/lessons/$id', queryParameters: _forChild(childId));
     return Lesson.fromJson(r.data!);
   });
 
@@ -114,6 +188,7 @@ class LudifunApi {
   Future<Lesson> uploadLesson(
     List<Uint8List> pages, {
     void Function(int sent, int total)? onProgress,
+    String? childId,
   }) => _call(() async {
     final form = FormData.fromMap({
       'pages': [
@@ -128,15 +203,18 @@ class LudifunApi {
     final r = await _dio.post<Json>(
       '/v1/lessons',
       data: form,
+      queryParameters: _forChild(childId),
       options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 2)),
       onSendProgress: onProgress,
     );
-    return lesson(r.data!['id'] as String);
+    return lesson(r.data!['id'] as String, childId: childId);
   });
 
-  Future<void> retryLesson(String id) => _call(() => _dio.post<Json>('/v1/lessons/$id/retry'));
+  Future<void> retryLesson(String id, {String? childId}) =>
+      _call(() => _dio.post<Json>('/v1/lessons/$id/retry', queryParameters: _forChild(childId)));
 
-  Future<void> deleteLesson(String id) => _call(() => _dio.delete<void>('/v1/lessons/$id'));
+  Future<void> deleteLesson(String id, {String? childId}) =>
+      _call(() => _dio.delete<void>('/v1/lessons/$id', queryParameters: _forChild(childId)));
 
   Future<Lesson> setGrade(String id, String grade) => _call(() async {
     final r = await _dio.patch<Json>('/v1/lessons/$id', data: {'grade': grade});

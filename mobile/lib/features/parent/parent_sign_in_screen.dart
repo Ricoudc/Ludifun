@@ -119,6 +119,11 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
                   ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator())
                   : Text(register ? 'Créer mon compte' : 'Me connecter'),
             ),
+            if (!register)
+              TextButton(
+                onPressed: () => context.go(Routes.forgotPassword),
+                child: const Text('Mot de passe oublié ?'),
+              ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: () => context.go(register ? Routes.parentSignIn : Routes.parentRegister),

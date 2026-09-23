@@ -244,7 +244,8 @@ Maîtrisé : ✓ 1789  ✓ Louis XVI  ✓ Bastille …
 
 ### Écran P1 — Compte parent
 - Création (e-mail, mot de passe, acceptation de la politique de confidentialité) ou connexion.
-- Mot de passe oublié par e-mail.
+- Mot de passe oublié par e-mail : le lien `ludifun://app/parent/nouveau-mot-de-passe?jeton=…` ouvre
+  directement l'écran « nouveau mot de passe » de l'application (valable 60 minutes, usage unique).
 
 ### Écran P2 — Mes enfants
 ```
@@ -254,7 +255,9 @@ Mes enfants
         [ + AJOUTER UN ENFANT ]
 ```
 - Ajouter un enfant : prénom ou pseudo, classe, avatar ; **consentement parental** coché à la création.
-- *Lier un appareil* : affiche un code à 6 chiffres et un QR code, valables 10 minutes et utilisables une seule fois.
+- *Lier un appareil* : affiche un code à 6 chiffres et un QR code, valables 10 minutes et utilisables une seule fois ;
+  l'écran détecte la liaison (« L'appareil d'Emma est lié ! »). Après la création d'un profil, l'application
+  propose aussitôt de lier sa tablette.
 
 ### Écran P3 — Tableau de bord d'un enfant
 ```
@@ -285,6 +288,10 @@ Activités     🎮 Quiz 4 · 🃏 Cartes 2 · ✍️ Textes à trous 6
   - **progression** : séances, temps et note moyenne de chaque semaine ; **tendance** `up` / `down` /
     `stable` en comparant la note moyenne des deux dernières semaines actives (écart d'au moins 0,5).
 - Couleurs : 🟢 ≥ 80 %, 🟠 50 à 79 %, 🔴 < 50 % (mêmes seuils que le bilan, §9.3).
+- Progression : une barre par semaine (note moyenne), la valeur n'est écrite que pour la semaine en
+  cours ; chaque barre a sa description pour les lecteurs d'écran (séances, minutes, note).
+- *Ajouter une leçon pour Emma* : le parent photographie la leçon (écrans 2 et 3 avec `?child_id=`) ;
+  elle apparaît dans la mission du jour de l'enfant.
 - Pas de comparaison avec d'autres enfants.
 
 ### Écran P4 — Historique et réglages
@@ -1184,7 +1191,8 @@ mobile/
 │   ├── models/                      # lesson, knowledge, session, activity, feedback, report
 │   └── features/
 │       ├── start/                   # premier lancement : parent ou enfant
-│       ├── parent/                  # Écrans P1 à P4 : compte, enfants, codes, tableau de bord
+│       ├── parent/                  # Écrans P1 à P4 : compte, mot de passe oublié, enfants, code et QR,
+│       │                            # tableau de bord (progress_chart.dart), historique et réglages
 │       ├── link/                    # Écran 0 : code ou QR code (mobile_scanner)
 │       ├── home/                    # Écran 1
 │       │   ├── child_home_screen.dart
@@ -1359,7 +1367,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 9 ✅ | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
 | 10 ✅ | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone (validé en tests et dans un navigateur contre l'API ; essai sur un vrai téléphone à faire) |
 | 11 ✅ | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone (validé en tests et dans un navigateur contre l'API ; essai sur un vrai téléphone à faire) |
-| 12 | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant |
+| 12 ✅ | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant (validé en tests et dans un navigateur sur 4 semaines de révisions réelles ; essai sur un vrai téléphone à faire) |
 | 13 | **Tests avec de vraies familles** | corpus complet de 30 leçons, évaluation humaine, 5 enfants et leurs parents ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |
 | 14 | **Bêta Android** | Play Store en test fermé, confidentialité (§16.2), supervision | 20 familles testeuses |
 

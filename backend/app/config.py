@@ -37,7 +37,8 @@ class Settings(BaseSettings):
     refresh_token_days: int = 30
     link_code_minutes: int = 10
     password_reset_minutes: int = 60
-    password_reset_url: str = "ludifun://reinitialiser-mot-de-passe/"
+    # Lien ouvert par l'application (écran « nouveau mot de passe ») ; le jeton est ajouté à la fin.
+    password_reset_url: str = "ludifun://app/parent/nouveau-mot-de-passe?jeton="
     family_timezone: str = "Europe/Paris"  # semaines du tableau de bord parent (§11)
 
     @field_validator("family_timezone")

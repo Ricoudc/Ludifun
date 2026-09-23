@@ -108,7 +108,7 @@ async def test_password_reset(client: AsyncClient, mailer: MemoryEmailSender) ->
     known = await client.post("/v1/auth/password-reset", json={"email": "parent@example.fr"})
     assert unknown.status_code == known.status_code == 202 and unknown.json() == known.json()
     assert [m.to for m in mailer.sent] == ["parent@example.fr"]
-    token = mailer.sent[0].body.split("ludifun://reinitialiser-mot-de-passe/")[1].split()[0]
+    token = mailer.sent[0].body.split("ludifun://app/parent/nouveau-mot-de-passe?jeton=")[1].split()[0]
 
     new_password = "un tout nouveau mot de passe"
     r = await client.post(

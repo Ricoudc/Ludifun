@@ -50,3 +50,15 @@ String longDate(DateTime moment) {
 /// « 8 » ou « 8,5 » : notes sur 10 à la française.
 String score(double value) =>
     value == value.roundToDouble() ? '${value.round()}' : value.toString().replaceAll('.', ',');
+
+/// « aujourd'hui à 17 h 05 », « hier à 8 h 30 », « le 12 septembre ».
+String when(DateTime moment, DateTime now) {
+  final local = moment.toLocal();
+  final days = DateUtils.dateOnly(now.toLocal()).difference(DateUtils.dateOnly(local)).inDays;
+  final hour = '${local.hour} h ${local.minute.toString().padLeft(2, '0')}';
+  return switch (days) {
+    0 => 'aujourd\'hui à $hour',
+    1 => 'hier à $hour',
+    _ => 'le ${local.day == 1 ? '1er' : local.day} ${_months[local.month - 1]}',
+  };
+}

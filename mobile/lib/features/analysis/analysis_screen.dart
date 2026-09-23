@@ -25,9 +25,14 @@ const _stepLabels = {
 
 /// Écran 3 : suit l'analyse (`GET /v1/lessons/{id}` toutes les 1,5 s).
 class AnalysisScreen extends ConsumerStatefulWidget {
-  const AnalysisScreen({required this.lessonId, super.key});
+  const AnalysisScreen({required this.lessonId, this.childId, super.key});
 
   final String lessonId;
+
+  /// Leçon déposée par le parent pour cet enfant.
+  final String? childId;
+
+  String get home => childId == null ? Routes.childHome : Routes.childDashboard(childId!);
 
   @override
   ConsumerState<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -66,7 +71,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
 
   Future<void> _fetch() async {
     try {
-      final lesson = await ref.read(apiProvider).lesson(widget.lessonId);
+      final lesson = await ref.read(apiProvider).lesson(widget.lessonId, childId: widget.childId);
       if (!mounted) return;
       if (lesson.status == LessonStatus.ready || lesson.status == LessonStatus.failed) {
         _poll?.cancel();
@@ -80,7 +85,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
       if (!mounted) return;
       if (error.status == 404) {
         _poll?.cancel();
-        context.go(Routes.childHome);
+        context.go(widget.home);
         return;
       }
       setState(() => _offline = true); // on continue d'interroger
@@ -95,14 +100,22 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
       ref.read(captureProvider.notifier).clear(); // les photos quittent le téléphone (§15)
       refreshHome(ref);
       Timer(readyPause, () {
-        if (mounted) context.go(Routes.lesson(widget.lessonId));
+        if (!mounted) return;
+        if (widget.childId == null) {
+          context.go(Routes.lesson(widget.lessonId));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Leçon prête : elle apparaît dans la mission du jour.')),
+          );
+          context.go(widget.home);
+        }
       });
     }
   }
 
   Future<void> _retry() async {
     try {
-      await ref.read(apiProvider).retryLesson(widget.lessonId);
+      await ref.read(apiProvider).retryLesson(widget.lessonId, childId: widget.childId);
       if (mounted) setState(_start);
     } on ApiException catch (error) {
       if (mounted) {
@@ -114,12 +127,14 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
   /// Retour à l'écran 2 : les photos sont encore sur le téléphone ; la leçon ratée disparaît.
   Future<void> _retake() async {
     try {
-      await ref.read(apiProvider).deleteLesson(widget.lessonId);
+      await ref.read(apiProvider).deleteLesson(widget.lessonId, childId: widget.childId);
     } on ApiException {
       // sans importance : la leçon ratée reste simplement dans la liste
     }
     refreshHome(ref);
-    if (mounted) context.go(Routes.capture);
+    if (mounted) {
+      context.go(widget.childId == null ? Routes.capture : Routes.childCapture(widget.childId!));
+    }
   }
 
   @override
@@ -128,7 +143,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     final failed = lesson?.status == LessonStatus.failed;
     final ready = _leaving;
     return Scaffold(
-      appBar: AppBar(leading: CloseButton(onPressed: () => context.go(Routes.childHome))),
+      appBar: AppBar(leading: CloseButton(onPressed: () => context.go(widget.home))),
       body: CenteredBody(
         children: [
           for (final (i, step) in analysisSteps.indexed)
@@ -171,7 +186,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         ),
       const SizedBox(height: 12),
       TextButton(
-        onPressed: () => context.go(Routes.childHome),
+        onPressed: () => context.go(widget.home),
         child: const Text('Retour à l\'accueil'),
       ),
     ];

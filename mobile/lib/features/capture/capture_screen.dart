@@ -11,8 +11,11 @@ import '../home/home_providers.dart';
 import 'capture_controller.dart';
 
 /// Écran 2 : une à six pages, réordonnables, compressées sur le téléphone puis envoyées.
+/// Avec [childId], c'est le parent qui photographie une leçon pour son enfant (écran P3).
 class CaptureScreen extends ConsumerStatefulWidget {
-  const CaptureScreen({super.key});
+  const CaptureScreen({this.childId, super.key});
+
+  final String? childId;
 
   @override
   ConsumerState<CaptureScreen> createState() => _CaptureScreenState();
@@ -42,12 +45,13 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
           .read(apiProvider)
           .uploadLesson(
             pages,
+            childId: widget.childId,
             onProgress: (sent, total) {
               if (mounted && total > 0) setState(() => _progress = sent / total);
             },
           );
       refreshHome(ref);
-      if (mounted) context.go(Routes.analysis(lesson.id));
+      if (mounted) context.go(Routes.analysis(lesson.id, childId: widget.childId));
     } on ApiException catch (error) {
       if (mounted) {
         setState(() {
@@ -66,8 +70,14 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     final full = pages.length >= maxPages;
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go(Routes.childHome)),
-        title: const Text('📷 Photographie ta leçon'),
+        leading: BackButton(
+          onPressed: () => context.go(
+            widget.childId == null ? Routes.childHome : Routes.childDashboard(widget.childId!),
+          ),
+        ),
+        title: Text(
+          widget.childId == null ? '📷 Photographie ta leçon' : '📷 Photographier la leçon',
+        ),
       ),
       body: CenteredBody(
         top: true,

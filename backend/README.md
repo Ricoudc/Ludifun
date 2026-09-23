@@ -94,4 +94,5 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_JWT_SECRET` | secret de développement ; **obligatoire en production** (l'API refuse de démarrer sans) |
 | `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
 | `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |
+| `LUDIFUN_PASSWORD_RESET_URL` | `ludifun://app/parent/nouveau-mot-de-passe?jeton=` (le jeton est ajouté à la fin) |
 | `LUDIFUN_FAMILY_TIMEZONE` | `Europe/Paris` (découpage en semaines du tableau de bord parent) |
