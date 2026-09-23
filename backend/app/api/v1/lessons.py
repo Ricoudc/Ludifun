@@ -118,7 +118,7 @@ async def create_lesson(
         images.append(PageImage(data, media_type))
     rate_limit(request, f"lessons:{child.id}", limit=settings.lessons_per_day, window_s=86400)
 
-    lesson = Lesson(child_id=child.id, status="uploaded", page_count=len(images))
+    lesson = Lesson(child_id=child.id, status="uploaded", page_count=len(images), created_at=clock.now())
     db.add(lesson)
     await db.commit()
     background.add_task(

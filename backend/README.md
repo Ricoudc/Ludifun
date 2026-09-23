@@ -38,6 +38,9 @@ curl -s -X POST localhost:8000/v1/link -H 'content-type: application/json' -d '{
 curl -s -X POST localhost:8000/v1/lessons -H "authorization: Bearer $DEVICE" -F pages=@page1.jpg -F pages=@page2.jpg
 curl -s localhost:8000/v1/lessons/$LESSON -H "authorization: Bearer $DEVICE"            # statut, puis notions
 curl -s -X POST localhost:8000/v1/lessons/$LESSON/sessions -H "authorization: Bearer $DEVICE" -H 'content-type: application/json' -d '{}'
+# Espace parent : tableau de bord et historique
+curl -s "localhost:8000/v1/children/$CHILD/dashboard?weeks=4" -H "authorization: Bearer $ACCESS"
+curl -s "localhost:8000/v1/children/$CHILD/history?limit=20" -H "authorization: Bearer $ACCESS"
 ```
 
 Sans clé d'API, lancer l'API avec `LUDIFUN_AI_PROVIDER=fake` : toute photo est lue comme la leçon d'histoire de référence.
@@ -91,3 +94,4 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_JWT_SECRET` | secret de développement ; **obligatoire en production** (l'API refuse de démarrer sans) |
 | `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
 | `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |
+| `LUDIFUN_FAMILY_TIMEZONE` | `Europe/Paris` (découpage en semaines du tableau de bord parent) |

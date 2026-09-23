@@ -116,7 +116,9 @@ async def submit_attempt(
     if item is None:
         raise ApiError(404, "item_not_found", "Activité introuvable dans cette séance.")
     try:
-        grade = await learning.answer(db, revision, item, body.response, body.duration_ms, registry)
+        grade = await learning.answer(
+            db, revision, item, body.response, body.duration_ms, registry, clock.now()
+        )
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc
     except learning.AlreadyAnswered as exc:
@@ -196,7 +198,7 @@ async def errors_session(
     """« Revoir mes erreurs » depuis le bilan."""
     origin = await session_of_child(db, child, session_id)
     try:
-        revision = await learning.start_errors_session(db, origin, registry)
+        revision = await learning.start_errors_session(db, origin, registry, clock.now())
     except learning.SessionClosed as exc:
         raise ApiError(409, "session_not_completed", "Termine d'abord la séance.") from exc
     except NothingToReview as exc:

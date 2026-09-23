@@ -273,12 +273,23 @@ Progression   ▁▃▅▆  (4 dernières semaines)
 Activités     🎮 Quiz 4 · 🃏 Cartes 2 · ✍️ Textes à trous 6
 [ 📷 Ajouter une leçon pour Emma ]
 ```
-- Données : `GET /v1/children/{id}/dashboard?weeks=4`.
+- Données : `GET /v1/children/{id}/dashboard?weeks=4` (1 à 12 semaines).
+- Définitions, affichables telles quelles au parent :
+  - **semaine** : du lundi 0 h au dimanche soir, à l'heure de la famille (`Europe/Paris` par défaut) ;
+  - **séances** : séances terminées dans la semaine ; **note moyenne** : moyenne de leurs notes sur 10 ;
+  - **temps** : temps passé à répondre, chaque réponse comptant au plus 5 minutes (application laissée
+    ouverte), plus 8 secondes par correction lue ;
+  - **réussite par matière** : maîtrise actuelle (§10) des notions déjà travaillées, moyenne pondérée par
+    leur importance ; une leçon jamais révisée n'y figure pas ;
+  - **à renforcer** : au plus 5 notions travaillées sous 80 %, les plus faibles puis les plus importantes d'abord ;
+  - **progression** : séances, temps et note moyenne de chaque semaine ; **tendance** `up` / `down` /
+    `stable` en comparant la note moyenne des deux dernières semaines actives (écart d'au moins 0,5).
 - Couleurs : 🟢 ≥ 80 %, 🟠 50 à 79 %, 🔴 < 50 % (mêmes seuils que le bilan, §9.3).
 - Pas de comparaison avec d'autres enfants.
 
 ### Écran P4 — Historique et réglages
-- Leçons et séances de l'enfant (date, durée, note, notions travaillées).
+- Séances de l'enfant, de la plus récente à la plus ancienne (date, leçon, durée, note, résultat par notion),
+  par pages : `GET /v1/children/{id}/history?limit=20&before=<next_before>`.
 - Appareils liés (nom, dernière utilisation) et *Délier*.
 - Modifier le profil ; *Supprimer l'enfant et toutes ses données* (confirmation) ; supprimer le compte parent.
 
@@ -762,8 +773,8 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | PATCH · DELETE | `/v1/children/{id}` | modification · suppression de l'enfant et de toutes ses données |
 | POST | `/v1/children/{id}/link-codes` | → `{code: "482731", qr: "ludifun://link/<jeton>", expires_at}` |
 | GET · DELETE | `/v1/children/{id}/devices[/{device_id}]` | appareils liés · délier |
-| GET | `/v1/children/{id}/dashboard?weeks=4` | tableau de bord (écran P3) |
-| GET | `/v1/children/{id}/history` | séances et leçons (écran P4) |
+| GET | `/v1/children/{id}/dashboard?weeks=4` | tableau de bord (écran P3) : `this_week`, `subjects`, `to_strengthen`, `reviews_due`, `weeks`, `trend`, `activities_this_week` |
+| GET | `/v1/children/{id}/history?limit=20&before=` | séances (écran P4) : `{sessions, next_before}` |
 
 **Espace enfant** (jeton d'appareil ; un parent peut aussi appeler ces routes avec `?child_id=`)
 
@@ -1341,7 +1352,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 5 🟡 | **Premier test de qualité** | 10 premières leçons réelles, outil `app.tools.evaluate` (✅ prêt), ajustement des prompts (en attente des leçons) | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
 | 6 ✅ | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
 | 7 ✅ | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
-| 8 | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
+| 8 ✅ | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
 | 9 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
 | 10 | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone |
 | 11 | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone |

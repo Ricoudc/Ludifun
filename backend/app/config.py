@@ -1,7 +1,8 @@
 from functools import lru_cache
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import SecretStr, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
@@ -37,6 +38,16 @@ class Settings(BaseSettings):
     link_code_minutes: int = 10
     password_reset_minutes: int = 60
     password_reset_url: str = "ludifun://reinitialiser-mot-de-passe/"
+    family_timezone: str = "Europe/Paris"  # semaines du tableau de bord parent (§11)
+
+    @field_validator("family_timezone")
+    @classmethod
+    def _known_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(f"fuseau horaire inconnu : {value}") from exc
+        return value
 
     @model_validator(mode="after")
     def _secret_in_production(self) -> "Settings":

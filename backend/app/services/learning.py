@@ -106,9 +106,11 @@ async def _new_session(
     lesson: LessonUnits,
     plan: SessionPlan,
     seed: int,
+    now: datetime,
     parent_session_id: uuid.UUID | None = None,
 ) -> db.RevisionSession:
     revision = db.RevisionSession(
+        started_at=now,
         child_id=child_id,
         lesson_id=lesson.lesson.id,
         kind=plan.kind.value,
@@ -157,11 +159,11 @@ async def start_session(
     masteries = await load_masteries(session, child_id, lesson)
     seed = new_seed()
     plan = SessionComposer(registry).compose(lesson.units, masteries, now, seed)  # peut lever NothingToReview
-    return await _new_session(session, child_id, lesson, plan, seed)
+    return await _new_session(session, child_id, lesson, plan, seed, now)
 
 
 async def start_errors_session(
-    session: AsyncSession, origin: db.RevisionSession, registry: ActivityRegistry
+    session: AsyncSession, origin: db.RevisionSession, registry: ActivityRegistry, now: datetime
 ) -> db.RevisionSession:
     """« Revoir mes erreurs » : les notions non maîtrisées de la séance d'origine (§8.4)."""
     if origin.status != "completed":
@@ -176,7 +178,7 @@ async def start_errors_session(
     )
     seed = new_seed()
     plan = SessionComposer(registry).compose_errors(lesson.units, weak, seed)  # peut lever NothingToReview
-    return await _new_session(session, origin.child_id, lesson, plan, seed, parent_session_id=origin.id)
+    return await _new_session(session, origin.child_id, lesson, plan, seed, now, parent_session_id=origin.id)
 
 
 # --------------------------------------------------------------------------- #
@@ -191,6 +193,7 @@ async def answer(
     response: dict[str, Any],
     duration_ms: int | None,
     registry: ActivityRegistry,
+    now: datetime,
 ) -> Grade | None:
     """Corrige et enregistre une réponse. `{"skipped": true}` : activité inconnue de l'application,
     enregistrée sans compter dans la note ni dans la maîtrise (§14.3). Renvoie None dans ce cas."""
@@ -199,14 +202,22 @@ async def answer(
     if await session.scalar(select(db.Attempt.id).where(db.Attempt.session_item_id == item.id)):
         raise AlreadyAnswered
     if response == {"skipped": True}:
-        session.add(db.Attempt(session_item_id=item.id, response=response, score=0, duration_ms=duration_ms))
+        session.add(
+            db.Attempt(
+                session_item_id=item.id, response=response, score=0, duration_ms=duration_ms, created_at=now
+            )
+        )
         return None
 
     id_to_key = dict(await _key_map(session, revision.lesson_id))
     activity = activity_of(item, id_to_key)
     grade = registry.for_activity(activity).grade(activity, response)  # peut lever InvalidResponse
     attempt = db.Attempt(
-        session_item_id=item.id, response=response, score=round(grade.score, 2), duration_ms=duration_ms
+        session_item_id=item.id,
+        response=response,
+        score=round(grade.score, 2),
+        duration_ms=duration_ms,
+        created_at=now,
     )
     session.add(attempt)
     await session.flush()

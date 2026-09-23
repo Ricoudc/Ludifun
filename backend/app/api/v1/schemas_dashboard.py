@@ -1,0 +1,81 @@
+"""Formats de l'API v1 pour l'espace parent : tableau de bord et historique (§11)."""
+
+import uuid
+from datetime import date, datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class WeekOut(BaseModel):
+    week_start: date = Field(description="Lundi de la semaine, à l'heure de la famille.")
+    sessions: int = Field(description="Séances terminées.")
+    minutes: int = Field(description="Temps de révision (réponses plafonnées à 5 min + 8 s de correction).")
+    average_score: float | None = Field(description="Note moyenne sur 10 des séances terminées.")
+
+
+class SubjectOut(BaseModel):
+    subject: str
+    mastery: int = Field(
+        description="Maîtrise moyenne (0-100) des notions travaillées, pondérée par importance."
+    )
+    color: Literal["green", "orange", "red"]
+    notions: int
+
+
+class WeakNotionOut(BaseModel):
+    knowledge_id: uuid.UUID
+    label: str
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    mastery: int
+    status: Literal["to_review", "not_mastered"]
+    next_review_at: datetime
+
+
+class DashboardOut(BaseModel):
+    """Écran P3."""
+
+    child_id: uuid.UUID
+    timezone: str
+    this_week: WeekOut
+    lessons_added_this_week: int
+    activities_this_week: dict[str, int]
+    subjects: list[SubjectOut]
+    to_strengthen: list[WeakNotionOut] = Field(
+        description="Au plus 5 notions sous 80 %, les plus faibles d'abord."
+    )
+    reviews_due: int = Field(description="Notions dont la révision est due maintenant.")
+    weeks: list[WeekOut] = Field(description="De la plus ancienne à la semaine en cours.")
+    trend: Literal["up", "down", "stable"] | None = Field(
+        description="Note moyenne des deux dernières semaines actives (±0,5)."
+    )
+
+
+class NotionResultOut(BaseModel):
+    label: str
+    status: Literal["mastered", "to_review", "not_mastered"]
+
+
+class HistoryEntryOut(BaseModel):
+    session_id: uuid.UUID
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    kind: str
+    status: str
+    started_at: datetime
+    completed_at: datetime | None
+    minutes: int
+    score_on_10: float | None
+    notions: list[NotionResultOut] = Field(
+        description="Résultat de la séance par notion (séances terminées)."
+    )
+
+
+class HistoryOut(BaseModel):
+    """Écran P4."""
+
+    sessions: list[HistoryEntryOut]
+    next_before: datetime | None
