@@ -1,0 +1,161 @@
+"""Formats de sortie demandés à l'IA (sorties structurées, cahier des charges §6).
+
+Ces modèles décrivent la *forme* attendue ; ils restent volontairement souples (pas
+de bornes, champs facultatifs) pour que le modèle puisse toujours répondre. La
+validation métier est faite ensuite par `app.domain.validation`, élément par élément.
+"""
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+from app.domain.knowledge import Grade, KnowledgeType, RelationType, Subject
+
+# --------------------------------------------------------------------------- #
+# ① OCR
+# --------------------------------------------------------------------------- #
+
+
+class OcrPage(BaseModel):
+    index: int = Field(description="Numéro de la page, à partir de 0, dans l'ordre des images.")
+    quality: Literal["good", "partial", "unreadable"]
+    text: str = Field(description="Transcription fidèle ; « [illisible] » pour un passage illisible.")
+
+
+class OcrResult(BaseModel):
+    pages: list[OcrPage]
+    language: str = Field(description="Code de langue principal de la leçon, par exemple « fr ».")
+    warnings: list[str] = Field(description="Remarques sur la lecture (photo floue, page coupée…).")
+
+    @property
+    def text(self) -> str:
+        return "\n\n".join(
+            p.text.strip() for p in sorted(self.pages, key=lambda p: p.index) if p.text.strip()
+        )
+
+    @property
+    def unreadable(self) -> bool:
+        return not self.text or all(p.quality == "unreadable" for p in self.pages)
+
+
+# --------------------------------------------------------------------------- #
+# ② Analyse pédagogique
+# --------------------------------------------------------------------------- #
+
+
+class Variable(BaseModel):
+    symbol: str
+    meaning: str
+
+
+class CategoryOut(BaseModel):
+    name: str
+    members: list[str]
+
+
+class AttributesOut(BaseModel):
+    """Attributs selon le type de notion ; les champs qui ne s'appliquent pas valent null."""
+
+    value: str | None = Field(None, description="date : la date, par exemple « 1789 ».")
+    precision: Literal["year", "day"] | None = Field(None, description="date : année seule ou jour précis.")
+    event: str | None = Field(None, description="date : ce qui se passe à cette date.")
+    role: str | None = Field(None, description="person : son rôle.")
+    description: str | None = Field(None, description="place : ce qu'est ce lieu.")
+    date: str | None = Field(None, description="event : quand il a lieu.")
+    place: str | None = Field(None, description="event : où il a lieu.")
+    definition: str | None = Field(None, description="term : la définition.")
+    statement: str | None = Field(None, description="rule : l'énoncé de la règle.")
+    example: str | None = Field(None, description="rule : un exemple tiré de la leçon.")
+    expression: str | None = Field(None, description="formula : la formule.")
+    variables: list[Variable] | None = Field(None, description="formula : signification des lettres.")
+    steps: list[str] | None = Field(None, description="process : les étapes dans l'ordre.")
+    categories: list[CategoryOut] | None = Field(None, description="classification : catégories.")
+
+    def to_dict(self) -> dict[str, Any]:
+        data = self.model_dump(exclude_none=True)
+        if "variables" in data:
+            data["variables"] = {v["symbol"]: v["meaning"] for v in data["variables"]}
+        return data
+
+
+class RelationOut(BaseModel):
+    type: RelationType
+    target: str = Field(description="Identifiant de l'autre notion, par exemple « k1 ».")
+
+
+class KnowledgeOut(BaseModel):
+    id: str = Field(description="k1, k2, k3… dans l'ordre de la leçon.")
+    type: KnowledgeType
+    label: str = Field(description="Nom court de la notion.")
+    statement: str = Field(description="La phrase à retenir, simple, au niveau de l'enfant.")
+    importance: int = Field(description="5 = sera forcément demandée … 1 = détail.")
+    attributes: AttributesOut
+    source_excerpt: str = Field(description="Citation EXACTE du texte de la leçon qui justifie la notion.")
+    relations: list[RelationOut]
+
+
+class LessonInfoOut(BaseModel):
+    subject: Subject
+    grade: Grade
+    grade_confidence: float = Field(description="Confiance dans le niveau, entre 0 et 1.")
+    title: str
+    objective: str = Field(description="Objectif de révision formulé pour l'enfant.")
+    summary: str = Field(description="Résumé en 2-3 phrases adaptées à l'enfant.")
+
+
+class AnalysisOutput(BaseModel):
+    is_lesson: bool = Field(description="false si le texte n'est pas une leçon à réviser.")
+    lesson: LessonInfoOut | None
+    knowledge: list[KnowledgeOut]
+    warnings: list[str]
+
+    def to_raw(self) -> dict[str, Any]:
+        """Format attendu par `validate_analysis` (§6.2)."""
+        data = self.model_dump(mode="json")
+        data["schema_version"] = "1.0"
+        for item, knowledge in zip(data["knowledge"], self.knowledge, strict=True):
+            item["attributes"] = knowledge.attributes.to_dict()
+        return data
+
+
+# --------------------------------------------------------------------------- #
+# ③ Matériel pédagogique par notion
+# --------------------------------------------------------------------------- #
+
+
+class QuestionOut(BaseModel):
+    difficulty: int = Field(description="1 reconnaître, 2 se rappeler, 3 relier / appliquer.")
+    stem: str = Field(description="L'énoncé, qui ne doit pas contenir la réponse.")
+    answer: str
+    distractors: list[str] = Field(description="Exactement 3 mauvaises réponses plausibles, de même nature.")
+
+
+class ClozeOut(BaseModel):
+    text: str = Field(description="Phrase avec exactement un « ___ » à la place du mot à trouver.")
+    answers: list[str] = Field(description="Réponses acceptées (variantes d'écriture).")
+
+
+class PairOut(BaseModel):
+    left: str = Field(description="40 caractères au plus.")
+    right: str = Field(description="60 caractères au plus.")
+
+
+class FlashcardOut(BaseModel):
+    front: str
+    back: str
+
+
+class MaterialOut(BaseModel):
+    knowledge_id: str
+    questions: list[QuestionOut]
+    true_statements: list[str]
+    false_statements: list[str] = Field(description="Clairement fausses, jamais une simple négation.")
+    cloze: ClozeOut | None
+    pair: PairOut | None
+    flashcard: FlashcardOut | None
+    tip: str | None = Field(description="Astuce pour retenir, 120 caractères au plus, sans rien inventer.")
+    explanation: str = Field(description="Explication courte et bienveillante.")
+
+
+class MaterialBatchOutput(BaseModel):
+    materials: list[MaterialOut]

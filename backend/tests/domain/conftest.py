@@ -9,7 +9,7 @@ from app.domain.activities.registry import ActivityRegistry, default_registry
 from app.domain.knowledge import KnowledgeUnit, LessonAnalysis
 from app.domain.validation import validate_analysis, validate_material
 
-FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "lessons"
+FIXTURES = Path(__file__).resolve().parents[2] / "reference_lessons"
 LESSON_FILES = sorted(p.name for p in FIXTURES.glob("*.json"))
 
 

@@ -306,7 +306,7 @@ class LLMProvider(Protocol):
 ```
 
 - Les prompts sont versionnés dans des fichiers (`app/ai/prompts/analysis.v1.md`…). La version utilisée est enregistrée avec chaque leçon.
-- Modèle configurable **par étape** (`AI_OCR_MODEL`, `AI_ANALYSIS_MODEL`, `AI_MATERIAL_MODEL`). On pourra par exemple prendre un modèle moins cher pour l'enrichissement si le corpus de test montre que la qualité tient.
+- Modèle configurable **par étape** (`LUDIFUN_AI_OCR_MODEL`, `…_ANALYSIS_MODEL`, `…_MATERIAL_MODEL` ; `claude-opus-5` par défaut, avec l'effort `low` / `high` / `medium`). Les appels Claude activent le repli automatique côté serveur (`fallbacks: "default"`) : si le modèle décline une requête, l'API la relance sur un modèle de repli. On pourra par exemple prendre un modèle moins cher pour l'enrichissement si le corpus de test montre que la qualité tient.
 - Chaque appel est journalisé dans `ai_runs` : étape, fournisseur, modèle, version du prompt, tokens, latence, statut. C'est ce qui permet de mesurer le coût réel par leçon.
 - `FakeProvider` produit des réponses déterministes. Il sert aux tests et au développement de l'application sans clé d'API.
 
@@ -926,11 +926,12 @@ backend/
 │   │   ├── scoring.py              # §9 : note de séance, taux par notion
 │   │   └── mastery.py              # §10 : score, boîtes, prochaine révision
 │   ├── services/
-│   │   ├── lesson_pipeline.py      # OCR → analyse → enrichissement, statuts, journalisation
+│   │   ├── lesson_pipeline.py      # OCR → analyse → enrichissement, statuts, journal ai_runs (sans base)
 │   │   ├── session_service.py      # créer, répondre, reprise, clôturer
 │   │   └── report_service.py
 │   ├── ai/
 │   │   ├── ports.py                # OcrProvider, LLMProvider, PageImage, LLMResult
+│   │   ├── factory.py              # fournisseurs selon la configuration
 │   │   ├── schemas.py              # OcrResult, LessonAnalysis, KnowledgeMaterial (Pydantic)
 │   │   ├── prompts/                # ocr.v1.md, analysis.v1.md, material.v1.md
 │   │   ├── providers/
@@ -1155,7 +1156,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 1 ✅ | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
 | 2 ✅ | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
 | 3 ✅ | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
-| 4 | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
+| 4 ✅ | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 | **Premier test de qualité** | 10 premières leçons réelles, `eval/run_eval.py`, ajustement des prompts | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
 | 6 | **API v1** | appareils et jetons, leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, suppression, limites de débit | parcours complet testé en API avec `FakeProvider` |
 | 7 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, enregistrement de l'appareil | l'application démarre sur émulateur et obtient un jeton |

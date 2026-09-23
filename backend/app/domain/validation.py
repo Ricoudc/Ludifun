@@ -49,15 +49,20 @@ class MaterialValidation:
     rejected: list[Rejection] = field(default_factory=list)
 
     @property
-    def rejection_rate(self) -> float:
-        kept = (
-            len(self.material.questions)
-            + len(self.material.true_statements)
-            + len(self.material.false_statements)
-            + sum(x is not None for x in (self.material.cloze, self.material.pair, self.material.flashcard))
-            + (self.material.tip is not None)
+    def kept(self) -> int:
+        """Nombre d'éléments de matériel conservés."""
+        m = self.material
+        optional = (m.cloze, m.pair, m.flashcard, m.tip)
+        return (
+            len(m.questions)
+            + len(m.true_statements)
+            + len(m.false_statements)
+            + sum(x is not None for x in optional)
         )
-        total = kept + len(self.rejected)
+
+    @property
+    def rejection_rate(self) -> float:
+        total = self.kept + len(self.rejected)
         return len(self.rejected) / total if total else 0.0
 
 
