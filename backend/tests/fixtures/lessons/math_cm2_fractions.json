@@ -1,0 +1,124 @@
+{
+  "ocr_text": "Les fractions\nUne fraction représente une partie d'un tout partagé en parts égales.\nDans la fraction 3/4, 3 est le numérateur et 4 est le dénominateur.\nLe numérateur indique le nombre de parts que l'on prend.\nLe dénominateur indique en combien de parts égales on a partagé l'unité.\nQuand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur. Exemple : 5/8 > 3/8.\nUne fraction dont le numérateur est égal au dénominateur est égale à 1. Exemple : 4/4 = 1.",
+  "analysis": {
+    "schema_version": "1.0",
+    "is_lesson": true,
+    "lesson": {
+      "subject": "math",
+      "grade": "CM2",
+      "grade_confidence": 0.7,
+      "title": "Les fractions",
+      "objective": "Savoir ce qu'est une fraction, nommer ses termes et comparer des fractions",
+      "summary": "Une fraction représente une partie d'un tout partagé en parts égales. Elle s'écrit avec un numérateur et un dénominateur."
+    },
+    "knowledge": [
+      {
+        "id": "k1", "type": "term", "label": "Fraction",
+        "statement": "Une fraction représente une partie d'un tout partagé en parts égales.",
+        "importance": 5,
+        "attributes": {"definition": "une partie d'un tout partagé en parts égales"},
+        "source_excerpt": "Une fraction représente une partie d'un tout partagé en parts égales",
+        "relations": []
+      },
+      {
+        "id": "k2", "type": "term", "label": "Numérateur",
+        "statement": "Le numérateur indique le nombre de parts que l'on prend.",
+        "importance": 5,
+        "attributes": {"definition": "le nombre de parts que l'on prend"},
+        "source_excerpt": "Le numérateur indique le nombre de parts que l'on prend",
+        "relations": [{"type": "part_of", "target": "k1"}]
+      },
+      {
+        "id": "k3", "type": "term", "label": "Dénominateur",
+        "statement": "Le dénominateur indique en combien de parts égales on a partagé l'unité.",
+        "importance": 5,
+        "attributes": {"definition": "en combien de parts égales on a partagé l'unité"},
+        "source_excerpt": "Le dénominateur indique en combien de parts égales on a partagé l'unité",
+        "relations": [{"type": "part_of", "target": "k1"}]
+      },
+      {
+        "id": "k4", "type": "rule", "label": "Comparer des fractions de même dénominateur",
+        "statement": "Quand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur.",
+        "importance": 4,
+        "attributes": {"statement": "Avec le même dénominateur, la plus grande fraction a le plus grand numérateur.", "example": "5/8 > 3/8"},
+        "source_excerpt": "Quand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur",
+        "relations": []
+      },
+      {
+        "id": "k5", "type": "rule", "label": "Fraction égale à 1",
+        "statement": "Une fraction dont le numérateur est égal au dénominateur est égale à 1.",
+        "importance": 3,
+        "attributes": {"statement": "Si le numérateur est égal au dénominateur, la fraction vaut 1.", "example": "4/4 = 1"},
+        "source_excerpt": "Une fraction dont le numérateur est égal au dénominateur est égale à 1",
+        "relations": []
+      }
+    ],
+    "warnings": []
+  },
+  "material": {
+    "k1": {
+      "knowledge_id": "k1",
+      "questions": [
+        {"difficulty": 1, "stem": "Que représente une fraction ?", "answer": "Une partie d'un tout partagé en parts égales", "distractors": ["Un nombre toujours plus grand que 1", "Une opération de multiplication", "Un nombre sans virgule"]}
+      ],
+      "true_statements": ["Une fraction représente une partie d'un tout partagé en parts égales."],
+      "false_statements": ["Une fraction est toujours plus grande que 1."],
+      "cloze": {"text": "Une fraction représente une partie d'un tout partagé en parts ___.", "answers": ["égales"]},
+      "pair": {"left": "Fraction", "right": "Partie d'un tout partagé en parts égales"},
+      "flashcard": {"front": "Fraction", "back": "Une partie d'un tout partagé en parts égales"},
+      "explanation": "Une fraction, c'est une partie d'un tout : on partage l'unité en parts égales et on en prend certaines."
+    },
+    "k2": {
+      "knowledge_id": "k2",
+      "questions": [
+        {"difficulty": 1, "stem": "Dans la fraction 3/4, quel est le numérateur ?", "answer": "3", "distractors": ["4", "7", "12"]},
+        {"difficulty": 2, "stem": "Que nous indique le numérateur ?", "answer": "Le nombre de parts que l'on prend", "distractors": ["Le nombre de parts égales de l'unité", "La taille de chaque part", "Le nombre d'unités"]}
+      ],
+      "true_statements": ["Le numérateur indique le nombre de parts que l'on prend."],
+      "false_statements": ["Le numérateur indique en combien de parts on a partagé l'unité."],
+      "cloze": {"text": "Dans la fraction 3/4, 3 est le ___.", "answers": ["numérateur"]},
+      "pair": {"left": "Numérateur", "right": "Nombre de parts que l'on prend"},
+      "flashcard": {"front": "Numérateur", "back": "Le nombre de parts que l'on prend"},
+      "tip": "Numérateur : le nombre de parts que l'on prend.",
+      "explanation": "Dans 3/4, on prend 3 parts : 3 est le numérateur."
+    },
+    "k3": {
+      "knowledge_id": "k3",
+      "questions": [
+        {"difficulty": 1, "stem": "Dans la fraction 3/4, quel est le dénominateur ?", "answer": "4", "distractors": ["3", "1", "7"]},
+        {"difficulty": 2, "stem": "Que nous indique le dénominateur ?", "answer": "En combien de parts égales on a partagé l'unité", "distractors": ["Le nombre de parts que l'on prend", "Le résultat de la division", "Le nombre d'unités entières"]}
+      ],
+      "true_statements": ["Le dénominateur indique en combien de parts égales on a partagé l'unité."],
+      "false_statements": ["Le dénominateur indique le nombre de parts que l'on prend."],
+      "cloze": {"text": "Dans la fraction 3/4, 4 est le ___.", "answers": ["dénominateur"]},
+      "pair": {"left": "Dénominateur", "right": "Nombre de parts égales de l'unité"},
+      "flashcard": {"front": "Dénominateur", "back": "En combien de parts égales on a partagé l'unité"},
+      "tip": "Dénominateur : il dit en combien de parts on partage.",
+      "explanation": "Dans 3/4, l'unité est partagée en 4 parts égales : 4 est le dénominateur."
+    },
+    "k4": {
+      "knowledge_id": "k4",
+      "questions": [
+        {"difficulty": 1, "stem": "Quelle fraction est la plus grande ?", "answer": "5/8", "distractors": ["3/8", "1/8", "2/8"]},
+        {"difficulty": 2, "stem": "Deux fractions ont le même dénominateur. Laquelle est la plus grande ?", "answer": "Celle qui a le plus grand numérateur", "distractors": ["Celle qui a le plus petit numérateur", "Elles sont toujours égales", "Celle qui est écrite en premier"]}
+      ],
+      "true_statements": ["5/8 est plus grand que 3/8."],
+      "false_statements": ["3/8 est plus grand que 5/8."],
+      "cloze": {"text": "Avec le même dénominateur, la plus grande fraction a le plus grand ___.", "answers": ["numérateur"]},
+      "flashcard": {"front": "Comparer deux fractions de même dénominateur", "back": "La plus grande a le plus grand numérateur"},
+      "tip": "Même dénominateur : on compare les numérateurs.",
+      "explanation": "5/8 et 3/8 ont le même dénominateur : on compare 5 et 3, donc 5/8 est la plus grande."
+    },
+    "k5": {
+      "knowledge_id": "k5",
+      "questions": [
+        {"difficulty": 1, "stem": "Combien vaut la fraction 4/4 ?", "answer": "1", "distractors": ["4", "0", "8"]}
+      ],
+      "true_statements": ["La fraction 4/4 est égale à 1."],
+      "false_statements": ["La fraction 4/4 est égale à 4."],
+      "cloze": {"text": "Quand le numérateur est égal au dénominateur, la fraction est égale à ___.", "answers": ["1"]},
+      "flashcard": {"front": "Numérateur égal au dénominateur", "back": "La fraction est égale à 1"},
+      "explanation": "Dans 4/4, on prend les 4 parts sur 4 : on a l'unité entière, donc 4/4 = 1."
+    }
+  }
+}

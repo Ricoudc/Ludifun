@@ -526,7 +526,7 @@ Réponse de correction, commune à tous les types :
 |---|---|---|
 | 🧠 Échauffement | 3 activités faciles (difficulté 1 : MCQ, TRUE_FALSE) | les 3 notions les plus importantes |
 | 🎯 Approfondissement | 3 activités intermédiaires (difficulté 2 : FILL_BLANK, MCQ inversé, FLASHCARD) | les 3 notions suivantes ; si la leçon en a moins de 6, on reprend les plus importantes avec un autre format |
-| 🧩 Association | 1 MATCH de 4 à 5 paires | notions ayant une `pair`, en priorité celles non vues dans les blocs précédents |
+| 🧩 Association | 1 MATCH de 4 à 5 paires (3 accepté pour les petites leçons) | notions ayant une `pair`, en priorité celles non vues dans les blocs précédents |
 | ⚡ Défi rapide | 1 SPEED_CHALLENGE : 5 vrai/faux en 30 s | mélange de `true_statements` et de `false_statements` |
 | 🔄 Reprise des erreurs | 1 activité par notion ratée (3 au maximum) | **format différent** de celui qui a été raté ; ajoutée à la fin par `POST /sessions/{id}/replay` |
 
@@ -910,7 +910,9 @@ backend/
 │   │       ├── me.py
 │   │       └── schemas.py          # modèles Pydantic d'entrée et de sortie
 │   ├── domain/                     # Python pur : aucun import de FastAPI, SQLAlchemy ni SDK IA
-│   │   ├── knowledge.py            # KnowledgeItem, KnowledgeMaterial, types, validateurs
+│   │   ├── knowledge.py            # KnowledgeItem, KnowledgeMaterial, types
+│   │   ├── validation.py           # validateurs §6.4
+│   │   ├── text.py                 # normalisation, fautes tolérées, recherche approximative
 │   │   ├── activities/
 │   │   │   ├── base.py             # ActivityType, BuiltActivity, Grade
 │   │   │   ├── registry.py
@@ -921,7 +923,7 @@ backend/
 │   │   │   ├── speed_challenge.py
 │   │   │   └── flashcard.py
 │   │   ├── composer.py             # §8 : blocs, sélection, reprise, durée
-│   │   ├── scoring.py              # §9 : normalisation de texte, fautes tolérées, taux par notion
+│   │   ├── scoring.py              # §9 : note de séance, taux par notion
 │   │   └── mastery.py              # §10 : score, boîtes, prochaine révision
 │   ├── services/
 │   │   ├── lesson_pipeline.py      # OCR → analyse → enrichissement, statuts, journalisation
@@ -1151,7 +1153,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | # | Étape | Contenu | Terminé quand… |
 |---|---|---|---|
 | 1 ✅ | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
-| 2 | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
+| 2 ✅ | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
 | 3 | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 | **Premier test de qualité** | 10 premières leçons réelles, `eval/run_eval.py`, ajustement des prompts | les seuils §17.2 sont approchés ; rapport `eval/report.md` |

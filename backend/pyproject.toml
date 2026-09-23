@@ -3,7 +3,7 @@ name = "ludifun-backend"
 version = "0.1.0"
 description = "API Ludifun : photo d'une leçon → notions → séance de révision adaptée."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
@@ -32,14 +32,14 @@ packages = ["app"]
 
 [tool.ruff]
 line-length = 110
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF", "SIM"]
 ignore = ["RUF001", "RUF002", "RUF003"]  # caractères français (’, «, ») dans les textes
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 exclude = ["migrations/"]
