@@ -8,10 +8,12 @@ from fastapi import Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import clock
+from app.ai.ports import LLMProvider, OcrProvider
 from app.api.errors import ApiError
 from app.config import Settings
 from app.db.base import Database
 from app.db.models import Child, Parent
+from app.domain.activities.registry import ActivityRegistry
 from app.security.rate_limit import RateLimiter
 from app.security.tokens import InvalidToken, decode_access_token, looks_like_jwt
 from app.services import accounts
@@ -38,7 +40,25 @@ def get_email_sender(request: Request) -> EmailSender:
     return sender
 
 
+@dataclass(frozen=True)
+class AiProviders:
+    ocr: OcrProvider
+    llm: LLMProvider
+
+
+def get_ai(request: Request) -> AiProviders:
+    providers: AiProviders = request.app.state.ai
+    return providers
+
+
+def get_registry(request: Request) -> ActivityRegistry:
+    registry: ActivityRegistry = request.app.state.registry
+    return registry
+
+
 DbSession = Annotated[AsyncSession, Depends(get_db)]
+Ai = Annotated[AiProviders, Depends(get_ai)]
+Registry = Annotated[ActivityRegistry, Depends(get_registry)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 Mailer = Annotated[EmailSender, Depends(get_email_sender)]
 

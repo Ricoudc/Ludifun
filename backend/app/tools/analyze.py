@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, TextIO
 
 from app.ai.factory import build_providers
+from app.ai.images import detect_media_type
 from app.ai.ports import MediaType, PageImage
 from app.config import get_settings
 from app.domain.activities.base import ActivityCode, BuiltActivity
@@ -41,15 +42,10 @@ FAILURES = {
 
 
 def media_type(data: bytes, path: Path) -> MediaType:
-    if data.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if data.startswith(b"\x89PNG"):
-        return "image/png"
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "image/webp"
-    if data[:6] in (b"GIF87a", b"GIF89a"):
-        return "image/gif"
-    raise SystemExit(f"{path} : format non pris en charge (JPEG, PNG, WebP ou GIF ; convertir les HEIC)")
+    detected = detect_media_type(data)
+    if detected is None:
+        raise SystemExit(f"{path} : format non pris en charge (JPEG, PNG, WebP ou GIF ; convertir les HEIC)")
+    return detected
 
 
 def render_activity(activity: BuiltActivity) -> list[str]:

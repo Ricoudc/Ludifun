@@ -34,7 +34,13 @@ curl -s -X POST localhost:8000/v1/children -H "authorization: Bearer $ACCESS" -H
 curl -s -X POST localhost:8000/v1/children/$CHILD/link-codes -H "authorization: Bearer $ACCESS"
 # Appareil de l'enfant : saisie du code
 curl -s -X POST localhost:8000/v1/link -H 'content-type: application/json' -d '{"code":"482731"}'
+# L'enfant envoie sa leçon, suit l'analyse, puis révise
+curl -s -X POST localhost:8000/v1/lessons -H "authorization: Bearer $DEVICE" -F pages=@page1.jpg -F pages=@page2.jpg
+curl -s localhost:8000/v1/lessons/$LESSON -H "authorization: Bearer $DEVICE"            # statut, puis notions
+curl -s -X POST localhost:8000/v1/lessons/$LESSON/sessions -H "authorization: Bearer $DEVICE" -H 'content-type: application/json' -d '{}'
 ```
+
+Sans clé d'API, lancer l'API avec `LUDIFUN_AI_PROVIDER=fake` : toute photo est lue comme la leçon d'histoire de référence.
 
 ## Analyser une vraie leçon (sans l'application)
 

@@ -17,6 +17,9 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from app.ai.ocr.vision_llm import VisionLLMOcr
+from app.ai.providers.fake import FakeProvider
+from app.api.deps import AiProviders
 from app.config import Settings
 from app.db.base import Base, create_engine
 from app.main import create_app
@@ -64,8 +67,23 @@ async def db(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
     await truncate_all(engine)
 
 
-def make_app(database_url: str = TEST_DATABASE_URL, mailer: MemoryEmailSender | None = None) -> FastAPI:
-    return create_app(Settings(database_url=database_url, environment="test"), email_sender=mailer)
+def make_app(
+    database_url: str = TEST_DATABASE_URL,
+    mailer: MemoryEmailSender | None = None,
+    llm: FakeProvider | None = None,
+) -> FastAPI:
+    llm = llm or FakeProvider()
+    return create_app(
+        Settings(database_url=database_url, environment="test"),
+        email_sender=mailer,
+        ai=AiProviders(VisionLLMOcr(llm), llm),
+    )
+
+
+@pytest.fixture
+def fake_llm() -> FakeProvider:
+    """IA factice des tests d'API : rejoue la leçon d'histoire de référence."""
+    return FakeProvider()
 
 
 @pytest.fixture
@@ -74,8 +92,10 @@ def mailer() -> MemoryEmailSender:
 
 
 @pytest.fixture
-async def app(engine: AsyncEngine, mailer: MemoryEmailSender) -> AsyncIterator[FastAPI]:
-    app = make_app(mailer=mailer)
+async def app(
+    engine: AsyncEngine, mailer: MemoryEmailSender, fake_llm: FakeProvider
+) -> AsyncIterator[FastAPI]:
+    app = make_app(mailer=mailer, llm=fake_llm)
     async with app.router.lifespan_context(app):
         yield app
     await truncate_all(engine)

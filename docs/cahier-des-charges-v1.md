@@ -771,17 +771,17 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 |---|---|---|
 | POST | `/v1/link` | `{code}` ou `{qr_token}` → `{child, token}` (écran 0, sans authentification) |
 | GET | `/v1/me` | profil de l'enfant |
-| GET | `/v1/me/mission` | mission du jour (écran 1) |
+| GET | `/v1/me/mission` | mission du jour (écran 1) : `{lesson, reason: due \| not_mastered \| latest, estimated_minutes}`, `lesson: null` si tout est à jour |
 | GET | `/v1/lessons` | Dernières leçons (écran 1) |
 | POST | `/v1/lessons` | *multipart* `pages[]` (1 à 6 images) → **202** `{id, status: "uploaded"}`, traitement en arrière-plan |
 | GET | `/v1/lessons/{id}` | Statut et, si `ready`, leçon et notions (écrans 3 et 4) |
 | PATCH | `/v1/lessons/{id}` | `{grade}` : correction du niveau par l'enfant |
 | POST | `/v1/lessons/{id}/retry` | Relance une analyse échouée pour cause `ai_error` (le texte OCR est déjà stocké) |
 | DELETE | `/v1/lessons/{id}` | Supprime la leçon et son historique |
-| POST | `/v1/lessons/{id}/sessions` | `{kind: "auto"}` → séance (écran 4) |
+| POST | `/v1/lessons/{id}/sessions` | `{kind: "auto"}` → séance (écran 4) ; reprend la séance en cours si elle a moins de 24 h ; 409 `nothing_to_review` s'il n'y a rien à réviser |
 | GET | `/v1/sessions/{id}` | Reprise d'une séance interrompue |
-| POST | `/v1/sessions/{id}/attempts` | `{item_id, response, duration_ms}` → correction (écran 6) |
-| POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) |
+| POST | `/v1/sessions/{id}/attempts` | `{item_id, response, duration_ms}` → correction (écran 6) ; `{"skipped": true}` pour une activité que l'application ne sait pas afficher (ni notée, ni comptée dans la maîtrise) |
+| POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) ; une fois toutes les activités principales répondues ; idempotent |
 | POST | `/v1/sessions/{id}/complete` | Clôture → bilan (écran 7) |
 | POST | `/v1/sessions/{id}/errors-session` | Crée la séance « Revoir mes erreurs » |
 
@@ -832,7 +832,13 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 }
 ```
 
-### 11.2 Erreurs
+### 11.2 Robustesse du traitement des leçons
+
+- L'analyse tourne en tâche de fond dans le processus de l'API (V1). Au démarrage, une analyse interrompue depuis plus de 10 minutes (redémarrage du serveur) passe en échec `ai_error` : elle se relance sans nouvelle photo si le texte avait déjà été lu (`can_retry`).
+- Une file de tâches (Arq ou Celery avec Redis) remplacera la tâche de fond quand l'API tournera sur plusieurs instances ; seul `lesson_processing.py` changera.
+- Une réponse envoyée deux fois en même temps (double appui) reçoit `409 already_answered`.
+
+### 11.3 Erreurs
 
 Format unique : `{"error": {"code": "lesson_unreadable", "message": "…"}}`.
 
@@ -1334,7 +1340,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 4 ✅ | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 🟡 | **Premier test de qualité** | 10 premières leçons réelles, outil `app.tools.evaluate` (✅ prêt), ajustement des prompts (en attente des leçons) | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
 | 6 ✅ | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
-| 7 | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
+| 7 ✅ | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
 | 8 | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
 | 9 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
 | 10 | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone |

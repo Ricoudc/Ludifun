@@ -26,8 +26,8 @@ Plan de la V1 : cahier des charges §18.
 | 4 | Pipeline IA (+ outil `python -m app.tools.analyze`) | ✅ |
 | 5 | Mesure sur de vraies leçons | 🟡 outillage prêt, en attente des leçons ([`eval/`](eval/README.md)) |
 | 6 | API : comptes parent, profils enfants, liaison par code / QR | ✅ |
-| 7 | API : leçons et séances, mission du jour | ⏭️ prochaine |
-| 8 | API : tableau de bord parent | |
+| 7 | API : leçons et séances, mission du jour | ✅ |
+| 8 | API : tableau de bord parent | ⏭️ prochaine |
 | 9-12 | Application Flutter : espace enfant, espace parent | |
 | 13-14 | Tests avec de vraies familles, bêta Android | |
 
