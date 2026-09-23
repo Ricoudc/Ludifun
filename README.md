@@ -44,6 +44,7 @@ git (commit `3362b04`).
 docker compose up -d --build
 curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0002"}
 
+docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)
 ```
 

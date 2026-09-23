@@ -13,7 +13,7 @@ from app.domain.composer import Block, SessionComposer, SessionKind
 from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import Mastery
 from app.domain.scoring import Evidence, KnowledgeStatus, SessionOutcome, evidences_from, summarize_session
-from tests.domain.answers import Knows, respond
+from app.domain.simulated_pupil import Knows, respond
 from tests.domain.conftest import ReferenceLesson
 
 DAY_1 = datetime(2026, 9, 23, 17, 0, tzinfo=UTC)

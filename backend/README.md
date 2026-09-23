@@ -45,6 +45,30 @@ curl -s "localhost:8000/v1/children/$CHILD/history?limit=20" -H "authorization: 
 
 Sans clé d'API, lancer l'API avec `LUDIFUN_AI_PROVIDER=fake` : toute photo est lue comme la leçon d'histoire de référence.
 
+## Famille de démonstration
+
+Pour voir l'application remplie dès le premier lancement (développement uniquement, refusé en production) :
+
+```bash
+uv run python -m app.tools.demo_family                        # base locale
+docker compose exec api python -m app.tools.demo_family       # pile docker compose
+uv run python -m app.tools.demo_family --replace              # recrée le compte s'il existe
+```
+
+L'outil crée le compte `parent.demo@example.fr` (mot de passe `demo-ludifun-2026`, modifiables
+avec `--email` et `--password`), avec deux enfants :
+
+- **Emma** (CM1) : sa tablette de démonstration a révisé les trois leçons de référence
+  (histoire, fractions, états de l'eau) pendant quatre semaines, avec des erreurs qui se
+  corrigent peu à peu. Tableau de bord, historique et mission du jour montrent donc de vraies
+  données, calculées par l'API ;
+- **Hugo** (CE1) : profil vide, sans appareil.
+
+Il affiche aussi un code (valable 10 minutes) pour lier un vrai téléphone au profil d'Emma et
+jouer ses révisions. Les leçons passent par l'IA factice : aucun appel payant. Les séances sont
+jouées par l'API elle-même, avec un « élève simulé » (`app/domain/simulated_pupil.py`) et une
+horloge simulée.
+
 ## Analyser une vraie leçon (sans l'application)
 
 ```bash

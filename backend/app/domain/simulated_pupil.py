@@ -1,4 +1,7 @@
-"""Un « élève simulé » : répond juste aux notions qu'il connaît, faux aux autres."""
+"""Un « élève simulé » : répond juste aux notions qu'il connaît, faux aux autres.
+
+Sert aux tests et à la famille de démonstration (`python -m app.tools.demo_family`).
+"""
 
 from collections.abc import Callable
 from typing import Any
@@ -32,4 +35,4 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                 for sid, value in s["answers"].items()
             ]
             return {"answers": answers, "elapsed_ms": 20000}
-    raise AssertionError(activity.type)
+    raise ValueError(f"type d'activité inconnu : {activity.type}")

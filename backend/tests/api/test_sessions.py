@@ -16,9 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import clock
 from app.db.models import KnowledgeItem, KnowledgeMastery, SessionItem
+from app.domain.simulated_pupil import Knows, respond
 from app.services.learning import activity_of
 from tests.api.helpers import auth, family_with_device, upload_lesson
-from tests.domain.answers import Knows, respond
 
 SOLUTION_KEYS = {"choice_id", "value", "answers", "pairs", "knowledge_by_left", "knowledge_by_statement"}
 

@@ -13,9 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
 from app.db.models import KnowledgeItem, KnowledgeMastery, Lesson
+from app.domain.simulated_pupil import Knows
 from tests.api.helpers import auth, family_with_device, register, upload_lesson
 from tests.api.test_sessions import now, play  # noqa: F401  (fixture)
-from tests.domain.answers import Knows
 
 PARIS = ZoneInfo("Europe/Paris")
 SECONDS_PER_ANSWER = 8 + 8  # 8 s de réponse (play) + 8 s de correction

@@ -20,6 +20,10 @@ flutter build web --no-web-resources-cdn
 npx http-server build/web -p 8080 --proxy http://localhost:8000   # puis http://localhost:8080
 ```
 
+Pour une application déjà remplie, créez d'abord la famille de démonstration
+(`python -m app.tools.demo_family`, voir `backend/README.md`) : espace parent
+`parent.demo@example.fr` / `demo-ludifun-2026`, et un code pour lier le téléphone au profil d'Emma.
+
 Au premier lancement, l'appareil choisit son espace :
 
 - **parent** : connexion ou création du compte (e-mail et mot de passe) ;
