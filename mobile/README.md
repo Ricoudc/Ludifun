@@ -23,7 +23,11 @@ npx http-server build/web -p 8080 --proxy http://localhost:8000   # puis http://
 Au premier lancement, l'appareil choisit son espace :
 
 - **parent** : connexion ou création du compte (e-mail et mot de passe) ;
-- **enfant** : saisie du code à 6 chiffres affiché dans l'espace parent.
+- **enfant** : code à 6 chiffres ou QR code affiché dans l'espace parent, puis « C'est toi, Emma ? ».
+
+Espace enfant : mission du jour et dernières leçons, photo (1 à 6 pages, compressées sur le
+téléphone : 2000 px, JPEG 80, sans métadonnées EXIF), suivi de l'analyse, résumé de la leçon.
+Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont effacées.
 
 Les identifiants restent sur l'appareil, chiffrés par le système. Le jeton d'accès du
 parent (15 minutes) est renouvelé automatiquement ; si l'appareil de l'enfant est délié,
@@ -34,5 +38,5 @@ l'application revient au premier lancement.
 | `lib/app/` | application, thème, routeur (redirection selon l'espace) |
 | `lib/core/` | configuration, client API et intercepteur de jetons, session, stockage sécurisé |
 | `lib/models/` | formats de l'API |
-| `lib/features/` | écrans : premier lancement, espace parent, liaison, accueil de l'enfant |
+| `lib/features/` | écrans : premier lancement, espace parent, liaison, accueil, photo, analyse, leçon |
 | `test/` | faux serveur, tests du client et des jetons, tests de widgets des deux espaces |

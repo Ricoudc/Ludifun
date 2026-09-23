@@ -16,6 +16,9 @@ class FakeServer implements HttpClientAdapter {
   final handlers = <String, Handler>{};
   final requests = <RequestOptions>[];
 
+  /// Corps envoyés (multipart compris), dans l'ordre des requêtes.
+  final bodies = <Uint8List>[];
+
   void on(String route, Handler handler) => handlers[route] = handler;
 
   List<String> get routes => [for (final r in requests) '${r.method} ${r.path}'];
@@ -34,6 +37,8 @@ class FakeServer implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    final chunks = requestStream == null ? const <Uint8List>[] : await requestStream.toList();
+    bodies.add(Uint8List.fromList([for (final chunk in chunks) ...chunk]));
     final handler = handlers['${options.method} ${options.path}'];
     final (status, body) = handler == null
         ? error(404, 'not_found', 'Introuvable.')

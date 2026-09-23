@@ -131,6 +131,12 @@ async def require_parent(principal: Annotated[Principal, Depends(current_princip
     return principal
 
 
+async def require_device(principal: Annotated[Principal, Depends(current_principal)]) -> DevicePrincipal:
+    if not isinstance(principal, DevicePrincipal):
+        raise ApiError(403, "forbidden", "Réservé à l'appareil de l'enfant.")
+    return principal
+
+
 async def child_scope(
     principal: Annotated[Principal, Depends(current_principal)],
     db: DbSession,
@@ -152,4 +158,5 @@ async def child_scope(
 
 
 CurrentParent = Annotated[ParentPrincipal, Depends(require_parent)]
+CurrentDevice = Annotated[DevicePrincipal, Depends(require_device)]
 ChildInScope = Annotated[Child, Depends(child_scope)]

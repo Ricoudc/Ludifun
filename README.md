@@ -29,8 +29,9 @@ Plan de la V1 : cahier des charges §18.
 | 7 | API : leçons et séances, mission du jour | ✅ |
 | 8 | API : tableau de bord parent | ✅ |
 | 9 | Socle Flutter : premier lancement, espaces parent et enfant | ✅ |
-| 10 | Espace enfant : liaison, accueil, photo, analyse, résumé | ⏭️ prochaine |
-| 11-12 | Application Flutter : séance et bilan, espace parent | |
+| 10 | Espace enfant : liaison (code, QR), accueil, photo, analyse, résumé | ✅ (essai sur téléphone à faire) |
+| 11 | Espace enfant : jeux, correction, bilan | ⏭️ prochaine |
+| 12 | Application Flutter : espace parent | |
 | 13-14 | Tests avec de vraies familles, bêta Android | |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique

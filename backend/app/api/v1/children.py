@@ -5,7 +5,15 @@ import uuid
 from fastapi import APIRouter, Request, Response, status
 
 from app import clock
-from app.api.deps import AppSettings, ChildInScope, CurrentParent, DbSession, client_ip, rate_limit
+from app.api.deps import (
+    AppSettings,
+    ChildInScope,
+    CurrentDevice,
+    CurrentParent,
+    DbSession,
+    client_ip,
+    rate_limit,
+)
 from app.api.errors import ApiError
 from app.api.v1.schemas import (
     ChildIn,
@@ -143,3 +151,11 @@ async def link_device(body: LinkIn, request: Request, db: DbSession) -> LinkOut:
 @router.get("/me", tags=["enfant"])
 async def me(child: ChildInScope) -> ChildPublic:
     return ChildPublic.model_validate(child)
+
+
+@router.delete("/me/device", status_code=status.HTTP_204_NO_CONTENT, tags=["enfant"])
+async def unlink_this_device(device: CurrentDevice, db: DbSession) -> Response:
+    """« Ce n'est pas moi » après la liaison : l'appareil rend son jeton."""
+    await accounts.revoke_device(db, device.child_id, device.device_id, clock.now())
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

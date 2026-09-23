@@ -121,7 +121,7 @@ Demande le code à ton parent.
 
         ou  [ 📷 Scanner le QR code ]
 ```
-- `POST /v1/link {code}` → l'appareil reçoit un jeton lié au profil de l'enfant et affiche « C'est toi, Emma ? ».
+- `POST /v1/link {code}` (ou `{qr_token}` après le scan) → l'appareil reçoit un jeton lié au profil de l'enfant et affiche « C'est toi, Emma ? ». *Non* → `DELETE /v1/me/device` : l'appareil rend aussitôt son jeton.
 - Code faux ou expiré : « Ce code ne marche pas. Demande un nouveau code à ton parent. »
 - Une fois lié, l'appareil ouvre directement l'accueil de l'enfant.
 
@@ -196,7 +196,7 @@ LA RÉVOLUTION FRANÇAISE
 - Données : `GET /v1/lessons/{id}` (leçon et notions triées par importance) et `POST /v1/lessons/{id}/sessions` (objectif et durée estimée).
 - La séance est créée dès l'ouverture de l'écran : la durée affichée est donc celle de la vraie séance.
 - Un appui sur une notion affiche sa phrase « à retenir ».
-- Un lien « Ce n'est pas le bon niveau ? » permet de corriger le niveau (CP → 3e). La séance est alors recomposée, sans nouvel appel à l'IA.
+- Un lien « Ce n'est pas le bon niveau ? » permet de corriger le niveau (CP → 3e), sans nouvel appel à l'IA. En V1 le niveau n'intervient pas encore dans la composition de la séance : la correction met à jour la leçon, la séance reste la même.
 
 ### Écran 5 — Jeu
 ```
@@ -782,6 +782,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 |---|---|---|
 | POST | `/v1/link` | `{code}` ou `{qr_token}` → `{child, token}` (écran 0, sans authentification) |
 | GET | `/v1/me` | profil de l'enfant |
+| DELETE | `/v1/me/device` | l'appareil se délie lui-même (« Ce n'est pas moi » à l'écran 0) |
 | GET | `/v1/me/mission` | mission du jour (écran 1) : `{lesson, reason: due \| not_mastered \| latest, estimated_minutes}`, `lesson: null` si tout est à jour |
 | GET | `/v1/lessons` | Dernières leçons (écran 1) |
 | POST | `/v1/lessons` | *multipart* `pages[]` (1 à 6 images) → **202** `{id, status: "uploaded"}`, traitement en arrière-plan |
@@ -1184,19 +1185,19 @@ mobile/
 │   └── features/
 │       ├── start/                   # premier lancement : parent ou enfant
 │       ├── parent/                  # Écrans P1 à P4 : compte, enfants, codes, tableau de bord
-│       ├── link/                    # Écran 0 : code ou QR code
+│       ├── link/                    # Écran 0 : code ou QR code (mobile_scanner)
 │       ├── home/                    # Écran 1
-│       │   ├── home_screen.dart
-│       │   └── lessons_provider.dart
+│       │   ├── child_home_screen.dart
+│       │   └── home_providers.dart  # mission, leçons (rafraîchies pendant une analyse)
 │       ├── capture/                 # Écran 2
 │       │   ├── capture_screen.dart
-│       │   ├── capture_controller.dart
+│       │   ├── capture_controller.dart   # pages gardées jusqu'à `ready`, puis effacées
 │       │   └── image_compressor.dart
 │       ├── analysis/                # Écran 3
-│       │   ├── analysis_screen.dart
-│       │   └── lesson_status_poller.dart
+│       │   ├── analysis_screen.dart      # interrogation toutes les 1,5 s
+│       │   └── step_pacer.dart           # 800 ms minimum par étape
 │       ├── lesson/                  # Écran 4
-│       │   └── lesson_summary_screen.dart
+│       │   └── lesson_screen.dart
 │       ├── session/                 # Écrans 5 et 6
 │       │   ├── session_screen.dart
 │       │   ├── session_controller.dart   # machine à états : question → correction → suivante → reprise → bilan
@@ -1356,7 +1357,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 7 ✅ | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
 | 8 ✅ | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
 | 9 ✅ | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
-| 10 | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone |
+| 10 ✅ | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone (validé en tests et dans un navigateur contre l'API ; essai sur un vrai téléphone à faire) |
 | 11 | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone |
 | 12 | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant |
 | 13 | **Tests avec de vraies familles** | corpus complet de 30 leçons, évaluation humaine, 5 enfants et leurs parents ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Ludifun utilise l'appareil photo pour photographier tes leçons et lire le QR code de ton parent.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ludifun ouvre ta galerie pour ajouter la photo d'une leçon.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

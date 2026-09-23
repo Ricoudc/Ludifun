@@ -4,10 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../core/session.dart';
 import '../core/storage/credentials.dart';
+import '../features/analysis/analysis_screen.dart';
+import '../features/capture/capture_screen.dart';
 import '../features/home/child_home_screen.dart';
+import '../features/lesson/lesson_screen.dart';
 import '../features/link/link_screen.dart';
+import '../features/link/qr_scan_screen.dart';
 import '../features/parent/parent_home_screen.dart';
 import '../features/parent/parent_sign_in_screen.dart';
+import '../features/session/session_screen.dart';
 import '../features/start/splash_screen.dart';
 import '../features/start/start_screen.dart';
 
@@ -18,7 +23,12 @@ abstract final class Routes {
   static const parentRegister = '/parent/inscription';
   static const parentHome = '/parent';
   static const link = '/lier';
+  static const scanQr = '/lier/qr';
   static const childHome = '/enfant';
+  static const capture = '/enfant/photo';
+  static String analysis(String lessonId) => '/enfant/analyse/$lessonId';
+  static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
+  static String session(String sessionId) => '/enfant/seance/$sessionId';
 }
 
 /// Chaque espace n'est accessible qu'avec ses identifiants : le routeur renvoie vers
@@ -26,7 +36,13 @@ abstract final class Routes {
 String? redirect(AsyncValue<Credentials> session, String location) {
   if (session.isLoading && !session.hasValue) return Routes.splash;
   final credentials = session.value ?? const NoCredentials();
-  const signedOut = {Routes.start, Routes.parentSignIn, Routes.parentRegister, Routes.link};
+  const signedOut = {
+    Routes.start,
+    Routes.parentSignIn,
+    Routes.parentRegister,
+    Routes.link,
+    Routes.scanQr,
+  };
   final target = switch (credentials) {
     NoCredentials() => signedOut.contains(location) ? location : Routes.start,
     ParentCredentials() =>
@@ -56,7 +72,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: Routes.parentHome, builder: (_, _) => const ParentHomeScreen()),
       GoRoute(path: Routes.link, builder: (_, _) => const LinkScreen()),
-      GoRoute(path: Routes.childHome, builder: (_, _) => const ChildHomeScreen()),
+      GoRoute(path: Routes.scanQr, builder: (_, _) => const QrScanScreen()),
+      GoRoute(
+        path: Routes.childHome,
+        builder: (_, _) => const ChildHomeScreen(),
+        routes: [
+          GoRoute(path: 'photo', builder: (_, _) => const CaptureScreen()),
+          GoRoute(
+            path: 'analyse/:id',
+            builder: (_, state) => AnalysisScreen(lessonId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'lecon/:id',
+            builder: (_, state) => LessonScreen(lessonId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'seance/:id',
+            builder: (_, state) => SessionScreen(sessionId: state.pathParameters['id']!),
+          ),
+        ],
+      ),
     ],
   );
   ref.onDispose(router.dispose);

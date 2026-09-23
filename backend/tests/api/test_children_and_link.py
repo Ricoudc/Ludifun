@@ -115,6 +115,18 @@ async def test_revoked_device_loses_access(client: AsyncClient) -> None:
     assert again.status_code == 404
 
 
+async def test_device_unlinks_itself(client: AsyncClient) -> None:
+    """« Ce n'est pas moi » : l'appareil rend son jeton ; un parent ne peut pas appeler cette route."""
+    token = (await register(client))["access_token"]
+    emma = await add_child(client, token)
+    device = await link_device(client, token, emma["id"])
+    parent_call = await client.delete("/v1/me/device", headers=auth(token))
+    assert parent_call.status_code == 403
+    assert (await client.delete("/v1/me/device", headers=auth(device["token"]))).status_code == 204
+    assert (await client.get("/v1/me", headers=auth(device["token"]))).status_code == 401
+    assert (await client.get(f"/v1/children/{emma['id']}/devices", headers=auth(token))).json() == []
+
+
 async def test_parent_reads_child_space_with_child_id(client: AsyncClient) -> None:
     token = (await register(client))["access_token"]
     emma = await add_child(client, token)

@@ -9,7 +9,11 @@ import '../support/fake_server.dart';
 /// Critère de fin de l'étape 9 : l'application démarre dans les deux espaces.
 void main() {
   late FakeServer server;
-  setUp(() => server = FakeServer());
+  setUp(
+    () => server = FakeServer()
+      ..on('GET /v1/me/mission', (_) => (200, {'lesson': null}))
+      ..on('GET /v1/lessons', (_) => (200, <Object>[])),
+  );
 
   Future<void> launch(WidgetTester tester, MemoryCredentialStore store) async {
     await tester.pumpWidget(
@@ -43,6 +47,8 @@ void main() {
     expect(store.credentials, isA<NoCredentials>());
 
     await tester.enterText(find.byType(TextField), '482731'); // envoyé dès le 6e chiffre
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Oui, c\'est moi !'));
     await tester.pumpAndSettle();
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
     expect(find.text('🎯 Ta mission du jour'), findsOneWidget);
