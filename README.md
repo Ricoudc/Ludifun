@@ -28,8 +28,9 @@ Plan de la V1 : cahier des charges §18.
 | 6 | API : comptes parent, profils enfants, liaison par code / QR | ✅ |
 | 7 | API : leçons et séances, mission du jour | ✅ |
 | 8 | API : tableau de bord parent | ✅ |
-| 9 | Socle Flutter | ⏭️ prochaine |
-| 10-12 | Application Flutter : espace enfant, espace parent | |
+| 9 | Socle Flutter : premier lancement, espaces parent et enfant | ✅ |
+| 10 | Espace enfant : liaison, accueil, photo, analyse, résumé | ⏭️ prochaine |
+| 11-12 | Application Flutter : séance et bilan, espace parent | |
 | 13-14 | Tests avec de vraies familles, bêta Android | |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
@@ -39,5 +40,9 @@ git (commit `3362b04`).
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0001"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0002"}
+
+cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)
 ```
+
+Voir [`backend/README.md`](backend/README.md) et [`mobile/README.md`](mobile/README.md).

@@ -1155,7 +1155,7 @@ Règles d'architecture :
 | État | **Riverpod** | testable, sans `BuildContext`, adapté au polling et aux séances |
 | Navigation | **go_router** | routes déclaratives, liens profonds plus tard |
 | HTTP | **dio** | intercepteur pour le jeton, délais, envoi multipart avec progression |
-| Modèles | **freezed + json_serializable** | modèles immuables et sérialisation générée |
+| Modèles | classes immuables écrites à la main (`fromJson`) ; **freezed + json_serializable** si leur nombre le justifie | pas d'étape de génération de code tant que les modèles restent peu nombreux |
 | Photos | **image_picker** (V1), **cunning_document_scanner** (V1.1) | photo simple d'abord ; le recadrage automatique ensuite |
 | Compression | **flutter_image_compress** | redimensionnement, JPEG, suppression des métadonnées EXIF |
 | Jeton | **flutter_secure_storage** | stockage chiffré |
@@ -1168,16 +1168,18 @@ mobile/
 ├── lib/
 │   ├── main.dart
 │   ├── app/
-│   │   ├── app.dart                 # MaterialApp.router, thème
-│   │   ├── router.dart              # 7 routes
-│   │   └── theme.dart               # couleurs, typographie adaptée aux enfants
+│   │   ├── app.dart                 # MaterialApp.router, thème, français
+│   │   ├── router.dart              # routes ; redirection selon l'espace (aucun, parent, enfant)
+│   │   ├── theme.dart               # couleurs, typographie adaptée aux enfants
+│   │   └── widgets.dart             # éléments communs
 │   ├── core/
 │   │   ├── config.dart              # API_URL (--dart-define)
-│   │   ├── api/
-│   │   │   ├── api_client.dart
-│   │   │   └── auth_interceptor.dart
-│   │   ├── device/device_registration.dart
-│   │   └── errors.dart              # ApiError → message pour l'enfant
+│   │   ├── session.dart             # identifiants de l'appareil (Riverpod), client API
+│   │   ├── storage/credentials.dart # parent ou enfant, dans flutter_secure_storage
+│   │   └── api/
+│   │       ├── ludifun_api.dart     # routes /v1
+│   │       ├── auth_interceptor.dart # jeton, renouvellement unique sur 401, appareil délié
+│   │       └── api_exception.dart   # erreur API ou réseau → message affichable
 │   ├── models/                      # lesson, knowledge, session, activity, feedback, report
 │   └── features/
 │       ├── start/                   # premier lancement : parent ou enfant
@@ -1353,7 +1355,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 6 ✅ | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
 | 7 ✅ | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
 | 8 ✅ | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
-| 9 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
+| 9 ✅ | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
 | 10 | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone |
 | 11 | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone |
 | 12 | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant |
