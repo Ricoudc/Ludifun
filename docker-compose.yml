@@ -1,0 +1,39 @@
+# Environnement de développement : PostgreSQL + API.
+#   docker compose up -d --build        → API sur http://localhost:8000 (docs : /docs)
+#   docker compose up -d db             → uniquement la base (pour lancer l'API ou les tests en local)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ludifun
+      POSTGRES_PASSWORD: ludifun
+      POSTGRES_DB: ludifun
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ludifun -d ludifun"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      LUDIFUN_ENVIRONMENT: dev
+      LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

@@ -1,0 +1,63 @@
+name: Backend
+
+on:
+  push:
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+  pull_request:
+    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, types et tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ludifun
+          POSTGRES_PASSWORD: ludifun
+          POSTGRES_DB: ludifun_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ludifun"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      LUDIFUN_TEST_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Dépendances (versions figées par uv.lock)
+        run: uv sync --frozen
+      - name: Ruff (lint)
+        run: uv run ruff check .
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy app tests
+      - name: Tests (PostgreSQL réel, migrations incluses)
+        run: uv run pytest -q
+
+  compose:
+    name: docker compose up
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construction et démarrage de la pile
+        run: docker compose up -d --build --wait --wait-timeout 180
+      - name: L'API répond et la base est migrée
+        run: curl --fail --silent http://localhost:8000/health/ready | grep '"status":"ok"'
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: docker compose logs
+      - name: Arrêt
+        if: always()
+        run: docker compose down -v

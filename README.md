@@ -1,70 +1,36 @@
 # Ludifun — coach de révision
 
-L'enfant photographie sa leçon ; l'IA en extrait ce qu'il faut retenir, génère des
-exercices adaptés (QCM, vrai/faux, texte à trous, cartes mémoire, associations,
-questions ouvertes), corrige, puis adapte les révisions suivantes à ses erreurs
-(niveaux de maîtrise 0-5 + répétition espacée).
+L'enfant photographie sa leçon ; l'IA en extrait ce qu'il faut retenir, construit une
+séance de révision adaptée, analyse les erreurs et programme la prochaine révision.
 
 📄 Cahier des charges technique V1 : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
 
-> ⚠️ Le code actuel est un **prototype exploratoire** qui a validé la faisabilité.
-> La V1 est reconstruite étape par étape selon le plan du cahier des charges (§18) ;
-> ce que l'on garde et ce que l'on remplace est détaillé au §19.
-
 ```
-backend/   API FastAPI + moteur pédagogique + intégration Claude
-mobile/    Application Flutter (Android d'abord, iOS ensuite)
-docs/      Cahier des charges V1
+backend/            API FastAPI + PostgreSQL          → voir backend/README.md
+mobile/             Application Flutter (prototype, réécrite à l'étape 7)
+docs/               Cahier des charges V1
+docker-compose.yml  PostgreSQL + API pour le développement
 ```
 
-## Backend
+## Avancement (plan §18 du cahier des charges)
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
-
-# Mode hors-ligne (aucune clé nécessaire, analyse simplifiée par règles)
-uvicorn app.main:app --reload --host 0.0.0.0
-
-# Mode IA réel (Claude lit la photo et génère les exercices)
-export ANTHROPIC_API_KEY=...
-LUDIFUN_LLM_PROVIDER=anthropic uvicorn app.main:app --reload --host 0.0.0.0
-
-pytest   # tests
-```
-
-API interactive : http://localhost:8000/docs
-
-Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
-
-| Variable | Défaut | Rôle |
+| # | Étape | État |
 |---|---|---|
-| `LUDIFUN_LLM_PROVIDER` | `fake` | `anthropic` pour utiliser Claude |
-| `LUDIFUN_LLM_MODEL` | `claude-opus-5` | Modèle Claude |
-| `LUDIFUN_DATABASE_URL` | `sqlite:///./ludifun.db` | ex. `postgresql+psycopg://user:pwd@host/ludifun` (installer `psycopg[binary]`) |
-| `LUDIFUN_QUESTIONS_PER_NOTION` | `4` | Taille de la banque de questions |
+| 1 | Socle : structure backend, PostgreSQL, migrations, intégration continue | ✅ |
+| 2 | Domaine : connaissances et activités | ⏭️ prochaine |
+| 3 | Domaine : séance, notation, mémorisation | |
+| 4 | Pipeline IA | |
+| 5 | Premier test de qualité sur de vraies leçons | |
+| 6 | API v1 | |
+| 7-9 | Application Flutter | |
+| 10-13 | Tests réels, gamification, bêta Android, iOS | |
 
-## Application mobile
+Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
+git (commit `3362b04`).
 
-Le dossier `mobile/` contient le code Dart (`lib/`). Pour générer les projets
-natifs Android/iOS puis lancer l'app :
+## Démarrage rapide
 
 ```bash
-cd mobile
-flutter create --platforms=android,ios --org fr.ludifun .
-flutter pub get
-flutter run --dart-define=API_URL=http://10.0.2.2:8000   # émulateur Android
+docker compose up -d --build
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0001"}
 ```
-
-À ajouter après `flutter create` :
-- **Android** (`android/app/src/main/AndroidManifest.xml`) : permission `CAMERA`, et
-  `android:usesCleartextTraffic="true"` sur `<application>` pour le développement en HTTP local.
-- **iOS** (`ios/Runner/Info.plist`) : `NSCameraUsageDescription` et
-  `NSPhotoLibraryUsageDescription` (« Pour photographier ta leçon »).
-
-## Données et vie privée
-
-Les photos ne sont jamais enregistrées : elles sont lues en mémoire puis seul le
-texte de la leçon est conservé. `DELETE /children/{id}` efface toutes les données
-d'un enfant. Voir la section 8 du cahier des charges.

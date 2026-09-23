@@ -1,33 +1,76 @@
+"""Les tests tournent sur un vrai PostgreSQL (base dédiée `ludifun_test`).
+
+Local : `docker compose up -d db` depuis la racine du dépôt.
+L'URL peut être changée avec LUDIFUN_TEST_DATABASE_URL.
+"""
+
+import asyncio
 import os
+from collections.abc import AsyncIterator
+from pathlib import Path
 
-os.environ["LUDIFUN_DATABASE_URL"] = "sqlite://"
-os.environ["LUDIFUN_LLM_PROVIDER"] = "fake"
+import pytest
+from alembic import command
+from alembic.config import Config
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
+from app.config import Settings
+from app.db.base import Base, create_engine
+from app.main import create_app
 
-from app.db import engine, init_db  # noqa: E402
-from app.main import app  # noqa: E402
+TEST_DATABASE_URL = os.environ.get(
+    "LUDIFUN_TEST_DATABASE_URL", "postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun_test"
+)
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
+def alembic_config() -> Config:
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config.attributes["database_url"] = TEST_DATABASE_URL
+    return config
+
+
+async def run_alembic(*args: str) -> None:
+    """Alembic lance sa propre boucle asyncio : on l'exécute dans un thread."""
+    name, *rest = args
+    await asyncio.to_thread(getattr(command, name), alembic_config(), *rest)
+
+
+@pytest.fixture(scope="session")
+async def engine() -> AsyncIterator[AsyncEngine]:
+    engine = create_engine(TEST_DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.execute(text("DROP SCHEMA public CASCADE"))
+        await conn.execute(text("CREATE SCHEMA public"))
+    await run_alembic("upgrade", "head")
+    yield engine
+    await engine.dispose()
 
 
 @pytest.fixture
-def client():
-    init_db()
-    with TestClient(app) as c:
-        yield c
-    SQLModel.metadata.drop_all(engine)
+async def db(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+        yield session
+    tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
+    async with engine.begin() as conn:
+        await conn.execute(text(f"TRUNCATE {tables} CASCADE"))
+
+
+def make_app(database_url: str = TEST_DATABASE_URL) -> FastAPI:
+    return create_app(Settings(database_url=database_url, environment="test"))
 
 
 @pytest.fixture
-def child(client):
-    r = client.post("/children", json={"display_name": "Emma", "grade": "CM1"})
-    assert r.status_code == 201
-    return r.json()
+async def app(engine: AsyncEngine) -> AsyncIterator[FastAPI]:
+    app = make_app()
+    async with app.router.lifespan_context(app):
+        yield app
 
 
 @pytest.fixture
-def lesson(client, child):
-    r = client.post("/lessons", data={"child_id": child["id"]}, files=[("images", ("page.jpg", b"fake", "image/jpeg"))])
-    assert r.status_code == 201, r.text
-    return r.json()
+async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        yield client

@@ -1,26 +1,17 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Configuration lue depuis les variables d'environnement (préfixe LUDIFUN_)."""
+    """Configuration lue dans l'environnement (préfixe LUDIFUN_) ou un fichier .env."""
 
     model_config = SettingsConfigDict(env_prefix="LUDIFUN_", env_file=".env", extra="ignore")
 
-    database_url: str = "sqlite:///./ludifun.db"
-
-    # "anthropic" : appels réels à Claude (nécessite ANTHROPIC_API_KEY).
-    # "fake" : moteur hors-ligne déterministe, pour le développement et les tests.
-    llm_provider: str = "fake"
-    llm_model: str = "claude-opus-5"
-
-    # Taille maximale d'une photo de leçon, en octets.
-    max_image_bytes: int = 10 * 1024 * 1024
-    max_images_per_lesson: int = 6
-
-    # Nombre de questions générées par notion lors de l'analyse.
-    questions_per_notion: int = 4
+    environment: Literal["dev", "test", "prod"] = "dev"
+    database_url: str = "postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun"
+    log_level: str = "INFO"
 
 
 @lru_cache

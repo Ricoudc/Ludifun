@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.db
+*.sqlite3
 .env
 
 # Flutter
@@ -16,3 +17,5 @@ mobile/.flutter-plugins-dependencies
 .idea/
 .vscode/
 .DS_Store
+.mypy_cache/
+.ruff_cache/

@@ -745,6 +745,8 @@ Format unique : `{"error": {"code": "lesson_unreadable", "message": "…"}}`.
 
 Migrations avec **Alembic**. Identifiants en UUID, dates en `timestamptz`.
 
+> Référence exécutable : `backend/app/db/models.py` et la migration `0001`. Par rapport au SQL ci-dessous, elles ajoutent des index sur les clés étrangères utilisées par les suppressions en cascade (`learners.device_id`, `sessions.lesson_id`, `ai_runs.lesson_id`) et des contrôles supplémentaires (`page_count` 1-6, `difficulty` 1-3, `score` et `result` 0-1, `weight` ]0-1]).
+
 ```sql
 CREATE TABLE devices (
   id            uuid PRIMARY KEY,
@@ -1148,7 +1150,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 
 | # | Étape | Contenu | Terminé quand… |
 |---|---|---|---|
-| 1 | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
+| 1 ✅ | **Socle** | réorganisation `backend/` selon §13, `pyproject`, ruff, mypy, pytest, docker-compose PostgreSQL, Alembic et première migration (§12), intégration continue GitHub Actions | `docker compose up` et `pytest` passent en intégration continue |
 | 2 | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
 | 3 | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
