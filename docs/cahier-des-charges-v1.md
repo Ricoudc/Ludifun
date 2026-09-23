@@ -754,7 +754,9 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 |---|---|---|
 | POST | `/v1/auth/register` | `{email, password, accepted_privacy_policy}` → jetons parent |
 | POST | `/v1/auth/login` · `/v1/auth/refresh` · `/v1/auth/logout` | connexion, renouvellement (avec rotation), déconnexion |
-| POST | `/v1/auth/password-reset` | envoi d'un lien de réinitialisation |
+| POST | `/v1/auth/password-reset` | envoi d'un lien de réinitialisation (réponse identique que l'e-mail existe ou non) |
+| POST | `/v1/auth/password-reset/confirm` | `{token, new_password}` : nouveau mot de passe, déconnexion des autres sessions |
+| GET | `/v1/parent` | compte du parent connecté |
 | DELETE | `/v1/parent` | supprime le compte, la famille et tous les enfants |
 | GET · POST | `/v1/children` | liste · création `{display_name, grade, avatar, parental_consent: true}` |
 | PATCH · DELETE | `/v1/children/{id}` | modification · suppression de l'enfant et de toutes ses données |
@@ -904,9 +906,18 @@ CREATE TABLE link_codes (
   child_id      uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
   code_hash     bytea NOT NULL,                  -- code à 6 chiffres, haché
   qr_token_hash bytea NOT NULL UNIQUE,           -- jeton long contenu dans le QR code
-  expires_at    timestamptz NOT NULL,            -- 10 minutes
-  used_at       timestamptz,
-  attempts      smallint NOT NULL DEFAULT 0
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  expires_at    timestamptz NOT NULL,            -- 10 minutes ; un nouveau code annule le précédent
+  used_at       timestamptz
+);
+
+CREATE TABLE password_reset_tokens (
+  id            uuid PRIMARY KEY,
+  parent_id     uuid NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  token_hash    bytea NOT NULL UNIQUE,
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  expires_at    timestamptz NOT NULL,            -- 1 heure
+  used_at       timestamptz
 );
 
 CREATE TABLE refresh_tokens (
@@ -1237,7 +1248,9 @@ Exception encadrée : pour constituer le corpus de test (§17), les photos sont 
 ### 16.1 Sécurité technique (V1)
 
 - **Parent** : mot de passe haché avec argon2id (12 caractères minimum), jeton d'accès signé de 15 minutes, jeton de renouvellement de 30 jours avec rotation : réutiliser un ancien jeton révoque toute la chaîne. Connexion limitée à 5 essais par minute.
-- **Liaison enfant** : code à 6 chiffres valable 10 minutes, à usage unique, 5 essais au plus par code, essais limités par adresse IP ; le QR code contient un jeton aléatoire de 128 bits, pas le code. Le parent peut délier un appareil à tout moment.
+- **Liaison enfant** : code à 6 chiffres valable 10 minutes, à usage unique, annulé par tout nouveau code ; 10 essais par adresse IP toutes les 10 minutes et un **plafond global** d'échecs (300 par minute) contre une attaque répartie sur de nombreuses adresses. Le QR code contient un jeton aléatoire de 128 bits, pas le code. Le parent peut délier un appareil à tout moment.
+- **E-mails** : tant qu'aucun fournisseur n'est branché, les messages sont journalisés en développement seulement ; en production, aucun lien n'est jamais écrit dans les journaux.
+- Les limites de débit sont gardées en mémoire (une instance d'API) ; elles passeront dans un stockage partagé quand l'API tournera sur plusieurs instances.
 - **Appareil enfant** : jeton aléatoire de 256 bits, stocké haché (SHA-256) côté serveur et dans `flutter_secure_storage` côté téléphone.
 - **Séparation stricte** : un appareil enfant n'accède qu'aux données de son enfant, jamais au tableau de bord ni aux autres profils ; un parent n'accède qu'aux enfants de sa famille. Toute autre ressource renvoie 404. Des tests couvrent chaque route pour les deux rôles.
 - HTTPS obligatoire (reverse proxy), HSTS, pas de CORS (application mobile uniquement).
@@ -1320,7 +1333,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 3 ✅ | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 ✅ | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 🟡 | **Premier test de qualité** | 10 premières leçons réelles, outil `app.tools.evaluate` (✅ prêt), ajustement des prompts (en attente des leçons) | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
-| 6 | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
+| 6 ✅ | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
 | 7 | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
 | 8 | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
 | 9 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |

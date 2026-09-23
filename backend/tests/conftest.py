@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from app.config import Settings
 from app.db.base import Base, create_engine
 from app.main import create_app
+from app.services.email import MemoryEmailSender
 
 TEST_DATABASE_URL = os.environ.get(
     "LUDIFUN_TEST_DATABASE_URL", "postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun_test"
@@ -50,24 +51,34 @@ async def engine() -> AsyncIterator[AsyncEngine]:
     await engine.dispose()
 
 
-@pytest.fixture
-async def db(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
-    async with async_sessionmaker(engine, expire_on_commit=False)() as session:
-        yield session
+async def truncate_all(engine: AsyncEngine) -> None:
     tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
     async with engine.begin() as conn:
         await conn.execute(text(f"TRUNCATE {tables} CASCADE"))
 
 
-def make_app(database_url: str = TEST_DATABASE_URL) -> FastAPI:
-    return create_app(Settings(database_url=database_url, environment="test"))
+@pytest.fixture
+async def db(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
+    async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+        yield session
+    await truncate_all(engine)
+
+
+def make_app(database_url: str = TEST_DATABASE_URL, mailer: MemoryEmailSender | None = None) -> FastAPI:
+    return create_app(Settings(database_url=database_url, environment="test"), email_sender=mailer)
 
 
 @pytest.fixture
-async def app(engine: AsyncEngine) -> AsyncIterator[FastAPI]:
-    app = make_app()
+def mailer() -> MemoryEmailSender:
+    return MemoryEmailSender()
+
+
+@pytest.fixture
+async def app(engine: AsyncEngine, mailer: MemoryEmailSender) -> AsyncIterator[FastAPI]:
+    app = make_app(mailer=mailer)
     async with app.router.lifespan_context(app):
         yield app
+    await truncate_all(engine)
 
 
 @pytest.fixture

@@ -59,34 +59,129 @@ def _fk(target: str, ondelete: str = "CASCADE", nullable: bool = False) -> Mappe
     return mapped_column(Uuid, ForeignKey(target, ondelete=ondelete), nullable=nullable)
 
 
+# --------------------------------------------------------------------------- #
+# Comptes : parent → famille → enfants → appareils (cahier des charges §12)
+# --------------------------------------------------------------------------- #
+
+FAMILY_ROLES = ("owner", "member")
+
+
+class Parent(Base):
+    __tablename__ = "parents"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)  # en minuscules
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)  # argon2id
+    privacy_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Family(Base):
+    """Un parent en V1 ; un second parent pourra rejoindre la famille en V5."""
+
+    __tablename__ = "families"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    created_at: Mapped[datetime] = _created_at()
+
+
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("parents.id", ondelete="CASCADE"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("role", FAMILY_ROLES), name="role"), Index(None, "parent_id"))
+
+
+class Child(Base):
+    __tablename__ = "children"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    family_id: Mapped[uuid.UUID] = _fk("families.id")
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)  # prénom ou pseudo
+    grade: Mapped[str] = mapped_column(Text, nullable=False)
+    avatar: Mapped[str | None] = mapped_column(Text)
+    parental_consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (Index(None, "family_id"),)
+
+
 class Device(Base):
+    """Appareil de l'enfant, lié par code ou QR code."""
+
     __tablename__ = "devices"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
     # SHA-256 du jeton d'appareil : le jeton en clair n'est jamais stocké.
     token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    name: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _created_at()
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "child_id"),)
 
 
-class Learner(Base):
-    """V1 : un apprenant anonyme par appareil. V3 : plusieurs enfants par famille."""
+class LinkCode(Base):
+    """Code à 6 chiffres et jeton de QR code, valables 10 minutes, à usage unique."""
 
-    __tablename__ = "learners"
+    __tablename__ = "link_codes"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    device_id: Mapped[uuid.UUID] = _fk("devices.id")
-    display_name: Mapped[str | None] = mapped_column(Text)
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    code_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    qr_token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
     created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (Index(None, "device_id"),)
+    __table_args__ = (Index(None, "code_hash"), Index(None, "child_id"))
+
+
+class RefreshToken(Base):
+    """Jeton de renouvellement du parent ; rotation à chaque usage (§16.1)."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    replaced_by: Mapped[uuid.UUID | None] = _fk("refresh_tokens.id", ondelete="SET NULL", nullable=True)
+
+    __table_args__ = (Index(None, "parent_id"),)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "parent_id"),)
 
 
 class Lesson(Base):
     __tablename__ = "lessons"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    learner_id: Mapped[uuid.UUID] = _fk("learners.id")
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
     status: Mapped[str] = mapped_column(Text, nullable=False)
     failure_reason: Mapped[str | None] = mapped_column(Text)
     subject: Mapped[str | None] = mapped_column(Text)
@@ -107,7 +202,7 @@ class Lesson(Base):
         CheckConstraint(_in("status", LESSON_STATUSES), name="status"),
         CheckConstraint(_in("failure_reason", FAILURE_REASONS), name="failure_reason"),
         CheckConstraint("page_count BETWEEN 1 AND 6", name="page_count"),
-        Index("ix_lessons_learner_recent", "learner_id", text("created_at DESC")),
+        Index("ix_lessons_child_recent", "child_id", text("created_at DESC")),
     )
 
 
@@ -162,7 +257,7 @@ class RevisionSession(Base):
     __tablename__ = "sessions"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    learner_id: Mapped[uuid.UUID] = _fk("learners.id")
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
     lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
     kind: Mapped[str] = mapped_column(Text, nullable=False)
     parent_session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
@@ -177,7 +272,7 @@ class RevisionSession(Base):
     __table_args__ = (
         CheckConstraint(_in("kind", SESSION_KINDS), name="kind"),
         CheckConstraint(_in("status", SESSION_STATUSES), name="status"),
-        Index("ix_sessions_learner_recent", "learner_id", text("started_at DESC")),
+        Index("ix_sessions_child_recent", "child_id", text("started_at DESC")),
         Index(None, "lesson_id"),
     )
 
@@ -240,8 +335,8 @@ class AttemptEvidence(Base):
 class KnowledgeMastery(Base):
     __tablename__ = "knowledge_mastery"
 
-    learner_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("learners.id", ondelete="CASCADE"), primary_key=True
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), primary_key=True
     )
     knowledge_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
@@ -255,7 +350,7 @@ class KnowledgeMastery(Base):
     __table_args__ = (
         CheckConstraint("score BETWEEN 0 AND 100", name="score"),
         CheckConstraint("box BETWEEN 1 AND 5", name="box"),
-        Index("ix_knowledge_mastery_due", "learner_id", "next_review_at"),
+        Index("ix_knowledge_mastery_due", "child_id", "next_review_at"),
     )
 
 

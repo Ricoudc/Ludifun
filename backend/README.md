@@ -21,6 +21,21 @@ uv run uvicorn app.main:app --reload # http://localhost:8000/docs
 
 Ou toute la pile d'un coup : `docker compose up -d --build` (l'API applique les migrations au démarrage).
 
+## API
+
+Documentation interactive : http://localhost:8000/docs. Parcours type :
+
+```bash
+# Parent : compte, enfant, code de liaison
+curl -s -X POST localhost:8000/v1/auth/register -H 'content-type: application/json' \
+  -d '{"email":"parent@example.fr","password":"un mot de passe solide","accepted_privacy_policy":true}'
+curl -s -X POST localhost:8000/v1/children -H "authorization: Bearer $ACCESS" -H 'content-type: application/json' \
+  -d '{"display_name":"Emma","grade":"CM1","parental_consent":true}'
+curl -s -X POST localhost:8000/v1/children/$CHILD/link-codes -H "authorization: Bearer $ACCESS"
+# Appareil de l'enfant : saisie du code
+curl -s -X POST localhost:8000/v1/link -H 'content-type: application/json' -d '{"code":"482731"}'
+```
+
 ## Analyser une vraie leçon (sans l'application)
 
 ```bash
@@ -67,3 +82,6 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_AI_OCR_MODEL`, `…_ANALYSIS_MODEL`, `…_MATERIAL_MODEL` | `claude-opus-5` |
 | `LUDIFUN_AI_OCR_EFFORT`, `…_ANALYSIS_EFFORT`, `…_MATERIAL_EFFORT` | `low`, `high`, `medium` |
 | `LUDIFUN_MAX_LESSON_CHARS` | `20000` |
+| `LUDIFUN_JWT_SECRET` | secret de développement ; **obligatoire en production** (l'API refuse de démarrer sans) |
+| `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
+| `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |

@@ -15,13 +15,16 @@ from app.db.models import (
     AiRun,
     Attempt,
     AttemptEvidence,
+    Child,
     Device,
+    Family,
+    FamilyMember,
     KnowledgeItem,
     KnowledgeMastery,
     KnowledgeMaterial,
-    Learner,
     Lesson,
     LessonPage,
+    Parent,
     RevisionSession,
     SessionItem,
 )
@@ -48,13 +51,15 @@ async def test_migrations_downgrade_and_upgrade(engine: AsyncEngine) -> None:
 async def create_full_lesson(db: AsyncSession) -> dict[str, uuid.UUID]:
     """Une leçon avec toutes les tables remplies, comme après une vraie séance."""
     now = datetime.now(UTC)
-    device = Device(token_hash=uuid.uuid4().bytes)
-    db.add(device)
+    parent = Parent(email=f"{uuid.uuid4()}@example.fr", password_hash="x", privacy_accepted_at=now)
+    family = Family()
+    db.add_all([parent, family])
     await db.flush()
-    learner = Learner(device_id=device.id)
-    db.add(learner)
+    child = Child(family_id=family.id, display_name="Emma", grade="CM1", parental_consent_at=now)
+    db.add_all([FamilyMember(family_id=family.id, parent_id=parent.id, role="owner"), child])
     await db.flush()
-    lesson = Lesson(learner_id=learner.id, status="ready", page_count=1, subject="history", grade="CM1")
+    db.add(Device(child_id=child.id, token_hash=uuid.uuid4().bytes))
+    lesson = Lesson(child_id=child.id, status="ready", page_count=1, subject="history", grade="CM1")
     db.add(lesson)
     await db.flush()
     knowledge = KnowledgeItem(
@@ -70,7 +75,7 @@ async def create_full_lesson(db: AsyncSession) -> dict[str, uuid.UUID]:
     db.add_all([knowledge, LessonPage(lesson_id=lesson.id, page_index=0, ocr_text="…", quality="good")])
     await db.flush()
     session = RevisionSession(
-        learner_id=learner.id,
+        child_id=child.id,
         lesson_id=lesson.id,
         kind="first",
         status="active",
@@ -115,7 +120,7 @@ async def create_full_lesson(db: AsyncSession) -> dict[str, uuid.UUID]:
                 attempt_id=attempt.id, knowledge_id=knowledge.id, result=Decimal("1"), weight=Decimal("0.6")
             ),
             KnowledgeMastery(
-                learner_id=learner.id,
+                child_id=child.id,
                 knowledge_id=knowledge.id,
                 score=100,
                 box=2,
@@ -125,13 +130,14 @@ async def create_full_lesson(db: AsyncSession) -> dict[str, uuid.UUID]:
         ]
     )
     await db.commit()
-    return {"device": device.id, "lesson": lesson.id, "knowledge": knowledge.id}
+    return {"family": family.id, "parent": parent.id, "lesson": lesson.id, "knowledge": knowledge.id}
 
 
-async def test_deleting_a_device_erases_all_its_data(db: AsyncSession) -> None:
-    """Droit à l'effacement (§16.2) : DELETE /v1/me repose sur ces cascades."""
+async def test_deleting_a_family_erases_all_its_data(db: AsyncSession) -> None:
+    """Droit à l'effacement (§16.2) : la suppression du compte parent repose sur ces cascades."""
     ids = await create_full_lesson(db)
-    await db.delete(await db.get(Device, ids["device"]))
+    await db.delete(await db.get(Family, ids["family"]))
+    await db.delete(await db.get(Parent, ids["parent"]))
     await db.commit()
 
     for model in Base.metadata.sorted_tables:
@@ -169,9 +175,9 @@ async def test_knowledge_item_constraints(db: AsyncSession, field: str, value: o
 
 async def test_lesson_status_and_page_count_are_checked(db: AsyncSession) -> None:
     ids = await create_full_lesson(db)
-    learner_id = (await db.execute(select(Learner.id))).scalar_one()
+    child_id = (await db.execute(select(Child.id))).scalar_one()
     for bad in ({"status": "done"}, {"page_count": 7}, {"failure_reason": "oops", "status": "failed"}):
-        db.add(Lesson(**{"learner_id": learner_id, "status": "uploaded", "page_count": 1, **bad}))
+        db.add(Lesson(**{"child_id": child_id, "status": "uploaded", "page_count": 1, **bad}))
         with pytest.raises(IntegrityError):
             await db.commit()
         await db.rollback()

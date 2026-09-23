@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 _DEFAULT_CODES = {
     400: "bad_request",
     401: "unauthorized",
+    403: "forbidden",
     404: "not_found",
     405: "method_not_allowed",
     409: "conflict",
@@ -28,11 +29,14 @@ _DEFAULT_CODES = {
 class ApiError(Exception):
     """Erreur métier : `raise ApiError(404, "lesson_not_found", "Leçon introuvable.")`."""
 
-    def __init__(self, status_code: int, code: str, message: str) -> None:
+    def __init__(
+        self, status_code: int, code: str, message: str, headers: dict[str, str] | None = None
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.code = code
         self.message = message
+        self.headers = headers
 
 
 def error_body(code: str, message: str, details: Any = None) -> dict[str, Any]:
@@ -44,7 +48,7 @@ def error_body(code: str, message: str, details: Any = None) -> dict[str, Any]:
 
 async def _api_error(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, ApiError)
-    return JSONResponse(error_body(exc.code, exc.message), status_code=exc.status_code)
+    return JSONResponse(error_body(exc.code, exc.message), status_code=exc.status_code, headers=exc.headers)
 
 
 async def _http_error(_: Request, exc: Exception) -> JSONResponse:

@@ -1,9 +1,11 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
+DEV_JWT_SECRET = "dev-uniquement-a-remplacer-en-production-0123456789"
 
 
 class Settings(BaseSettings):
@@ -24,6 +26,20 @@ class Settings(BaseSettings):
     ai_analysis_effort: Effort = "high"
     ai_material_effort: Effort = "medium"
     max_lesson_chars: int = 20000
+
+    # Comptes (§16.1)
+    jwt_secret: SecretStr = SecretStr(DEV_JWT_SECRET)
+    access_token_minutes: int = 15
+    refresh_token_days: int = 30
+    link_code_minutes: int = 10
+    password_reset_minutes: int = 60
+    password_reset_url: str = "ludifun://reinitialiser-mot-de-passe/"
+
+    @model_validator(mode="after")
+    def _secret_in_production(self) -> "Settings":
+        if self.environment == "prod" and self.jwt_secret.get_secret_value() == DEV_JWT_SECRET:
+            raise ValueError("LUDIFUN_JWT_SECRET doit être défini en production")
+        return self
 
 
 @lru_cache
