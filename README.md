@@ -8,12 +8,15 @@ séance de révision adaptée, analyse les erreurs et programme la prochaine ré
 ```
 backend/            API FastAPI + PostgreSQL          → voir backend/README.md
 mobile/             Application Flutter (prototype, réécrite à l'étape 7)
-docs/               Cahier des charges V1
+docs/               Vision produit et cahier des charges V1
 eval/               Évaluation sur de vraies leçons (protocole, exemples, grille)
 docker-compose.yml  PostgreSQL + API pour le développement
 ```
 
-## Avancement (plan §18 du cahier des charges)
+## Avancement
+
+Vision à long terme : [`docs/vision.md`](docs/vision.md) (espaces parent et enfant, bibliothèque d'activités, versions V0 à V6).
+Plan de la V1 : cahier des charges §18.
 
 | # | Étape | État |
 |---|---|---|
@@ -21,10 +24,11 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 2 | Domaine : connaissances et activités | ✅ |
 | 3 | Domaine : séance, notation, mémorisation | ✅ |
 | 4 | Pipeline IA (+ outil `python -m app.tools.analyze`) | ✅ |
-| 5 | Premier test de qualité sur de vraies leçons | 🟡 outillage prêt, en attente des leçons ([`eval/`](eval/README.md)) |
-| 6 | API v1 | |
-| 7-9 | Application Flutter | |
-| 10-13 | Tests réels, gamification, bêta Android, iOS | |
+| 5 | Mesure sur de vraies leçons | 🟡 outillage prêt, en attente des leçons ([`eval/`](eval/README.md)) |
+| 6 | API : comptes parent, profils enfants, liaison par code / QR | ⏭️ prochaine |
+| 7-8 | API : leçons et séances, tableau de bord parent | |
+| 9-12 | Application Flutter : espace enfant, espace parent | |
+| 13-14 | Tests avec de vraies familles, bêta Android | |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).

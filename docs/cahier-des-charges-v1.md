@@ -12,6 +12,7 @@
 | Plateformes V1 | Android (Flutter), iOS ensuite avec le même code |
 | Public | CP → 3e |
 | Statut du document | Référence pour le développement de la V1 |
+| Vision à long terme | [`vision.md`](vision.md) : plateforme de soutien scolaire, espaces parent et enfant, versions V0 à V6 |
 
 ---
 
@@ -19,7 +20,7 @@
 
 1. [Périmètre](#1-périmètre)
 2. [Parcours utilisateur](#2-parcours-utilisateur)
-3. [Les 7 écrans](#3-les-7-écrans)
+3. [Les écrans](#3-les-écrans)
 4. [Architecture générale](#4-architecture-générale)
 5. [Pipeline IA](#5-pipeline-ia)
 6. [Formats JSON échangés avec l'IA](#6-formats-json-échangés-avec-lia)
@@ -50,24 +51,45 @@
 - Correction immédiate avec la bonne réponse, une astuce pour retenir et une explication.
 - Reprise des erreurs en fin de séance.
 - Bilan par notion (maîtrisée / à revoir / non maîtrisée) et programmation de la prochaine révision.
-- Liste des dernières révisions sur l'accueil.
-- Suppression d'une leçon et de toutes les données de l'appareil.
+- Liste des dernières révisions et **mission du jour** sur l'accueil de l'enfant.
+- **Espace parent** : compte parent, un ou plusieurs profils enfants, liaison de l'appareil de l'enfant par **code à 6 chiffres ou QR code**, tableau de bord (séances, temps, réussite par matière, notions à renforcer, progression).
+- Le parent peut aussi photographier une leçon pour son enfant.
+- Suppression d'une leçon, d'un enfant ou du compte parent, avec toutes les données associées.
 
 ### 1.2 Hors V1 (volontairement)
 
-Comptes utilisateurs, profil parent, abonnement, paiement, statistiques complexes,
-classement, réseau social, notifications push, mode oral, XP et badges.
+Voir les versions de [`vision.md`](vision.md) §5 :
 
-Deux choix sont néanmoins faits dès maintenant pour ne pas devoir tout refaire :
+- V2 : coloriage, memory, puzzles, cartes, frises, missions thématiques, XP, badges, niveaux ;
+- V3 : stratégie de séance choisie par l'IA, adaptation en temps réel (« on va essayer autrement »), plan de révision, recommandations ;
+- V4 : oral et professeur IA ;
+- V5 : assistant parent, objectifs, rapports hebdomadaires, notifications, second parent ;
+- abonnement, paiement, classement, réseau social : non prévus pour l'instant.
 
-- la table `learners` existe déjà. En V1, un apprenant anonyme est créé par appareil. En V3, plusieurs enfants par famille s'y brancheront sans migration de données ;
-- les types d'activités `ORDER`, `MEMORY` et `OPEN_QUESTION` sont déclarés dans le registre mais implémentés plus tard.
+Choix faits dès la V1 pour ne pas devoir tout refaire :
+
+- le modèle de données a déjà une **famille** entre le parent et les enfants (un second parent s'y ajoutera en V5) ;
+- les types d'activités `ORDER`, `MEMORY` et `OPEN_QUESTION` sont déclarés dans le registre mais implémentés plus tard ; chaque nouvelle famille d'activités de la bibliothèque (§7) s'ajoute sans toucher au moteur.
 
 ---
 
 ## 2. Parcours utilisateur
 
+Une seule application, deux espaces. Au premier lancement : « Je suis un parent » ou « Je suis un enfant ».
+
+**Parent**
 ```
+[P1 Compte] ──► [P2 Mes enfants] ──+ Ajouter Emma (CM1)──► code 482 731 / QR code
+                      │
+                      └──► [P3 Tableau de bord d'Emma] ──► [P4 Historique et réglages]
+                                     │
+                                     └── 📷 Ajouter une leçon pour Emma ──► (écrans 2 à 4)
+```
+
+**Enfant**
+```
+[0 Connexion : code ou QR] ──► [1 Accueil]  (une seule fois par appareil)
+
 [1 Accueil] ──+ Nouvelle leçon──► [2 Photo] ──Analyser──► [3 Analyse] ──C'est prêt──► [4 Résumé]
      ▲                                                                                   │
      │                                                                      Commencer la révision
@@ -86,12 +108,31 @@ Depuis l'accueil, un clic sur une leçon déjà révisée ouvre l'écran 4 avec 
 
 ---
 
-## 3. Les 7 écrans
+## 3. Les écrans
+
+Espace enfant : écran de connexion (0) et 7 écrans de révision (1 à 7). Espace parent : 4 écrans (P1 à P4).
+
+### Écran 0 — Connexion de l'enfant
+```
+👋 Bonjour !
+Demande le code à ton parent.
+
+[ 4 ] [ 8 ] [ 2 ] [ 7 ] [ 3 ] [ 1 ]
+
+        ou  [ 📷 Scanner le QR code ]
+```
+- `POST /v1/link {code}` → l'appareil reçoit un jeton lié au profil de l'enfant et affiche « C'est toi, Emma ? ».
+- Code faux ou expiré : « Ce code ne marche pas. Demande un nouveau code à ton parent. »
+- Une fois lié, l'appareil ouvre directement l'accueil de l'enfant.
+
 
 ### Écran 1 — Accueil
 ```
-Bonjour 👋
-Qu'est-ce qu'on révise aujourd'hui ?
+👋 Bonjour Emma !
+
+🎯 Ta mission du jour
+📚 Les fractions · ⏱️ 8 min
+        [ COMMENCER ]
 
         [ + NOUVELLE LEÇON ]
 
@@ -100,7 +141,8 @@ Mes dernières révisions
 🇫🇷 La Révolution française       à revoir aujourd'hui 🔄
 🔬 Les états de la matière       maîtrisée ✓
 ```
-- Données : `GET /v1/lessons` (les 20 plus récentes).
+- Données : `GET /v1/me/mission` et `GET /v1/lessons` (les 20 plus récentes).
+- **Mission du jour** : la révision la plus utile maintenant, dans cet ordre : une leçon dont des notions sont dues (§10), puis la dernière leçon pas encore maîtrisée, puis la dernière leçon ajoutée. *COMMENCER* ouvre l'écran 4 de cette leçon. S'il n'y a rien à réviser : « 🎉 Tout est à jour ! Photographie une nouvelle leçon. »
 - Chaque ligne affiche : icône de matière, titre et état de révision (prochaine révision, « à revoir aujourd'hui » ou « maîtrisée »).
 - Une leçon en cours d'analyse s'affiche avec un indicateur. Une leçon en échec s'affiche avec « Réessayer ».
 - Appui long sur une leçon → *Supprimer*.
@@ -199,6 +241,46 @@ Maîtrisé : ✓ 1789  ✓ Louis XVI  ✓ Bastille …
 ```
 - Données : réponse de `POST /v1/sessions/{id}/complete`.
 - *Revoir mes erreurs* (visible seulement s'il y a des notions non maîtrisées ou à revoir) crée une séance courte de type `errors`, qui ne porte que sur ces notions.
+
+### Écran P1 — Compte parent
+- Création (e-mail, mot de passe, acceptation de la politique de confidentialité) ou connexion.
+- Mot de passe oublié par e-mail.
+
+### Écran P2 — Mes enfants
+```
+Mes enfants
+👧 Emma · CM1        📱 1 appareil lié      ›
+👦 Hugo · CE1        🔗 Lier un appareil    ›
+        [ + AJOUTER UN ENFANT ]
+```
+- Ajouter un enfant : prénom ou pseudo, classe, avatar ; **consentement parental** coché à la création.
+- *Lier un appareil* : affiche un code à 6 chiffres et un QR code, valables 10 minutes et utilisables une seule fois.
+
+### Écran P3 — Tableau de bord d'un enfant
+```
+Emma · CM1 · cette semaine
+📚 4 séances   ⏱️ 37 min   🎯 8,5 / 10 en moyenne
+
+Français       🟢 86 %
+Mathématiques  🟠 72 %
+Histoire       🟢 91 %
+
+À renforcer
+🔴 Comparaison des fractions
+🟠 Imparfait
+
+Progression   ▁▃▅▆  (4 dernières semaines)
+Activités     🎮 Quiz 4 · 🃏 Cartes 2 · ✍️ Textes à trous 6
+[ 📷 Ajouter une leçon pour Emma ]
+```
+- Données : `GET /v1/children/{id}/dashboard?weeks=4`.
+- Couleurs : 🟢 ≥ 80 %, 🟠 50 à 79 %, 🔴 < 50 % (mêmes seuils que le bilan, §9.3).
+- Pas de comparaison avec d'autres enfants.
+
+### Écran P4 — Historique et réglages
+- Leçons et séances de l'enfant (date, durée, note, notions travaillées).
+- Appareils liés (nom, dernière utilisation) et *Délier*.
+- Modifier le profil ; *Supprimer l'enfant et toutes ses données* (confirmation) ; supprimer le compte parent.
 
 ---
 
@@ -658,11 +740,36 @@ Apprenant
 
 ## 11. API
 
-Base : `/v1`. Toutes les routes, sauf `POST /v1/devices`, exigent l'en-tête `Authorization: Bearer <jeton d'appareil>`. Documentation OpenAPI générée : `/docs`.
+Base : `/v1`. Documentation OpenAPI générée : `/docs`.
+
+Deux sortes de jetons, envoyés en `Authorization: Bearer …` :
+- **parent** : jeton d'accès de 15 minutes et jeton de renouvellement de 30 jours ; donne accès aux enfants de sa famille ;
+- **appareil enfant** : obtenu en échangeant un code de liaison ; ne donne accès qu'au profil de cet enfant.
+
+Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
+
+**Comptes et liaison (parent)**
 
 | Méthode | Route | Rôle |
 |---|---|---|
-| POST | `/v1/devices` | Enregistre l'appareil au premier lancement → `{device_id, token}` |
+| POST | `/v1/auth/register` | `{email, password, accepted_privacy_policy}` → jetons parent |
+| POST | `/v1/auth/login` · `/v1/auth/refresh` · `/v1/auth/logout` | connexion, renouvellement (avec rotation), déconnexion |
+| POST | `/v1/auth/password-reset` | envoi d'un lien de réinitialisation |
+| DELETE | `/v1/parent` | supprime le compte, la famille et tous les enfants |
+| GET · POST | `/v1/children` | liste · création `{display_name, grade, avatar, parental_consent: true}` |
+| PATCH · DELETE | `/v1/children/{id}` | modification · suppression de l'enfant et de toutes ses données |
+| POST | `/v1/children/{id}/link-codes` | → `{code: "482731", qr: "ludifun://link/<jeton>", expires_at}` |
+| GET · DELETE | `/v1/children/{id}/devices[/{device_id}]` | appareils liés · délier |
+| GET | `/v1/children/{id}/dashboard?weeks=4` | tableau de bord (écran P3) |
+| GET | `/v1/children/{id}/history` | séances et leçons (écran P4) |
+
+**Espace enfant** (jeton d'appareil ; un parent peut aussi appeler ces routes avec `?child_id=`)
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| POST | `/v1/link` | `{code}` ou `{qr_token}` → `{child, token}` (écran 0, sans authentification) |
+| GET | `/v1/me` | profil de l'enfant |
+| GET | `/v1/me/mission` | mission du jour (écran 1) |
 | GET | `/v1/lessons` | Dernières leçons (écran 1) |
 | POST | `/v1/lessons` | *multipart* `pages[]` (1 à 6 images) → **202** `{id, status: "uploaded"}`, traitement en arrière-plan |
 | GET | `/v1/lessons/{id}` | Statut et, si `ready`, leçon et notions (écrans 3 et 4) |
@@ -675,7 +782,6 @@ Base : `/v1`. Toutes les routes, sauf `POST /v1/devices`, exigent l'en-tête `Au
 | POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) |
 | POST | `/v1/sessions/{id}/complete` | Clôture → bilan (écran 7) |
 | POST | `/v1/sessions/{id}/errors-session` | Crée la séance « Revoir mes erreurs » |
-| DELETE | `/v1/me` | Efface toutes les données de l'appareil |
 
 ### 11.1 Exemples
 
@@ -745,27 +851,76 @@ Format unique : `{"error": {"code": "lesson_unreadable", "message": "…"}}`.
 
 Migrations avec **Alembic**. Identifiants en UUID, dates en `timestamptz`.
 
-> Référence exécutable : `backend/app/db/models.py` et la migration `0001`. Par rapport au SQL ci-dessous, elles ajoutent des index sur les clés étrangères utilisées par les suppressions en cascade (`learners.device_id`, `sessions.lesson_id`, `ai_runs.lesson_id`) et des contrôles supplémentaires (`page_count` 1-6, `difficulty` 1-3, `score` et `result` 0-1, `weight` ]0-1]).
+> **Évolution V1 élargie (migration `0002`, étape 6)** : les tables `devices` et `learners` de la migration `0001` sont remplacées par le modèle famille ci-dessous. `learner_id` devient `child_id` dans `lessons`, `sessions` et `knowledge_mastery` ; le reste du schéma ne change pas.
+>
+> Référence exécutable : `backend/app/db/models.py` et les migrations. Par rapport au SQL ci-dessous, elles ajoutent des index sur les clés étrangères utilisées par les suppressions en cascade (`sessions.lesson_id`, `ai_runs.lesson_id`, et en `0002` les clés vers `children` et `families`) et des contrôles supplémentaires (`page_count` 1-6, `difficulty` 1-3, `score` et `result` 0-1, `weight` ]0-1]).
 
 ```sql
-CREATE TABLE devices (
-  id            uuid PRIMARY KEY,
-  token_hash    bytea NOT NULL UNIQUE,          -- SHA-256 du jeton, jamais le jeton en clair
-  created_at    timestamptz NOT NULL DEFAULT now(),
-  last_seen_at  timestamptz
+CREATE TABLE parents (
+  id               uuid PRIMARY KEY,
+  email            text NOT NULL UNIQUE,         -- stocké en minuscules
+  password_hash    text NOT NULL,                -- argon2id
+  privacy_accepted_at timestamptz NOT NULL,
+  email_verified_at   timestamptz,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  last_login_at    timestamptz
 );
 
--- V1 : un apprenant anonyme par appareil. V3 : plusieurs enfants par famille.
-CREATE TABLE learners (
+-- Famille : un parent en V1, un second parent en V5, sans migration des enfants.
+CREATE TABLE families (
+  id          uuid PRIMARY KEY,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE family_members (
+  family_id   uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  parent_id   uuid NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  role        text NOT NULL CHECK (role IN ('owner','member')),
+  PRIMARY KEY (family_id, parent_id)
+);
+
+CREATE TABLE children (
+  id               uuid PRIMARY KEY,
+  family_id        uuid NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  display_name     text NOT NULL,                -- prénom ou pseudo
+  grade            text NOT NULL,                -- CP … 3e
+  avatar           text,
+  parental_consent_at timestamptz NOT NULL,
+  created_at       timestamptz NOT NULL DEFAULT now()
+);
+
+-- Appareils de l'enfant, liés par code ou QR code.
+CREATE TABLE devices (
   id            uuid PRIMARY KEY,
-  device_id     uuid NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
-  display_name  text,                            -- NULL en V1
-  created_at    timestamptz NOT NULL DEFAULT now()
+  child_id      uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  token_hash    bytea NOT NULL UNIQUE,          -- SHA-256 du jeton, jamais le jeton en clair
+  name          text,                            -- « Tablette de la cuisine »
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  last_seen_at  timestamptz,
+  revoked_at    timestamptz
+);
+
+CREATE TABLE link_codes (
+  id            uuid PRIMARY KEY,
+  child_id      uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  code_hash     bytea NOT NULL,                  -- code à 6 chiffres, haché
+  qr_token_hash bytea NOT NULL UNIQUE,           -- jeton long contenu dans le QR code
+  expires_at    timestamptz NOT NULL,            -- 10 minutes
+  used_at       timestamptz,
+  attempts      smallint NOT NULL DEFAULT 0
+);
+
+CREATE TABLE refresh_tokens (
+  id            uuid PRIMARY KEY,
+  parent_id     uuid NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  token_hash    bytea NOT NULL UNIQUE,
+  expires_at    timestamptz NOT NULL,
+  revoked_at    timestamptz,
+  replaced_by   uuid REFERENCES refresh_tokens(id) ON DELETE SET NULL
 );
 
 CREATE TABLE lessons (
   id               uuid PRIMARY KEY,
-  learner_id       uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  child_id         uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
   status           text NOT NULL CHECK (status IN ('uploaded','reading','analyzing','generating','ready','failed')),
   failure_reason   text CHECK (failure_reason IN ('unreadable','not_a_lesson','too_long','ai_error')),
   subject          text,
@@ -780,7 +935,7 @@ CREATE TABLE lessons (
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX lessons_learner_recent ON lessons (learner_id, created_at DESC);
+CREATE INDEX lessons_child_recent ON lessons (child_id, created_at DESC);
 
 CREATE TABLE lesson_pages (
   lesson_id   uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -814,7 +969,7 @@ CREATE TABLE knowledge_material (
 
 CREATE TABLE sessions (
   id                     uuid PRIMARY KEY,
-  learner_id             uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  child_id               uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
   lesson_id              uuid NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
   kind                   text NOT NULL CHECK (kind IN ('first','review','errors')),
   parent_session_id      uuid REFERENCES sessions(id) ON DELETE SET NULL,
@@ -826,7 +981,7 @@ CREATE TABLE sessions (
   started_at             timestamptz NOT NULL DEFAULT now(),
   completed_at           timestamptz
 );
-CREATE INDEX sessions_learner ON sessions (learner_id, started_at DESC);
+CREATE INDEX sessions_child ON sessions (child_id, started_at DESC);
 
 CREATE TABLE session_items (
   id              uuid PRIMARY KEY,
@@ -859,16 +1014,16 @@ CREATE TABLE attempt_evidence (                  -- une ligne par notion couvert
 );
 
 CREATE TABLE knowledge_mastery (
-  learner_id         uuid NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+  child_id           uuid NOT NULL REFERENCES children(id) ON DELETE CASCADE,
   knowledge_id       uuid NOT NULL REFERENCES knowledge_items(id) ON DELETE CASCADE,
   score              smallint NOT NULL CHECK (score BETWEEN 0 AND 100),
   box                smallint NOT NULL CHECK (box BETWEEN 1 AND 5),
   next_review_at     timestamptz NOT NULL,
   last_practiced_at  timestamptz NOT NULL,
   sessions_count     integer NOT NULL DEFAULT 1,
-  PRIMARY KEY (learner_id, knowledge_id)
+  PRIMARY KEY (child_id, knowledge_id)
 );
-CREATE INDEX mastery_due ON knowledge_mastery (learner_id, next_review_at);
+CREATE INDEX mastery_due ON knowledge_mastery (child_id, next_review_at);
 
 CREATE TABLE ai_runs (                           -- coût, latence et qualité de chaque appel IA
   id             uuid PRIMARY KEY,
@@ -997,6 +1152,9 @@ mobile/
 │   │   └── errors.dart              # ApiError → message pour l'enfant
 │   ├── models/                      # lesson, knowledge, session, activity, feedback, report
 │   └── features/
+│       ├── start/                   # premier lancement : parent ou enfant
+│       ├── parent/                  # Écrans P1 à P4 : compte, enfants, codes, tableau de bord
+│       ├── link/                    # Écran 0 : code ou QR code
 │       ├── home/                    # Écran 1
 │       │   ├── home_screen.dart
 │       │   └── lessons_provider.dart
@@ -1078,7 +1236,10 @@ Exception encadrée : pour constituer le corpus de test (§17), les photos sont 
 
 ### 16.1 Sécurité technique (V1)
 
-- Jeton d'appareil aléatoire de 256 bits, stocké haché (SHA-256) côté serveur et dans `flutter_secure_storage` côté téléphone. Chaque requête est limitée aux données de son appareil : l'accès à la ressource d'un autre appareil renvoie 404.
+- **Parent** : mot de passe haché avec argon2id (12 caractères minimum), jeton d'accès signé de 15 minutes, jeton de renouvellement de 30 jours avec rotation : réutiliser un ancien jeton révoque toute la chaîne. Connexion limitée à 5 essais par minute.
+- **Liaison enfant** : code à 6 chiffres valable 10 minutes, à usage unique, 5 essais au plus par code, essais limités par adresse IP ; le QR code contient un jeton aléatoire de 128 bits, pas le code. Le parent peut délier un appareil à tout moment.
+- **Appareil enfant** : jeton aléatoire de 256 bits, stocké haché (SHA-256) côté serveur et dans `flutter_secure_storage` côté téléphone.
+- **Séparation stricte** : un appareil enfant n'accède qu'aux données de son enfant, jamais au tableau de bord ni aux autres profils ; un parent n'accède qu'aux enfants de sa famille. Toute autre ressource renvoie 404. Des tests couvrent chaque route pour les deux rôles.
 - HTTPS obligatoire (reverse proxy), HSTS, pas de CORS (application mobile uniquement).
 - Limites de débit :
   - 20 leçons par jour et par appareil ;
@@ -1091,13 +1252,14 @@ Exception encadrée : pour constituer le corpus de test (§17), les photos sont 
 
 ### 16.2 Données personnelles (enfants)
 
-- **Minimisation** : aucun nom, aucun e-mail, aucune date de naissance en V1. L'apprenant est anonyme.
+- **Minimisation** : pour le parent, un e-mail ; pour l'enfant, un prénom ou pseudo, une classe et un avatar. Ni nom de famille, ni date de naissance, ni e-mail de l'enfant.
+- **Consentement parental** recueilli à la création de chaque profil enfant (horodaté).
 - Pas de photo conservée. La transcription exclut les en-têtes personnels.
-- Effacement : `DELETE /v1/lessons/{id}` et `DELETE /v1/me` suppriment tout, en cascade.
-- Conservation : suppression automatique des données d'un appareil inactif depuis 12 mois.
+- Effacement : `DELETE /v1/lessons/{id}`, `DELETE /v1/children/{id}` et `DELETE /v1/parent` suppriment tout, en cascade ; export des données d'un enfant sur demande.
+- Conservation : suppression automatique d'un compte inactif depuis 12 mois, après un e-mail de prévenance.
 - Fournisseurs d'IA : contrat de sous-traitance (DPA) et absence d'entraînement sur les données transmises. Hébergement de l'API et de la base dans l'UE.
 - Pas de publicité, pas de traceur tiers, pas de classement.
-- **Avant la bêta publique** (hors V1 de test) : politique de confidentialité, registre des traitements, analyse d'impact (AIPD), recueil du consentement parental au premier lancement.
+- **Avant la bêta publique** : politique de confidentialité, registre des traitements, analyse d'impact (AIPD), vérification de l'e-mail du parent.
 
 ---
 
@@ -1158,14 +1320,19 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 3 ✅ | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 ✅ | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
 | 5 🟡 | **Premier test de qualité** | 10 premières leçons réelles, outil `app.tools.evaluate` (✅ prêt), ajustement des prompts (en attente des leçons) | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
-| 6 | **API v1** | appareils et jetons, leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, suppression, limites de débit | parcours complet testé en API avec `FakeProvider` |
-| 7 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, enregistrement de l'appareil | l'application démarre sur émulateur et obtient un jeton |
-| 8 | **Écrans 1 à 4** | accueil, photo et compression, analyse avec polling, résumé | photo réelle → écran 4 sur un téléphone |
-| 9 | **Écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan, « Revoir mes erreurs » | séance complète jouée de bout en bout sur un téléphone |
-| 10 | **Tests avec de vraies leçons** | corpus complet de 30 leçons, évaluation humaine, 5 enfants ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |
-| 11 | **Gamification légère** | XP par séance, série de jours, animations de réussite ; activité ORDER | décidé selon les retours des enfants |
-| 12 | **Bêta Android** | Play Store en test fermé, confidentialité (§16.2), supervision | 20 familles testeuses |
-| 13 | **iOS** | permissions caméra, tests iPhone/iPad, App Store | publication TestFlight |
+| 6 | **API : comptes et liaison** | migration `0002` (familles), inscription et connexion parent, profils enfants, codes et QR de liaison, appareils, jetons, séparation parent / enfant | un parent crée Emma, un appareil se lie par code ; tests de séparation sur chaque route |
+| 7 | **API : leçons et séances** | leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, « Revoir mes erreurs », mission du jour, journal `ai_runs`, limites de débit | parcours enfant complet testé en API avec `FakeProvider` |
+| 8 | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
+| 9 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
+| 10 | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone |
+| 11 | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone |
+| 12 | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant |
+| 13 | **Tests avec de vraies familles** | corpus complet de 30 leçons, évaluation humaine, 5 enfants et leurs parents ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |
+| 14 | **Bêta Android** | Play Store en test fermé, confidentialité (§16.2), supervision | 20 familles testeuses |
+
+Ensuite : V2 (jeux, missions, gamification), V3 (intelligence pédagogique), V4 (professeur IA), V5 (écosystème parent), V6 (iOS), selon [`vision.md`](vision.md) §5.
+
+L'étape 5 (mesure sur de vraies leçons) se déroule **en parallèle** des étapes 6 à 8 : elle ne dépend que des leçons photographiées et d'une clé API. Ses résultats peuvent modifier les prompts, pas l'API.
 
 ---
 
@@ -1175,7 +1342,7 @@ Le dépôt contient déjà un prototype exploratoire (commit initial). Il a vali
 
 | Élément du prototype | Décision |
 |---|---|
-| Profil enfant (prénom + classe) | **Remplacé** par un appareil et un apprenant anonyme (pas de compte en V1) |
+| Profil enfant (prénom + classe) | **Rétabli** dans la V1 élargie, rattaché à une famille et à un compte parent (§12) |
 | OCR et analyse en un seul appel | **Séparés** en étapes ① et ② derrière des interfaces |
 | Notions (importance en 3 niveaux, types en français) | **Remplacées** par la structure normalisée §6.2 (importance 1 à 5, attributs typés, citation source) |
 | Questions générées directement par l'IA | **Remplacées** par le matériel par notion (§6.3) et l'assemblage déterministe (§7) |
