@@ -24,6 +24,11 @@ services:
     environment:
       LUDIFUN_ENVIRONMENT: dev
       LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
+      # IA factice par défaut (aucune clé nécessaire). Pour la vraie IA, dans un fichier .env :
+      #   LUDIFUN_AI_PROVIDER=claude
+      #   ANTHROPIC_API_KEY=sk-ant-...
+      LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-fake}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:

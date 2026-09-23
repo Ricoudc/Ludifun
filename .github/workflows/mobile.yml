@@ -1,6 +1,7 @@
 name: Mobile
 
 on:
+  workflow_dispatch: # bouton « Run workflow » (une fois ce fichier sur la branche principale)
   push:
     paths: ["mobile/**", ".github/workflows/mobile.yml"]
   pull_request:
@@ -56,3 +57,12 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - name: Compilation
         run: flutter build apk --debug
+      # APK de test à télécharger (onglet Actions → cette exécution → « Artifacts ») : voir
+      # docs/tester-sur-telephone.md. L'adresse du serveur se règle dans l'application.
+      - name: APK de test téléchargeable
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludifun-apk-test
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 30
+          if-no-files-found: error

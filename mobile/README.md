@@ -24,6 +24,10 @@ Pour une application déjà remplie, créez d'abord la famille de démonstration
 (`python -m app.tools.demo_family`, voir `backend/README.md`) : espace parent
 `parent.demo@example.fr` / `demo-ludifun-2026`, et un code pour lier le téléphone au profil d'Emma.
 
+Sur un vrai téléphone : l'APK de test est produit par l'intégration continue (onglet *Actions*,
+« ludifun-apk-test ») et l'adresse du serveur se règle sur l'écran de premier lancement (versions
+de test uniquement). Pas à pas : [`docs/tester-sur-telephone.md`](../docs/tester-sur-telephone.md).
+
 Au premier lancement, l'appareil choisit son espace :
 
 - **parent** : connexion ou création du compte (e-mail et mot de passe) ;

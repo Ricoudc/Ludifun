@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
+import '../../core/config.dart';
+import '../../core/session.dart';
+import 'server_settings_sheet.dart';
 
 /// Premier lancement : cet appareil sert l'espace parent ou l'espace enfant.
-class StartScreen extends StatelessWidget {
+class StartScreen extends ConsumerWidget {
   const StartScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
     body: CenteredBody(
       children: [
         const Logo(),
@@ -42,6 +46,18 @@ class StartScreen extends StatelessWidget {
           color: LudiColors.primary,
           onTap: () => context.go(Routes.parentSignIn),
         ),
+        if (serverSettingsEnabled) ...[
+          const SizedBox(height: 24),
+          TextButton.icon(
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => const ServerSettingsSheet(),
+            ),
+            icon: const Icon(Icons.dns_outlined, size: 18),
+            label: Text('Serveur de test : ${ref.watch(apiBaseUrlProvider)}'),
+          ),
+        ],
       ],
     ),
   );

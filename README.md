@@ -49,3 +49,6 @@ cd mobile && flutter run                   # application (émulateur Android : A
 ```
 
 Voir [`backend/README.md`](backend/README.md) et [`mobile/README.md`](mobile/README.md).
+
+**Essayer sur un téléphone Android** (APK de test téléchargeable depuis GitHub, serveur sur votre
+ordinateur) : [`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).

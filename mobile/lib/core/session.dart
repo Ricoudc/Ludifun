@@ -9,7 +9,20 @@ import 'storage/credentials.dart';
 
 final credentialStoreProvider = Provider<CredentialStore>((ref) => SecureCredentialStore());
 
-final apiBaseUrlProvider = Provider<String>((ref) => apiBaseUrl());
+/// Adresse enregistrée sur ce téléphone (versions de test), lue au démarrage par `main`.
+final savedApiUrlProvider = Provider<String?>((ref) => null);
+
+final apiBaseUrlProvider = NotifierProvider<ApiUrlController, String>(ApiUrlController.new);
+
+class ApiUrlController extends Notifier<String> {
+  @override
+  String build() => ref.read(savedApiUrlProvider) ?? apiBaseUrl();
+
+  Future<void> set(String url) async {
+    await saveApiUrl(url);
+    state = url;
+  }
+}
 
 /// Client HTTP brut (sans jeton) : surchargé dans les tests par un faux serveur.
 final bareDioProvider = Provider<Dio>((ref) => buildDio(ref.watch(apiBaseUrlProvider)));
