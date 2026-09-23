@@ -9,6 +9,7 @@ import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/session.dart';
 import '../../models/lesson.dart';
+import '../../models/session.dart';
 import '../../models/subject.dart';
 import '../home/home_providers.dart';
 

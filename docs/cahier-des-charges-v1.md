@@ -1198,10 +1198,10 @@ mobile/
 │       │   └── step_pacer.dart           # 800 ms minimum par étape
 │       ├── lesson/                  # Écran 4
 │       │   └── lesson_screen.dart
-│       ├── session/                 # Écrans 5 et 6
+│       ├── session/                 # Écrans 5 à 7, dans une seule route
 │       │   ├── session_screen.dart
 │       │   ├── session_controller.dart   # machine à états : question → correction → suivante → reprise → bilan
-│       │   ├── feedback_view.dart
+│       │   ├── correction_view.dart
 │       │   └── activities/
 │       │       ├── activity_registry.dart
 │       │       ├── mcq_view.dart
@@ -1211,7 +1211,7 @@ mobile/
 │       │       ├── speed_challenge_view.dart
 │       │       └── flashcard_view.dart
 │       └── report/                  # Écran 7
-│           └── report_screen.dart
+│           └── report_view.dart
 └── test/
     ├── activities/                  # tests de widgets par type d'activité
     └── session_controller_test.dart
@@ -1358,7 +1358,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 8 ✅ | **API : tableau de bord parent** | séances et temps, réussite par matière, notions à renforcer, progression par semaine, historique | tableau de bord calculé sur un parcours simulé de plusieurs semaines |
 | 9 ✅ | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, premier lancement (parent ou enfant), stockage sécurisé des jetons | l'application démarre sur émulateur dans les deux espaces |
 | 10 ✅ | **Espace enfant : écrans 0 à 4** | liaison par code / QR, accueil et mission du jour, photo et compression, analyse avec polling, résumé | code saisi → photo réelle → écran 4 sur un téléphone (validé en tests et dans un navigateur contre l'API ; essai sur un vrai téléphone à faire) |
-| 11 | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone |
+| 11 ✅ | **Espace enfant : écrans 5 à 7** | contrôleur de séance, 6 widgets d'activités, correction, reprise, bilan | séance complète jouée de bout en bout sur un téléphone (validé en tests et dans un navigateur contre l'API ; essai sur un vrai téléphone à faire) |
 | 12 | **Espace parent : écrans P1 à P4** | compte, enfants, code et QR, tableau de bord, historique, suppression | un parent suit une semaine de révisions de son enfant |
 | 13 | **Tests avec de vraies familles** | corpus complet de 30 leçons, évaluation humaine, 5 enfants et leurs parents ; comparaison des fournisseurs d'OCR | critères de passage §17.3 atteints |
 | 14 | **Bêta Android** | Play Store en test fermé, confidentialité (§16.2), supervision | 20 familles testeuses |

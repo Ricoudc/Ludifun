@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../models/account.dart';
 import '../../models/lesson.dart';
+import '../../models/session.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
 
@@ -146,6 +147,44 @@ class LudifunApi {
   /// Lève [ApiException] `nothing_to_review` si tout est à jour.
   Future<RevisionSession> startSession(String lessonId) => _call(() async {
     final r = await _dio.post<Json>('/v1/lessons/$lessonId/sessions', data: <String, Object>{});
+    return RevisionSession.fromJson(r.data!);
+  });
+
+  Future<RevisionSession> session(String id) => _call(() async {
+    final r = await _dio.get<Json>('/v1/sessions/$id');
+    return RevisionSession.fromJson(r.data!);
+  });
+
+  /// Écran 6. `{"skipped": true}` : activité inconnue de cette version, non notée.
+  Future<Correction> answer(
+    String sessionId,
+    String itemId,
+    Map<String, Object?> response, {
+    int? durationMs,
+  }) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/sessions/$sessionId/attempts',
+      data: {'item_id': itemId, 'response': response, 'duration_ms': ?durationMs},
+    );
+    return Correction.fromJson(r.data!);
+  });
+
+  /// Reprise des erreurs, après la dernière activité principale (liste vide s'il n'y en a pas).
+  Future<List<SessionItem>> replay(String sessionId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/sessions/$sessionId/replay');
+    return [
+      for (final item in r.data!['items'] as List<dynamic>) SessionItem.fromJson(item as Json),
+    ];
+  });
+
+  Future<Report> complete(String sessionId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/sessions/$sessionId/complete');
+    return Report.fromJson(r.data!);
+  });
+
+  /// « Revoir mes erreurs » : nouvelle séance courte sur les notions ratées.
+  Future<RevisionSession> errorsSession(String sessionId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/sessions/$sessionId/errors-session');
     return RevisionSession.fromJson(r.data!);
   });
 }

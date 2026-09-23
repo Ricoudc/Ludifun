@@ -29,6 +29,11 @@ Espace enfant : mission du jour et dernières leçons, photo (1 à 6 pages, comp
 téléphone : 2000 px, JPEG 80, sans métadonnées EXIF), suivi de l'analyse, résumé de la leçon.
 Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont effacées.
 
+Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,
+association, défi rapide chronométré, carte mémoire) viennent d'un registre de widgets ; un type
+inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan et
+« Revoir mes erreurs ». Une séance interrompue reprend à la première activité sans réponse.
+
 Les identifiants restent sur l'appareil, chiffrés par le système. Le jeton d'accès du
 parent (15 minutes) est renouvelé automatiquement ; si l'appareil de l'enfant est délié,
 l'application revient au premier lancement.
@@ -38,5 +43,5 @@ l'application revient au premier lancement.
 | `lib/app/` | application, thème, routeur (redirection selon l'espace) |
 | `lib/core/` | configuration, client API et intercepteur de jetons, session, stockage sécurisé |
 | `lib/models/` | formats de l'API |
-| `lib/features/` | écrans : premier lancement, espace parent, liaison, accueil, photo, analyse, leçon |
+| `lib/features/` | écrans : premier lancement, espace parent, liaison, accueil, photo, analyse, leçon, séance, bilan |
 | `test/` | faux serveur, tests du client et des jetons, tests de widgets des deux espaces |

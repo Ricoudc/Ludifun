@@ -40,3 +40,13 @@ String reviewLabel(LessonSummary lesson, DateTime now) {
 abstract final class DateUtils {
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 }
+
+/// « jeudi 25 septembre » (bilan, écran 7).
+String longDate(DateTime moment) {
+  final day = moment.toLocal();
+  return '${_weekdays[day.weekday - 1]} ${day.day == 1 ? '1er' : day.day} ${_months[day.month - 1]}';
+}
+
+/// « 8 » ou « 8,5 » : notes sur 10 à la française.
+String score(double value) =>
+    value == value.roundToDouble() ? '${value.round()}' : value.toString().replaceAll('.', ',');

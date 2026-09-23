@@ -165,28 +165,3 @@ class Mission {
   final String? reason;
   final int? estimatedMinutes;
 }
-
-/// Séance composée pour l'écran 4 (le jeu lui-même arrive à l'étape 11).
-class RevisionSession {
-  const RevisionSession({
-    required this.id,
-    required this.objective,
-    required this.estimatedMinutes,
-    required this.express,
-    required this.activities,
-  });
-
-  factory RevisionSession.fromJson(Json json) => RevisionSession(
-    id: json['id'] as String,
-    objective: json['objective'] as String,
-    estimatedMinutes: json['estimated_duration_min'] as int,
-    express: json['express'] as bool? ?? false,
-    activities: (json['items'] as List<dynamic>).length,
-  );
-
-  final String id;
-  final String objective;
-  final int estimatedMinutes;
-  final bool express;
-  final int activities;
-}

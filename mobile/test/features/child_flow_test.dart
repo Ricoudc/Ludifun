@@ -10,6 +10,7 @@ import 'package:ludifun/features/capture/capture_controller.dart';
 import 'package:ludifun/features/home/home_providers.dart';
 
 import '../support/fake_server.dart';
+import '../support/fake_session.dart';
 import '../support/fakes.dart';
 
 const child = ChildCredentials(deviceToken: 'ldf_d_x', childId: 'c1', displayName: 'Emma');
@@ -81,7 +82,7 @@ const session = {
   'objective': 'Connaître les grandes dates de la Révolution',
   'estimated_duration_min': 8,
   'express': false,
-  'items': [<String, Object>{}, <String, Object>{}],
+  'items': <Object>[],
   'score_on_10': null,
 };
 
@@ -238,9 +239,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('🏛️ HISTOIRE · CM2'), findsOneWidget);
 
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
     await tester.tap(find.text('Commencer la révision'));
     await tester.pumpAndSettle();
-    expect(find.text('Ta séance est prête ! Les jeux arrivent très bientôt.'), findsOneWidget);
+    expect(find.text('Question 1 / 1'), findsOneWidget);
   });
 
   testWidgets('« Ce n\'est pas moi » : l\'appareil rend son jeton', (tester) async {
