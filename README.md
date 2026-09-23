@@ -9,6 +9,7 @@ séance de révision adaptée, analyse les erreurs et programme la prochaine ré
 backend/            API FastAPI + PostgreSQL          → voir backend/README.md
 mobile/             Application Flutter (prototype, réécrite à l'étape 7)
 docs/               Cahier des charges V1
+eval/               Évaluation sur de vraies leçons (protocole, exemples, grille)
 docker-compose.yml  PostgreSQL + API pour le développement
 ```
 
@@ -20,7 +21,7 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 2 | Domaine : connaissances et activités | ✅ |
 | 3 | Domaine : séance, notation, mémorisation | ✅ |
 | 4 | Pipeline IA (+ outil `python -m app.tools.analyze`) | ✅ |
-| 5 | Premier test de qualité sur de vraies leçons | ⏭️ prochaine |
+| 5 | Premier test de qualité sur de vraies leçons | 🟡 outillage prêt, en attente des leçons ([`eval/`](eval/README.md)) |
 | 6 | API v1 | |
 | 7-9 | Application Flutter | |
 | 10-13 | Tests réels, gamification, bêta Android, iOS | |

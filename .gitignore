@@ -19,3 +19,7 @@ mobile/.flutter-plugins-dependencies
 .DS_Store
 .mypy_cache/
 .ruff_cache/
+
+# Évaluation : les photos réelles et les résultats restent hors du dépôt (données d’enfants)
+eval/lessons/
+eval/results/

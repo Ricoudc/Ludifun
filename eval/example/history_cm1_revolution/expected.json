@@ -1,0 +1,29 @@
+{
+  "subject": "history",
+  "grade": "CM1",
+  "support": "manuel",
+  "essential": [
+    {
+      "label": "1789"
+    },
+    {
+      "label": "Louis XVI"
+    },
+    {
+      "label": "États généraux",
+      "aliases": [
+        "réunion des États généraux"
+      ]
+    },
+    {
+      "label": "Prise de la Bastille"
+    },
+    {
+      "label": "Déclaration des droits de l'homme et du citoyen",
+      "aliases": [
+        "Déclaration des droits de l'homme"
+      ]
+    }
+  ],
+  "notes": "Exemple construit à partir d'une leçon de référence."
+}

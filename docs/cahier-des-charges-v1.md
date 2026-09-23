@@ -1117,7 +1117,7 @@ C'est la mesure du succès de la V1.
 
 Pour chaque leçon, un enseignant ou un parent annote `expected.json` : les notions indispensables, l'importance attendue et le niveau.
 
-### 17.2 Mesures automatiques (`eval/run_eval.py`)
+### 17.2 Mesures automatiques (`python -m app.tools.evaluate`, protocole dans `eval/README.md`)
 
 | Mesure | Seuil V1 |
 |---|---|
@@ -1157,7 +1157,7 @@ Ordre exact de réalisation. Chaque étape se termine par du code qui tourne, de
 | 2 ✅ | **Domaine : connaissances et activités** | schémas `knowledge`, validateurs §6.4, registre et 6 types d'activités (`build` et `grade`), 3 leçons de référence en JSON | chaque activité est construite et corrigée par des tests unitaires |
 | 3 ✅ | **Domaine : séance** | composeur §8, durée §8.2, notation §9, mémorisation §10 | une séance complète est simulée en test : réussites, erreurs, reprise, bilan, prochaine révision |
 | 4 ✅ | **Pipeline IA** | ports, `VisionLLMOcr`, analyse, enrichissement, validation, relance ciblée, `ai_runs`, CLI `app.tools.analyze` | `python -m app.tools.analyze photo.jpg` affiche la leçon normalisée et une séance composée |
-| 5 | **Premier test de qualité** | 10 premières leçons réelles, `eval/run_eval.py`, ajustement des prompts | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
+| 5 🟡 | **Premier test de qualité** | 10 premières leçons réelles, outil `app.tools.evaluate` (✅ prêt), ajustement des prompts (en attente des leçons) | les seuils §17.2 sont approchés ; rapport `eval/report.md` |
 | 6 | **API v1** | appareils et jetons, leçons asynchrones avec statuts, séances, tentatives, reprise, bilan, suppression, limites de débit | parcours complet testé en API avec `FakeProvider` |
 | 7 | **Socle Flutter** | projet, go_router, Riverpod, dio, thème, enregistrement de l'appareil | l'application démarre sur émulateur et obtient un jeton |
 | 8 | **Écrans 1 à 4** | accueil, photo et compression, analyse avec polling, résumé | photo réelle → écran 4 sur un téléphone |

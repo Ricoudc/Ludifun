@@ -1,0 +1,20 @@
+{
+  "subject": "math",
+  "grade": "CM2",
+  "support": "cahier (manuscrit)",
+  "essential": [
+    {
+      "label": "Fraction"
+    },
+    {
+      "label": "Numérateur"
+    },
+    {
+      "label": "Dénominateur"
+    },
+    {
+      "label": "Comparer des fractions de même dénominateur"
+    }
+  ],
+  "notes": "Exemple construit à partir d'une leçon de référence."
+}

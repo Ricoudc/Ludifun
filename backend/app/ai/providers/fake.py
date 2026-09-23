@@ -74,6 +74,12 @@ class FakeProvider:
         self, script: LessonScript | None = None, overrides: dict[Stage, Override] | None = None
     ) -> None:
         self.script = script or LessonScript.from_file(DEMO_LESSON)
+        # Sans leçon imposée, l'analyse d'un texte rejoue la leçon de référence correspondante.
+        self.library = (
+            [self.script]
+            if script
+            else [LessonScript.from_file(path) for path in sorted(REFERENCE_LESSONS.glob("*.json"))]
+        )
         self.overrides = overrides or {}
         self.calls: list[tuple[Stage, str]] = []
 
@@ -109,6 +115,9 @@ class FakeProvider:
                 for i in range(images)
             ]
             return OcrResult(pages=pages, language="fr", warnings=[])
+        script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
-            return analysis_output(self.script.analysis)
-        return material_output(self.script.material, requested_ids(input))
+            if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »
+                return analysis_output({"is_lesson": False, "lesson": None, "knowledge": [], "warnings": []})
+            return analysis_output(script.analysis)
+        return material_output((script or self.script).material, requested_ids(input))
