@@ -1,5 +1,6 @@
 """Ollama (IA locale) : API native, contexte fixé, gratuit ; « Tester » de l'espace parent."""
 
+import asyncio
 import json
 from collections.abc import Callable
 from typing import Any
@@ -8,7 +9,7 @@ import httpx
 import pytest
 from pydantic import BaseModel
 
-from app.ai.check import check
+from app.ai.check import check, probe_llm
 from app.ai.factory import AiChoice, build_llm
 from app.ai.ports import AIError, AIInvalidOutput, PageImage, Prompt, Stage
 from app.ai.pricing import run_cost
@@ -141,3 +142,64 @@ async def test_check_api_keys() -> None:
         "claude-opus-5"
     ]
     assert (await check(AiChoice("fake"), Settings())).ok
+
+
+async def test_check_vision_and_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    tags = httpx.Response(200, json={"models": [{"name": "llama3:8b"}, {"name": "qwen2.5vl:7b"}]})
+
+    def ollama_server(capabilities: list[str] | None) -> httpx.AsyncClient:
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/api/tags":
+                return tags
+            assert json.loads(request.content)["model"] in ("llama3:8b", "qwen2.5vl:7b")
+            return httpx.Response(200, json={} if capabilities is None else {"capabilities": capabilities})
+
+        return httpx.AsyncClient(transport=httpx.MockTransport(handler))
+
+    blind = await check(AiChoice("ollama", "llama3:8b"), Settings(), ollama_server(["completion"]))
+    assert not blind.ok and "ne sait pas lire les images" in blind.message
+
+    calls: list[AiChoice] = []
+
+    async def works(choice: AiChoice) -> None:
+        calls.append(choice)
+
+    seeing = await check(AiChoice("ollama"), Settings(), ollama_server(["completion", "vision"]), works)
+    assert seeing.ok and "Demande d'essai réussie" in seeing.message and calls == [AiChoice("ollama")]
+    old_ollama = await check(AiChoice("ollama"), Settings(), ollama_server(None), works)
+    assert old_ollama.ok  # version sans « capabilities » : on ne bloque pas
+
+    async def broken(choice: AiChoice) -> None:
+        raise AIError("modèle Ollama absent")
+
+    failed = await check(AiChoice("ollama"), Settings(), ollama_server(["vision"]), broken)
+    assert not failed.ok and "la demande d'essai a échoué : modèle Ollama absent" in failed.message
+
+    async def slow(choice: AiChoice) -> None:
+        await asyncio.sleep(1)
+
+    monkeypatch.setattr("app.ai.check.PROBE_TIMEOUT_S", 0.01)
+    late = await check(AiChoice("ollama"), Settings(), ollama_server(["vision"]), slow)
+    assert not late.ok and "n'a pas abouti" in late.message
+
+    # Service injoignable : pas de demande d'essai.
+    calls.clear()
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refused")
+
+    down = await check(
+        AiChoice("ollama"), Settings(), httpx.AsyncClient(transport=httpx.MockTransport(refuse)), works
+    )
+    assert not down.ok and calls == []
+
+
+async def test_probe_uses_the_main_model() -> None:
+    sent: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": '{"ok": true}'}, "done_reason": "stop"})
+
+    await probe_llm(ollama(handler))
+    assert sent[0]["model"] == "qwen2.5vl:7b" and sent[0]["format"]["title"] == "ProbeOut"

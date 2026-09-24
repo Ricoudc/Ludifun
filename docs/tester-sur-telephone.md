@@ -116,8 +116,10 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 2. Téléchargez un modèle qui sait lire les images : `ollama pull qwen2.5vl:7b` (environ 6 Go ;
    plus léger : `gemma3:4b`). Sous Windows, `Demarrer-Ludifun.bat` le propose.
 3. Le serveur utilise Ollama par défaut. Dans l'application, **espace parent → Mon compte →
-   Intelligence artificielle** : « Ollama (sur ce PC) » est proposé en premier ; « Tester la
-   connexion » liste les modèles installés, puis « Enregistrer ».
+   Intelligence artificielle** : « Ollama (sur ce PC) » est proposé en premier et **vérifié
+   aussitôt** : Ollama répond, le modèle est installé et sait lire les images, et une petite
+   demande d'essai aboutit. Touchez un des modèles installés pour le choisir, puis « Enregistrer »
+   (si l'IA ne fonctionne pas, l'application prévient avant d'enregistrer).
 
 Sans carte graphique, l'analyse d'une leçon peut prendre plusieurs minutes. Le même écran
 permet de choisir une IA en ligne (Claude, ChatGPT, Gemini, Mistral, Groq, Grok, Azure OpenAI

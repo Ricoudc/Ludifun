@@ -7,8 +7,9 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app import clock
-from app.ai.check import check
+from app.ai.check import check, probe_llm
 from app.ai.factory import AiChoice, AiConfigError
+from app.ai.ports import AIError
 from app.ai.presets import PRESETS
 from app.api.deps import AppSettings, CurrentParent, DbSession, get_ai_resolver, rate_limit
 from app.api.errors import ApiError
@@ -192,11 +193,25 @@ async def delete_ai_settings(parent: CurrentParent, db: DbSession) -> Response:
 
 @router.post("/parent/ai/test")
 async def test_ai_settings(
-    body: AiSettingsIn, request: Request, parent: CurrentParent, db: DbSession, settings: AppSettings
+    body: AiSettingsIn,
+    request: Request,
+    parent: CurrentParent,
+    db: DbSession,
+    settings: AppSettings,
+    resolver: Resolver,
 ) -> CheckOut:
-    """« Tester » : le service répond-il, la clé est-elle acceptée ? Liste aussi les modèles."""
+    """Vérifier l'IA : le service répond, la clé est acceptée, le modèle est là (et lit les images
+    avec Ollama), puis une petite demande d'essai. Liste aussi les modèles."""
     rate_limit(request, f"ai-test:{parent.parent_id}", limit=30, window_s=3600)
     family_id = await _family(db, parent)
     choice, _ = await _choice(db, family_id, body, settings)
-    result = await check(choice, settings, getattr(request.app.state, "ai_check_client", None))
+
+    async def probe(tested: AiChoice) -> None:
+        try:
+            _, llm = resolver.for_choice(tested)
+        except AiConfigError as exc:
+            raise AIError(str(exc)) from exc
+        await probe_llm(llm)
+
+    result = await check(choice, settings, getattr(request.app.state, "ai_check_client", None), probe)
     return CheckOut(ok=result.ok, message=result.message, models=result.models)

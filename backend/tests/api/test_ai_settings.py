@@ -6,12 +6,13 @@ from typing import Any
 import httpx
 from fastapi import FastAPI
 from httpx import AsyncClient
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.factory import AiChoice
 from app.ai.ocr.vision_llm import VisionLLMOcr
-from app.ai.ports import LLMProvider, OcrProvider
+from app.ai.ports import AIError, LLMProvider, LLMResult, OcrProvider, PageImage, Prompt, Stage, Usage
 from app.ai.providers.fake import FakeProvider
 from app.config import Settings
 from app.db.models import AiRun, FamilyAiSettings
@@ -144,17 +145,51 @@ async def test_free_urls_are_refused_in_production(app: FastAPI, client: AsyncCl
     assert Settings().custom_ai_url_allowed is True
 
 
-async def test_connection_test(app: FastAPI, client: AsyncClient) -> None:
+class ProbeStub:
+    """Répond à la demande d'essai, ou échoue comme un modèle en panne."""
+
+    name = "ollama"
+
+    def __init__(self, fails: bool) -> None:
+        self.fails = fails
+
+    def model_for(self, stage: Stage) -> str:
+        return "qwen2.5vl:7b"
+
+    async def structured[T: BaseModel](
+        self, *, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...] = ()
+    ) -> LLMResult[T]:
+        if self.fails:
+            raise AIError("Ollama 500 : out of memory")
+        return LLMResult(schema.model_validate({"ok": True}), Usage("ollama", "ollama/x", 1, 1, 1))
+
+
+async def test_connection_test_checks_service_model_and_a_real_answer(
+    app: FastAPI, client: AsyncClient
+) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        assert str(request.url) == "http://localhost:11434/api/tags"
-        return httpx.Response(200, json={"models": [{"name": "qwen2.5vl:7b"}]})
+        if request.url.path == "/api/tags":
+            return httpx.Response(200, json={"models": [{"name": "qwen2.5vl:7b"}]})
+        return httpx.Response(200, json={"capabilities": ["completion", "vision"]})
 
     app.state.ai_check_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    stub = ProbeStub(fails=False)
+    app.state.ai_resolver.builder = lambda settings, choice: (VisionLLMOcr(stub), stub)
     parent = (await family_with_device(client))["parent"]
+
     r = await client.post("/v1/parent/ai/test", json={"provider": "ollama"}, headers=auth(parent))
     assert r.status_code == 200, r.text
-    assert r.json() == {
-        "ok": True,
-        "message": "Ollama répond, « qwen2.5vl:7b » est installé.",
-        "models": ["qwen2.5vl:7b"],
-    }
+    body = r.json()
+    assert body["ok"] and body["models"] == ["qwen2.5vl:7b"]
+    assert body["message"].startswith(
+        "Ollama répond, « qwen2.5vl:7b » est installé. Demande d'essai réussie en"
+    )
+
+    stub.fails = True
+    app.state.ai_resolver.forget()
+    failed = (
+        await client.post("/v1/parent/ai/test", json={"provider": "ollama"}, headers=auth(parent))
+    ).json()
+    assert (
+        not failed["ok"] and "la demande d'essai a échoué : Ollama 500 : out of memory" in failed["message"]
+    )

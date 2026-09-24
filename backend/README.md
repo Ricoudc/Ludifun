@@ -107,7 +107,9 @@ ouvrent les liens des e-mails). HTML statique, sans script, dans `app/web/`. Dé
 Windows, `Changer-IA-Ludifun.bat` écrit ces réglages dans `.env`.
 
 **Chaque famille peut choisir la sienne** dans l'espace parent (« Intelligence artificielle » :
-`GET`, `PUT`, `DELETE /v1/parent/ai`, `POST /v1/parent/ai/test`). Les leçons et les réponses
+`GET`, `PUT`, `DELETE /v1/parent/ai`, `POST /v1/parent/ai/test`). La vérification, lancée dès
+qu'une IA est choisie : service joignable et clé acceptée (liste des modèles), modèle installé
+et capable de lire les images (Ollama), puis une petite demande d'essai (`app/ai/check.py`). Les leçons et les réponses
 rédigées de ses enfants passent alors par cette IA ; sans choix, par celle du serveur. La clé
 est chiffrée en base (`LUDIFUN_SECRETS_KEY`, sinon dérivée de `LUDIFUN_JWT_SECRET`) et n'est
 jamais renvoyée. Ollama et les services compatibles font appeler une adresse choisie par le

@@ -51,7 +51,8 @@ compétences par leçon (niveau 0 à 5 de chaque compétence et notion, et ce qu
 historique des séances, appareils liés, export des données d'un enfant (fichier JSON, par la
 feuille de partage du téléphone), suppression d'un enfant ou du compte, « Donner mon avis » (note
 et message, menu *Mon compte*), « Intelligence artificielle » (IA de la famille : Ollama conseillé,
-ou une IA en ligne avec sa clé ; test de connexion et choix du modèle), bandeau « Confirmez votre adresse » avec renvoi du lien, lien
+ou une IA en ligne avec sa clé ; vérifiée dès qu'on la choisit, choix du modèle, avertissement
+avant d'enregistrer une IA qui ne répond pas), bandeau « Confirmez votre adresse » avec renvoi du lien, lien
 `ludifun://app/parent/verifier-email?jeton=…`, politique de confidentialité ouverte dans le
 navigateur (inscription et menu *Mon compte*). Le parent peut aussi photographier une leçon pour son enfant.
 
