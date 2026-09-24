@@ -18,9 +18,11 @@ from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity, Grade
 from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.registry import ActivityRegistry
-from app.domain.composer import Block, NothingToReview, PlannedItem, SessionComposer, SessionPlan
+from app.domain.composer import BLOCK_SIZE, Block, NothingToReview, PlannedItem, SessionComposer, SessionPlan
 from app.domain.errors import with_speed
 from app.domain.help import HelpStep, next_help, result_with_help
+from app.domain.mastery import Mastery
+from app.domain.planning import Focus
 from app.domain.scoring import (
     Evidence,
     KnowledgeStatus,
@@ -30,7 +32,7 @@ from app.domain.scoring import (
     status,
 )
 from app.domain.scoring import summarize_session as summarize
-from app.domain.understanding import cognitive_level
+from app.domain.understanding import MasteryLevel, cognitive_level, notion_level
 from app.services.answer_evaluation import AnswerEvaluator
 from app.services.lesson_store import LessonUnits, load_masteries, load_units, save_masteries
 
@@ -138,12 +140,51 @@ async def _new_session(
 # --------------------------------------------------------------------------- #
 
 
+@dataclass(frozen=True)
+class SessionOptions:
+    """Réglages venus des objectifs du parent (étape 16)."""
+
+    core_size: int = BLOCK_SIZE  # selon le temps de révision par jour
+    focus: Focus | None = None  # étape du plan avant un contrôle
+
+
+def compose_with(
+    composer: SessionComposer,
+    lesson: LessonUnits,
+    masteries: dict[str, Mastery],
+    now: datetime,
+    seed: int,
+    options: SessionOptions,
+) -> SessionPlan:
+    """« Revoir tes erreurs » : les notions pas encore maîtrisées seulement ; « mini-contrôle » :
+    toute la leçon, même ce qui est su. Peut lever NothingToReview."""
+    units = lesson.units
+    if options.focus is Focus.ERRORS:
+        weak = [
+            u
+            for u in units
+            if MasteryLevel.DISCOVERED
+            <= notion_level(masteries.get(u.id), lesson.required[u.id]).level
+            <= MasteryLevel.LEARNING
+        ]
+        units = weak or units
+    return composer.compose(
+        units,
+        masteries,
+        now,
+        seed,
+        core_size=options.core_size,
+        include_known=options.focus is Focus.MOCK_TEST,
+    )
+
+
 async def start_session(
     session: AsyncSession,
     child_id: uuid.UUID,
     lesson_row: db.Lesson,
     registry: ActivityRegistry,
     now: datetime,
+    options: SessionOptions | None = None,
 ) -> db.RevisionSession:
     """Séance adaptée à la maîtrise actuelle ; reprend une séance en cours de moins de 24 h."""
     if lesson_row.status != "ready":
@@ -164,7 +205,7 @@ async def start_session(
     lesson = await load_units(session, lesson_row)
     masteries = await load_masteries(session, child_id, lesson)
     seed = new_seed()
-    plan = SessionComposer(registry).compose(lesson.units, masteries, now, seed)  # peut lever NothingToReview
+    plan = compose_with(SessionComposer(registry), lesson, masteries, now, seed, options or SessionOptions())
     return await _new_session(session, child_id, lesson, plan, seed, now)
 
 
@@ -437,26 +478,43 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
 @dataclass(frozen=True)
 class Mission:
     lesson: db.Lesson
-    reason: Literal["due", "not_mastered", "latest"]
+    reason: Literal["exam", "due", "not_mastered", "latest"]
     estimated_minutes: int
+    focus: Focus | None = None
 
 
 async def mission_of_the_day(
-    session: AsyncSession, child_id: uuid.UUID, registry: ActivityRegistry, now: datetime
+    session: AsyncSession,
+    child_id: uuid.UUID,
+    registry: ActivityRegistry,
+    now: datetime,
+    options: SessionOptions | None = None,
+    priority_subject: str | None = None,
+    planned: tuple[db.Lesson, Focus] | None = None,
 ) -> Mission | None:
-    """La révision la plus utile maintenant : notions dues, puis leçon pas encore maîtrisée,
-    puis dernière leçon ajoutée ; une leçon sans rien à réviser n'est jamais proposée."""
+    """La révision la plus utile maintenant : l'étape du jour d'un plan avant un contrôle, puis
+    notions dues, puis leçon pas encore maîtrisée, puis dernière leçon ajoutée ; à chaque fois,
+    la matière choisie par le parent d'abord. Une leçon sans rien à réviser n'est jamais proposée."""
     composer = SessionComposer(registry)
+    options = options or SessionOptions()
 
-    async def estimate(lesson_row: db.Lesson) -> int | None:
+    async def estimate(lesson_row: db.Lesson, focus: Focus | None = None) -> int | None:
         lesson = await load_units(session, lesson_row)
+        masteries = await load_masteries(session, child_id, lesson)
+        chosen = SessionOptions(options.core_size, focus)
         try:
-            plan = composer.compose(
-                lesson.units, await load_masteries(session, child_id, lesson), now, seed=0
-            )
+            plan = compose_with(composer, lesson, masteries, now, 0, chosen)
         except NothingToReview:
             return None
         return plan.estimated_minutes
+
+    def first_priority(lessons: list[db.Lesson]) -> list[db.Lesson]:
+        return sorted(lessons, key=lambda lesson: lesson.subject != priority_subject)
+
+    if planned is not None:
+        lesson_row, focus = planned
+        if (minutes := await estimate(lesson_row, focus)) is not None:
+            return Mission(lesson_row, "exam", minutes, focus)
 
     due = await session.execute(
         select(db.KnowledgeItem.lesson_id, func.min(db.KnowledgeMastery.next_review_at).label("due"))
@@ -465,13 +523,9 @@ async def mission_of_the_day(
         .group_by(db.KnowledgeItem.lesson_id)
         .order_by("due")
     )
-    for lesson_id, _ in due:
-        lesson_row = await session.get(db.Lesson, lesson_id)
-        if (
-            lesson_row is not None
-            and lesson_row.status == "ready"
-            and (minutes := await estimate(lesson_row))
-        ):
+    due_lessons = [row for lesson_id, _ in due if (row := await session.get(db.Lesson, lesson_id))]
+    for lesson_row in first_priority(due_lessons):
+        if lesson_row.status == "ready" and (minutes := await estimate(lesson_row)):
             return Mission(lesson_row, "due", minutes)
 
     recent = await session.scalars(
@@ -480,7 +534,7 @@ async def mission_of_the_day(
         .order_by(db.Lesson.created_at.desc())
         .limit(20)
     )
-    for lesson_row in recent:
+    for lesson_row in first_priority(list(recent)):
         practised = await session.scalar(
             select(func.count())
             .select_from(db.KnowledgeMastery)

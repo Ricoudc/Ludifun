@@ -6,7 +6,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
-from app.domain.knowledge import Grade
+from app.domain.knowledge import Grade, Subject
 from app.security.passwords import MAX_LENGTH, MIN_LENGTH
 
 Password = Annotated[str, Field(min_length=MIN_LENGTH, max_length=MAX_LENGTH)]
@@ -72,10 +72,15 @@ class ChildIn(_In):
     parental_consent: Literal[True] = Field(description="Consentement parental (§16.2), doit valoir true.")
 
 
+DailyMinutes = Literal[5, 10, 15, 20, 30]
+
+
 class ChildPatch(_In):
     display_name: DisplayName | None = None
     grade: Grade | None = None
     avatar: Avatar | None = None
+    daily_minutes: DailyMinutes | None = Field(None, description="Temps de révision par jour ; null : libre.")
+    priority_subject: Subject | None = Field(None, description="Matière à privilégier ; null : aucune.")
 
 
 class ChildPublic(BaseModel):
@@ -92,6 +97,8 @@ class ChildPublic(BaseModel):
 class ChildOut(ChildPublic):
     created_at: datetime
     devices: int = Field(description="Appareils liés actifs.")
+    daily_minutes: int | None = None
+    priority_subject: str | None = None
 
 
 class LinkCodeOut(BaseModel):

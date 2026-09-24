@@ -32,9 +32,9 @@ ont été mises à jour depuis.
 | §26, §83 | Oral, « Enseigne-moi » | 🔮 V4 | |
 | §27-§28 | « Je n'ai pas compris » (5 niveaux), langage adapté à l'âge | ✅ étape 14 : indice, rappel, exemple, étapes, réponse | `domain/help.py`, `features/session/help_sheet.dart` |
 | §29 | Mode devoirs | 🔮 V3 | |
-| §31 | Durée de séance choisie par le parent | 🟡 durée estimée affichée ; pas de durée cible | étape 16 |
+| §31 | Durée de séance choisie par le parent | ✅ étape 16 : 5 à 30 min par jour, séances ajustées | `domain/planning.py` |
 | §32 | Fatigue / désengagement | ⏳ | étape 17 |
-| §33 | Plan de révision avant un contrôle | ⏳ | étape 16 |
+| §33 | Plan de révision avant un contrôle | ✅ étape 16 : plan jour par jour, recalculé chaque jour | `domain/planning.py`, `services/goals.py` |
 | §34 | Répétition espacée | ✅ J+1, 2, 4, 7, 14 selon la réussite ; mission du jour | `domain/mastery.py` |
 | §35-§36 | Adaptation en temps réel, difficulté dynamique | 🟡 reprise des erreurs en fin de séance ; difficulté 1-3 selon la maîtrise | étape 17 |
 | §37-§39, §85 | Missions, XP, badges, séries | 🟡 « mission du jour » ; pas d'XP ni de badges | V2 |
@@ -42,7 +42,7 @@ ont été mises à jour depuis.
 | §43, §62-§63 | Historique des erreurs, types d'erreurs | ✅ étape 14 : type d'erreur par notion ratée, erreurs récurrentes au tableau de bord | `domain/errors.py` |
 | §44-§45 | Historique, graphiques | ✅ historique paginé, progression par semaine | `services/dashboard.py` |
 | §46 | Assistant parent | 🔮 V5 | |
-| §47 | Objectifs parent | ⏳ | étape 16 |
+| §47 | Objectifs parent | ✅ étape 16 : temps quotidien, matière prioritaire, contrôles | `features/parent/goals_screen.dart` |
 | §48 | Notifications | 🔮 V5 | |
 | §59-§61, §68 | IA en étapes, fournisseur interchangeable, contrats JSON stricts, contrôle qualité | ✅ lecture → analyse → matériel par notion, schémas Pydantic, validateurs, relance ciblée, `ai_runs` | `ai/`, `services/lesson_pipeline.py` |
 | §69-§70 | Sécurité, RGPD (effacement, export, consentement, minimisation) | ✅ côté code ; reste l'hébergement et les documents (README) | V1 §16 |
@@ -85,12 +85,12 @@ backend/app/
 │   ├── errors.py               # types d'erreurs, erreurs récurrentes (§43, §63) (étape 14 ✅)
 │   ├── remediation.py          # NOUVEAU : adaptation en temps réel (§35)
 │   ├── engagement.py           # NOUVEAU : signaux de fatigue (§32)
-│   ├── planning.py             # NOUVEAU : séance à durée cible, plan avant contrôle (§31, §33)
+│   ├── planning.py             # séance à durée cible, plan avant contrôle (§31, §33) (étape 16 ✅)
 │   ├── composer.py             # + durée cible, niveaux de compréhension
 │   └── activities/             # + open_question.py (étape 14 ✅), order.py, memory.py
 ├── ai/prompts/                 # analysis.v2 (compétences, ✅), material.v2 (aides, erreurs types, ✅),
 │                               # ocr.v2 (passages incertains, ✅), evaluation.v1 (réponses ouvertes, ✅)
-├── services/                   # goals.py, revision_plans.py (NOUVEAUX)
+├── services/                   # goals.py (étape 16 ✅)
 └── api/v1/                     # goals.py, help (dans sessions.py), review (dans lessons.py)
 
 mobile/lib/
@@ -101,7 +101,7 @@ mobile/lib/
 ├── session/activities/         # + open_question_view, order_view, memory_view
 ├── analysis/review_form.dart         # « Peux-tu vérifier ? » (étape 15 ✅)
 ├── capture/text_import_screen.dart   # coller une leçon (étape 15 ✅)
-└── parent/goals_screen.dart          # temps quotidien, date de contrôle, plan
+└── parent/goals_screen.dart          # temps quotidien, contrôles, plan (étape 16 ✅)
 ```
 
 ---
@@ -180,30 +180,29 @@ Pas de coordonnées dans la photo : les modèles les donnent mal, et le **contex
 recopiés) suffit à l'enfant pour retrouver le passage sur son cahier. Les passages disparaissent
 une fois la leçon analysée.
 
-### 4.4 Prévu (étapes 16 et 17)
+### 4.4 Migration `0006` (étape 16, faite)
 
 ```sql
--- Étape 16 — objectifs et plans de révision (CDC §31, §33, §47).
-CREATE TABLE goals (
-    id              UUID PRIMARY KEY,
-    child_id        UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
-    kind            TEXT NOT NULL CHECK (kind IN ('daily_time','exam','subject_priority')),
-    minutes_per_day SMALLINT CHECK (minutes_per_day IN (5,10,15,20,30)),
-    subject         TEXT,
-    lesson_ids      UUID[] NOT NULL DEFAULT '{}',
-    due_date        DATE,                       -- date du contrôle
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    archived_at     TIMESTAMPTZ
+ALTER TABLE children ADD COLUMN daily_minutes SMALLINT CHECK (daily_minutes IN (5,10,15,20,30));
+ALTER TABLE children ADD COLUMN priority_subject TEXT;
+CREATE TABLE exams (
+    id          UUID PRIMARY KEY,
+    child_id    UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+    title       TEXT NOT NULL,
+    exam_date   DATE NOT NULL,
+    lesson_ids  UUID[] NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE TABLE revision_plan_days (
-    goal_id   UUID REFERENCES goals(id) ON DELETE CASCADE,
-    day       DATE NOT NULL,
-    focus     TEXT NOT NULL CHECK (focus IN ('diagnostic','targeted','memorize','errors','mock_test')),
-    minutes   SMALLINT NOT NULL,
-    done_session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
-    PRIMARY KEY (goal_id, day)
-);
+```
 
+Plus simple que la table générique `goals` envisagée : le temps quotidien et la matière sont des
+réglages de l'enfant, et le **plan n'est pas stocké** — il se recalcule chaque jour à partir de la
+date du contrôle et des jours où l'enfant a révisé (§5.9), ce qui redistribue d'office une
+journée manquée.
+
+### 4.5 Prévu (étape 17)
+
+```sql
 -- Étape 17 — difficulté intrinsèque d'une notion (CDC §36, §56).
 ALTER TABLE knowledge_items ADD COLUMN difficulty SMALLINT NOT NULL DEFAULT 2
     CHECK (difficulty BETWEEN 1 AND 3);
@@ -321,9 +320,10 @@ Signaux sur les 5 dernières réponses : 3 réponses fausses en moins de 1,5 s ;
 
 ### 5.8 Séance à durée cible (CDC §31)
 
-`POST /lessons/{id}/sessions {"target_minutes": 10}` (ou objectif quotidien du parent) : le
-composeur remplit la durée à partir des durées estimées par type d'activité ; si l'enfant va
-plus vite que prévu, `POST /sessions/{id}/extend` ajoute des activités de niveau supérieur.
+Étape 16 : le temps quotidien choisi par le parent règle l'approfondissement (l'échauffement et le
+défi rapide restent) : 5 min → révision express, 10 min → 3 activités (comme avant), 15 → 6,
+20 → 9, 30 → 12, par tours de 3 notions, une notion déjà vue revenant dans un autre format.
+Plus tard (étape 17) : si l'enfant va plus vite que prévu, `POST /sessions/{id}/extend`.
 
 ### 5.9 Plan avant un contrôle (CDC §33)
 
@@ -335,8 +335,17 @@ Déterministe, à partir de la date du contrôle et des leçons choisies :
 | 2-4 | diagnostic → ciblé + erreurs → mini-évaluation |
 | 1 | séance complète + mini-évaluation |
 
-Chaque jour est recalculé après la séance : une notion ratée au diagnostic passe devant ; une
-journée manquée est redistribuée.
+Réalisé (étape 16) : cinq étapes — diagnostic, exercices ciblés, mémorisation, revoir ses
+erreurs, mini-contrôle — la première aujourd'hui, les suivantes les jours d'après, le
+mini-contrôle **la veille**. S'il reste moins de jours que d'étapes, on retire d'abord la
+mémorisation, puis les erreurs, puis le ciblé, puis le diagnostic. Chaque jour où l'enfant a
+terminé une séance sur les leçons du contrôle compte pour une étape : le plan est recalculé
+chaque jour et une journée manquée est redistribuée.
+
+La mission du jour suit l'étape du jour (leçon du contrôle la moins bien maîtrisée) tant qu'elle
+n'est pas faite ; « revoir tes erreurs » ne prend que les notions pas encore maîtrisées ;
+« mini-contrôle » prend toute la leçon, même ce qui est su. La matière choisie par le parent
+passe en premier dans la mission ordinaire.
 
 ---
 
@@ -439,9 +448,9 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | POST | `/v1/lessons/{id}/sessions` `{target_minutes?}` | séance à durée cible |
 | GET | `/v1/children/{id}/skills` | ✅ étape 13 : compétences et notions de chaque leçon, niveau 0-5, couleur et explication |
 | GET | `/v1/children/{id}/dashboard` | ✅ étape 14 : `error_types` et `recurring_errors` ajoutés (pas de route séparée) |
-| GET · POST · DELETE | `/v1/children/{id}/goals[/{goal_id}]` | temps quotidien, contrôle, matière prioritaire |
-| GET | `/v1/children/{id}/goals/{goal_id}/plan` | plan de révision jour par jour |
-| GET | `/v1/me/plan` | l'enfant : séance du jour selon le plan (remplace la mission quand un contrôle approche) |
+| PATCH | `/v1/children/{id}` `{daily_minutes, priority_subject}` | ✅ étape 16 : temps quotidien, matière prioritaire (`null` : libre, aucune) |
+| GET · POST · DELETE | `/v1/children/{id}/exams[/{exam_id}]` | ✅ étape 16 : contrôles à venir, chacun avec son `plan` jour par jour |
+| GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
 
 Réponse enrichie de `POST /v1/sessions/{id}/attempts` : `error_type`, `inserted_items`,
 `engagement_hint`. Toutes les nouvelles routes suivent la séparation parent/enfant (V1 §16.1)
@@ -454,8 +463,8 @@ et ont leurs tests de séparation.
 | CDC §77 | Existant | À faire |
 |---|---|---|
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
-| 5 Dashboard parent | ✅ ; compétences par leçon et « à renforcer » expliqué (étape 13) ; erreurs fréquentes (étape 14) | objectifs (étape 16) |
-| 6 Dashboard enfant | ✅ mission du jour | plan du contrôle, durée du jour (étape 16) ; XP et série en V2 |
+| 5 Dashboard parent | ✅ ; compétences (étape 13) ; erreurs fréquentes (étape 14) ; objectifs et contrôles (étape 16) | — |
+| 6 Dashboard enfant | ✅ mission du jour, étape du plan avant un contrôle (étape 16) | XP et série en V2 |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ ; « J'ai le texte de la leçon » (étape 15) | PDF (V1.5) |
 | 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et étoiles (étape 13) ; « Peux-tu vérifier ? » (étape 15) | — |
 | 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) | remédiation (étape 17) |
@@ -474,7 +483,7 @@ documentation, intégration continue verte.
 | 13 ✅ | **Compétences et niveaux de compréhension** | migration 0003 (compétences, niveaux), analyse v2, maîtrise par niveau et par compétence, niveau affiché 0-5, statuts expliqués, écrans leçon, bilan et tableau de bord | une leçon réelle donne des compétences reliées aux notions ; 5 QCM réussis ne suffisent plus à « maîtrisé » (test) |
 | 14 ✅ | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
 | 15 ✅ | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
-| 16 | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
+| 16 ✅ | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
 | 17 | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
 | 18 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1 | critères de passage atteints |
 | 19 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé | 20 familles testeuses |

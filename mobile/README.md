@@ -42,6 +42,7 @@ le fait confirmer ou corriger avant l'analyse.
 Espace parent (écrans P1 à P4) : connexion, mot de passe oublié (le lien de l'e-mail
 `ludifun://app/parent/nouveau-mot-de-passe?jeton=…` ouvre l'application), profils des enfants avec
 consentement parental, code à 6 chiffres et QR code de liaison, tableau de bord de la semaine,
+objectifs (temps par jour, matière à privilégier, contrôles à venir et leur plan de révision),
 compétences par leçon (niveau 0 à 5 de chaque compétence et notion, et ce qui manque encore),
 historique des séances, appareils liés, export des données d'un enfant (fichier JSON, par la
 feuille de partage du téléphone), suppression d'un enfant ou du compte. Le parent peut aussi

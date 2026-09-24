@@ -2,6 +2,7 @@
 
 import uuid
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, File, Request, Response, UploadFile, status
 from sqlalchemy import select
@@ -18,6 +19,7 @@ from app.api.v1.schemas_learning import (
     LessonPatch,
     LessonSummaryOut,
     LessonTextIn,
+    MissionExam,
     MissionLesson,
     MissionOut,
     ReviewIn,
@@ -27,7 +29,8 @@ from app.api.v1.schemas_learning import (
 from app.db.models import Child, Lesson, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
-from app.services import ai_budget, learning
+from app.domain.planning import core_size
+from app.services import ai_budget, goals, learning
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 
@@ -330,10 +333,38 @@ async def retry_lesson(
 
 
 @router.get("/me/mission", tags=["enfant"])
-async def mission(child: ChildInScope, db: DbSession, registry: Registry) -> MissionOut:
-    """Écran 1 : « 🎯 Ta mission du jour »."""
-    found = await learning.mission_of_the_day(db, child.id, registry, clock.now())
+async def mission(
+    child: ChildInScope, db: DbSession, registry: Registry, settings: AppSettings
+) -> MissionOut:
+    """Écran 1 : « 🎯 Ta mission du jour », qui suit le plan d'un contrôle proche s'il y en a un."""
+    now, tz = clock.now(), ZoneInfo(settings.family_timezone)
+    plan = await goals.today_plan(db, child.id, now, tz)
+    found = await learning.mission_of_the_day(
+        db,
+        child.id,
+        registry,
+        now,
+        options=learning.SessionOptions(core_size(child.daily_minutes)),
+        priority_subject=child.priority_subject,
+        planned=(plan.lesson, plan.step.focus) if plan else None,
+    )
     if found is None:
-        return MissionOut(lesson=None)
+        return MissionOut(lesson=None, daily_minutes=child.daily_minutes)
     lesson = MissionLesson(id=found.lesson.id, title=found.lesson.title, subject=found.lesson.subject)
-    return MissionOut(lesson=lesson, reason=found.reason, estimated_minutes=found.estimated_minutes)
+    exam = (
+        MissionExam(
+            title=plan.exam.title,
+            exam_date=plan.exam.exam_date,
+            focus=plan.step.focus.value,
+            focus_label=plan.step.label,
+        )
+        if plan and found.reason == "exam"
+        else None
+    )
+    return MissionOut(
+        lesson=lesson,
+        reason=found.reason,
+        estimated_minutes=found.estimated_minutes,
+        exam=exam,
+        daily_minutes=child.daily_minutes,
+    )

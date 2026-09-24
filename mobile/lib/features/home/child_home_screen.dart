@@ -95,6 +95,22 @@ class _MissionCard extends ConsumerWidget {
                 style: TextStyle(color: Colors.white, fontSize: 18),
               )
             else ...[
+              if (mission.examTitle != null && mission.examDate != null) ...[
+                Text(
+                  '📅 ${mission.examTitle} ${dayLabel(mission.examDate!, ref.watch(nowProvider)())}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (mission.focusLabel != null)
+                  Text(
+                    mission.focusLabel!,
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                const SizedBox(height: 8),
+              ],
               Text(
                 '${Subjects.emoji(mission.subject)} ${mission.title ?? 'Ta leçon'}'
                 '${mission.estimatedMinutes == null ? '' : ' · ⏱️ ${mission.estimatedMinutes} min'}',

@@ -170,6 +170,8 @@ async def test_nothing_to_review_when_everything_is_mastered(
         "lesson": None,
         "reason": None,
         "estimated_minutes": None,
+        "exam": None,
+        "daily_minutes": None,
     }
     assert (await client.get("/v1/lessons", headers=auth(token))).json()[0]["mastered"]
 

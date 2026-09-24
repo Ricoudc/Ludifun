@@ -36,8 +36,8 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 13 | Compétences et niveaux de compréhension | ✅ |
 | 14 | Aide « Je n'ai pas compris », questions ouvertes, types d'erreurs | ✅ |
 | 15 | Import de texte et lecture vérifiée | ✅ |
-| 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | ⏭️ prochaine |
-| 17 | Adaptation en temps réel et engagement | |
+| 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | ✅ |
+| 17 | Adaptation en temps réel et engagement | ⏭️ prochaine |
 | 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | |
 | 19 | Bêta Android (Play Store, test fermé) | |
 
@@ -58,7 +58,7 @@ git (commit `3362b04`).
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0005"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0006"}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)

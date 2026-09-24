@@ -531,6 +531,109 @@ void main() {
     );
   });
 
+  testWidgets('objectifs : temps par jour, matière, contrôle et son plan', (tester) async {
+    final patches = <Object?>[];
+    var exams = <Map<String, Object?>>[
+      {
+        'id': 'e1',
+        'title': 'Contrôle d\'histoire',
+        'exam_date': '2026-09-26',
+        'lesson_ids': ['l1'],
+        'plan': [
+          {
+            'day': '2026-09-23',
+            'focus': 'diagnostic',
+            'label': 'Où en es-tu ? Un tour de toute la leçon',
+            'done': true,
+          },
+          {
+            'day': '2026-09-25',
+            'focus': 'mock_test',
+            'label': 'Mini-contrôle : comme le jour J',
+            'done': false,
+          },
+        ],
+      },
+    ];
+    server
+      ..on('GET /v1/children/c1/exams', (_) => (200, exams))
+      ..on('PATCH /v1/children/c1', (r) {
+        patches.add(r.data);
+        emmaChild = {...emmaChild, ...(r.data as Map<String, dynamic>)};
+        return (200, emmaChild);
+      })
+      ..on('DELETE /v1/children/c1/exams/e1', (_) {
+        exams = [];
+        return (204, null);
+      })
+      ..on(
+        'GET /v1/lessons',
+        (r) => (
+          200,
+          [
+            {
+              'id': 'l1',
+              'status': 'ready',
+              'failure_reason': null,
+              'subject': 'history',
+              'title': 'La Révolution française',
+              'created_at': '2026-09-20T15:00:00Z',
+            },
+          ],
+        ),
+      );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Objectifs et contrôles'));
+
+    expect(find.text('Objectifs · Emma'), findsOneWidget);
+    await tap(tester, find.text('15 min'));
+    await tap(tester, find.text('📐 Mathématiques'));
+    expect(patches, [
+      {'daily_minutes': 15, 'priority_subject': null},
+      {'daily_minutes': 15, 'priority_subject': 'math'},
+    ]);
+    await tap(tester, find.text('Libre'));
+    expect(patches.last, {'daily_minutes': null, 'priority_subject': 'math'});
+
+    // Le plan : l'étape faite est cochée.
+    expect(find.text('📅 Contrôle d\'histoire · samedi 26 septembre'), findsOneWidget);
+    expect(
+      find.text('✅ Mercredi 23 septembre : Où en es-tu ? Un tour de toute la leçon'),
+      findsOneWidget,
+    );
+    expect(find.text('▫️ Vendredi 25 septembre : Mini-contrôle : comme le jour J'), findsOneWidget);
+    await tap(tester, find.byTooltip('Supprimer ce contrôle'));
+    expect(find.textContaining('Ajoutez un contrôle'), findsOneWidget);
+
+    // Nouveau contrôle : titre, leçon, date.
+    server.on('POST /v1/children/c1/exams', (r) {
+      final body = r.data as Map<String, dynamic>;
+      expect(body['title'], 'Contrôle de la Révolution');
+      expect(body['lesson_ids'], ['l1']);
+      exams = [
+        {
+          'id': 'e2',
+          'title': body['title'],
+          'exam_date': body['exam_date'],
+          'lesson_ids': ['l1'],
+          'plan': <Object>[],
+        },
+      ];
+      return (201, exams.single);
+    });
+    await tap(tester, find.text('Ajouter un contrôle'));
+    final save = find.widgetWithText(FilledButton, 'Enregistrer le contrôle');
+    await tester.enterText(find.byType(TextField), 'Contrôle de la Révolution');
+    await tap(tester, find.text('🏛️ La Révolution française'));
+    expect(tester.widget<FilledButton>(save).onPressed, isNull); // pas encore de date
+    await tap(tester, find.text('Choisir la date'));
+    await tap(tester, find.text('OK'));
+    await tap(tester, save);
+    expect(server.routes, contains('POST /v1/children/c1/exams'));
+    expect(find.textContaining('📅 Contrôle de la Révolution'), findsOneWidget);
+  });
+
   testWidgets('exporter les données d\'Emma (RGPD)', (tester) async {
     final export = {
       'format': 'ludifun-export-v1',

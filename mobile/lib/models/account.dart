@@ -34,6 +34,8 @@ class Child {
     required this.grade,
     this.avatar,
     this.devices = 0,
+    this.dailyMinutes,
+    this.prioritySubject,
   });
 
   factory Child.fromJson(Json json) => Child(
@@ -42,6 +44,8 @@ class Child {
     grade: json['grade'] as String,
     avatar: json['avatar'] as String?,
     devices: json['devices'] as int? ?? 0,
+    dailyMinutes: json['daily_minutes'] as int?,
+    prioritySubject: json['priority_subject'] as String?,
   );
 
   final String id;
@@ -51,6 +55,10 @@ class Child {
 
   /// Appareils liés actifs (espace parent uniquement).
   final int devices;
+
+  /// Objectifs du parent : minutes de révision par jour, matière à privilégier.
+  final int? dailyMinutes;
+  final String? prioritySubject;
 }
 
 class LinkResult {

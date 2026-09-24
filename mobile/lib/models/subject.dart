@@ -10,6 +10,9 @@ abstract final class Subjects {
     'civics': ('Enseignement moral et civique', '🤝'),
   };
 
+  /// Les matières, dans l'ordre des programmes.
+  static List<String> get all => _labels.keys.toList();
+
   static String label(String? subject) => _labels[subject]?.$1 ?? 'Leçon';
 
   static String emoji(String? subject) => _labels[subject]?.$2 ?? '📚';

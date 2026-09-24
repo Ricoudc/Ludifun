@@ -168,6 +168,12 @@ class ChildDashboardScreen extends ConsumerWidget {
       ],
       const SizedBox(height: 8),
       OutlinedButton.icon(
+        onPressed: () => context.go(Routes.childGoals(childId)),
+        icon: const Icon(Icons.flag_outlined),
+        label: const Text('Objectifs et contrôles'),
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
         onPressed: () => context.go(Routes.childSkills(childId)),
         icon: const Icon(Icons.star_outline_rounded),
         label: const Text('Compétences par leçon'),

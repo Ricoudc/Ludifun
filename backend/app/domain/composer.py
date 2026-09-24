@@ -108,8 +108,16 @@ class SessionComposer:
     # ------------------------------------------------------------------ #
 
     def compose(
-        self, units: Sequence[KnowledgeUnit], masteries: Mapping[str, Mastery], now: datetime, seed: int
+        self,
+        units: Sequence[KnowledgeUnit],
+        masteries: Mapping[str, Mastery],
+        now: datetime,
+        seed: int,
+        core_size: int = BLOCK_SIZE,
+        include_known: bool = False,
     ) -> SessionPlan:
+        """`core_size` : activités d'approfondissement (selon le temps du jour choisi par le parent ;
+        0 : révision express). `include_known` : toute la leçon, même ce qui est su (mini-contrôle)."""
         rng = random.Random(seed)
         eligible = _eligible(units)
         first = not any(u.id in masteries for u in units)
@@ -117,7 +125,7 @@ class SessionComposer:
             ranked = sorted(eligible, key=lambda u: (-u.item.importance, units.index(u)))
             to_work = ranked
         else:
-            to_work = self._to_review(eligible, masteries, now, units)
+            to_work = self._to_review(eligible, masteries, now, units, include_known)
             if not to_work:
                 raise NothingToReview
             ranked = to_work + [u for u in eligible if u not in to_work]
@@ -130,7 +138,7 @@ class SessionComposer:
                 items.append(activity)
                 blocks.append(block)
 
-        express = not first and len(to_work) < EXPRESS_BELOW
+        express = (not first and len(to_work) < EXPRESS_BELOW) or core_size == 0
         used: dict[str, set[ActivityCode]] = {}
 
         # 🧠 Échauffement, puis 🎯 approfondissement.
@@ -144,11 +152,23 @@ class SessionComposer:
             add(activity, Block.WARMUP)
 
         if not express:
-            core_units = to_work[BLOCK_SIZE : 2 * BLOCK_SIZE]
-            # Leçon courte : on reprend les notions les plus importantes, avec un autre format.
-            core_units += warmup_units[: BLOCK_SIZE - len(core_units)]
-            for activity in self._sequence(core_units, prefs(2, INTERMEDIATE), items, used, rng):
-                add(activity, Block.CORE)
+            # Par tours de 3 notions : les suivantes à travailler, puis (leçon courte, séance longue)
+            # les plus importantes à nouveau, dans un autre format.
+            order = to_work[BLOCK_SIZE:] + warmup_units + [u for u in ranked if u not in to_work]
+            position, done = 0, 0
+            while done < core_size and order:
+                round_units: list[KnowledgeUnit] = []
+                while len(round_units) < min(BLOCK_SIZE, core_size - done, len(order)):
+                    unit = order[position % len(order)]
+                    position += 1
+                    if unit not in round_units:
+                        round_units.append(unit)
+                activities = self._sequence(round_units, prefs(2, INTERMEDIATE), items, used, rng)
+                if not activities:
+                    break  # plus aucun format neuf pour ces notions
+                for activity in activities:
+                    add(activity, Block.CORE)
+                done += len(activities)
 
             # 🧩 Association : d'abord les notions pas encore vues dans la séance.
             seen = {k for a in items for k in a.knowledge_ids}
@@ -170,6 +190,7 @@ class SessionComposer:
         masteries: Mapping[str, Mastery],
         now: datetime,
         units: Sequence[KnowledgeUnit],
+        include_known: bool = False,
     ) -> list[KnowledgeUnit]:
         """Notions à travailler, par priorité : importance × fragilité, majorée si due (§8.3)."""
 
@@ -190,7 +211,7 @@ class SessionComposer:
                 and not self._missing(unit, mastery)
             )
 
-        working = [u for u in eligible if not known(u)]
+        working = [u for u in eligible if include_known or not known(u)]
         return sorted(working, key=lambda u: (-priority(u), -u.item.importance, units.index(u)))
 
     def _missing(self, unit: KnowledgeUnit, mastery: Mastery | None) -> frozenset[int]:

@@ -1,6 +1,7 @@
 """Séances de révision (écrans 4 à 7)."""
 
 import uuid
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, status
 from sqlalchemy import select
@@ -26,7 +27,7 @@ from app.db.models import Attempt, Child, RevisionSession, SessionItem
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.composer import Block, NothingToReview
 from app.domain.scoring import KnowledgeStatus
-from app.services import ai_budget, learning
+from app.services import ai_budget, goals, learning
 from app.services.answer_evaluation import AnswerEvaluator
 
 router = APIRouter(tags=["séances"])
@@ -90,12 +91,20 @@ async def session_of_child(db: DbSession, child: Child, session_id: uuid.UUID) -
 
 @router.post("/lessons/{lesson_id}/sessions")
 async def start_session(
-    lesson_id: uuid.UUID, body: SessionCreate, child: ChildInScope, db: DbSession, registry: Registry
+    lesson_id: uuid.UUID,
+    body: SessionCreate,
+    child: ChildInScope,
+    db: DbSession,
+    registry: Registry,
+    settings: AppSettings,
 ) -> SessionOut:
-    """Écran 4 : séance adaptée à la maîtrise de l'enfant (ou reprise de la séance en cours)."""
+    """Écran 4 : séance adaptée à la maîtrise de l'enfant (ou reprise de la séance en cours), à la
+    durée choisie par le parent et, pendant un plan avant un contrôle, à l'étape du jour."""
     lesson = await lesson_of_child(db, child, lesson_id)
+    now = clock.now()
+    options = await goals.session_options(db, child, lesson.id, now, ZoneInfo(settings.family_timezone))
     try:
-        revision = await learning.start_session(db, child.id, lesson, registry, clock.now())
+        revision = await learning.start_session(db, child.id, lesson, registry, now, options)
     except learning.LessonNotReady as exc:
         raise ApiError(409, "lesson_not_ready", "La leçon n'est pas encore prête.") from exc
     except NothingToReview as exc:

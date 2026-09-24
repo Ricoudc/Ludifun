@@ -192,18 +192,44 @@ class Lesson extends LessonSummary {
 }
 
 class Mission {
-  const Mission({this.lessonId, this.title, this.subject, this.reason, this.estimatedMinutes});
+  const Mission({
+    this.lessonId,
+    this.title,
+    this.subject,
+    this.reason,
+    this.estimatedMinutes,
+    this.examTitle,
+    this.examDate,
+    this.focusLabel,
+    this.dailyMinutes,
+  });
 
   factory Mission.fromJson(Json json) {
     final lesson = json['lesson'] as Json?;
+    final exam = json['exam'] as Json?;
     return Mission(
       lessonId: lesson?['id'] as String?,
       title: lesson?['title'] as String?,
       subject: lesson?['subject'] as String?,
       reason: json['reason'] as String?,
       estimatedMinutes: json['estimated_minutes'] as int?,
+      examTitle: exam?['title'] as String?,
+      examDate: switch (exam?['exam_date']) {
+        final String day => DateTime.parse(day),
+        _ => null,
+      },
+      focusLabel: exam?['focus_label'] as String?,
+      dailyMinutes: json['daily_minutes'] as int?,
     );
   }
+
+  /// Étape du jour d'un plan avant un contrôle.
+  final String? examTitle;
+  final DateTime? examDate;
+  final String? focusLabel;
+
+  /// Temps de révision par jour choisi par le parent.
+  final int? dailyMinutes;
 
   /// `null` : tout est à jour.
   final String? lessonId;

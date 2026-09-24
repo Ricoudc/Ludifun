@@ -6,7 +6,7 @@ Le test `test_models_match_migrations` échoue si les deux divergent.
 """
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -15,6 +15,7 @@ from sqlalchemy import (
     REAL,
     BigInteger,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -125,8 +126,29 @@ class Child(Base):
     avatar: Mapped[str | None] = mapped_column(Text)
     parental_consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = _created_at()
+    # Objectifs du parent (étape 16) : minutes de révision par jour, matière à privilégier.
+    daily_minutes: Mapped[int | None] = mapped_column(SmallInteger)
+    priority_subject: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = (Index(None, "family_id"),)
+    __table_args__ = (
+        Index(None, "family_id"),
+        CheckConstraint("daily_minutes IN (5, 10, 15, 20, 30)", name="daily_minutes"),
+    )
+
+
+class Exam(Base):
+    """Contrôle à venir, saisi par le parent : le plan de révision est recalculé chaque jour."""
+
+    __tablename__ = "exams"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    exam_date: Mapped[date] = mapped_column(Date, nullable=False)
+    lesson_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (Index(None, "child_id", "exam_date"),)
 
 
 class Device(Base):

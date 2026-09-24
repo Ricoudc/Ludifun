@@ -37,6 +37,9 @@ QR_PREFIX = "ludifun://lier/"
 GLOBAL_LINK_FAILURES = ("link-failures", 300, 60.0)
 
 
+NULLABLE = {"avatar", "daily_minutes", "priority_subject"}
+
+
 async def child_out(db: DbSession, child: Child) -> ChildOut:
     return ChildOut(
         id=child.id,
@@ -45,6 +48,8 @@ async def child_out(db: DbSession, child: Child) -> ChildOut:
         avatar=child.avatar,
         created_at=child.created_at,
         devices=await accounts.active_devices_count(db, child.id),
+        daily_minutes=child.daily_minutes,
+        priority_subject=child.priority_subject,
     )
 
 
@@ -81,7 +86,7 @@ async def update_child(
 ) -> ChildOut:
     child = await own_child(db, parent, child_id)
     for field, value in body.model_dump(exclude_unset=True).items():
-        if value is None and field != "avatar":
+        if value is None and field not in NULLABLE:
             raise ApiError(422, "invalid_request", f"{field} ne peut pas être vide.")
         setattr(child, field, value)
     await db.commit()

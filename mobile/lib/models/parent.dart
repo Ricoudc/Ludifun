@@ -320,3 +320,45 @@ class LessonProgress {
       if (skill.knowledgeIds.contains(n.id)) n,
   ];
 }
+
+/// Une étape du plan de révision avant un contrôle.
+class PlanStep {
+  const PlanStep({required this.day, required this.focus, required this.label, this.done = false});
+
+  factory PlanStep.fromJson(Json json) => PlanStep(
+    day: DateTime.parse(json['day'] as String),
+    focus: json['focus'] as String,
+    label: json['label'] as String,
+    done: json['done'] as bool? ?? false,
+  );
+
+  final DateTime day;
+  final String focus;
+  final String label;
+  final bool done;
+}
+
+/// Contrôle à venir, saisi par le parent ; le plan est recalculé chaque jour.
+class Exam {
+  const Exam({
+    required this.id,
+    required this.title,
+    required this.examDate,
+    this.lessonIds = const [],
+    this.plan = const [],
+  });
+
+  factory Exam.fromJson(Json json) => Exam(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    examDate: DateTime.parse(json['exam_date'] as String),
+    lessonIds: [for (final id in json['lesson_ids'] as List<dynamic>) id as String],
+    plan: [for (final p in json['plan'] as List<dynamic>) PlanStep.fromJson(p as Json)],
+  );
+
+  final String id;
+  final String title;
+  final DateTime examDate;
+  final List<String> lessonIds;
+  final List<PlanStep> plan;
+}

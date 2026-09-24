@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -216,7 +216,16 @@ class MissionLesson(BaseModel):
     subject: str | None
 
 
+class MissionExam(BaseModel):
+    title: str
+    exam_date: date
+    focus: str = Field(description="diagnostic, targeted, memorize, errors ou mock_test.")
+    focus_label: str
+
+
 class MissionOut(BaseModel):
     lesson: MissionLesson | None
-    reason: Literal["due", "not_mastered", "latest"] | None = None
+    reason: Literal["exam", "due", "not_mastered", "latest"] | None = None
     estimated_minutes: int | None = None
+    exam: MissionExam | None = Field(None, description="Étape du jour du plan avant un contrôle.")
+    daily_minutes: int | None = Field(None, description="Temps de révision par jour choisi par le parent.")

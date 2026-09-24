@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/session.dart';
 import '../../models/account.dart';
+import '../../models/lesson.dart';
 import '../../models/parent.dart';
 
 final childrenProvider = FutureProvider.autoDispose<List<Child>>(
@@ -20,6 +21,18 @@ final dashboardProvider = FutureProvider.autoDispose.family<Dashboard, String>(
 
 final childSkillsProvider = FutureProvider.autoDispose.family<List<LessonProgress>, String>(
   (ref, childId) => ref.watch(apiProvider).childSkills(childId),
+);
+
+final examsProvider = FutureProvider.autoDispose.family<List<Exam>, String>(
+  (ref, childId) => ref.watch(apiProvider).exams(childId),
+);
+
+/// Leçons prêtes d'un enfant, vues par le parent (pour composer un contrôle).
+final childLessonsProvider = FutureProvider.autoDispose.family<List<LessonSummary>, String>(
+  (ref, childId) async => [
+    for (final lesson in await ref.watch(apiProvider).lessons(childId: childId))
+      if (lesson.status == LessonStatus.ready) lesson,
+  ],
 );
 
 final devicesProvider = FutureProvider.autoDispose.family<List<Device>, String>(

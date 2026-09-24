@@ -101,6 +101,42 @@ class LudifunApi {
         return Child.fromJson(r.data!);
       });
 
+  /// Objectifs : `null` remet « libre » / « aucune ».
+  Future<Child> setGoals(
+    String id, {
+    required int? dailyMinutes,
+    required String? prioritySubject,
+  }) => _call(() async {
+    final r = await _dio.patch<Json>(
+      '/v1/children/$id',
+      data: {'daily_minutes': dailyMinutes, 'priority_subject': prioritySubject},
+    );
+    return Child.fromJson(r.data!);
+  });
+
+  Future<List<Exam>> exams(String childId) => _call(() async {
+    final r = await _dio.get<List<dynamic>>('/v1/children/$childId/exams');
+    return [for (final e in r.data!) Exam.fromJson(e as Json)];
+  });
+
+  Future<Exam> createExam(
+    String childId, {
+    required String title,
+    required DateTime date,
+    required List<String> lessonIds,
+  }) => _call(() async {
+    final day =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final r = await _dio.post<Json>(
+      '/v1/children/$childId/exams',
+      data: {'title': title, 'exam_date': day, 'lesson_ids': lessonIds},
+    );
+    return Exam.fromJson(r.data!);
+  });
+
+  Future<void> deleteExam(String childId, String examId) =>
+      _call(() => _dio.delete<void>('/v1/children/$childId/exams/$examId'));
+
   Future<void> deleteChild(String id) => _call(() => _dio.delete<void>('/v1/children/$id'));
 
   Future<LinkCode> linkCode(String childId) => _call(() async {
@@ -190,8 +226,8 @@ class LudifunApi {
     return Mission.fromJson(r.data!);
   });
 
-  Future<List<LessonSummary>> lessons() => _call(() async {
-    final r = await _dio.get<List<dynamic>>('/v1/lessons');
+  Future<List<LessonSummary>> lessons({String? childId}) => _call(() async {
+    final r = await _dio.get<List<dynamic>>('/v1/lessons', queryParameters: _forChild(childId));
     return [for (final lesson in r.data!) LessonSummary.fromJson(lesson as Json)];
   });
 

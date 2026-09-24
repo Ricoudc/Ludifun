@@ -477,6 +477,31 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
   });
 
+  testWidgets('mission du jour : l\'étape du plan avant un contrôle', (tester) async {
+    server.on(
+      'GET /v1/me/mission',
+      (_) => (
+        200,
+        {
+          'lesson': {'id': 'l1', 'title': 'Les fractions', 'subject': 'math'},
+          'reason': 'exam',
+          'estimated_minutes': 12,
+          'exam': {
+            'title': 'Contrôle de fractions',
+            'exam_date': '2026-09-25',
+            'focus': 'targeted',
+            'focus_label': 'Exercices ciblés sur ce qui est fragile',
+          },
+          'daily_minutes': 15,
+        },
+      ),
+    );
+    await launch(tester, MemoryCredentialStore(child));
+    expect(find.text('📅 Contrôle de fractions vendredi'), findsOneWidget);
+    expect(find.text('Exercices ciblés sur ce qui est fragile'), findsOneWidget);
+    expect(find.text('📐 Les fractions · ⏱️ 12 min'), findsOneWidget);
+  });
+
   testWidgets('accueil : une leçon à vérifier', (tester) async {
     server.on(
       'GET /v1/lessons',
