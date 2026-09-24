@@ -18,6 +18,10 @@ import 'step_pacer.dart';
 const pollInterval = Duration(milliseconds: 1500);
 const readyPause = Duration(milliseconds: 900);
 
+/// Au-delà, l'écran explique l'attente : une IA installée sur un ordinateur sans carte
+/// graphique peut mettre de longues minutes à lire une photo.
+const slowAfter = Duration(minutes: 1);
+
 const _stepLabels = {
   'reading': ('🔎', 'Lecture de ta leçon…'),
   'analyzing': ('🧠', 'Identification des notions…'),
@@ -46,6 +50,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
   Lesson? _lesson;
   bool _offline = false;
   bool _leaving = false;
+  late DateTime _startedAt = ref.read(nowProvider)();
 
   @override
   void initState() {
@@ -58,6 +63,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     _pace?.cancel();
     _pacer = StepPacer();
     _lesson = null;
+    _startedAt = ref.read(nowProvider)();
     _fetch();
     _poll = Timer.periodic(pollInterval, (_) => _fetch());
     _pace = Timer.periodic(StepPacer.minStep, (_) => _advance());
@@ -180,7 +186,9 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
               photos: [for (final page in ref.watch(captureProvider)) page.bytes],
               onSubmit: _sendReview,
             )
-          else if (_offline)
+          else if (lesson == null || lesson.status.inProgress)
+            ..._waiting(),
+          if (_offline)
             const Text(
               'Connexion perdue… je réessaie.',
               textAlign: TextAlign.center,
@@ -189,6 +197,28 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         ],
       ),
     );
+  }
+
+  /// Longue attente : le temps écoulé, pourquoi, et qu'on peut fermer sans rien perdre.
+  List<Widget> _waiting() {
+    final elapsed = ref.read(nowProvider)().difference(_startedAt);
+    if (elapsed < slowAfter) return const [];
+    return [
+      Text(
+        '⏳ ${elapsed.inMinutes} min',
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'L\'intelligence artificielle travaille. Avec une IA installée sur un ordinateur sans '
+        'carte graphique, cela peut prendre de 10 à 30 minutes.\n\nTu peux fermer : la leçon '
+        'continue d\'être préparée et apparaîtra sur ton accueil.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.35),
+      ),
+      const SizedBox(height: 12),
+    ];
   }
 
   List<Widget> _failure(Lesson lesson) {

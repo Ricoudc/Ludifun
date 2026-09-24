@@ -203,3 +203,34 @@ async def test_probe_uses_the_main_model() -> None:
 
     await probe_llm(ollama(handler))
     assert sent[0]["model"] == "qwen2.5vl:7b" and sent[0]["format"]["title"] == "ProbeOut"
+
+
+async def test_large_photos_are_shrunk_before_sending() -> None:
+    """Une photo de 2000 px est réduite à 1344 px : l'IA du PC la lit bien plus vite."""
+    import base64
+    import io
+
+    from PIL import Image
+
+    from app.ai.images import shrink
+    from app.ai.providers.ollama import MAX_IMAGE_SIDE
+
+    photo = io.BytesIO()
+    Image.new("RGB", (1500, 2000), "white").save(photo, format="JPEG")
+    sent: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        message = {"role": "assistant", "content": '{"text": "ok"}'}
+        return httpx.Response(200, json={"message": message, "done": True, "done_reason": "stop"})
+
+    await ollama(handler).structured(
+        prompt=PROMPT, input="Page 1", schema=Page, images=(PageImage(photo.getvalue(), "image/jpeg"),)
+    )
+    (image,) = sent[0]["messages"][1]["images"]
+    with Image.open(io.BytesIO(base64.b64decode(image))) as received:
+        assert max(received.size) == MAX_IMAGE_SIDE and received.size[0] < received.size[1]
+    small = io.BytesIO()
+    Image.new("RGB", (800, 600)).save(small, format="PNG")
+    assert shrink(small.getvalue(), MAX_IMAGE_SIDE) == small.getvalue()  # déjà petite : intacte
+    assert shrink(b"pas une image", MAX_IMAGE_SIDE) == b"pas une image"

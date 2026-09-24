@@ -11,6 +11,7 @@ Ce module ne touche pas à la base : l'appelant reçoit les changements d'étape
 
 import asyncio
 import json
+import logging
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -41,6 +42,14 @@ from app.domain.validation import (
     validate_material,
 )
 
+logger = logging.getLogger("ludifun.lessons")
+# Journal du serveur (Voir-les-erreurs-Ludifun.bat) : où en est l'IA, et combien de temps chaque étape.
+STAGE_LABELS: dict[Stage, str] = {
+    "ocr": "lecture de la leçon",
+    "analysis": "identification des notions",
+    "material": "préparation des exercices",
+    "evaluation": "correction d'une réponse rédigée",
+}
 MATERIAL_BATCH = 5  # notions par appel d'enrichissement (appels en parallèle)
 MIN_OPTIONS_IMPORTANT = 2  # activités minimales pour une notion d'importance ≥ 4 (§5.3)
 IMPORTANT = 4
@@ -314,10 +323,12 @@ class LessonPipeline:
         """
         for attempt in range(retries + 1):
             started = time.perf_counter()
+            logger.info("IA : %s en cours (%s)…", STAGE_LABELS[stage], model)
             try:
                 response = await call()
             except AIError as exc:
                 latency = round((time.perf_counter() - started) * 1000)
+                logger.warning("IA : %s en échec après %d s : %s", STAGE_LABELS[stage], latency // 1000, exc)
                 result.runs.append(
                     AiRunRecord(
                         stage, provider, model, prompt_version, None, None, latency, exc.status, [str(exc)]
@@ -327,6 +338,7 @@ class LessonPipeline:
                     continue
                 raise
             usage = response.usage
+            logger.info("IA : %s terminée en %d s", STAGE_LABELS[stage], (usage.latency_ms or 0) // 1000)
             result.runs.append(
                 AiRunRecord(
                     stage,

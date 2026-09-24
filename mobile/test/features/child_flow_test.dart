@@ -127,7 +127,10 @@ void main() {
   late FakeServer server;
   late FakeImagePicker picker;
 
+  var clock = now; // horloge de l'affichage, avancée par certains tests
+
   setUp(() {
+    clock = now;
     server = FakeServer()
       ..on('GET /v1/me', (_) => (200, emma))
       ..on('GET /v1/me/mission', (_) => (200, {'lesson': null}))
@@ -142,7 +145,7 @@ void main() {
           ...overridesFor(server, store),
           imagePickerProvider.overrideWithValue(picker),
           imageCompressorProvider.overrideWithValue(FakeCompressor()),
-          nowProvider.overrideWithValue(() => now),
+          nowProvider.overrideWithValue(() => clock),
         ],
         retry: noRetry,
         child: const LudifunApp(),
@@ -373,6 +376,20 @@ void main() {
     await advance(tester, const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(find.text('La Révolution française'), findsOneWidget);
+  });
+
+  testWidgets('analyse longue (IA de l\'ordinateur) : le temps écoulé et qu\'on peut fermer', (
+    tester,
+  ) async {
+    server.on('GET /v1/lessons/l1', (_) => (200, lessonJson('reading')));
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go('/enfant/analyse/l1');
+    await advance(tester, const Duration(seconds: 2));
+    expect(find.textContaining('min'), findsNothing); // attente courte : rien à expliquer
+    clock = now.add(const Duration(minutes: 4));
+    await advance(tester, const Duration(seconds: 2));
+    expect(find.text('⏳ 4 min'), findsOneWidget);
+    expect(find.textContaining('Tu peux fermer'), findsOneWidget);
   });
 
   testWidgets('coller le texte d\'une leçon au lieu de la photographier', (tester) async {

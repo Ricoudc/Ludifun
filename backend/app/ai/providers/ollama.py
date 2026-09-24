@@ -15,10 +15,14 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from app.ai.images import shrink
 from app.ai.ports import AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
 
 TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusieurs minutes
+# Photos réduites avant l'envoi : sur un PC, le temps de lecture suit la taille de l'image (une
+# photo de 2000 px en demande plus du double). 1344 px (48 × 28) restent lisibles pour un cahier.
+MAX_IMAGE_SIDE = 1344
 
 
 class OllamaProvider:
@@ -45,7 +49,10 @@ class OllamaProvider:
         model = self.models[prompt.stage]
         user: dict[str, Any] = {"role": "user", "content": input}
         if images:
-            user["images"] = [base64.standard_b64encode(image.data).decode("ascii") for image in images]
+            user["images"] = [
+                base64.standard_b64encode(shrink(image.data, MAX_IMAGE_SIDE)).decode("ascii")
+                for image in images
+            ]
         body = {
             "model": model,
             "messages": [{"role": "system", "content": prompt.text + schema_instructions(schema)}, user],
