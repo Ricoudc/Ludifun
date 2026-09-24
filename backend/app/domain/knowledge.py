@@ -1,8 +1,8 @@
 """Structure normalisée d'une leçon (cahier des charges §6.2 et §6.3).
 
 C'est le contrat entre l'IA et le reste de l'application : l'analyse produit une
-`LessonAnalysis`, l'enrichissement un `KnowledgeMaterial` par notion, et le moteur
-d'activités ne connaît que ces deux objets.
+`LessonAnalysis` (notions et compétences), l'enrichissement un `KnowledgeMaterial` par
+notion, et le moteur d'activités ne connaît que ces objets.
 """
 
 from enum import StrEnum
@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 NonEmpty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 KnowledgeId = Annotated[str, StringConstraints(pattern=r"^k\d+$")]
+SkillId = Annotated[str, StringConstraints(pattern=r"^s\d+$")]
+ANALYSIS_SCHEMA_VERSION = "2.0"  # 2.0 : compétences
 
 
 class Subject(StrEnum):
@@ -48,6 +50,16 @@ class KnowledgeType(StrEnum):
     FACT = "fact"
     PROCESS = "process"
     CLASSIFICATION = "classification"
+
+
+class SkillVerb(StrEnum):
+    """Ce que l'élève doit savoir faire (niveaux de compréhension, spécification technique §5.1)."""
+
+    RECOGNIZE = "recognize"
+    RECALL = "recall"
+    APPLY = "apply"
+    EXPLAIN = "explain"
+    TRANSFER = "transfer"
 
 
 class RelationType(StrEnum):
@@ -185,11 +197,23 @@ class LessonInfo(_Model):
     summary: NonEmpty
 
 
+class Skill(_Model):
+    """Une compétence visée par la leçon (« Comparer deux fractions »), reliée à ses notions."""
+
+    id: SkillId
+    label: NonEmpty
+    verb: SkillVerb
+    importance: int = Field(ge=1, le=5)
+    knowledge_ids: list[KnowledgeId] = Field(min_length=1)
+    source_excerpt: NonEmpty  # citation exacte du texte OCR, comme pour les notions
+
+
 class LessonAnalysis(_Model):
-    schema_version: str = "1.0"
+    schema_version: str = ANALYSIS_SCHEMA_VERSION
     is_lesson: bool
     lesson: LessonInfo | None
     knowledge: list[KnowledgeItem]
+    skills: list[Skill] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
 
     def item(self, knowledge_id: str) -> KnowledgeItem:

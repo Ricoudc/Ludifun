@@ -8,7 +8,9 @@ Définitions (affichées telles quelles au parent) :
 - **note moyenne** : moyenne des notes sur 10 des séances terminées ;
 - **réussite par matière** : maîtrise actuelle des notions travaillées (score 0-100 de §10),
   moyenne pondérée par l'importance des notions ;
-- **à renforcer** : notions travaillées dont la maîtrise est sous 80 %.
+- **à renforcer** : notions travaillées pas encore maîtrisées (niveau 3 ou moins sur 5) : score
+  sous 80 %, ou niveau de compréhension manquant (réussie en QCM mais jamais retrouvée seul…) ;
+- **compétences** : niveau 0 à 5 de chaque compétence de la leçon, d'après ses notions.
 """
 
 import uuid
@@ -24,6 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import models as db
 from app.domain.knowledge import Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
+from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
+from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, to_mastery
 
 MAX_ANSWER_S = 300
 FEEDBACK_S = 8
@@ -87,6 +91,8 @@ class WeakNotion:
     mastery: int
     status: Literal["to_review", "not_mastered"]
     next_review_at: datetime
+    level: int
+    explanation: str
 
 
 @dataclass(frozen=True)
@@ -155,10 +161,11 @@ async def build_dashboard(
     weak = []
     for mastery, item, lesson in rows:
         by_subject[lesson.subject or Subject.OTHER].append((mastery.score, item.importance))
-        if mastery.score < 100 * MASTERED_RATE:
+        level = notion_level(to_mastery(mastery), item.required_levels)
+        if level.level <= MasteryLevel.LEARNING:
             weak.append(
                 (
-                    (mastery.score, -item.importance, mastery.next_review_at),
+                    (level.level, mastery.score, -item.importance, mastery.next_review_at),
                     WeakNotion(
                         knowledge_id=item.id,
                         label=item.label,
@@ -166,8 +173,10 @@ async def build_dashboard(
                         lesson_title=lesson.title,
                         subject=lesson.subject,
                         mastery=mastery.score,
-                        status="to_review" if mastery.score >= 100 * FRAGILE_RATE else "not_mastered",
+                        status="to_review" if level.level == MasteryLevel.LEARNING else "not_mastered",
                         next_review_at=mastery.next_review_at,
+                        level=level.level,
+                        explanation=level.explanation,
                     ),
                 )
             )
@@ -194,6 +203,86 @@ async def build_dashboard(
         trend=trend_of(closed),
         activities=dict(activities),
     )
+
+
+# --------------------------------------------------------------------------- #
+# Compétences et niveaux par leçon
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class NotionProgress:
+    knowledge_id: uuid.UUID
+    label: str
+    importance: int
+    level: NotionLevel
+
+
+@dataclass(frozen=True)
+class SkillProgress:
+    skill_id: uuid.UUID
+    label: str
+    verb: str
+    importance: int
+    level: MasteryLevel
+    knowledge_ids: list[uuid.UUID]
+
+
+@dataclass(frozen=True)
+class LessonProgress:
+    lesson_id: uuid.UUID
+    title: str | None
+    subject: str | None
+    created_at: datetime
+    skills: list[SkillProgress]
+    notions: list[NotionProgress]  # dans l'ordre de la leçon
+
+
+async def lessons_progress(session: AsyncSession, child_id: uuid.UUID, limit: int) -> list[LessonProgress]:
+    """Leçons prêtes, de la plus récente à la plus ancienne, avec le niveau de chaque compétence
+    et de chaque notion."""
+    lessons = list(
+        await session.scalars(
+            select(db.Lesson)
+            .where(db.Lesson.child_id == child_id, db.Lesson.status == "ready")
+            .order_by(db.Lesson.created_at.desc())
+            .limit(limit)
+        )
+    )
+    skills = await load_skills(session, [lesson.id for lesson in lessons])
+    result = []
+    for lesson in lessons:
+        units = await load_units(session, lesson)
+        levels = notion_levels(units, await load_masteries(session, child_id, units))
+        result.append(
+            LessonProgress(
+                lesson_id=lesson.id,
+                title=lesson.title,
+                subject=lesson.subject,
+                created_at=lesson.created_at,
+                skills=[
+                    SkillProgress(
+                        skill.id,
+                        skill.label,
+                        skill.verb,
+                        skill.importance,
+                        skill.level(levels),
+                        skill.knowledge_ids,
+                    )
+                    for skill in skills[lesson.id]
+                ],
+                notions=[
+                    NotionProgress(
+                        units.key_to_id[u.id],
+                        u.item.label,
+                        u.item.importance,
+                        levels[units.key_to_id[u.id]],
+                    )
+                    for u in units.units
+                ],
+            )
+        )
+    return result
 
 
 # --------------------------------------------------------------------------- #

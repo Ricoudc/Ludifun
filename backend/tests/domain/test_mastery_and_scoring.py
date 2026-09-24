@@ -18,8 +18,8 @@ from app.domain.scoring import (
 NOW = datetime(2026, 9, 23, 17, 0, tzinfo=UTC)
 
 
-def mastery(score: int, box: int, due_in_days: float = 1) -> Mastery:
-    return Mastery(score, box, NOW + timedelta(days=due_in_days), NOW - timedelta(days=3))
+def mastery(score: int, box: int, due_in_days: float = 1, levels: frozenset[int] = frozenset({1})) -> Mastery:
+    return Mastery(score, box, NOW + timedelta(days=due_in_days), NOW - timedelta(days=3), levels=levels)
 
 
 # --------------------------------------------------------------------------- #
@@ -56,13 +56,16 @@ def test_score_blends_session_and_history() -> None:
 
 def test_lesson_review_date_and_mastered_flag() -> None:
     soon, later = mastery(95, 5, due_in_days=2), mastery(95, 5, due_in_days=9)
-    review = lesson_review([(5, later), (4, soon), (2, mastery(10, 1, due_in_days=0.5))])
+    one = frozenset({1})
+    review = lesson_review([(5, later, one), (4, soon, one), (2, mastery(10, 1, due_in_days=0.5), one)])
     assert review.next_review_at == soon.next_review_at  # les notions d'importance ≤ 2 ne comptent pas
     assert review.mastered
 
-    assert not lesson_review([(5, later), (4, mastery(95, 4))]).mastered  # pas encore en boîte 5
-    assert not lesson_review([(5, later), (3, None)]).mastered  # une notion jamais travaillée
-    assert lesson_review([(4, None)]).next_review_at is None
+    assert not lesson_review([(5, later, one), (4, mastery(95, 4), one)]).mastered  # pas en boîte 5
+    assert not lesson_review([(5, later, one), (3, None, one)]).mastered  # une notion jamais travaillée
+    assert lesson_review([(4, None, one)]).next_review_at is None
+    # Réussie en QCM mais jamais retrouvée seule : la leçon n'est pas maîtrisée.
+    assert not lesson_review([(5, later, frozenset({1, 2}))]).mastered
 
 
 # --------------------------------------------------------------------------- #

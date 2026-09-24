@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/format.dart';
+import '../../app/level_stars.dart';
 import '../../app/theme.dart';
+import '../../models/level.dart';
 import '../../models/session.dart';
 
 /// Écran 7 : bilan de la séance.
@@ -66,6 +68,26 @@ class ReportView extends StatelessWidget {
           _Labels('À revoir', [
             for (final k in [...notMastered, ...toReview]) '⚠ ${k.label}',
           ], LudiColors.toReview),
+        if (report.levelledUp.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text('⬆️ Tu as progressé :', style: theme.titleMedium),
+          const SizedBox(height: 6),
+          for (final k in report.levelledUp)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${k.label} · ${Levels.label(k.level).toLowerCase()}',
+                      style: const TextStyle(fontSize: 17),
+                    ),
+                  ),
+                  LevelStars(k.level),
+                ],
+              ),
+            ),
+        ],
         if (report.nextReviewAt != null) ...[
           const SizedBox(height: 16),
           Text(

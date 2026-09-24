@@ -39,6 +39,7 @@ PAGE_QUALITIES = ("good", "partial", "unreadable")
 SESSION_KINDS = ("first", "review", "errors")
 SESSION_STATUSES = ("active", "completed", "abandoned")
 SESSION_BLOCKS = ("warmup", "core", "match", "speed", "replay")
+SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
 AI_STAGES = ("ocr", "analysis", "material")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 
@@ -235,11 +236,50 @@ class KnowledgeItem(Base):
     relations: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
     source_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
     position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Niveaux de compréhension à valider pour « maîtrisée » (1 reconnaître … 5 transférer),
+    # fixés à l'analyse d'après le matériel disponible (spécification technique §5.1).
+    required_levels: Mapped[list[int]] = mapped_column(
+        ARRAY(SmallInteger), nullable=False, server_default="{1}"
+    )
 
     __table_args__ = (
         UniqueConstraint("lesson_id", "key"),
         CheckConstraint("importance BETWEEN 1 AND 5", name="importance"),
     )
+
+
+class Skill(Base):
+    """Compétence visée par une leçon (« Comparer deux fractions »), reliée à ses notions."""
+
+    __tablename__ = "skills"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    key: Mapped[str] = mapped_column(Text, nullable=False)  # "s1"
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    verb: Mapped[str] = mapped_column(Text, nullable=False)
+    importance: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    source_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "key"),
+        CheckConstraint(_in("verb", SKILL_VERBS), name="verb"),
+        CheckConstraint("importance BETWEEN 1 AND 5", name="importance"),
+    )
+
+
+class SkillKnowledge(Base):
+    __tablename__ = "skill_knowledge"
+
+    skill_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    __table_args__ = (Index(None, "knowledge_id"),)
 
 
 class KnowledgeMaterial(Base):
@@ -286,6 +326,8 @@ class SessionItem(Base):
     block: Mapped[str] = mapped_column(Text, nullable=False)
     activity_type: Mapped[str] = mapped_column(Text, nullable=False)
     difficulty: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # 1 reconnaître, 2 se rappeler, 3 appliquer, 4 expliquer, 5 transférer.
+    cognitive_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="1")
     knowledge_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # envoyé au téléphone
     solution: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # jamais avant la réponse
@@ -294,6 +336,7 @@ class SessionItem(Base):
         UniqueConstraint("session_id", "position"),
         CheckConstraint(_in("block", SESSION_BLOCKS), name="block"),
         CheckConstraint("difficulty BETWEEN 1 AND 3", name="difficulty"),
+        CheckConstraint("cognitive_level BETWEEN 1 AND 5", name="cognitive_level"),
     )
 
 
@@ -346,6 +389,9 @@ class KnowledgeMastery(Base):
     next_review_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_practiced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sessions_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    levels: Mapped[list[int]] = mapped_column(  # niveaux de compréhension validés
+        ARRAY(SmallInteger), nullable=False, server_default="{}"
+    )
 
     __table_args__ = (
         CheckConstraint("score BETWEEN 0 AND 100", name="score"),

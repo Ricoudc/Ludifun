@@ -27,6 +27,7 @@ from app.domain.scoring import (
     status,
 )
 from app.domain.scoring import summarize_session as summarize
+from app.domain.understanding import cognitive_level
 from app.services.lesson_store import LessonUnits, load_masteries, load_units, save_masteries
 
 STALE_SESSION = timedelta(hours=24)  # au-delà, une séance non terminée est abandonnée
@@ -93,6 +94,7 @@ def _persist_plan(
                 block=item.block.value,
                 activity_type=item.activity.type.value,
                 difficulty=item.activity.difficulty,
+                cognitive_level=cognitive_level(item.activity.type, item.activity.difficulty),
                 knowledge_ids=[lesson.key_to_id[k] for k in item.activity.knowledge_ids],
                 payload=item.activity.payload,
                 solution=item.activity.solution,
@@ -252,6 +254,7 @@ async def load_evidences(
             db.AttemptEvidence.weight,
             db.SessionItem.activity_type,
             db.SessionItem.block,
+            db.SessionItem.cognitive_level,
         )
         .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
@@ -259,8 +262,8 @@ async def load_evidences(
         .order_by(db.SessionItem.position)
     )
     return [
-        Evidence(id_to_key[k], float(result), float(weight), ActivityCode(kind), block == Block.REPLAY)
-        for k, result, weight, kind, block in rows
+        Evidence(id_to_key[k], float(result), float(weight), ActivityCode(kind), block == Block.REPLAY, level)
+        for k, result, weight, kind, block, level in rows
     ]
 
 
@@ -318,7 +321,7 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
     ]
     evidences = await load_evidences(session, revision, lesson.id_to_key)
     masteries = await load_masteries(session, revision.child_id, lesson)
-    outcome = summarize(main_scores, evidences, masteries, lesson.importance, now)
+    outcome = summarize(main_scores, evidences, masteries, lesson.importance, now, lesson.required)
     await save_masteries(
         session, revision.child_id, lesson, {r.knowledge_id: r.mastery for r in outcome.results}
     )

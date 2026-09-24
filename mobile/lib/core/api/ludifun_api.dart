@@ -136,6 +136,14 @@ class LudifunApi {
     return Dashboard.fromJson(r.data!);
   });
 
+  Future<List<LessonProgress>> childSkills(String childId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/skills');
+    return [
+      for (final lesson in r.data!['lessons'] as List<dynamic>)
+        LessonProgress.fromJson(lesson as Json),
+    ];
+  });
+
   Future<HistoryPage> history(String childId, {int limit = 20, String? before}) => _call(() async {
     final r = await _dio.get<Json>(
       '/v1/children/$childId/history',

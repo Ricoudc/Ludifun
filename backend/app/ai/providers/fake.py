@@ -50,6 +50,7 @@ def requested_ids(input: str) -> list[str]:
 
 def analysis_output(raw: dict[str, Any]) -> AnalysisOutput:
     data = json.loads(json.dumps(raw))
+    data.setdefault("skills", [])
     for item in data.get("knowledge", []):
         attributes = item.get("attributes", {})
         if isinstance(attributes.get("variables"), dict):

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/format.dart';
+import '../../app/level_stars.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
@@ -149,6 +150,19 @@ class _Summary extends ConsumerWidget {
           AsyncLoading() => const Text('⏱️ …', style: TextStyle(fontSize: 17)),
           _ => const SizedBox(),
         },
+        if (lesson.skills.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Tu vas savoir :', style: theme.titleLarge),
+          const SizedBox(height: 8),
+          for (final skill in lesson.skills)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              leading: const Icon(Icons.flag_outlined, color: LudiColors.primary),
+              title: Text(skill.label, style: const TextStyle(fontSize: 18)),
+              trailing: LevelStars(skill.level),
+            ),
+        ],
         const SizedBox(height: 24),
         Text('À retenir :', style: theme.titleLarge),
         const SizedBox(height: 8),
@@ -156,9 +170,9 @@ class _Summary extends ConsumerWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            leading: const Icon(Icons.check_circle, color: LudiColors.mastered),
+            leading: const Icon(Icons.lightbulb_outline, color: LudiColors.accent),
             title: Text(knowledge.label, style: const TextStyle(fontSize: 18)),
-            trailing: const Icon(Icons.info_outline, size: 20),
+            trailing: LevelStars(knowledge.level),
             onTap: () => _showStatement(context, knowledge),
           ),
         const SizedBox(height: 24),

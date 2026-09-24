@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/format.dart';
+import '../../app/level_stars.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
@@ -17,7 +18,7 @@ Semaine : du lundi au dimanche soir.
 Séances : séances terminées dans la semaine ; la note moyenne est celle de ces séances.
 Temps : temps passé à répondre (une réponse compte au plus 5 minutes), plus quelques secondes pour lire chaque correction.
 Réussite par matière : maîtrise actuelle des notions déjà révisées, les notions importantes comptant davantage. Une leçon jamais révisée n'y figure pas.
-À renforcer : les notions révisées encore sous 80 %, les plus fragiles d'abord.
+À renforcer : les notions révisées pas encore maîtrisées, les plus fragiles d'abord. Une notion réussie en QCM mais jamais retrouvée sans aide y figure encore : la phrase sous la notion dit ce qui manque.
 Couleurs : 🟢 80 % et plus, 🟠 de 50 à 79 %, 🔴 moins de 50 %.''';
 
 /// Écran P3 : tableau de bord d'un enfant.
@@ -141,10 +142,16 @@ class ChildDashboardScreen extends ConsumerWidget {
           _Row(
             leading: _Dot(n.status == 'not_mastered' ? 'red' : 'orange'),
             label: n.label,
-            detail: n.lessonTitle,
-            value: '${n.mastery} %',
+            detail: [?n.explanation, ?n.lessonTitle].join(' · '),
+            trailing: LevelStars(n.level, size: 14),
           ),
       ],
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        onPressed: () => context.go(Routes.childSkills(childId)),
+        icon: const Icon(Icons.star_outline_rounded),
+        label: const Text('Compétences par leçon'),
+      ),
       section('Progression'),
       Text(switch (board.trend) {
         'up' => 'Note moyenne par semaine · en progression ↗',
@@ -222,11 +229,12 @@ class _Dot extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.leading, required this.label, required this.value, this.detail});
+  const _Row({required this.leading, required this.label, this.value, this.trailing, this.detail});
 
   final Widget leading;
   final String label;
-  final String value;
+  final String? value;
+  final Widget? trailing;
   final String? detail;
 
   @override
@@ -246,7 +254,9 @@ class _Row extends StatelessWidget {
             ],
           ),
         ),
-        Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+        ?trailing,
+        if (value != null)
+          Text(value!, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       ],
     ),
   );

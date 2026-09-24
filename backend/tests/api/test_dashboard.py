@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
 from app.db.models import KnowledgeItem, KnowledgeMastery, Lesson
 from app.domain.simulated_pupil import Knows
+from app.domain.understanding import notion_level
+from app.services.lesson_store import to_mastery
 from tests.api.helpers import auth, family_with_device, register, upload_lesson
 from tests.api.test_sessions import now, play  # noqa: F401  (fixture)
 
@@ -139,12 +141,24 @@ async def test_dashboard_over_several_weeks(
         )
     assert board["subjects"] == expected_subjects
 
-    # À renforcer : au plus 5 notions sous 80 %, les plus faibles d'abord.
+    # À renforcer : au plus 5 notions pas encore maîtrisées (niveau ≤ 3), les plus faibles d'abord,
+    # y compris une notion bien réussie à qui il manque un niveau de compréhension.
     weak = board["to_strengthen"]
+    levels = [
+        notion_level(to_mastery(m), item.required_levels)
+        for m, item in (
+            await db.execute(
+                select(KnowledgeMastery, KnowledgeItem).join(
+                    KnowledgeItem, KnowledgeItem.id == KnowledgeMastery.knowledge_id
+                )
+            )
+        ).all()
+    ]
     assert 0 < len(weak) <= 5
-    assert all(n["mastery"] < 80 for n in weak)
-    assert [n["mastery"] for n in weak] == sorted(n["mastery"] for n in weak)
-    assert len(weak) == min(5, sum(1 for _, s, _ in rows if s < 80))
+    assert all(n["level"] <= 3 and n["explanation"] for n in weak)
+    assert [(n["level"], n["mastery"]) for n in weak] == sorted((n["level"], n["mastery"]) for n in weak)
+    assert len(weak) == min(5, sum(1 for level in levels if level.level <= 3))
+    assert all(n["status"] == ("to_review" if n["level"] == 3 else "not_mastered") for n in weak)
     assert {n["lesson_title"] for n in weak} <= {"La Révolution française", "Les fractions"}
     assert board["reviews_due"] == sum(
         1 for m in await db.scalars(select(KnowledgeMastery)) if m.next_review_at <= now[0]
@@ -197,7 +211,7 @@ async def test_empty_dashboard(client: AsyncClient) -> None:
 async def test_dashboard_is_parent_only(client: AsyncClient) -> None:
     family = await family_with_device(client)
     child_id = family["child"]["id"]
-    for path in ("dashboard", "history"):
+    for path in ("dashboard", "history", "skills"):
         url = f"/v1/children/{child_id}/{path}"
         device = await client.get(url, headers=auth(family["device"]))
         assert device.status_code == 403, device.text  # l'enfant ne voit pas l'espace parent

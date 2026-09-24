@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import models as db
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit
 from app.domain.mastery import Mastery, lesson_review
+from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
 from app.services.lesson_pipeline import PipelineResult
 
 
@@ -22,6 +23,7 @@ class LessonUnits:
     lesson: db.Lesson
     units: list[KnowledgeUnit]
     key_to_id: dict[str, uuid.UUID]
+    required: dict[str, frozenset[int]]  # niveaux de compréhension exigés, par notion
 
     @property
     def id_to_key(self) -> dict[uuid.UUID, str]:
@@ -36,6 +38,7 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
     """Enregistre le texte lu, l'analyse, les notions retenues, leur matériel et les appels IA."""
     await session.execute(delete(db.LessonPage).where(db.LessonPage.lesson_id == lesson.id))
     await session.execute(delete(db.KnowledgeItem).where(db.KnowledgeItem.lesson_id == lesson.id))
+    await session.execute(delete(db.Skill).where(db.Skill.lesson_id == lesson.id))
 
     if result.ocr is not None:
         for page in result.ocr.pages:
@@ -74,6 +77,7 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
     lesson.analysis = analysis.model_dump(mode="json")
 
     kept = {u.id: u for u in result.units}
+    ids: dict[str, uuid.UUID] = {}
     for position, item in enumerate(analysis.knowledge):
         unit = kept.get(item.id)
         if unit is None:
@@ -89,9 +93,11 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
             relations=[r.model_dump(mode="json") for r in item.relations],
             source_excerpt=item.source_excerpt,
             position=position,
+            required_levels=sorted(result.required_levels.get(item.id, {1})),
         )
         session.add(row)
         await session.flush()
+        ids[item.id] = row.id
         rejected = [
             {"element": r.element, "reason": r.reason}
             for r in result.rejected
@@ -105,6 +111,24 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
                 prompt_version=result.prompt_versions.get("material", "?"),
             )
         )
+
+    # Compétences : seulement celles qui reposent sur au moins une notion proposée à l'enfant.
+    for position, skill in enumerate(analysis.skills):
+        linked = [ids[k] for k in skill.knowledge_ids if k in ids]
+        if not linked:
+            continue
+        skill_row = db.Skill(
+            lesson_id=lesson.id,
+            key=skill.id,
+            label=skill.label,
+            verb=skill.verb,
+            importance=skill.importance,
+            source_excerpt=skill.source_excerpt,
+            position=position,
+        )
+        session.add(skill_row)
+        await session.flush()
+        session.add_all(db.SkillKnowledge(skill_id=skill_row.id, knowledge_id=k) for k in linked)
     lesson.status, lesson.failure_reason = "ready", None
 
 
@@ -117,7 +141,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             .order_by(db.KnowledgeItem.position)
         )
     ).all()
-    units, key_to_id = [], {}
+    units, key_to_id, required = [], {}, {}
     for item, material in rows:
         domain_item = KnowledgeItem(
             id=item.key,
@@ -133,11 +157,60 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             KnowledgeUnit(item=domain_item, material=KnowledgeMaterial.model_validate(material.material))
         )
         key_to_id[item.key] = item.id
-    return LessonUnits(lesson, units, key_to_id)
+        required[item.key] = frozenset(item.required_levels)
+    return LessonUnits(lesson, units, key_to_id, required)
+
+
+@dataclass(frozen=True)
+class LessonSkill:
+    id: uuid.UUID
+    key: str
+    label: str
+    verb: str
+    importance: int
+    knowledge_ids: list[uuid.UUID]  # dans l'ordre de la leçon
+
+    def level(self, levels: dict[uuid.UUID, NotionLevel]) -> MasteryLevel:
+        return skill_level(levels[k].level for k in self.knowledge_ids if k in levels)
+
+
+async def load_skills(
+    session: AsyncSession, lesson_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[LessonSkill]]:
+    """Compétences des leçons, par leçon, dans l'ordre de l'analyse."""
+    rows = await session.execute(
+        select(db.Skill, db.SkillKnowledge.knowledge_id)
+        .join(db.SkillKnowledge, db.SkillKnowledge.skill_id == db.Skill.id)
+        .join(db.KnowledgeItem, db.KnowledgeItem.id == db.SkillKnowledge.knowledge_id)
+        .where(db.Skill.lesson_id.in_(lesson_ids))
+        .order_by(db.Skill.lesson_id, db.Skill.position, db.KnowledgeItem.position)
+    )
+    by_lesson: dict[uuid.UUID, list[LessonSkill]] = {lesson_id: [] for lesson_id in lesson_ids}
+    skills: dict[uuid.UUID, LessonSkill] = {}
+    for skill, knowledge_id in rows:
+        if skill.id not in skills:
+            skills[skill.id] = LessonSkill(skill.id, skill.key, skill.label, skill.verb, skill.importance, [])
+            by_lesson[skill.lesson_id].append(skills[skill.id])
+        skills[skill.id].knowledge_ids.append(knowledge_id)
+    return by_lesson
+
+
+def notion_levels(lesson: LessonUnits, masteries: dict[str, Mastery]) -> dict[uuid.UUID, NotionLevel]:
+    """Niveau 0 à 5 de chaque notion de la leçon, par identifiant."""
+    return {
+        lesson.key_to_id[u.id]: notion_level(masteries.get(u.id), lesson.required[u.id]) for u in lesson.units
+    }
 
 
 def to_mastery(row: db.KnowledgeMastery) -> Mastery:
-    return Mastery(row.score, row.box, row.next_review_at, row.last_practiced_at, row.sessions_count)
+    return Mastery(
+        row.score,
+        row.box,
+        row.next_review_at,
+        row.last_practiced_at,
+        row.sessions_count,
+        frozenset(row.levels),
+    )
 
 
 async def load_masteries(
@@ -171,6 +244,7 @@ async def save_masteries(
         row.score, row.box = mastery.score, mastery.box
         row.next_review_at, row.last_practiced_at = mastery.next_review_at, mastery.last_practiced_at
         row.sessions_count = mastery.sessions_count
+        row.levels = sorted(mastery.levels)
         session.add(row)
 
 
@@ -182,6 +256,8 @@ class ReviewState:
 
 
 def review_state(lesson: LessonUnits, masteries: dict[str, Mastery], now: datetime) -> ReviewState:
-    review = lesson_review((u.item.importance, masteries.get(u.id)) for u in lesson.units)
+    review = lesson_review(
+        (u.item.importance, masteries.get(u.id), lesson.required[u.id]) for u in lesson.units
+    )
     due = review.next_review_at is not None and review.next_review_at <= now
     return ReviewState(review.next_review_at, review.mastered, due)

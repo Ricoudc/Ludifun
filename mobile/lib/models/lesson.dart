@@ -1,4 +1,5 @@
 import 'account.dart';
+import 'level.dart';
 
 /// Formats de l'API des leçons, de la mission du jour et des séances (§11).
 
@@ -66,6 +67,7 @@ class Knowledge {
     required this.label,
     required this.statement,
     required this.importance,
+    this.level = 0,
   });
 
   factory Knowledge.fromJson(Json json) => Knowledge(
@@ -73,12 +75,16 @@ class Knowledge {
     label: json['label'] as String,
     statement: json['statement'] as String,
     importance: json['importance'] as int,
+    level: json['level'] as int? ?? 0,
   );
 
   final String id;
   final String label;
   final String statement;
   final int importance;
+
+  /// Niveau de maîtrise de l'enfant, 0 à 5.
+  final int level;
 }
 
 class Lesson extends LessonSummary {
@@ -98,6 +104,7 @@ class Lesson extends LessonSummary {
     this.objective,
     this.summary,
     this.knowledge = const [],
+    this.skills = const [],
     this.canRetry = false,
   });
 
@@ -126,6 +133,9 @@ class Lesson extends LessonSummary {
         for (final k in json['knowledge'] as List<dynamic>? ?? const [])
           Knowledge.fromJson(k as Json),
       ],
+      skills: [
+        for (final s in json['skills'] as List<dynamic>? ?? const []) Skill.fromJson(s as Json),
+      ],
       canRetry: json['can_retry'] as bool? ?? false,
     );
   }
@@ -136,6 +146,9 @@ class Lesson extends LessonSummary {
   final String? objective;
   final String? summary;
   final List<Knowledge> knowledge;
+
+  /// Vide pour une leçon analysée avant les compétences.
+  final List<Skill> skills;
   final bool canRetry;
 
   /// Étapes terminées côté serveur (0 à 3).

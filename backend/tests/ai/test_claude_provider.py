@@ -93,7 +93,13 @@ async def test_request_shape_for_ocr_with_images() -> None:
 
 
 async def test_structured_output_is_parsed() -> None:
-    analysis = {"is_lesson": False, "lesson": None, "knowledge": [], "warnings": ["photo de chat"]}
+    analysis = {
+        "is_lesson": False,
+        "lesson": None,
+        "knowledge": [],
+        "skills": [],
+        "warnings": ["photo de chat"],
+    }
     api = FakeApi(body=message(analysis))
     result = await api.provider().structured(
         prompt=Prompt.load("analysis"), input="<lecon>…</lecon>", schema=AnalysisOutput

@@ -9,7 +9,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from app.domain.knowledge import Grade, KnowledgeType, RelationType, Subject
+from app.domain.knowledge import (
+    ANALYSIS_SCHEMA_VERSION,
+    Grade,
+    KnowledgeType,
+    RelationType,
+    SkillVerb,
+    Subject,
+)
 
 # --------------------------------------------------------------------------- #
 # ① OCR
@@ -94,6 +101,20 @@ class KnowledgeOut(BaseModel):
     relations: list[RelationOut]
 
 
+class SkillOut(BaseModel):
+    id: str = Field(description="s1, s2, s3…")
+    label: str = Field(description="Ce que l'élève doit savoir faire, commençant par un verbe.")
+    verb: SkillVerb = Field(
+        description="recognize reconnaître, recall se rappeler, apply appliquer, "
+        "explain expliquer, transfer réutiliser dans une situation nouvelle."
+    )
+    importance: int = Field(description="5 = sera forcément évaluée … 1 = secondaire.")
+    knowledge_ids: list[str] = Field(description='Notions nécessaires, par exemple ["k2", "k3"].')
+    source_excerpt: str = Field(
+        description="Citation EXACTE du texte de la leçon qui justifie la compétence."
+    )
+
+
 class LessonInfoOut(BaseModel):
     subject: Subject
     grade: Grade
@@ -107,12 +128,13 @@ class AnalysisOutput(BaseModel):
     is_lesson: bool = Field(description="false si le texte n'est pas une leçon à réviser.")
     lesson: LessonInfoOut | None
     knowledge: list[KnowledgeOut]
+    skills: list[SkillOut]
     warnings: list[str]
 
     def to_raw(self) -> dict[str, Any]:
         """Format attendu par `validate_analysis` (§6.2)."""
         data = self.model_dump(mode="json")
-        data["schema_version"] = "1.0"
+        data["schema_version"] = ANALYSIS_SCHEMA_VERSION
         for item, knowledge in zip(data["knowledge"], self.knowledge, strict=True):
             item["attributes"] = knowledge.attributes.to_dict()
         return data

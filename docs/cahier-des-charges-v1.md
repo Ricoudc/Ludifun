@@ -784,6 +784,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | GET · DELETE | `/v1/children/{id}/devices[/{device_id}]` | appareils liés · délier |
 | GET | `/v1/children/{id}/dashboard?weeks=4` | tableau de bord (écran P3) : `this_week`, `subjects`, `to_strengthen`, `reviews_due`, `weeks`, `trend`, `activities_this_week` |
 | GET | `/v1/children/{id}/history?limit=20&before=` | séances (écran P4) : `{sessions, next_before}` |
+| GET | `/v1/children/{id}/skills` | compétences et notions de chaque leçon, niveau 0 à 5 et explication (étape 13, [spécification technique](specification-technique.md) §5) |
 | GET | `/v1/children/{id}/export` | toutes les données de l'enfant en JSON (§16.2, droit d'accès et de portabilité) |
 
 **Espace enfant** (jeton d'appareil ; un parent peut aussi appeler ces routes avec `?child_id=`)

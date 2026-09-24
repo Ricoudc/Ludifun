@@ -1,7 +1,7 @@
 {
   "ocr_text": "Les états de l'eau\nL'eau peut exister sous trois états : solide, liquide et gazeux.\nLa glace est de l'eau à l'état solide. La vapeur d'eau est de l'eau à l'état gazeux.\nQuand l'eau est chauffée, elle bout à 100 degrés et devient de la vapeur : c'est l'ébullition.\nQuand on refroidit l'eau, elle gèle à 0 degré et devient de la glace : c'est la solidification.\nQuand la glace se réchauffe, elle fond : c'est la fusion.",
   "analysis": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "is_lesson": true,
     "lesson": {
       "subject": "science",
@@ -63,6 +63,23 @@
         "attributes": {},
         "source_excerpt": "elle gèle à 0 degré",
         "relations": []
+      }
+    ],
+    "skills": [
+      {
+        "id": "s1", "label": "Nommer les trois états de l'eau", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k1"],
+        "source_excerpt": "L'eau peut exister sous trois états : solide, liquide et gazeux."
+      },
+      {
+        "id": "s2", "label": "Nommer les changements d'état de l'eau", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k2", "k3", "k4"],
+        "source_excerpt": "Quand la glace se réchauffe, elle fond : c'est la fusion."
+      },
+      {
+        "id": "s3", "label": "Connaître les températures de changement d'état", "verb": "recall", "importance": 3,
+        "knowledge_ids": ["k5", "k6"],
+        "source_excerpt": "elle bout à 100 degrés et devient de la vapeur"
       }
     ],
     "warnings": []

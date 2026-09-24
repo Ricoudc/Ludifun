@@ -41,6 +41,7 @@ curl -s -X POST localhost:8000/v1/lessons/$LESSON/sessions -H "authorization: Be
 # Espace parent : tableau de bord et historique
 curl -s "localhost:8000/v1/children/$CHILD/dashboard?weeks=4" -H "authorization: Bearer $ACCESS"
 curl -s "localhost:8000/v1/children/$CHILD/history?limit=20" -H "authorization: Bearer $ACCESS"
+curl -s "localhost:8000/v1/children/$CHILD/skills" -H "authorization: Bearer $ACCESS"   # compétences, niveaux 0-5
 ```
 
 Sans clé d'API, lancer l'API avec `LUDIFUN_AI_PROVIDER=fake` : toute photo est lue comme la leçon d'histoire de référence.

@@ -18,6 +18,10 @@ final dashboardProvider = FutureProvider.autoDispose.family<Dashboard, String>(
   (ref, childId) => ref.watch(apiProvider).dashboard(childId),
 );
 
+final childSkillsProvider = FutureProvider.autoDispose.family<List<LessonProgress>, String>(
+  (ref, childId) => ref.watch(apiProvider).childSkills(childId),
+);
+
 final devicesProvider = FutureProvider.autoDispose.family<List<Device>, String>(
   (ref, childId) => ref.watch(apiProvider).devices(childId),
 );

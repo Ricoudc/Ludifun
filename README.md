@@ -33,8 +33,8 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 10 | Espace enfant : liaison (code, QR), accueil, photo, analyse, résumé | ✅ (essai sur téléphone à faire) |
 | 11 | Espace enfant : jeux, correction, reprise des erreurs, bilan | ✅ (essai sur téléphone à faire) |
 | 12 | Espace parent : compte, enfants, code et QR, tableau de bord, historique | ✅ (essai sur téléphone à faire) |
-| 13 | Compétences et niveaux de compréhension | ⏭️ prochaine |
-| 14 | Aide « Je n'ai pas compris », questions ouvertes, types d'erreurs | |
+| 13 | Compétences et niveaux de compréhension | ✅ |
+| 14 | Aide « Je n'ai pas compris », questions ouvertes, types d'erreurs | ⏭️ prochaine |
 | 15 | Import de texte et lecture vérifiée | |
 | 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | |
 | 17 | Adaptation en temps réel et engagement | |
@@ -58,7 +58,7 @@ git (commit `3362b04`).
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0002"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0003"}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)

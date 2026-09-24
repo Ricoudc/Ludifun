@@ -182,6 +182,9 @@ async def complete(session_id: uuid.UUID, child: ChildInScope, db: DbSession) ->
                 status=r.status.value,
                 session_rate=round(r.session_rate, 2),
                 mastery=r.mastery.score,
+                level=r.level.level,
+                previous_level=r.previous_level.level,
+                explanation=r.level.explanation,
             )
             for r in outcome.results
         ],

@@ -1,4 +1,5 @@
 import 'account.dart';
+import 'level.dart';
 
 /// Formats de l'API de l'espace parent (§11) : liaison, appareils, tableau de bord, historique.
 
@@ -87,6 +88,8 @@ class WeakNotion {
     required this.status,
     this.lessonTitle,
     this.subject,
+    this.level = 0,
+    this.explanation,
   });
 
   factory WeakNotion.fromJson(Json json) => WeakNotion(
@@ -95,6 +98,8 @@ class WeakNotion {
     subject: json['subject'] as String?,
     mastery: json['mastery'] as int,
     status: json['status'] as String,
+    level: json['level'] as int? ?? 0,
+    explanation: json['explanation'] as String?,
   );
 
   final String label;
@@ -102,8 +107,12 @@ class WeakNotion {
   final String? subject;
   final int mastery;
 
-  /// `to_review` ou `not_mastered`.
+  /// `to_review` (niveau 3) ou `not_mastered` (niveaux 1 et 2).
   final String status;
+  final int level;
+
+  /// Ce qui manque encore (« Reconnaît la bonne réponse, pas encore la retrouver seul. »).
+  final String? explanation;
 }
 
 class Dashboard {
@@ -202,4 +211,71 @@ class HistoryPage {
 
   /// Curseur de la page suivante, `null` à la fin.
   final String? nextBefore;
+}
+
+/// Une notion et son niveau, dans l'écran « Compétences ».
+class NotionProgress {
+  const NotionProgress({
+    required this.id,
+    required this.label,
+    required this.importance,
+    required this.level,
+    required this.explanation,
+  });
+
+  factory NotionProgress.fromJson(Json json) => NotionProgress(
+    id: json['id'] as String,
+    label: json['label'] as String,
+    importance: json['importance'] as int,
+    level: (json['level'] as Json)['value'] as int,
+    explanation: json['explanation'] as String,
+  );
+
+  final String id;
+  final String label;
+  final int importance;
+  final int level;
+  final String explanation;
+}
+
+/// Compétences et notions d'une leçon, avec leur niveau.
+class LessonProgress {
+  const LessonProgress({
+    required this.lessonId,
+    required this.createdAt,
+    required this.skills,
+    required this.notions,
+    this.title,
+    this.subject,
+  });
+
+  factory LessonProgress.fromJson(Json json) => LessonProgress(
+    lessonId: json['lesson_id'] as String,
+    title: json['title'] as String?,
+    subject: json['subject'] as String?,
+    createdAt: DateTime.parse(json['created_at'] as String),
+    skills: [for (final s in json['skills'] as List<dynamic>) Skill.fromJson(s as Json)],
+    notions: [for (final n in json['notions'] as List<dynamic>) NotionProgress.fromJson(n as Json)],
+  );
+
+  final String lessonId;
+  final String? title;
+  final String? subject;
+  final DateTime createdAt;
+  final List<Skill> skills;
+  final List<NotionProgress> notions;
+
+  /// Notions qui ne servent à aucune compétence (ou toutes, pour une leçon sans compétences).
+  List<NotionProgress> get notionsWithoutSkill {
+    final linked = {for (final s in skills) ...s.knowledgeIds};
+    return [
+      for (final n in notions)
+        if (!linked.contains(n.id)) n,
+    ];
+  }
+
+  List<NotionProgress> notionsOf(Skill skill) => [
+    for (final n in notions)
+      if (skill.knowledgeIds.contains(n.id)) n,
+  ];
 }

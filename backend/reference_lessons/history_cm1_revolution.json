@@ -1,7 +1,7 @@
 {
   "ocr_text": "La Révolution française\nEn 1789, la France est en crise : le roi Louis XVI manque d'argent. Il réunit les États généraux le 5 mai 1789 à Versailles. Les députés du tiers état se proclament Assemblée nationale.\nLe 14 juillet 1789, le peuple de Paris prend la Bastille, une prison qui symbolise le pouvoir absolu du roi.\nLe 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen : « Les hommes naissent et demeurent libres et égaux en droits. »\nLe tiers état regroupe tous ceux qui ne sont ni nobles ni membres du clergé.\nVocabulaire : monarchie absolue : régime où le roi détient tous les pouvoirs.",
   "analysis": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "is_lesson": true,
     "lesson": {
       "subject": "history",
@@ -75,6 +75,23 @@
         "attributes": {},
         "source_excerpt": "Les hommes naissent et demeurent libres et égaux en droits",
         "relations": [{"type": "part_of", "target": "k5"}]
+      }
+    ],
+    "skills": [
+      {
+        "id": "s1", "label": "Situer les grands événements et les acteurs de 1789", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k1", "k2", "k3", "k4", "k5"],
+        "source_excerpt": "Le 14 juillet 1789, le peuple de Paris prend la Bastille"
+      },
+      {
+        "id": "s2", "label": "Définir le vocabulaire de la Révolution", "verb": "recall", "importance": 3,
+        "knowledge_ids": ["k6", "k7"],
+        "source_excerpt": "Vocabulaire : monarchie absolue : régime où le roi détient tous les pouvoirs."
+      },
+      {
+        "id": "s3", "label": "Expliquer ce que proclame la Déclaration des droits de l'homme", "verb": "explain", "importance": 4,
+        "knowledge_ids": ["k5", "k8"],
+        "source_excerpt": "Les hommes naissent et demeurent libres et égaux en droits."
       }
     ],
     "warnings": []

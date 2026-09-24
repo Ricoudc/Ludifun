@@ -20,7 +20,9 @@ def test_cli_with_a_photo(tmp_path: Path) -> None:
     for expected in (
         "══ Leçon ══",
         "LA RÉVOLUTION FRANÇAISE",
-        "✓ k1 [date, ★★★★★] 1789",
+        "✓ k1 [date, ★★★★★, niveaux 1, 2] 1789",
+        "══ Compétences ══",
+        "s2 [recall, ★★★] Définir le vocabulaire de la Révolution (k6, k7)",
         "🧩 Association",
         "══ Appels IA ══",
     ):

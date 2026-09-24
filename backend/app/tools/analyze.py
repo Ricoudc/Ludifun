@@ -4,7 +4,8 @@
     uv run python -m app.tools.analyze --text lecon.txt
     uv run python -m app.tools.analyze photo.jpg --provider fake --json resultat.json
 
-Affiche la leçon comprise, les notions, les éléments rejetés par les validateurs,
+Affiche la leçon comprise, les notions (avec les niveaux de compréhension exigés : 1 reconnaître,
+2 se rappeler, 3 appliquer), les compétences, les éléments rejetés par les validateurs,
 une première séance composée, et le coût des appels IA.
 """
 
@@ -95,7 +96,14 @@ def report(result: PipelineResult, seed: int, out: TextIO) -> None:
         for notion in analysis.knowledge:
             mark = "✓" if notion.id in kept else "✗"
             stars = "★" * notion.importance
-            say(f"{mark} {notion.id} [{notion.type}, {stars}] {notion.label} — {notion.statement}")
+            levels = ", ".join(str(level) for level in sorted(result.required_levels.get(notion.id, ())))
+            niveaux = f", niveaux {levels}" if levels else ""
+            say(f"{mark} {notion.id} [{notion.type}, {stars}{niveaux}] {notion.label} — {notion.statement}")
+        say()
+        say("══ Compétences ══")
+        for skill in analysis.skills:
+            notions = ", ".join(skill.knowledge_ids)
+            say(f"  {skill.id} [{skill.verb}, {'★' * skill.importance}] {skill.label} ({notions})")
         say()
 
     if result.rejected:

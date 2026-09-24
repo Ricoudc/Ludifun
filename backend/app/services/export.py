@@ -9,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
+from app.domain.understanding import notion_level
+from app.services.lesson_store import load_skills, to_mastery
 
 FORMAT_VERSION = 1
 
@@ -36,11 +38,15 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
             .where(db.LessonPage.lesson_id == lesson.id)
             .order_by(db.LessonPage.page_index)
         )
-        items = await session.scalars(
-            select(db.KnowledgeItem)
-            .where(db.KnowledgeItem.lesson_id == lesson.id)
-            .order_by(db.KnowledgeItem.position)
+        items = list(
+            await session.scalars(
+                select(db.KnowledgeItem)
+                .where(db.KnowledgeItem.lesson_id == lesson.id)
+                .order_by(db.KnowledgeItem.position)
+            )
         )
+        labels = {item.id: item.label for item in items}
+        skills = (await load_skills(session, [lesson.id]))[lesson.id]
         lessons.append(
             {
                 "id": str(lesson.id),
@@ -53,6 +59,15 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
                 "summary": lesson.summary,
                 "text": [page.ocr_text for page in pages],  # les photos, elles, ne sont jamais gardées
                 "notions": [_notion(item, masteries.get(item.id)) for item in items],
+                "skills": [
+                    {
+                        "label": skill.label,
+                        "verb": skill.verb,
+                        "importance": skill.importance,
+                        "notions": [labels[k] for k in skill.knowledge_ids],
+                    }
+                    for skill in skills
+                ],
             }
         )
     return {
@@ -81,10 +96,12 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
 
 
 def _notion(item: db.KnowledgeItem, mastery: db.KnowledgeMastery | None) -> dict[str, Any]:
+    level = notion_level(to_mastery(mastery) if mastery else None, item.required_levels)
     return {
         "label": item.label,
         "statement": item.statement,
         "importance": item.importance,
+        "level": {"value": int(level.level), "label": level.label, "explanation": level.explanation},
         "mastery": None
         if mastery is None
         else {
@@ -92,6 +109,7 @@ def _notion(item: db.KnowledgeItem, mastery: db.KnowledgeMastery | None) -> dict
             "next_review_at": _iso(mastery.next_review_at),
             "last_practiced_at": _iso(mastery.last_practiced_at),
             "sessions": mastery.sessions_count,
+            "comprehension_levels": sorted(mastery.levels),
         },
     }
 

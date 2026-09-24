@@ -31,6 +31,7 @@ from app.ai.ports import (
 from app.ai.schemas import AnalysisOutput, MaterialBatchOutput, OcrPage, OcrResult
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit, LessonAnalysis
+from app.domain.understanding import required_levels
 from app.domain.validation import (
     AnalysisError,
     MaterialValidation,
@@ -79,6 +80,7 @@ class PipelineResult:
     ocr: OcrResult | None = None
     analysis: LessonAnalysis | None = None
     units: list[KnowledgeUnit] = field(default_factory=list)
+    required_levels: dict[str, frozenset[int]] = field(default_factory=dict)  # par notion retenue
     rejected: list[Rejection] = field(default_factory=list)
     runs: list[AiRunRecord] = field(default_factory=list)
     prompt_versions: dict[str, str] = field(default_factory=dict)
@@ -162,6 +164,7 @@ class LessonPipeline:
         # ③ Enrichissement
         await self._status(LessonStatus.GENERATING)
         result.units = await self._enrich(result, analysis, lesson_text)
+        result.required_levels = {u.id: required_levels(u, self.registry) for u in result.units}
         if not result.units:
             raise _Failed(FailureReason.AI_ERROR)
 

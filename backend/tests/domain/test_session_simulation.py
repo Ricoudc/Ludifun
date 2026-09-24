@@ -14,6 +14,7 @@ from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import Mastery
 from app.domain.scoring import Evidence, KnowledgeStatus, SessionOutcome, evidences_from, summarize_session
 from app.domain.simulated_pupil import Knows, respond
+from app.domain.understanding import required_levels
 from tests.domain.conftest import ReferenceLesson
 
 DAY_1 = datetime(2026, 9, 23, 17, 0, tzinfo=UTC)
@@ -48,7 +49,10 @@ def run_session(
     _, replay_evidences = play(registry, [i.activity for i in replay], lambda _: True, replay=True)
 
     importance = {u.id: u.item.importance for u in units}
-    outcome = summarize_session(main_scores, evidences + replay_evidences, masteries, importance, now)
+    required = {u.id: required_levels(u, registry) for u in units}
+    outcome = summarize_session(
+        main_scores, evidences + replay_evidences, masteries, importance, now, required
+    )
     return outcome, [i.activity for i in replay]
 
 
@@ -94,8 +98,11 @@ def test_full_revision_journey(history: ReferenceLesson, registry: ActivityRegis
     worked = {
         k for i in review.items if i.block in (Block.WARMUP, Block.CORE) for k in i.activity.knowledge_ids
     }
-    mastered_not_due = {k for k, m in masteries.items() if m.score >= 90 and not m.is_due(day_2)}
-    assert not worked & mastered_not_due  # on ne refait pas ce qui est su
+    required = {u.id: required_levels(u, registry) for u in units}
+    mastered_not_due = {
+        k for k, m in masteries.items() if m.score >= 90 and not m.is_due(day_2) and required[k] <= m.levels
+    }
+    assert not worked & mastered_not_due  # on ne refait pas ce qui est su à tous les niveaux
 
     outcome_2, replay_2 = run_session(composer, units, masteries, day_2, knows=lambda _: True, seed=23)
     assert replay_2 == []  # aucune erreur, pas de reprise

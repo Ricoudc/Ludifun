@@ -13,6 +13,7 @@ import '../features/link/qr_scan_screen.dart';
 import '../features/parent/child_dashboard_screen.dart';
 import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
+import '../features/parent/child_skills_screen.dart';
 import '../features/parent/link_code_screen.dart';
 import '../features/parent/parent_home_screen.dart';
 import '../features/parent/parent_sign_in_screen.dart';
@@ -35,6 +36,7 @@ abstract final class Routes {
   static String childDashboard(String childId) => '/parent/enfants/$childId';
   static String childLink(String childId) => '/parent/enfants/$childId/lier';
   static String childSettings(String childId) => '/parent/enfants/$childId/reglages';
+  static String childSkills(String childId) => '/parent/enfants/$childId/competences';
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static const link = '/lier';
@@ -109,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'reglages',
                 builder: (_, state) => ChildSettingsScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'competences',
+                builder: (_, state) => ChildSkillsScreen(childId: state.pathParameters['id']!),
               ),
               GoRoute(
                 path: 'modifier',

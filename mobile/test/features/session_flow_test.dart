@@ -101,6 +101,10 @@ void main() {
     expect(find.text('🟠 1 notion à revoir'), findsOneWidget);
     expect(find.text('⚠ États généraux'), findsOneWidget);
     expect(find.text('✓ 1789'), findsOneWidget);
+    // Seule la notion qui a gagné un niveau est citée dans « Tu as progressé ».
+    expect(find.text('⬆️ Tu as progressé :'), findsOneWidget);
+    expect(find.text('1789 · maîtrisée'), findsOneWidget);
+    expect(find.textContaining('États généraux ·'), findsNothing);
     expect(find.text('📅 Prochaine révision : jeudi 24 septembre'), findsOneWidget);
 
     // « Revoir mes erreurs » : une nouvelle séance courte.

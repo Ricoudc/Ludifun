@@ -19,11 +19,13 @@ from app.api.v1.schemas_learning import (
     LessonSummaryOut,
     MissionLesson,
     MissionOut,
+    SkillOut,
 )
 from app.db.models import Child, Lesson, LessonPage
+from app.domain.knowledge import SkillVerb
 from app.services import ai_budget, learning
 from app.services.lesson_processing import process_lesson
-from app.services.lesson_store import load_masteries, load_units, review_state
+from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 
 router = APIRouter(tags=["leçons"])
 
@@ -153,6 +155,7 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
     )
     if lesson.status == "ready":
         units = await load_units(db, lesson)
+        levels = notion_levels(units, await load_masteries(db, child.id, units))
         out.grade, out.objective, out.summary = lesson.grade, lesson.objective, lesson.summary
         out.knowledge = sorted(
             (
@@ -162,11 +165,23 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
                     statement=u.item.statement,
                     importance=u.item.importance,
                     type=u.item.type,
+                    level=levels[units.key_to_id[u.id]].level,
                 )
                 for u in units.units
             ),
             key=lambda k: -k.importance,
         )
+        out.skills = [
+            SkillOut(
+                id=skill.id,
+                label=skill.label,
+                verb=SkillVerb(skill.verb),
+                importance=skill.importance,
+                level=skill.level(levels),
+                knowledge_ids=skill.knowledge_ids,
+            )
+            for skill in (await load_skills(db, [lesson.id]))[lesson.id]
+        ]
     return out
 
 

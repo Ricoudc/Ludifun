@@ -25,8 +25,12 @@ def composer(registry: ActivityRegistry) -> SessionComposer:
     return SessionComposer(registry)
 
 
-def mastery(score: int, box: int, due_in_days: float) -> Mastery:
-    return Mastery(score, box, NOW + timedelta(days=due_in_days), NOW - timedelta(days=2))
+ALL_LEVELS = frozenset({1, 2, 3})
+
+
+def mastery(score: int, box: int, due_in_days: float, levels: frozenset[int] = ALL_LEVELS) -> Mastery:
+    """Par défaut, tous les niveaux de compréhension sont validés : seul le score compte."""
+    return Mastery(score, box, NOW + timedelta(days=due_in_days), NOW - timedelta(days=2), levels=levels)
 
 
 def blocks(plan: SessionPlan) -> list[Block]:

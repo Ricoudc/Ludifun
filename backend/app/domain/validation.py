@@ -20,6 +20,7 @@ from app.domain.knowledge import (
     LessonInfo,
     MaterialQuestion,
     Pair,
+    Skill,
 )
 from app.domain.text import compatible_natures, contains_words, fuzzy_contains, normalize
 
@@ -115,14 +116,44 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
             warnings.append(f"{item.id} : relation vers une notion inconnue retirée")
         cleaned.append(item.model_copy(update={"relations": relations}))
 
+    skills = _validate_skills(raw.get("skills"), known, ocr_text, rejected, warnings)
     analysis = LessonAnalysis(
         schema_version=str(raw.get("schema_version", "1.0")),
         is_lesson=True,
         lesson=lesson,
         knowledge=cleaned,
+        skills=skills,
         warnings=warnings,
     )
     return AnalysisValidation(analysis, rejected)
+
+
+def _validate_skills(
+    raw_skills: Any, known: set[str], ocr_text: str, rejected: list[Rejection], warnings: list[str]
+) -> list[Skill]:
+    """Une compétence doit citer la leçon et s'appuyer sur au moins une notion retenue."""
+    skills: list[Skill] = []
+    for index, raw_skill in enumerate(raw_skills if isinstance(raw_skills, list) else []):
+        name = raw_skill.get("id") if isinstance(raw_skill, dict) else None
+        element = str(name) if name else f"skills[{index}]"
+        if isinstance(raw_skill, dict) and isinstance(raw_skill.get("knowledge_ids"), list):
+            ids = [k for k in raw_skill["knowledge_ids"] if isinstance(k, str)]
+            linked = list(dict.fromkeys(k for k in ids if k in known))
+            if len(linked) != len(ids):
+                warnings.append(f"{element} : lien vers une notion inconnue retiré")
+            raw_skill = {**raw_skill, "knowledge_ids": linked}
+        try:
+            skill = Skill.model_validate(raw_skill)
+        except ValidationError as exc:
+            rejected.append(Rejection(element, _first_error(exc)))
+            continue
+        if any(existing.id == skill.id for existing in skills):
+            rejected.append(Rejection(element, "identifiant en double"))
+        elif not fuzzy_contains(ocr_text, skill.source_excerpt):
+            rejected.append(Rejection(element, "source_excerpt introuvable dans le texte de la leçon"))
+        else:
+            skills.append(skill)
+    return skills
 
 
 # --------------------------------------------------------------------------- #

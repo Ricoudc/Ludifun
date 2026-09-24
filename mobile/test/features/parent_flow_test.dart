@@ -56,6 +56,8 @@ final dashboard = {
       'mastery': 40,
       'status': 'not_mastered',
       'next_review_at': '2026-09-24T08:00:00Z',
+      'level': 2,
+      'explanation': 'Des réussites, mais encore fragile.',
     },
     {
       'knowledge_id': 'k2',
@@ -63,9 +65,11 @@ final dashboard = {
       'lesson_id': 'l3',
       'lesson_title': 'Le passé',
       'subject': 'french',
-      'mastery': 60,
+      'mastery': 100,
       'status': 'to_review',
       'next_review_at': '2026-09-25T08:00:00Z',
+      'level': 3,
+      'explanation': 'Reconnaît la bonne réponse, pas encore la retrouver seul.',
     },
   ],
   'reviews_due': 3,
@@ -178,8 +182,15 @@ void main() {
 
     // À renforcer, progression, activités.
     expect(find.text('Comparaison des fractions'), findsOneWidget);
-    expect(find.text('Les fractions'), findsOneWidget);
+    expect(find.text('Des réussites, mais encore fragile. · Les fractions'), findsOneWidget);
     expect(find.text('Imparfait'), findsOneWidget);
+    // Réussie à 100 % en QCM, mais pas encore retrouvée seule : le niveau, pas le pourcentage.
+    expect(
+      find.text('Reconnaît la bonne réponse, pas encore la retrouver seul. · Le passé'),
+      findsOneWidget,
+    );
+    expect(find.text('100 %'), findsNothing);
+    expect(find.bySemanticsLabel('Niveau 3 sur 5 : En cours d\'acquisition'), findsOneWidget);
     expect(find.text('Note moyenne par semaine · en progression ↗'), findsOneWidget);
     expect(
       find.bySemanticsLabel('Semaine du 21/9 : 4 séances, 37 min, 8,5 / 10 en moyenne'),
@@ -418,6 +429,84 @@ void main() {
     await tap(tester, find.widgetWithText(FilledButton, 'Supprimer définitivement'));
     expect(server.routes, contains('DELETE /v1/parent'));
     expect(find.text('Qui utilise cet appareil ?'), findsOneWidget);
+  });
+
+  testWidgets('compétences par leçon, avec ce qui manque encore', (tester) async {
+    Map<String, Object?> level(int value, String label, String color) => {
+      'value': value,
+      'label': label,
+      'color': color,
+    };
+    server.on(
+      'GET /v1/children/c1/skills',
+      (_) => (
+        200,
+        {
+          'lessons': [
+            {
+              'lesson_id': 'l2',
+              'title': 'Les fractions',
+              'subject': 'math',
+              'created_at': '2026-09-20T15:00:00Z',
+              'skills': [
+                {
+                  'id': 'sk1',
+                  'label': 'Comparer deux fractions de même dénominateur',
+                  'verb': 'apply',
+                  'importance': 5,
+                  'level': level(3, 'En cours d\'acquisition', 'orange'),
+                  'knowledge_ids': ['k2', 'k4'],
+                },
+              ],
+              'notions': [
+                {
+                  'id': 'k1',
+                  'label': 'Fraction',
+                  'importance': 5,
+                  'level': level(5, 'Très bien maîtrisée', 'green'),
+                  'explanation': 'Maîtrisée et bien retenue dans le temps.',
+                },
+                {
+                  'id': 'k2',
+                  'label': 'Numérateur',
+                  'importance': 5,
+                  'level': level(4, 'Maîtrisée', 'green'),
+                  'explanation': 'Maîtrisée : il reste à la garder en mémoire.',
+                },
+                {
+                  'id': 'k4',
+                  'label': 'Comparer des fractions',
+                  'importance': 4,
+                  'level': level(3, 'En cours d\'acquisition', 'orange'),
+                  'explanation': 'Connaît la règle, doit encore s\'entraîner à l\'appliquer.',
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Compétences par leçon'));
+
+    expect(find.text('Compétences · Emma'), findsOneWidget);
+    expect(find.text('📐 Les fractions'), findsOneWidget);
+    expect(find.text('Comparer deux fractions de même dénominateur'), findsOneWidget);
+    expect(find.text('En cours d\'acquisition · Appliquer'), findsOneWidget);
+    // Notion reliée à aucune compétence : regroupée à part.
+    expect(find.text('Autres notions'), findsOneWidget);
+
+    await tap(tester, find.text('Comparer deux fractions de même dénominateur'));
+    expect(find.text('Numérateur'), findsOneWidget);
+    expect(find.text('Connaît la règle, doit encore s\'entraîner à l\'appliquer.'), findsOneWidget);
+    expect(find.text('Fraction'), findsNothing); // dans « Autres notions », encore fermé
+
+    await tap(tester, find.byTooltip('Comment lire les niveaux'));
+    expect(
+      find.textContaining('« Maîtrisée » ne veut pas dire « réussit les QCM »'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('exporter les données d\'Emma (RGPD)', (tester) async {

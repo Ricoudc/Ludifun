@@ -10,8 +10,9 @@
 
 ## 1. Point de départ : ce qui existe déjà
 
-État au commit `0e58b44` (pull request #1) : 424 tests serveur, 51 tests application,
-intégration continue verte, APK Android de test.
+État au commit `0e58b44` (pull request #1), avant l'étape 13 : 424 tests serveur, 51 tests
+application, intégration continue verte, APK Android de test. Les lignes marquées « étape 13 »
+ont été mises à jour depuis.
 
 | CDC | Exigence | État | Où |
 |---|---|---|---|
@@ -21,10 +22,10 @@ intégration continue verte, APK Android de test.
 | §8.5 | Texte collé ou saisi | 🟡 le pipeline sait partir d'un texte (relance) ; pas de route ni d'écran | étape 15 |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | 🟡 citation source obligatoire par notion (vérifiée à 90 %), qualité par page ; pas de vérification par l'enfant | étape 15 |
-| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v1.md` |
-| §11, §13 | Compétences | ⏳ | étape 13 |
-| §14 | Maîtrise 0-5 | 🟡 score 0-100 et boîtes 1-5 par notion ; pas par compétence ni par niveau de compréhension | étape 13 |
-| §15, §65 | Mémorisation vs compréhension, transfert | ⏳ | étape 13 |
+| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v2.md` |
+| §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
+| §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
+| §15, §65 | Mémorisation vs compréhension, transfert | 🟡 étape 13 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer ; 4 expliquer et 5 transférer à l'étape 14 (questions ouvertes) | `domain/understanding.py` |
 | §16-§18 | Moteur qui choisit l'activité ; QCM, vrai/faux, flashcards, texte à trous, association, défi rapide | ✅ 6 activités, composition par blocs selon la maîtrise | `domain/composer.py`, `domain/activities/` |
 | §18 | Questions ouvertes, memory, classement | ⏳ déclarés (`OPEN_QUESTION`, `MEMORY`, `ORDER`), non implémentés | étapes 14, 18 |
 | §19-§25 | Pratique par matière, activités visuelles, géographie, histoire, sciences, maths | ⏳ V2-V3 | §9 de ce document |
@@ -78,8 +79,8 @@ Ce sont les étapes 13 et 14, avant les tests avec de vraies familles.
 ```
 backend/app/
 ├── domain/                     # pur Python, sans infrastructure (test d'architecture)
-│   ├── knowledge.py            # + Skill, CognitiveLevel
-│   ├── skills.py               # NOUVEAU : maîtrise par compétence et par niveau (§5)
+│   ├── knowledge.py            # + Skill, SkillVerb (étape 13 ✅)
+│   ├── understanding.py        # niveaux de compréhension, niveau affiché 0-5 (étape 13 ✅)
 │   ├── help.py                 # NOUVEAU : aide progressive (§27)
 │   ├── errors.py               # NOUVEAU : types d'erreurs, erreurs récurrentes (§43, §63)
 │   ├── remediation.py          # NOUVEAU : adaptation en temps réel (§35)
@@ -87,12 +88,15 @@ backend/app/
 │   ├── planning.py             # NOUVEAU : séance à durée cible, plan avant contrôle (§31, §33)
 │   ├── composer.py             # + durée cible, niveaux de compréhension
 │   └── activities/             # + open_question.py, order.py, memory.py
-├── ai/prompts/                 # analysis.v2 (compétences), material.v2 (aides, erreurs types),
+├── ai/prompts/                 # analysis.v2 (compétences, ✅), material.v2 (aides, erreurs types),
 │                               # ocr.v2 (passages incertains), evaluation.v1 (réponses ouvertes)
 ├── services/                   # goals.py, revision_plans.py (NOUVEAUX)
 └── api/v1/                     # goals.py, help (dans sessions.py), review (dans lessons.py)
 
-mobile/lib/features/
+mobile/lib/
+├── app/level_stars.dart                   # niveau 0-5 en étoiles (étape 13 ✅)
+├── features/parent/child_skills_screen.dart  # compétences par leçon (étape 13 ✅)
+└── features/
 ├── session/help_sheet.dart     # « ❓ Je n'ai pas compris »
 ├── session/activities/         # + open_question_view, order_view, memory_view
 ├── analysis/ocr_review_screen.dart   # « Peux-tu vérifier ? »
@@ -102,18 +106,21 @@ mobile/lib/features/
 
 ---
 
-## 4. Modèle de données — migration `0003`
+## 4. Modèle de données
+
+### 4.1 Migration `0003` (étape 13, faite)
 
 ```sql
 -- Compétences d'une leçon (CDC §11, §13), reliées aux notions qu'elles mobilisent.
 CREATE TABLE skills (
-    id          UUID PRIMARY KEY,
-    lesson_id   UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
-    key         TEXT NOT NULL,                  -- "s1", "s2"… (comme les notions "k1")
-    label       TEXT NOT NULL,                  -- « Comparer deux fractions »
-    verb        TEXT NOT NULL CHECK (verb IN ('recognize','recall','apply','explain','transfer')),
-    importance  SMALLINT NOT NULL CHECK (importance BETWEEN 1 AND 5),
-    position    SMALLINT NOT NULL,
+    id             UUID PRIMARY KEY,
+    lesson_id      UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    key            TEXT NOT NULL,               -- "s1", "s2"… (comme les notions "k1")
+    label          TEXT NOT NULL,               -- « Comparer deux fractions »
+    verb           TEXT NOT NULL CHECK (verb IN ('recognize','recall','apply','explain','transfer')),
+    importance     SMALLINT NOT NULL CHECK (importance BETWEEN 1 AND 5),
+    source_excerpt TEXT NOT NULL,               -- citation exacte, comme pour les notions
+    position       SMALLINT NOT NULL,
     UNIQUE (lesson_id, key)
 );
 CREATE TABLE skill_knowledge (
@@ -122,39 +129,35 @@ CREATE TABLE skill_knowledge (
     PRIMARY KEY (skill_id, knowledge_id)
 );
 
--- Difficulté intrinsèque d'une notion (CDC §36, §56).
-ALTER TABLE knowledge_items ADD COLUMN difficulty SMALLINT NOT NULL DEFAULT 2
-    CHECK (difficulty BETWEEN 1 AND 3);
-
 -- Niveau de compréhension sollicité par une activité (CDC §15).
 ALTER TABLE session_items ADD COLUMN cognitive_level SMALLINT NOT NULL DEFAULT 1
     CHECK (cognitive_level BETWEEN 1 AND 5);
-ALTER TABLE session_items ADD COLUMN skill_ids UUID[] NOT NULL DEFAULT '{}';
+-- Niveaux à valider pour « maîtrisée », fixés à l'analyse d'après le matériel (§5.2).
+ALTER TABLE knowledge_items ADD COLUMN required_levels SMALLINT[] NOT NULL DEFAULT '{1}';
+-- Niveaux déjà validés par l'enfant.
+ALTER TABLE knowledge_mastery ADD COLUMN levels SMALLINT[] NOT NULL DEFAULT '{}';
+```
 
--- Évaluation détaillée (CDC §62-§63).
+Les données existantes sont complétées par la migration (niveau de chaque activité, niveaux
+exigés d'après le matériel, niveaux validés d'après les réponses des séances terminées). Le niveau
+d'une compétence n'est pas stocké : il se calcule à partir de ses notions (§5.3), ce qui évite
+une table `skill_mastery` à tenir à jour.
+
+### 4.2 Prévu (étapes 14 à 17)
+
+```sql
+-- Étape 14 — évaluation détaillée (CDC §62-§63).
 ALTER TABLE attempts ADD COLUMN help_level SMALLINT NOT NULL DEFAULT 0
     CHECK (help_level BETWEEN 0 AND 5);             -- aide la plus forte utilisée avant la réponse
 ALTER TABLE attempts ADD COLUMN confidence REAL;     -- évaluateur IA (questions ouvertes)
-ALTER TABLE attempt_evidence ADD COLUMN cognitive_level SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE attempt_evidence ADD COLUMN error_type TEXT CHECK (error_type IN (
     'knowledge','calculation','method','reading','confusion',
     'forgotten','imprecision','random','statement')); -- NULL si réussi
 
--- Maîtrise par compétence (CDC §13-§14, §65) ; la maîtrise par notion reste.
-CREATE TABLE skill_mastery (
-    child_id        UUID REFERENCES children(id) ON DELETE CASCADE,
-    skill_id        UUID REFERENCES skills(id) ON DELETE CASCADE,
-    score           SMALLINT NOT NULL CHECK (score BETWEEN 0 AND 100),
-    levels_reached  SMALLINT[] NOT NULL DEFAULT '{}',  -- niveaux 1-5 validés au moins une fois
-    updated_at      TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (child_id, skill_id)
-);
-
--- Source d'une leçon et relecture de l'OCR (CDC §8.5, §10).
+-- Étape 15 — source d'une leçon et relecture de l'OCR (CDC §8.5, §10).
 ALTER TABLE lessons ADD COLUMN source TEXT NOT NULL DEFAULT 'camera'
     CHECK (source IN ('camera','gallery','text','pdf'));
-ALTER TABLE lessons DROP CONSTRAINT lessons_status_check, ADD CONSTRAINT lessons_status_check
-    CHECK (status IN ('uploaded','reading','needs_review','analyzing','generating','ready','failed'));
+-- + statut 'needs_review' dans lessons.status
 CREATE TABLE lesson_review_items (
     id          UUID PRIMARY KEY,
     lesson_id   UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
@@ -165,7 +168,7 @@ CREATE TABLE lesson_review_items (
     answered_at TIMESTAMPTZ
 );
 
--- Objectifs et plans de révision (CDC §31, §33, §47).
+-- Étape 16 — objectifs et plans de révision (CDC §31, §33, §47).
 CREATE TABLE goals (
     id              UUID PRIMARY KEY,
     child_id        UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
@@ -182,13 +185,17 @@ CREATE TABLE revision_plan_days (
     day       DATE NOT NULL,
     focus     TEXT NOT NULL CHECK (focus IN ('diagnostic','targeted','memorize','errors','mock_test')),
     minutes   SMALLINT NOT NULL,
-    done_session_id UUID REFERENCES revision_sessions(id) ON DELETE SET NULL,
+    done_session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
     PRIMARY KEY (goal_id, day)
 );
+
+-- Étape 17 — difficulté intrinsèque d'une notion (CDC §36, §56).
+ALTER TABLE knowledge_items ADD COLUMN difficulty SMALLINT NOT NULL DEFAULT 2
+    CHECK (difficulty BETWEEN 1 AND 3);
 ```
 
 V2 (gamification, CDC §37-§39) : `xp_events(child_id, reason, points, session_id, created_at)`,
-`badges(child_id, code, earned_at)`, série calculée depuis `revision_sessions`. Aucune
+`badges(child_id, code, earned_at)`, série calculée depuis `sessions`. Aucune
 donnée de classement entre enfants (CDC §108.8).
 
 ---
@@ -199,36 +206,51 @@ donnée de classement entre enfants (CDC §108.8).
 
 | Niveau | Activités | Évaluation |
 |---|---|---|
-| 1 Reconnaissance | QCM, vrai/faux, association, défi rapide, memory | déterministe |
-| 2 Rappel | texte à trous, flashcard (auto-évaluée, poids réduit), question ouverte courte | déterministe (tolérance aux fautes) |
-| 3 Application | question ouverte « applique », classement, calcul, problème | déterministe ou IA |
-| 4 Explication | question ouverte « explique pourquoi » | IA (§6.4) |
-| 5 Transfert | question ouverte en situation nouvelle (générée à partir de la notion) | IA |
+| 1 Reconnaître | QCM (difficultés 1 et 2), vrai/faux, association, défi rapide ; memory (V2) | déterministe |
+| 2 Se rappeler | texte à trous, carte mémoire (auto-évaluée, poids réduit) ; question ouverte courte (étape 14) | déterministe (tolérance aux fautes) |
+| 3 Appliquer | QCM de difficulté 3 (« relier, appliquer ») ; question ouverte « applique », classement, calcul (étape 14) | déterministe ou IA |
+| 4 Expliquer | question ouverte « explique pourquoi » (étape 14) | IA (§6.4) |
+| 5 Transférer | question ouverte en situation nouvelle (étape 14) | IA |
 
-Le composeur remonte les niveaux au fil des séances : première séance 1-2, révisions 2-3, puis
-4-5 une fois les niveaux inférieurs validés. Une activité de niveau *n* n'est proposée que si
-le niveau *n-1* est validé pour la notion (sauf diagnostic).
+Le niveau de chaque activité est enregistré (`session_items.cognitive_level`). En révision, une
+notion dont le score atteint 50 est travaillée à son **premier niveau exigé non validé** ; en
+dessous, la difficulté suit le score comme avant. Une notion n'est plus mise de côté comme
+« connue » tant qu'un niveau exigé manque, et sa priorité est calculée comme si son score était
+d'au plus 70.
 
-### 5.2 Maîtrise d'une notion et d'une compétence
+### 5.2 Niveaux exigés et niveaux validés
 
-- Par notion : score 0-100 existant, alimenté par les preuves pondérées de **chaque niveau**
-  (poids × 1 au niveau 1, × 1,2 au niveau 2, × 1,5 au-delà), réduit si une aide ≥ 3 a été
-  utilisée (× 0,5) ou si la réponse est jugée aléatoire.
-- Par compétence : moyenne pondérée des notions liées + niveaux validés (`levels_reached`).
+- **Exigés** (`knowledge_items.required_levels`, fixés à l'analyse) : les niveaux que le matériel
+  de la leçon permet vraiment de travailler, jusqu'au plafond du type de notion — 3 pour une règle,
+  une formule ou un processus (elles s'appliquent), 2 pour les autres. On n'exige jamais un niveau
+  qu'aucune activité ne peut prouver (une classification sans texte à trous ni carte : niveau 1).
+- **Validés** (`knowledge_mastery.levels`) : un niveau est validé quand, dans une séance, le taux
+  pondéré des réponses de ce niveau atteint 80 % (reprise des erreurs comprise). Un niveau validé
+  le reste.
+- Le score 0-100, les boîtes et les intervalles de révision ne changent pas. La pondération des
+  preuves selon le niveau et l'aide utilisée viendra avec l'aide progressive (étape 14).
 
 ### 5.3 Niveau affiché 0-5 (CDC §14, arbitrage A4)
 
 | Niveau | Règle |
 |---|---|
-| 0 Jamais rencontrée | aucune preuve |
-| 1 Découverte | au moins une preuve, score < 30 |
+| 0 Jamais travaillée | aucune réponse |
+| 1 Découverte | score < 30 |
 | 2 Fragile | score 30-49 |
-| 3 En cours d'acquisition | score 50-79, ou ≥ 80 sans niveau ≥ 2 validé |
-| 4 Maîtrisée | score ≥ 80 **et** niveaux 1 et 2 validés **et** niveau 3 validé si la notion s'applique (règle, formule, processus) — CDC §65 |
-| 5 Très bien maîtrisée | niveau 4 maîtrisé tenu à une révision espacée d'au moins 7 jours |
+| 3 En cours d'acquisition | score 50-79, ou ≥ 80 **sans tous les niveaux exigés** (CDC §65) |
+| 4 Maîtrisée | score ≥ 80 et tous les niveaux exigés validés |
+| 5 Très bien maîtrisée | niveau 4, score ≥ 90, et tenu jusqu'à la dernière boîte de révision (J+14) |
 
-Statuts parent (CDC §42) : 🟢 niveaux 4-5, 🟠 niveau 3, 🔴 niveaux 1-2, avec la phrase qui
-explique pourquoi (« réussit les questions à choix, pas encore sans aide »).
+Une leçon est « maîtrisée » quand toutes ses notions importantes sont au niveau 5.
+
+**Compétence** : moyenne des niveaux de ses notions arrondie vers le bas, et au plus un niveau
+au-dessus de sa notion la plus faible (une notion fragile suffit à laisser la compétence « en
+cours »).
+
+Statuts parent (CDC §42) : 🟢 niveaux 4-5, 🟠 niveau 3, 🔴 niveaux 1-2, ⚪ 0, toujours avec la
+phrase qui explique pourquoi : « Reconnaît la bonne réponse, pas encore la retrouver seul. »,
+« Connaît la règle, doit encore s'entraîner à l'appliquer. »… « À renforcer » du tableau de bord
+liste les notions de niveau 3 ou moins, même réussies à 100 % en QCM.
 
 ### 5.4 Aide progressive (CDC §27)
 
@@ -370,7 +392,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | aide suivante (niveau 1 → 5) |
 | POST | `/v1/sessions/{id}/extend` | activités supplémentaires (enfant rapide) |
 | POST | `/v1/lessons/{id}/sessions` `{target_minutes?}` | séance à durée cible |
-| GET | `/v1/children/{id}/skills` | compétences, niveau 0-5, statut et explication |
+| GET | `/v1/children/{id}/skills` | ✅ étape 13 : compétences et notions de chaque leçon, niveau 0-5, couleur et explication |
 | GET | `/v1/children/{id}/errors` | erreurs par type et erreurs récurrentes |
 | GET · POST · DELETE | `/v1/children/{id}/goals[/{goal_id}]` | temps quotidien, contrôle, matière prioritaire |
 | GET | `/v1/children/{id}/goals/{goal_id}/plan` | plan de révision jour par jour |
@@ -387,12 +409,12 @@ et ont leurs tests de séparation.
 | CDC §77 | Existant | À faire |
 |---|---|---|
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
-| 5 Dashboard parent | ✅ | compétences, erreurs récurrentes, objectifs (étapes 13, 14, 16) |
+| 5 Dashboard parent | ✅ ; compétences par leçon et « à renforcer » expliqué (étape 13) | erreurs récurrentes, objectifs (étapes 14, 16) |
 | 6 Dashboard enfant | ✅ mission du jour | plan du contrôle, durée du jour (étape 16) ; XP et série en V2 |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ | import de texte (étape 15) |
-| 10-11 Analyse, leçon comprise | ✅ | « Peux-tu vérifier ? » (étape 15), compétences listées (étape 13) |
+| 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et niveau de chaque notion en étoiles (étape 13) | « Peux-tu vérifier ? » (étape 15) |
 | 12-16 Activité, réponse, correction, aide, suivante | ✅ sauf l'aide | bouton « ❓ Je n'ai pas compris » (étape 14), question ouverte (étape 14), remédiation (étape 17) |
-| 17 Résultat de séance | ✅ | niveaux atteints, « tu as réussi une notion qui te posait problème » (étape 13) |
+| 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
 
 ---
@@ -404,7 +426,7 @@ documentation, intégration continue verte.
 
 | # | Étape | Contenu | Terminé quand… |
 |---|---|---|---|
-| 13 | **Compétences et niveaux de compréhension** | migration 0003 (compétences, niveaux), analyse v2, maîtrise par niveau et par compétence, niveau affiché 0-5, statuts expliqués, écrans leçon, bilan et tableau de bord | une leçon réelle donne des compétences reliées aux notions ; 5 QCM réussis ne suffisent plus à « maîtrisé » (test) |
+| 13 ✅ | **Compétences et niveaux de compréhension** | migration 0003 (compétences, niveaux), analyse v2, maîtrise par niveau et par compétence, niveau affiché 0-5, statuts expliqués, écrans leçon, bilan et tableau de bord | une leçon réelle donne des compétences reliées aux notions ; 5 QCM réussis ne suffisent plus à « maîtrisé » (test) |
 | 14 | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
 | 15 | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
 | 16 | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |

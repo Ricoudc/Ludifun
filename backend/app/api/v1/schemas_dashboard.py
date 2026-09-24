@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.domain.knowledge import SkillVerb
+
 
 class WeekOut(BaseModel):
     week_start: date = Field(description="Lundi de la semaine, à l'heure de la famille.")
@@ -32,6 +34,8 @@ class WeakNotionOut(BaseModel):
     mastery: int
     status: Literal["to_review", "not_mastered"]
     next_review_at: datetime
+    level: int = Field(description="Niveau de maîtrise, 0 à 5 (3 : en cours d'acquisition).")
+    explanation: str = Field(description="Ce qui manque encore, en une phrase.")
 
 
 class DashboardOut(BaseModel):
@@ -44,7 +48,7 @@ class DashboardOut(BaseModel):
     activities_this_week: dict[str, int]
     subjects: list[SubjectOut]
     to_strengthen: list[WeakNotionOut] = Field(
-        description="Au plus 5 notions sous 80 %, les plus faibles d'abord."
+        description="Au plus 5 notions pas encore maîtrisées (niveau ≤ 3), les plus faibles d'abord."
     )
     reviews_due: int = Field(description="Notions dont la révision est due maintenant.")
     weeks: list[WeekOut] = Field(description="De la plus ancienne à la semaine en cours.")
@@ -79,3 +83,46 @@ class HistoryOut(BaseModel):
 
     sessions: list[HistoryEntryOut]
     next_before: datetime | None
+
+
+Color = Literal["grey", "red", "orange", "green"]
+
+
+class LevelOut(BaseModel):
+    value: int = Field(
+        description="0 jamais travaillée, 1 découverte, 2 fragile, 3 en cours, 4 maîtrisée, 5 très bien."
+    )
+    label: str
+    color: Color
+
+
+class NotionProgressOut(BaseModel):
+    id: uuid.UUID
+    label: str
+    importance: int
+    level: LevelOut
+    explanation: str
+
+
+class SkillProgressOut(BaseModel):
+    id: uuid.UUID
+    label: str
+    verb: SkillVerb
+    importance: int
+    level: LevelOut
+    knowledge_ids: list[uuid.UUID]
+
+
+class LessonProgressOut(BaseModel):
+    lesson_id: uuid.UUID
+    title: str | None
+    subject: str | None
+    created_at: datetime
+    skills: list[SkillProgressOut] = Field(description="Vide pour une leçon analysée avant l'étape 13.")
+    notions: list[NotionProgressOut]
+
+
+class SkillsOut(BaseModel):
+    """Compétences et notions, leçon par leçon."""
+
+    lessons: list[LessonProgressOut] = Field(description="Les 20 leçons prêtes les plus récentes.")

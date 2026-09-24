@@ -60,6 +60,7 @@ Map<String, Object?> lessonJson(
               'statement': 'La Révolution française commence en 1789.',
               'importance': 5,
               'type': 'date',
+              'level': 2,
             },
             {
               'id': 'k2',
@@ -67,6 +68,18 @@ Map<String, Object?> lessonJson(
               'statement': 'Louis XVI réunit les États généraux en mai 1789.',
               'importance': 4,
               'type': 'event',
+            },
+          ]
+        : <Object>[],
+    'skills': ready
+        ? [
+            {
+              'id': 'sk1',
+              'label': 'Situer les grands événements de 1789',
+              'verb': 'recall',
+              'importance': 5,
+              'level': 1,
+              'knowledge_ids': ['k1', 'k2'],
             },
           ]
         : <Object>[],
@@ -220,6 +233,12 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
     expect(find.text('🎯 Objectif : Connaître les grandes dates de la Révolution'), findsOneWidget);
     expect(find.text('⏱️ Durée estimée : 8 min'), findsOneWidget);
+    // Compétences de la leçon et niveau de chaque notion, en étoiles.
+    expect(find.text('Tu vas savoir :'), findsOneWidget);
+    expect(find.text('Situer les grands événements de 1789'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Niveau 1 sur 5 : Découverte')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Niveau 2 sur 5 : Fragile')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Niveau 0 sur 5 : Jamais travaillée')), findsOneWidget);
     await tester.tap(find.text('États généraux'));
     await tester.pumpAndSettle();
     expect(find.text('Louis XVI réunit les États généraux en mai 1789.'), findsOneWidget);
@@ -232,6 +251,7 @@ void main() {
       return (200, lessonJson('ready')..['grade'] = 'CM2');
     });
     final after = lessonJson('ready')..['grade'] = 'CM2';
+    await tester.ensureVisible(find.text('Ce n\'est pas le bon niveau ?'));
     await tester.tap(find.text('Ce n\'est pas le bon niveau ?'));
     await tester.pumpAndSettle();
     server.on('GET /v1/lessons/l1', (_) => (200, after));

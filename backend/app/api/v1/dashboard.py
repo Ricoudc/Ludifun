@@ -15,11 +15,18 @@ from app.api.v1.schemas_dashboard import (
     DashboardOut,
     HistoryEntryOut,
     HistoryOut,
+    LessonProgressOut,
+    LevelOut,
+    NotionProgressOut,
     NotionResultOut,
+    SkillProgressOut,
+    SkillsOut,
     SubjectOut,
     WeakNotionOut,
     WeekOut,
 )
+from app.domain.knowledge import SkillVerb
+from app.domain.understanding import LEVEL_LABELS, MasteryLevel, level_color
 from app.services import dashboard, export
 from app.services.dashboard import WeekStats
 
@@ -67,6 +74,8 @@ async def get_dashboard(
                 mastery=n.mastery,
                 status=n.status,
                 next_review_at=n.next_review_at,
+                level=n.level,
+                explanation=n.explanation,
             )
             for n in board.to_strengthen
         ],
@@ -107,6 +116,50 @@ async def get_history(
             for e in entries
         ],
         next_before=entries[-1].started_at if len(entries) == limit else None,
+    )
+
+
+def level_out(level: int) -> LevelOut:
+    value = MasteryLevel(level)
+    return LevelOut(value=value, label=LEVEL_LABELS[value], color=level_color(value))
+
+
+@router.get("/children/{child_id}/skills")
+async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> SkillsOut:
+    """Compétences et notions de chaque leçon, avec leur niveau de 0 à 5 et ce qui manque encore."""
+    child = await own_child(db, parent, child_id)
+    lessons = await dashboard.lessons_progress(db, child.id, limit=20)
+    return SkillsOut(
+        lessons=[
+            LessonProgressOut(
+                lesson_id=lesson.lesson_id,
+                title=lesson.title,
+                subject=lesson.subject,
+                created_at=lesson.created_at,
+                skills=[
+                    SkillProgressOut(
+                        id=skill.skill_id,
+                        label=skill.label,
+                        verb=SkillVerb(skill.verb),
+                        importance=skill.importance,
+                        level=level_out(skill.level),
+                        knowledge_ids=skill.knowledge_ids,
+                    )
+                    for skill in lesson.skills
+                ],
+                notions=[
+                    NotionProgressOut(
+                        id=notion.knowledge_id,
+                        label=notion.label,
+                        importance=notion.importance,
+                        level=level_out(notion.level.level),
+                        explanation=notion.level.explanation,
+                    )
+                    for notion in lesson.notions
+                ],
+            )
+            for lesson in lessons
+        ]
     )
 
 

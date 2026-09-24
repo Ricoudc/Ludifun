@@ -2,7 +2,9 @@
 
 Première révision : 🧠 3 activités faciles, 🎯 3 intermédiaires, 🧩 1 association,
 ⚡ 1 défi rapide, puis 🔄 la reprise des erreurs, ajoutée en fin de séance.
-Révisions suivantes : même structure, centrée sur les notions fragiles ou dues.
+Révisions suivantes : même structure, centrée sur les notions fragiles ou dues ; une notion
+bien réussie mais dont un niveau de compréhension manque (se rappeler, appliquer) est
+travaillée à ce niveau (spécification technique §5.1).
 
 Tout est déterministe pour une graine donnée : la graine est enregistrée avec la
 séance, ce qui permet de rejouer exactement un problème signalé.
@@ -22,6 +24,7 @@ from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import IMPORTANT, KNOWN_SCORE, Mastery
 from app.domain.scoring import Evidence
 from app.domain.text import normalize
+from app.domain.understanding import cognitive_level, required_levels
 
 BLOCK_SIZE = 3  # activités dans l'échauffement et dans l'approfondissement
 STRONG_NOTIONS_NEEDED = 6  # en dessous, les notions d'importance ≤ 2 sont aussi utilisées
@@ -30,6 +33,8 @@ SPEED_NOTIONS = 5
 REPLAY_MAX = 3
 ERRORS_PER_NOTION = 2
 EXPRESS_BELOW = 3  # moins de 3 notions à travailler : révision express
+LEVEL_UP_SCORE = 50  # à partir de ce score, on vise le niveau de compréhension manquant
+MISSING_LEVEL_SCORE = 70  # score retenu pour la priorité d'une notion à qui il manque un niveau
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 
 TRANSITION_S = 5
@@ -128,7 +133,7 @@ class SessionComposer:
         def prefs(block_difficulty: int, types: frozenset[ActivityCode]) -> Prefs:
             if first:
                 return lambda unit: ((block_difficulty,), types)
-            return lambda unit: (target_difficulties(masteries.get(unit.id)), None)
+            return lambda unit: self._review_prefs(unit, masteries.get(unit.id))
 
         warmup_units = to_work[:BLOCK_SIZE]
         for activity in self._sequence(warmup_units, prefs(1, EASY), items, used, rng):
@@ -167,15 +172,44 @@ class SessionComposer:
         def priority(unit: KnowledgeUnit) -> float:
             mastery = masteries.get(unit.id)
             score = mastery.score if mastery else 0
+            if self._missing(unit, mastery):
+                score = min(score, MISSING_LEVEL_SCORE)
             due = mastery is None or mastery.is_due(now)
             return unit.item.importance * (100 - score) / 100 * (1.5 if due else 1.0)
 
         def known(unit: KnowledgeUnit) -> bool:
             mastery = masteries.get(unit.id)
-            return mastery is not None and mastery.score >= KNOWN_SCORE and not mastery.is_due(now)
+            return (
+                mastery is not None
+                and mastery.score >= KNOWN_SCORE
+                and not mastery.is_due(now)
+                and not self._missing(unit, mastery)
+            )
 
         working = [u for u in eligible if not known(u)]
         return sorted(working, key=lambda u: (-priority(u), -u.item.importance, units.index(u)))
+
+    def _missing(self, unit: KnowledgeUnit, mastery: Mastery | None) -> frozenset[int]:
+        """Niveaux de compréhension exigés pour la notion et pas encore validés."""
+        levels = mastery.levels if mastery else frozenset()
+        return required_levels(unit, self.registry) - levels
+
+    def _review_prefs(
+        self, unit: KnowledgeUnit, mastery: Mastery | None
+    ) -> tuple[tuple[int, ...], frozenset[ActivityCode] | None]:
+        """Révision : difficulté selon le score ; au-delà de 50, le premier niveau manquant."""
+        missing = self._missing(unit, mastery)
+        if mastery is not None and mastery.score >= LEVEL_UP_SCORE and missing:
+            target = min(missing)
+            options = [
+                (code, difficulty)
+                for code, difficulty in self.registry.single_options(unit)
+                if cognitive_level(code, difficulty) == target
+            ]
+            if options:
+                difficulties = tuple(sorted({d for _, d in options}, reverse=True))
+                return difficulties, frozenset(code for code, _ in options)
+        return target_difficulties(mastery), None
 
     # ------------------------------------------------------------------ #
     # 🔄 Reprise des erreurs (fin de séance)

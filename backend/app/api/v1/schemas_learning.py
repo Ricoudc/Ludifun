@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.domain.knowledge import Grade
+from app.domain.knowledge import Grade, SkillVerb
 
 StepState = Literal["pending", "running", "done"]
 
@@ -17,12 +17,27 @@ class LessonAccepted(BaseModel):
     status: str
 
 
+Level = int  # niveau de maîtrise affiché, 0 (jamais travaillée) à 5 (très bien maîtrisée)
+
+
 class KnowledgeOut(BaseModel):
     id: uuid.UUID
     label: str
     statement: str
     importance: int
     type: str
+    level: Level = Field(0, description="Niveau de maîtrise de l'enfant, 0 à 5.")
+
+
+class SkillOut(BaseModel):
+    """Une compétence de la leçon (« Comparer deux fractions »)."""
+
+    id: uuid.UUID
+    label: str
+    verb: SkillVerb
+    importance: int
+    level: Level = Field(description="Niveau de la compétence, d'après celui de ses notions.")
+    knowledge_ids: list[uuid.UUID]
 
 
 class LessonSummaryOut(BaseModel):
@@ -48,6 +63,7 @@ class LessonOut(LessonSummaryOut):
     objective: str | None = None
     summary: str | None = None
     knowledge: list[KnowledgeOut] = []
+    skills: list[SkillOut] = Field([], description="Vide pour une leçon analysée avant l'étape 13.")
     can_retry: bool = False
 
 
@@ -131,6 +147,9 @@ class KnowledgeResultOut(BaseModel):
     status: Literal["mastered", "to_review", "not_mastered"]
     session_rate: float
     mastery: int
+    level: Level = Field(description="Niveau de maîtrise après la séance, 0 à 5.")
+    previous_level: Level = Field(description="Niveau avant la séance.")
+    explanation: str = Field(description="Pourquoi ce niveau (ce qui manque encore).")
 
 
 class ReportOut(BaseModel):

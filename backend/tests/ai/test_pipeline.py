@@ -54,8 +54,14 @@ async def test_reference_lessons_go_through_the_pipeline(lesson: Path) -> None:
     # 1 OCR, 1 analyse, puis un appel d'enrichissement par lot de 5 notions.
     batches = -(-len(result.units) // 5)
     assert [r.stage for r in result.runs] == ["ocr", "analysis"] + ["material"] * batches
-    assert all(r.status == "ok" and r.prompt_version == "v1" for r in result.runs)
-    assert result.prompt_versions == {"ocr": "v1", "analysis": "v1", "material": "v1"}
+    assert all(r.status == "ok" for r in result.runs)
+    assert [r.prompt_version for r in result.runs[:2]] == ["v1", "v2"]
+    assert result.prompt_versions == {"ocr": "v1", "analysis": "v2", "material": "v1"}
+    # Compétences reliées aux notions, et niveaux de compréhension exigés pour chaque notion.
+    assert len(result.analysis.skills) == 3
+    assert all(set(s.knowledge_ids) <= {u.id for u in result.units} for s in result.analysis.skills)
+    assert set(result.required_levels) == {u.id for u in result.units}
+    assert all(1 in levels for levels in result.required_levels.values())
     # Les lots demandent chacun leurs notions, sans doublon.
     asked = [k for stage, text in llm.calls if stage == "material" for k in requested_ids(text)]
     assert sorted(asked) == sorted(u.id for u in result.units)
@@ -99,8 +105,13 @@ async def test_invented_notions_are_all_rejected() -> None:
         item["source_excerpt"] = "Napoléon devient empereur en 1804"
     result, _, _ = await run(overrides={"analysis": analysis_output(raw)})
     assert result.failure_reason is FailureReason.NOT_A_LESSON
-    assert len(result.rejected) == len(raw["knowledge"])
-    assert all("introuvable" in r.reason for r in result.rejected)
+    notions = [r for r in result.rejected if r.element.startswith("analysis.k")]
+    assert len(notions) == len(raw["knowledge"])
+    assert all("introuvable" in r.reason for r in notions)
+    # Les compétences, privées de toutes leurs notions, sont écartées elles aussi.
+    assert {r.element for r in result.rejected} - {r.element for r in notions} == {
+        f"analysis.{s['id']}" for s in raw["skills"]
+    }
 
 
 @pytest.mark.parametrize("stage", ["ocr", "analysis"])

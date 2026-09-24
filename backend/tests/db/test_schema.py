@@ -182,3 +182,75 @@ async def test_lesson_status_and_page_count_are_checked(db: AsyncSession) -> Non
             await db.commit()
         await db.rollback()
     assert ids
+
+
+async def test_migration_0003_fills_levels_from_existing_data(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Les séances déjà jouées donnent les niveaux validés ; le matériel, les niveaux exigés."""
+    ids = await create_full_lesson(db)  # k1 (date) : un QCM réussi
+    lesson, k1 = ids["lesson"], ids["knowledge"]
+    session = await db.scalar(select(RevisionSession).where(RevisionSession.lesson_id == lesson))
+    assert session is not None
+    session.status = "completed"
+    material = await db.get(KnowledgeMaterial, k1)
+    assert material is not None
+    material.material = {"cloze": {"text": "En ___", "answers": ["1789"]}, "questions": []}
+    k2 = KnowledgeItem(
+        lesson_id=lesson, key="k2", type="rule", label="Règle", importance=4, position=1,
+        statement="On compare les numérateurs.", source_excerpt="compare",
+    )  # fmt: skip
+    db.add(k2)
+    await db.flush()
+    child_id = await db.scalar(select(KnowledgeMastery.child_id))
+    db.add_all(
+        [
+            KnowledgeMaterial(
+                knowledge_id=k2.id,
+                material={"questions": [{"difficulty": 3}], "flashcard": {"front": "a", "back": "b"}},
+                prompt_version="v1",
+            ),
+            KnowledgeMastery(
+                child_id=child_id,
+                knowledge_id=k2.id,
+                score=100,
+                box=2,
+                next_review_at=datetime.now(UTC),
+                last_practiced_at=datetime.now(UTC),
+            ),
+        ]
+    )
+    answers = [("FILL_BLANK", 2, k1, "0"), ("MCQ", 3, k2.id, "1")]  # texte à trous raté, application réussie
+    for position, (activity, difficulty, knowledge, result) in enumerate(answers, start=2):
+        item = SessionItem(
+            session_id=session.id, position=position, block="core", activity_type=activity,
+            difficulty=difficulty, knowledge_ids=[knowledge], payload={}, solution={},
+        )  # fmt: skip
+        db.add(item)
+        await db.flush()
+        attempt = Attempt(session_item_id=item.id, response={}, score=Decimal(result))
+        db.add(attempt)
+        await db.flush()
+        db.add(
+            AttemptEvidence(
+                attempt_id=attempt.id, knowledge_id=knowledge, result=Decimal(result), weight=Decimal("1")
+            )
+        )
+    await db.commit()
+
+    await run_alembic("downgrade", "0002")
+    await run_alembic("upgrade", "head")
+
+    async with engine.connect() as conn:
+        rows = (await conn.execute(select(KnowledgeItem.key, KnowledgeItem.required_levels))).all()
+        required = {key: value for key, value in rows}
+        mastery_rows = (
+            await conn.execute(select(KnowledgeMastery.knowledge_id, KnowledgeMastery.levels))
+        ).all()
+        levels = {key: value for key, value in mastery_rows}
+        items = (
+            await conn.execute(
+                select(SessionItem.activity_type, SessionItem.difficulty, SessionItem.cognitive_level)
+            )
+        ).all()
+    assert required == {"k1": [1, 2], "k2": [1, 2, 3]}
+    assert levels == {k1: [1], k2.id: [3]}
+    assert sorted(items) == [("FILL_BLANK", 2, 2), ("MCQ", 1, 1), ("MCQ", 3, 3)]

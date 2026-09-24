@@ -1,7 +1,7 @@
 {
   "ocr_text": "Les fractions\nUne fraction représente une partie d'un tout partagé en parts égales.\nDans la fraction 3/4, 3 est le numérateur et 4 est le dénominateur.\nLe numérateur indique le nombre de parts que l'on prend.\nLe dénominateur indique en combien de parts égales on a partagé l'unité.\nQuand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur. Exemple : 5/8 > 3/8.\nUne fraction dont le numérateur est égal au dénominateur est égale à 1. Exemple : 4/4 = 1.",
   "analysis": {
-    "schema_version": "1.0",
+    "schema_version": "2.0",
     "is_lesson": true,
     "lesson": {
       "subject": "math",
@@ -53,6 +53,23 @@
         "relations": []
       }
     ],
+    "skills": [
+      {
+        "id": "s1", "label": "Dire ce qu'est une fraction et nommer ses termes", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k1", "k2", "k3"],
+        "source_excerpt": "Dans la fraction 3/4, 3 est le numérateur et 4 est le dénominateur."
+      },
+      {
+        "id": "s2", "label": "Comparer deux fractions de même dénominateur", "verb": "apply", "importance": 5,
+        "knowledge_ids": ["k2", "k3", "k4"],
+        "source_excerpt": "Quand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur."
+      },
+      {
+        "id": "s3", "label": "Reconnaître une fraction égale à 1", "verb": "apply", "importance": 3,
+        "knowledge_ids": ["k5"],
+        "source_excerpt": "Une fraction dont le numérateur est égal au dénominateur est égale à 1."
+      }
+    ],
     "warnings": []
   },
   "material": {
@@ -100,7 +117,8 @@
       "knowledge_id": "k4",
       "questions": [
         {"difficulty": 1, "stem": "Quelle fraction est la plus grande ?", "answer": "5/8", "distractors": ["3/8", "1/8", "2/8"]},
-        {"difficulty": 2, "stem": "Deux fractions ont le même dénominateur. Laquelle est la plus grande ?", "answer": "Celle qui a le plus grand numérateur", "distractors": ["Celle qui a le plus petit numérateur", "Elles sont toujours égales", "Celle qui est écrite en premier"]}
+        {"difficulty": 2, "stem": "Deux fractions ont le même dénominateur. Laquelle est la plus grande ?", "answer": "Celle qui a le plus grand numérateur", "distractors": ["Celle qui a le plus petit numérateur", "Elles sont toujours égales", "Celle qui est écrite en premier"]},
+        {"difficulty": 3, "stem": "Quelle fraction est plus grande que 4/7 ?", "answer": "6/7", "distractors": ["3/7", "2/7", "1/7"]}
       ],
       "true_statements": ["5/8 est plus grand que 3/8."],
       "false_statements": ["3/8 est plus grand que 5/8."],
@@ -112,7 +130,8 @@
     "k5": {
       "knowledge_id": "k5",
       "questions": [
-        {"difficulty": 1, "stem": "Combien vaut la fraction 4/4 ?", "answer": "1", "distractors": ["4", "0", "8"]}
+        {"difficulty": 1, "stem": "Combien vaut la fraction 4/4 ?", "answer": "1", "distractors": ["4", "0", "8"]},
+        {"difficulty": 3, "stem": "Laquelle de ces fractions est égale à une unité entière ?", "answer": "9/9", "distractors": ["9/10", "1/9", "8/9"]}
       ],
       "true_statements": ["La fraction 4/4 est égale à 1."],
       "false_statements": ["La fraction 4/4 est égale à 4."],

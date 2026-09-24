@@ -144,9 +144,12 @@ async def test_nothing_to_review_when_everything_is_mastered(
     session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     await play(client, db, token, session["id"], session["items"], lambda _: True)
     await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
-    # Tout est su et rien n'est dû avant longtemps (y compris les notions pas encore travaillées).
+    # Tout est su à tous les niveaux et rien n'est dû avant longtemps (y compris les notions pas
+    # encore travaillées).
     await db.execute(
-        update(KnowledgeMastery).values(score=100, box=5, next_review_at=now[0] + timedelta(days=14))
+        update(KnowledgeMastery).values(
+            score=100, box=5, next_review_at=now[0] + timedelta(days=14), levels=[1, 2, 3]
+        )
     )
     for item in await db.scalars(select(KnowledgeItem)):
         if not await db.scalar(
@@ -155,7 +158,7 @@ async def test_nothing_to_review_when_everything_is_mastered(
             child_id = await db.scalar(select(KnowledgeMastery.child_id).limit(1))
             db.add(
                 KnowledgeMastery(
-                    child_id=child_id, knowledge_id=item.id, score=100, box=5,
+                    child_id=child_id, knowledge_id=item.id, score=100, box=5, levels=[1, 2, 3],
                     next_review_at=now[0] + timedelta(days=14), last_practiced_at=now[0],
                 )
             )  # fmt: skip

@@ -135,7 +135,14 @@ class Correction {
 enum KnowledgeStatus { mastered, toReview, notMastered }
 
 class KnowledgeResult {
-  const KnowledgeResult({required this.label, required this.status, required this.mastery});
+  const KnowledgeResult({
+    required this.label,
+    required this.status,
+    required this.mastery,
+    this.level = 0,
+    this.previousLevel = 0,
+    this.explanation,
+  });
 
   factory KnowledgeResult.fromJson(Json json) => KnowledgeResult(
     label: json['label'] as String,
@@ -145,11 +152,23 @@ class KnowledgeResult {
       _ => KnowledgeStatus.notMastered,
     },
     mastery: json['mastery'] as int,
+    level: json['level'] as int? ?? 0,
+    previousLevel: json['previous_level'] as int? ?? 0,
+    explanation: json['explanation'] as String?,
   );
 
   final String label;
+
+  /// Résultat de cette séance.
   final KnowledgeStatus status;
   final int mastery;
+
+  /// Niveau de maîtrise (0 à 5) après et avant la séance.
+  final int level;
+  final int previousLevel;
+  final String? explanation;
+
+  bool get levelledUp => level > previousLevel;
 }
 
 /// Bilan (écran 7).
@@ -184,5 +203,11 @@ class Report {
   List<KnowledgeResult> withStatus(KnowledgeStatus status) => [
     for (final k in knowledge)
       if (k.status == status) k,
+  ];
+
+  /// Notions qui ont gagné au moins un niveau pendant la séance.
+  List<KnowledgeResult> get levelledUp => [
+    for (final k in knowledge)
+      if (k.levelledUp) k,
   ];
 }
