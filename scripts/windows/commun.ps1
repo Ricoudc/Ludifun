@@ -6,6 +6,9 @@ $Racine = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $FichierEnv = Join-Path $Racine '.env'
 $UrlSante = 'http://localhost:8000/health/ready'
 Set-Location $Racine
+# Les scripts n'ont pas besoin d'accéder à la base depuis Windows : un port peu utilisé évite le
+# conflit avec un PostgreSQL installé sur le PC (« port is already allocated »).
+if (-not $env:LUDIFUN_DB_PORT) { $env:LUDIFUN_DB_PORT = '55432' }
 
 function Titre([string]$texte) {
     Write-Host ''
@@ -49,6 +52,17 @@ function Assurer-Docker {
         if (Docker-Pret) { Ok 'Docker est prêt'; return }
     }
     Echec 'Docker ne répond pas. Ouvre Docker Desktop, attends la baleine verte, puis relance ce script.'
+}
+
+# Un autre dossier de Ludifun (ZIP téléchargé à nouveau, ancienne version…) a pu laisser tourner
+# son serveur sous un autre nom : il occuperait les ports. On l'arrête ; les données restent.
+function Arreter-Anciennes-Copies {
+    $projets = & docker ps -a --filter 'label=com.docker.compose.project' --format '{{.Label "com.docker.compose.project"}}' 2>$null |
+        Sort-Object -Unique | Where-Object { $_ -like 'ludifun*' -and $_ -ne 'ludifun' }
+    foreach ($projet in $projets) {
+        Etape "Arrêt d'une autre copie de Ludifun ($projet)…"
+        & docker compose -p $projet down *> $null
+    }
 }
 
 # --- Fichier .env (clé d'API, choix de l'IA) -------------------------------------------

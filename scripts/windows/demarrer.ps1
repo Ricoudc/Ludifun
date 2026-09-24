@@ -13,6 +13,7 @@ if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
 }
 
 Etape 'Démarrage du serveur (la première fois, ou après une mise à jour : plusieurs minutes)…'
+Arreter-Anciennes-Copies
 & docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { Echec 'docker compose n''a pas pu démarrer le serveur (voir les messages au-dessus).' }
 $sante = Attendre-Serveur

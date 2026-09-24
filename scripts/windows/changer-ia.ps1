@@ -4,6 +4,7 @@
 Titre 'Choix de l''IA de Ludifun'
 Choisir-IA
 Assurer-Docker
+Arreter-Anciennes-Copies
 Etape 'Redémarrage du serveur avec ce réglage…'
 & docker compose up -d
 if ($LASTEXITCODE -ne 0) { Echec 'Le redémarrage n''a pas fonctionné.' }

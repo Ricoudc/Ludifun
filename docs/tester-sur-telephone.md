@@ -149,6 +149,7 @@ puis relancez `docker compose up -d` et vérifiez `"ai":"claude"` sur `/health/r
 | « modèle Ollama absent » | `ollama pull qwen2.5vl:7b` (ou le modèle choisi) dans un terminal. |
 | Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Changer-IA-Ludifun.bat`). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
 | Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Voir-les-erreurs-Ludifun.bat` montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
+| `port is already allocated` au démarrage | Un autre serveur occupe le port (souvent une autre copie de Ludifun, par exemple un ZIP téléchargé à nouveau). `Demarrer-Ludifun.bat` arrête maintenant les autres copies et n'utilise plus le port 5432 ; gardez un seul dossier de Ludifun. Si le port 8000 est pris par un autre logiciel, fermez-le. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |
 | L'outil de démonstration refuse | Le compte existe déjà : ajoutez `--replace`. |
 | Pas d'« Artifacts » sur la page GitHub | L'exécution n'est pas terminée, a échoué, ou date de plus de 30 jours. |

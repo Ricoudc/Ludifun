@@ -1,6 +1,10 @@
 # Environnement de développement : PostgreSQL + API.
 #   docker compose up -d --build        → API sur http://localhost:8000 (docs : /docs)
 #   docker compose up -d db             → uniquement la base (pour lancer l'API ou les tests en local)
+# Nom fixe : le même serveur et les mêmes données, quel que soit le nom du dossier (ZIP
+# « Ludifun-claude-… », clone « Ludifun »…).
+name: ludifun
+
 services:
   db:
     image: postgres:16-alpine
@@ -9,7 +13,9 @@ services:
       POSTGRES_PASSWORD: ludifun
       POSTGRES_DB: ludifun
     ports:
-      - "5432:5432"
+      # Seulement depuis ce PC. Port réglable si 5432 est déjà pris (PostgreSQL installé…) :
+      # LUDIFUN_DB_PORT=5433 ; les scripts Windows prennent 55432.
+      - "127.0.0.1:${LUDIFUN_DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
