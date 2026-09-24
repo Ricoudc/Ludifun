@@ -8,6 +8,7 @@ from fastapi import Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import clock
+from app.ai.factory import AiConfigError
 from app.ai.ports import LLMProvider, OcrProvider
 from app.api.errors import ApiError
 from app.config import Settings
@@ -17,6 +18,7 @@ from app.domain.activities.registry import ActivityRegistry
 from app.security.rate_limit import RateLimiter
 from app.security.tokens import InvalidToken, decode_access_token, looks_like_jwt
 from app.services import accounts
+from app.services.ai_settings import AiResolver
 from app.services.email import EmailSender
 
 
@@ -58,6 +60,13 @@ def get_registry(request: Request) -> ActivityRegistry:
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 Ai = Annotated[AiProviders, Depends(get_ai)]
+
+
+def get_ai_resolver(request: Request) -> AiResolver:
+    resolver: AiResolver = request.app.state.ai_resolver
+    return resolver
+
+
 Registry = Annotated[ActivityRegistry, Depends(get_registry)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
 Mailer = Annotated[EmailSender, Depends(get_email_sender)]
@@ -170,3 +179,20 @@ async def child_scope(
 CurrentParent = Annotated[ParentPrincipal, Depends(require_parent)]
 CurrentDevice = Annotated[DevicePrincipal, Depends(require_device)]
 ChildInScope = Annotated[Child, Depends(child_scope)]
+
+
+async def child_ai(
+    child: ChildInScope, db: DbSession, resolver: Annotated[AiResolver, Depends(get_ai_resolver)]
+) -> AiProviders:
+    """L'IA de la famille de l'enfant (espace parent), sinon celle du serveur."""
+    try:
+        return AiProviders(*await resolver.for_child(db, child))
+    except AiConfigError as exc:
+        raise ApiError(
+            503,
+            "ai_not_configured",
+            "L'IA choisie par tes parents n'est pas prête : demande-leur de vérifier.",
+        ) from exc
+
+
+ChildAi = Annotated[AiProviders, Depends(child_ai)]

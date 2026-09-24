@@ -266,6 +266,10 @@ CREATE TABLE achievements (                                -- badges : un de cha
 );
 ```
 
+Migration `0012` : `family_ai_settings(family_id PK, provider, model, base_url,
+api_key_encrypted, key_hint, updated_at)` — l'IA choisie dans l'espace parent ; sans ligne, celle
+du serveur. Clé chiffrée (Fernet), seule sa fin (`key_hint`) est montrée.
+
 Plus simple que la table `xp_events` envisagée : le détail de l'XP n'est utile qu'au bilan ;
 le total est la somme de `sessions.xp_earned`, la série se calcule depuis les séances
 terminées. Aucune donnée de classement entre enfants (CDC §108.8).
@@ -549,6 +553,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | GET · POST · DELETE | `/v1/children/{id}/exams[/{exam_id}]` | ✅ étape 16 : contrôles à venir, chacun avec son `plan` jour par jour |
 | POST | `/v1/auth/verify-email` `{token}` · `/v1/parent/verify-email` | ✅ étape 19 : confirmation de l'adresse du parent ; renvoi du lien (3 par heure) |
 | GET | `/confidentialite` · `/suppression-compte` · `/verifier-email` | ✅ étape 19 : pages web publiques (HTML sans script) |
+| GET · PUT · DELETE | `/v1/parent/ai` ; POST `/v1/parent/ai/test` | ✅ IA de la famille (Ollama conseillé, Claude, ChatGPT, Gemini, Mistral, Groq, Grok, service compatible, démonstration) ; clé chiffrée, jamais renvoyée ; test de connexion et liste des modèles |
 | GET | `/v1/me/progress` (`?child_id=` pour le parent) | ✅ étape 20 : XP, niveau, série, badges gagnés et à gagner ; le bilan (`/complete`) renvoie `rewards` |
 | POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |

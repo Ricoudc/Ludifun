@@ -72,6 +72,8 @@ function Ecrire-Env($valeurs) {
 }
 
 $Fournisseurs = @(
+    @{ Num = '0'; Code = 'ollama'; Nom = 'Ollama sur ce PC (conseillé : gratuit, rien ne sort de la maison)'; Cle = ''
+       Site = 'https://ollama.com/download'; Conseil = 'qwen2.5vl:7b' },
     @{ Num = '1'; Code = 'claude'; Nom = 'Claude (Anthropic)'; Cle = 'ANTHROPIC_API_KEY'; Prefixe = 'sk-ant-'
        Site = 'https://console.anthropic.com (API Keys)'; Conseil = 'claude-opus-5' },
     @{ Num = '2'; Code = 'openai'; Nom = 'ChatGPT (OpenAI)'; Cle = 'OPENAI_API_KEY'; Prefixe = 'sk-'
@@ -118,20 +120,49 @@ function Demander-Cle($f, $valeurs) {
     }
 }
 
+function Verifier-Ollama([string]$modele) {
+    try {
+        $tags = Invoke-RestMethod -Uri 'http://localhost:11434/api/tags' -TimeoutSec 5
+    } catch {
+        Write-Host 'Ollama ne répond pas sur ce PC : installe-le (https://ollama.com/download) et lance-le.' -ForegroundColor Yellow
+        return
+    }
+    $noms = @($tags.models | ForEach-Object { $_.name })
+    if ($noms -contains $modele -or $noms -contains "$($modele):latest") { Ok "Ollama répond, « $modele » est installé"; return }
+    Write-Host "Le modèle « $modele » n'est pas encore installé dans Ollama (plusieurs Go à télécharger)." -ForegroundColor Yellow
+    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+        $oui = Read-Host 'Le télécharger maintenant ? (O/N)'
+        if ($oui -match '^[oOyY]') { & ollama pull $modele }
+    } else {
+        Write-Host "Dans un terminal : ollama pull $modele"
+    }
+}
+
 function Choisir-IA {
     $valeurs = Lire-Env
     Write-Host ''
     Write-Host 'Quelle IA doit lire les photos et créer les jeux ?'
     foreach ($f in $Fournisseurs) { Write-Host "  $($f.Num). $($f.Nom)" }
+    Write-Host '(Chaque famille peut aussi choisir son IA dans l''application : espace parent → Intelligence artificielle.)'
     $choix = $null
     while (-not $choix) {
-        $num = (Read-Host 'Tape le numéro puis Entrée').Trim()
+        $num = (Read-Host 'Tape le numéro puis Entrée (Entrée seule = 0, Ollama)').Trim()
+        if (-not $num) { $num = '0' }
         $choix = $Fournisseurs | Where-Object { $_.Num -eq $num } | Select-Object -First 1
     }
     $valeurs['LUDIFUN_AI_PROVIDER'] = $choix.Code
     if ($choix.Code -eq 'fake') {
         Ecrire-Env $valeurs
         Ok 'IA factice choisie'
+        return
+    }
+
+    if ($choix.Code -eq 'ollama') {
+        $modele = (Read-Host "Modèle Ollama (Entrée = conseillé : $($choix.Conseil))").Trim()
+        if ($modele) { $valeurs['LUDIFUN_AI_MODEL'] = $modele } else { $valeurs.Remove('LUDIFUN_AI_MODEL'); $modele = $choix.Conseil }
+        Ecrire-Env $valeurs
+        Ok 'Ollama choisi (gratuit)'
+        Verifier-Ollama $modele
         return
     }
 

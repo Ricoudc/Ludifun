@@ -11,6 +11,7 @@ import '../features/home/child_home_screen.dart';
 import '../features/lesson/lesson_screen.dart';
 import '../features/link/link_screen.dart';
 import '../features/link/qr_scan_screen.dart';
+import '../features/parent/ai_settings_screen.dart';
 import '../features/parent/child_dashboard_screen.dart';
 import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
@@ -40,6 +41,7 @@ abstract final class Routes {
   /// Ouvert par le lien « Confirmez votre adresse » : `ludifun://app/parent/verifier-email?jeton=…`.
   static const verifyEmail = '/parent/verifier-email';
   static const addChild = '/parent/enfants/nouveau';
+  static const aiSettings = '/parent/ia';
   static String childDashboard(String childId) => '/parent/enfants/$childId';
   static String childLink(String childId) => '/parent/enfants/$childId/lier';
   static String childSettings(String childId) => '/parent/enfants/$childId/reglages';
@@ -117,6 +119,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const ParentHomeScreen(),
         routes: [
           GoRoute(path: 'enfants/nouveau', builder: (_, _) => const ChildFormScreen()),
+          GoRoute(path: 'ia', builder: (_, _) => const AiSettingsScreen()),
           GoRoute(
             path: 'enfants/:id',
             builder: (_, state) => ChildDashboardScreen(childId: state.pathParameters['id']!),

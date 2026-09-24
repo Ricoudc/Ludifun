@@ -57,6 +57,7 @@ ERROR_TYPES = (
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
 AI_STAGES = ("ocr", "analysis", "material", "evaluation")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
+AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
 BADGE_CODES = (  # app.domain.rewards.BadgeCode
     "first_session",
     "sessions_10",
@@ -119,6 +120,25 @@ class Family(Base):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     created_at: Mapped[datetime] = _created_at()
+
+
+class FamilyAiSettings(Base):
+    """L'IA choisie par la famille dans l'espace parent ; sans ligne, le réglage du serveur."""
+
+    __tablename__ = "family_ai_settings"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str | None] = mapped_column(Text)
+    base_url: Mapped[str | None] = mapped_column(Text)
+    # Clé d'API chiffrée (Fernet) ; jamais renvoyée à l'application, seulement ses 4 derniers signes.
+    api_key_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    key_hint: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("provider", AI_PROVIDERS), name="provider"),)
 
 
 class FamilyMember(Base):

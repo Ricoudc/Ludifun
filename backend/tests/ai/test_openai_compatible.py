@@ -145,9 +145,9 @@ def test_models_can_be_chosen(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_compatible_service_for_copilot_azure_or_ollama() -> None:
-    with pytest.raises(AiConfigError, match="LUDIFUN_AI_MODEL"):
+    with pytest.raises(AiConfigError, match="modèle manquant"):
         build_llm(Settings(ai_provider="compatible", ai_base_url="https://x.example/openai/v1"))
-    with pytest.raises(AiConfigError, match="LUDIFUN_AI_BASE_URL"):
+    with pytest.raises(AiConfigError, match="adresse manquante"):
         build_llm(Settings(ai_provider="compatible", ai_model="gpt-5"))
     llm = build_llm(
         Settings(

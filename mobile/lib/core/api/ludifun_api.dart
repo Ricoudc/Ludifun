@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import '../../models/account.dart';
+import '../../models/ai.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
 import '../../models/rewards.dart';
@@ -119,6 +120,46 @@ class LudifunApi {
   Future<void> verifyEmail(String token) => _call(
     () => _dio.post<void>('/v1/auth/verify-email', data: {'token': token}, options: _anonymous),
   );
+
+  /// L'IA de la famille (espace parent) et les choix possibles.
+  Future<AiSettings> aiSettings() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/ai');
+    return AiSettings.fromJson(r.data!);
+  });
+
+  static Json _aiBody(String provider, String? model, String? baseUrl, String? apiKey) => {
+    'provider': provider,
+    'model': ?model,
+    'base_url': ?baseUrl,
+    'api_key': ?apiKey,
+  };
+
+  /// `apiKey` null : garder la clé enregistrée (même fournisseur).
+  Future<AiSettings> saveAiSettings(
+    String provider, {
+    String? model,
+    String? baseUrl,
+    String? apiKey,
+  }) => _call(() async {
+    final r = await _dio.put<Json>(
+      '/v1/parent/ai',
+      data: _aiBody(provider, model, baseUrl, apiKey),
+    );
+    return AiSettings.fromJson(r.data!);
+  });
+
+  /// Revenir à l'IA du serveur.
+  Future<void> resetAiSettings() => _call(() => _dio.delete<void>('/v1/parent/ai'));
+
+  /// « Tester » : le service répond-il, la clé est-elle acceptée ? (rien n'est facturé)
+  Future<AiCheck> testAi(String provider, {String? model, String? baseUrl, String? apiKey}) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/parent/ai/test',
+          data: _aiBody(provider, model, baseUrl, apiKey),
+        );
+        return AiCheck.fromJson(r.data!);
+      });
 
   Future<void> deleteAccount() => _call(() => _dio.delete<void>('/v1/parent'));
 

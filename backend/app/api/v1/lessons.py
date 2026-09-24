@@ -10,7 +10,7 @@ from sqlalchemy import select
 from app import clock
 from app.ai.images import detect_media_type, is_heic
 from app.ai.ports import PageImage
-from app.api.deps import Ai, AppSettings, ChildInScope, DbSession, Registry, get_database, rate_limit
+from app.api.deps import AppSettings, ChildAi, ChildInScope, DbSession, Registry, get_database, rate_limit
 from app.api.errors import ApiError
 from app.api.v1.schemas_learning import (
     KnowledgeOut,
@@ -119,7 +119,7 @@ async def create_lesson(
     child: ChildInScope,
     db: DbSession,
     settings: AppSettings,
-    ai: Ai,
+    ai: ChildAi,
     registry: Registry,
     background: BackgroundTasks,
     pages: Annotated[list[UploadFile], File(description="Photos de la leçon, dans l'ordre des pages")],
@@ -159,7 +159,7 @@ async def create_lesson_from_text(
     child: ChildInScope,
     db: DbSession,
     settings: AppSettings,
-    ai: Ai,
+    ai: ChildAi,
     registry: Registry,
     background: BackgroundTasks,
 ) -> LessonAccepted:
@@ -198,7 +198,7 @@ async def review_lesson(
     child: ChildInScope,
     db: DbSession,
     settings: AppSettings,
-    ai: Ai,
+    ai: ChildAi,
     registry: Registry,
     background: BackgroundTasks,
 ) -> LessonAccepted:
@@ -312,7 +312,7 @@ async def retry_lesson(
     child: ChildInScope,
     db: DbSession,
     settings: AppSettings,
-    ai: Ai,
+    ai: ChildAi,
     registry: Registry,
     background: BackgroundTasks,
 ) -> LessonAccepted:

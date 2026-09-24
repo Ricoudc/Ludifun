@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app import clock
-from app.api.deps import Ai, AppSettings, ChildInScope, DbSession, Registry
+from app.api.deps import AiProviders, AppSettings, ChildAi, ChildInScope, DbSession, Registry
 from app.api.errors import ApiError
 from app.api.v1.lessons import lesson_of_child
 from app.api.v1.rewards import rewards_out
@@ -131,7 +131,9 @@ async def item_of_session(db: DbSession, revision: RevisionSession, item_id: uui
     return item
 
 
-async def evaluator_within_budget(db: DbSession, settings: AppSettings, ai: Ai) -> AnswerEvaluator | None:
+async def evaluator_within_budget(
+    db: DbSession, settings: AppSettings, ai: AiProviders
+) -> AnswerEvaluator | None:
     """Correcteur IA des réponses rédigées ; aucun si le plafond de coût du jour est atteint."""
     if await ai_budget.seconds_until_budget(db, settings.ai_daily_budget_usd, clock.now()) is not None:
         return None
@@ -146,7 +148,7 @@ async def submit_attempt(
     db: DbSession,
     registry: Registry,
     settings: AppSettings,
-    ai: Ai,
+    ai: ChildAi,
 ) -> AttemptOut:
     """Écran 6 : correction immédiate, avec l'astuce et l'explication. Une question ouverte est
     corrigée par l'IA (quelques secondes), ou par ses mots clés si l'IA n'est pas disponible."""

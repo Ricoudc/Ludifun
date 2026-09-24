@@ -18,7 +18,7 @@
 | Finalité | créer et sécuriser le compte ; mot de passe oublié ; confirmation de l'adresse ; messages de service (prévenance avant suppression) |
 | Base légale | exécution du contrat (conditions d'utilisation) |
 | Personnes concernées | parents |
-| Données | e-mail, prénom facultatif, mot de passe haché (argon2id), dates d'acceptation de la politique, de confirmation de l'e-mail, de dernière connexion ; jetons de session hachés |
+| Données | e-mail, prénom facultatif, mot de passe haché (argon2id), IA choisie pour la famille et sa clé d'API (chiffrée), dates d'acceptation de la politique, de confirmation de l'e-mail, de dernière connexion ; jetons de session hachés |
 | Destinataires | équipe Ludifun (support) ; sous-traitants : hébergeur, fournisseur d'e-mails |
 | Durée | jusqu'à la suppression du compte, ou 12 mois d'inactivité (prévenance 30 jours avant) ; jetons : 30 jours |
 | Sécurité | HTTPS, HSTS, hachage, rotation des jetons, limites de débit, séparation des espaces |

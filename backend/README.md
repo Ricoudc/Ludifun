@@ -103,12 +103,20 @@ ouvrent les liens des e-mails). HTML statique, sans script, dans `app/web/`. Dé
 
 ## Fournisseurs d'IA
 
-`LUDIFUN_AI_PROVIDER` choisit l'IA ; `/health/ready` indique celle qui est active (`"ai"`). Sous
+`LUDIFUN_AI_PROVIDER` choisit l'IA du serveur ; `/health/ready` indique laquelle (`"ai"`). Sous
 Windows, `Changer-IA-Ludifun.bat` écrit ces réglages dans `.env`.
+
+**Chaque famille peut choisir la sienne** dans l'espace parent (« Intelligence artificielle » :
+`GET`, `PUT`, `DELETE /v1/parent/ai`, `POST /v1/parent/ai/test`). Les leçons et les réponses
+rédigées de ses enfants passent alors par cette IA ; sans choix, par celle du serveur. La clé
+est chiffrée en base (`LUDIFUN_SECRETS_KEY`, sinon dérivée de `LUDIFUN_JWT_SECRET`) et n'est
+jamais renvoyée. Ollama et les services compatibles font appeler une adresse choisie par le
+parent : refusés en production, sauf `LUDIFUN_ALLOW_CUSTOM_AI_URL=true` (serveur familial).
 
 | `LUDIFUN_AI_PROVIDER` | Service | Clé | Modèles conseillés (lecture et analyse / correction) |
 |---|---|---|---|
-| `claude` (défaut) | Claude, Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-5` / `claude-sonnet-5` |
+| `ollama` (défaut du `docker-compose.yml`) | Ollama, sur le PC (gratuit, rien ne sort) ; adresse `LUDIFUN_OLLAMA_BASE_URL` (`http://host.docker.internal:11434` dans Docker), contexte `LUDIFUN_OLLAMA_NUM_CTX` (16384) | — | `qwen2.5vl:7b` (doit lire les images ; plus léger : `gemma3:4b`) |
+| `claude` (défaut hors Docker) | Claude, Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-5` / `claude-sonnet-5` |
 | `openai` | ChatGPT, OpenAI | `OPENAI_API_KEY` | `gpt-5` / `gpt-5-mini` |
 | `gemini` | Gemini, Google | `GEMINI_API_KEY` | `gemini-2.5-pro` / `gemini-2.5-flash` |
 | `mistral` | Mistral AI (France) | `MISTRAL_API_KEY` | `mistral-medium-latest` / `mistral-small-latest` |

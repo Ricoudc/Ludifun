@@ -24,12 +24,16 @@ services:
     environment:
       LUDIFUN_ENVIRONMENT: dev
       LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
-      # IA factice par défaut (aucune clé nécessaire). Pour une vraie IA, dans un fichier .env à la
-      # racine du dépôt (Windows : Demarrer-Ludifun.bat ou Changer-IA-Ludifun.bat le crée) :
-      #   LUDIFUN_AI_PROVIDER=claude      (ou openai, gemini, mistral, groq, xai, compatible)
+      # IA du serveur : Ollama sur ce PC par défaut (gratuit, rien ne sort de la maison). Chaque
+      # famille peut en choisir une autre dans l'espace parent (« Intelligence artificielle »).
+      # Autre choix par défaut, dans un fichier .env à la racine du dépôt (Windows :
+      # Changer-IA-Ludifun.bat) :
+      #   LUDIFUN_AI_PROVIDER=claude      (ou openai, gemini, mistral, groq, xai, compatible, fake)
       #   ANTHROPIC_API_KEY=sk-ant-...    (ou la clé du fournisseur choisi)
       #   LUDIFUN_AI_DAILY_BUDGET_USD=5
-      LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-fake}
+      LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-ollama}
+      # Ollama tourne sur le PC, hors du conteneur : host.docker.internal désigne le PC.
+      LUDIFUN_OLLAMA_BASE_URL: ${LUDIFUN_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       LUDIFUN_AI_MODEL: ${LUDIFUN_AI_MODEL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -44,6 +48,8 @@ services:
       LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-5}
     ports:
       - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # déjà défini sous Windows et macOS ; utile sous Linux
     depends_on:
       db:
         condition: service_healthy

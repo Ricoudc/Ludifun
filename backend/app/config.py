@@ -6,7 +6,9 @@ from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
-AiProviderName = Literal["claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake"]
+AiProviderName = Literal[
+    "ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake"
+]
 DEV_JWT_SECRET = "dev-uniquement-a-remplacer-en-production-0123456789"
 
 
@@ -31,6 +33,15 @@ class Settings(BaseSettings):
     # Fournisseur « compatible » (Azure OpenAI, OpenRouter, Ollama…) : adresse et clé de l'API.
     ai_base_url: str | None = None
     ai_api_key: SecretStr | None = None
+    # Ollama : IA locale, gratuite. Dans Docker, http://host.docker.internal:11434 (docker-compose).
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_num_ctx: int = 16384  # contexte : consignes, leçon et schéma doivent y tenir
+    # Réglage de l'IA par famille (espace parent). Les adresses libres (Ollama, service
+    # compatible) font appeler une adresse choisie par le parent : refusées en production sauf
+    # si ce réglage vaut true (serveur familial).
+    allow_custom_ai_url: bool | None = None
+    # Chiffrement des clés d'IA des familles ; à défaut, dérivé de LUDIFUN_JWT_SECRET.
+    secrets_key: SecretStr | None = None
     ai_ocr_effort: Effort = "low"
     ai_analysis_effort: Effort = "high"
     ai_material_effort: Effort = "medium"
@@ -75,6 +86,12 @@ class Settings(BaseSettings):
     privacy_updated: str = "24/09/2026"
 
     family_timezone: str = "Europe/Paris"  # semaines du tableau de bord parent (§11)
+
+    @property
+    def custom_ai_url_allowed(self) -> bool:
+        if self.allow_custom_ai_url is not None:
+            return self.allow_custom_ai_url
+        return self.environment != "prod"
 
     def missing_legal_details(self) -> list[str]:
         """Réglages des pages publiques encore à compléter (LUDIFUN_LEGAL_ENTITY…)."""

@@ -110,6 +110,21 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 
+**Le plus simple : Ollama**, gratuit, sur l'ordinateur. Rien ne sort de la maison.
+
+1. Installez Ollama (<https://ollama.com/download>) et lancez-le.
+2. Téléchargez un modèle qui sait lire les images : `ollama pull qwen2.5vl:7b` (environ 6 Go ;
+   plus léger : `gemma3:4b`). Sous Windows, `Demarrer-Ludifun.bat` le propose.
+3. Le serveur utilise Ollama par défaut. Dans l'application, **espace parent → Mon compte →
+   Intelligence artificielle** : « Ollama (sur ce PC) » est proposé en premier ; « Tester la
+   connexion » liste les modèles installés, puis « Enregistrer ».
+
+Sans carte graphique, l'analyse d'une leçon peut prendre plusieurs minutes. Le même écran
+permet de choisir une IA en ligne (Claude, ChatGPT, Gemini, Mistral, Groq, Grok, Azure OpenAI
+pour Copilot) avec sa clé : elle vaut pour toute la famille.
+
+Choisir l'IA du serveur (celle des familles qui n'ont rien choisi) :
+
 Sous Windows : `Changer-IA-Ludifun.bat`. Sinon, créez un fichier `.env` à la racine du dépôt
 (il n'est jamais envoyé sur GitHub) :
 
@@ -128,6 +143,8 @@ puis relancez `docker compose up -d` et vérifiez `"ai":"claude"` sur `/health/r
 |---|---|
 | « Serveur injoignable » | Même Wi-Fi ? Pas de VPN sur le téléphone ? Le pare-feu de l'ordinateur doit autoriser le port 8000 sur le réseau privé (Windows : autoriser Docker Desktop). Un Wi-Fi public ou d'entreprise peut isoler les appareils : essayez le partage de connexion du téléphone. |
 | `/health/ready` répond `database_unavailable` | `docker compose ps` : la base doit être `healthy` ; sinon `docker compose up -d` à nouveau. |
+| « Ollama injoignable » ou le test échoue | Ollama est-il lancé (icône près de l'horloge) ? Dans le navigateur du PC, <http://localhost:11434> doit afficher « Ollama is running ». Sinon, définissez la variable d'environnement Windows `OLLAMA_HOST=0.0.0.0`, relancez Ollama, puis `Demarrer-Ludifun.bat`. |
+| « modèle Ollama absent » | `ollama pull qwen2.5vl:7b` (ou le modèle choisi) dans un terminal. |
 | Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Changer-IA-Ludifun.bat`). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
 | Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Voir-les-erreurs-Ludifun.bat` montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |

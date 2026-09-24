@@ -486,6 +486,100 @@ void main() {
     expect(find.text('📧 Confirmez votre adresse'), findsNothing);
   });
 
+  testWidgets('choisir l\'IA de la famille : Ollama conseillé, test, modèle, clé', (tester) async {
+    Map<String, Object?> provider(
+      String code,
+      String label, {
+      bool key = false,
+      bool url = false,
+      bool recommended = false,
+      String? model,
+    }) => {
+      'code': code,
+      'label': label,
+      'note': code == 'ollama' ? 'Gratuite, rien ne sort de la maison.' : '',
+      'needs_key': key,
+      'custom_url': url,
+      'default_url': code == 'ollama' ? 'http://localhost:11434' : null,
+      'default_model': model,
+      'key_url': key ? 'https://console.anthropic.com' : '',
+      'recommended': recommended,
+      'available': true,
+    };
+    Object? family;
+    Map<String, Object?> settings() => {
+      'family': family,
+      'server_provider': 'fake',
+      'providers': [
+        provider(
+          'ollama',
+          'Ollama (sur ce PC)',
+          url: true,
+          recommended: true,
+          model: 'qwen2.5vl:7b',
+        ),
+        provider('claude', 'Claude (Anthropic)', key: true, model: 'claude-opus-5'),
+        provider('fake', 'Démonstration (sans IA)'),
+      ],
+    };
+    final saved = <Object?>[];
+    server
+      ..on('GET /v1/parent/ai', (_) => (200, settings()))
+      ..on('POST /v1/parent/ai/test', (r) {
+        expect(r.data, {'provider': 'ollama', 'base_url': 'http://localhost:11434'});
+        return (
+          200,
+          {
+            'ok': true,
+            'message': 'Ollama répond, « qwen2.5vl:7b » est installé.',
+            'models': ['llama3:8b', 'qwen2.5vl:7b'],
+          },
+        );
+      })
+      ..on('PUT /v1/parent/ai', (r) {
+        saved.add(r.data);
+        final body = r.data as Map<String, dynamic>;
+        family = {
+          'provider': body['provider'],
+          'model': body['model'],
+          'base_url': body['base_url'],
+          'key_hint': body['api_key'] == null ? null : '…1234',
+        };
+        return (200, settings());
+      });
+    await launch(tester);
+    await tap(tester, find.byTooltip('Mon compte'));
+    await tap(tester, find.text('Intelligence artificielle'));
+    expect(
+      find.text('IA utilisée en ce moment : Démonstration (sans IA) (réglage du serveur)'),
+      findsOneWidget,
+    );
+    // Ollama est proposé d'abord, déjà choisi, avec son adresse.
+    expect(find.text('Ollama (sur ce PC) · conseillé'), findsOneWidget);
+    expect(find.text('Gratuite, rien ne sort de la maison.'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'http://localhost:11434'), findsOneWidget);
+    expect(find.text('Vide : qwen2.5vl:7b (conseillé)'), findsOneWidget);
+
+    await tap(tester, find.text('Tester la connexion'));
+    expect(find.text('✅ Ollama répond, « qwen2.5vl:7b » est installé.'), findsOneWidget);
+    await tap(tester, find.widgetWithText(ActionChip, 'llama3:8b'));
+    await tap(tester, find.text('Enregistrer'));
+    expect(saved.last, {
+      'provider': 'ollama',
+      'model': 'llama3:8b',
+      'base_url': 'http://localhost:11434',
+    });
+    expect(find.text('IA utilisée en ce moment : Ollama (sur ce PC) · llama3:8b'), findsOneWidget);
+
+    // Claude : une clé, jamais réaffichée.
+    await tap(tester, find.text('Claude (Anthropic)'));
+    await tester.enterText(find.widgetWithText(TextField, 'Clé d\'API'), 'sk-ant-secret-1234');
+    await tap(tester, find.text('Enregistrer'));
+    expect(saved.last, {'provider': 'claude', 'api_key': 'sk-ant-secret-1234'});
+    expect(find.text('Clé enregistrée …1234 : laissez vide pour la garder.'), findsOneWidget);
+    expect(find.text('sk-ant-secret-1234'), findsNothing);
+  });
+
   testWidgets('donner son avis (tests en famille)', (tester) async {
     final sent = <Object?>[];
     server.on('POST /v1/feedback', (r) {

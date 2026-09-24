@@ -53,11 +53,13 @@ class ParentHomeScreen extends ConsumerWidget {
             onSelected: (choice) => switch (choice) {
               'logout' => ref.read(sessionProvider.notifier).signOut(),
               'feedback' => showFeedbackDialog(context),
+              'ai' => context.go(Routes.aiSettings),
               'privacy' => openPublicPage(ref, '/confidentialite'),
               _ => _deleteAccount(context, ref),
             },
             itemBuilder: (_) => [
               PopupMenuItem(enabled: false, child: Text(email)),
+              const PopupMenuItem(value: 'ai', child: Text('Intelligence artificielle')),
               const PopupMenuItem(value: 'feedback', child: Text('Donner mon avis')),
               const PopupMenuItem(value: 'privacy', child: Text('Confidentialité')),
               const PopupMenuItem(value: 'logout', child: Text('Me déconnecter')),

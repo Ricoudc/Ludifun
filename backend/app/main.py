@@ -14,6 +14,7 @@ from app.config import Settings, get_settings
 from app.db.base import Database
 from app.domain.activities.registry import default_registry
 from app.security.rate_limit import RateLimiter
+from app.services.ai_settings import AiResolver
 from app.services.email import EmailSender, build_email_sender
 from app.services.lesson_processing import recover_interrupted_lessons
 
@@ -32,6 +33,7 @@ def create_app(
         app.state.settings = settings
         app.state.rate_limiter = RateLimiter()
         app.state.ai = ai or AiProviders(*build_providers(settings))
+        app.state.ai_resolver = AiResolver(settings, (app.state.ai.ocr, app.state.ai.llm))
         app.state.registry = default_registry()
         try:
             await recover_interrupted_lessons(app.state.database)
