@@ -12,6 +12,7 @@ from app.domain.activities.base import (
     ResponseModel,
     parse_response,
 )
+from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 from app.domain.text import normalize
 
@@ -103,6 +104,7 @@ class Match(ActivityType):
         return Grade(
             score=sum(evidence.values()) / len(expected),
             evidence=evidence,
+            errors={k: ErrorType.CONFUSION for k, result in evidence.items() if result < 1},
             correct_answer=activity.solution["display"],
             details=details,
         )

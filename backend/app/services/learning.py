@@ -16,8 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity, Grade
+from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.composer import Block, NothingToReview, PlannedItem, SessionComposer, SessionPlan
+from app.domain.errors import with_speed
+from app.domain.help import HelpStep, next_help, result_with_help
 from app.domain.scoring import (
     Evidence,
     KnowledgeStatus,
@@ -28,6 +31,7 @@ from app.domain.scoring import (
 )
 from app.domain.scoring import summarize_session as summarize
 from app.domain.understanding import cognitive_level
+from app.services.answer_evaluation import AnswerEvaluator
 from app.services.lesson_store import LessonUnits, load_masteries, load_units, save_masteries
 
 STALE_SESSION = timedelta(hours=24)  # au-delà, une séance non terminée est abandonnée
@@ -196,9 +200,14 @@ async def answer(
     duration_ms: int | None,
     registry: ActivityRegistry,
     now: datetime,
+    evaluator: AnswerEvaluator | None = None,
 ) -> Grade | None:
     """Corrige et enregistre une réponse. `{"skipped": true}` : activité inconnue de l'application,
-    enregistrée sans compter dans la note ni dans la maîtrise (§14.3). Renvoie None dans ce cas."""
+    enregistrée sans compter dans la note ni dans la maîtrise (§14.3). Renvoie None dans ce cas.
+
+    Question ouverte : corrigée par `evaluator` (IA) s'il est fourni et répond, sinon par ses
+    mots clés. Pour la maîtrise, le résultat tient compte de l'aide demandée avant la réponse,
+    et chaque notion ratée reçoit un type d'erreur (§5.5)."""
     if revision.status != "active":
         raise SessionClosed
     if await session.scalar(select(db.Attempt.id).where(db.Attempt.session_item_id == item.id)):
@@ -213,7 +222,14 @@ async def answer(
 
     id_to_key = dict(await _key_map(session, revision.lesson_id))
     activity = activity_of(item, id_to_key)
-    grade = registry.for_activity(activity).grade(activity, response)  # peut lever InvalidResponse
+    activity_type = registry.for_activity(activity)
+    grade: Grade | None = None
+    if isinstance(activity_type, OpenQuestionActivity) and evaluator is not None:
+        text = activity_type.answer_text(response)  # peut lever InvalidResponse
+        if text:
+            grade = await _evaluate(session, revision, activity_type, activity, response, text, evaluator)
+    if grade is None:
+        grade = activity_type.grade(activity, response)  # peut lever InvalidResponse
     attempt = db.Attempt(
         session_item_id=item.id,
         response=response,
@@ -226,15 +242,89 @@ async def answer(
     weight = evidence_weight(activity.type, activity.difficulty, registry)
     key_to_id = {key: knowledge_id for knowledge_id, key in id_to_key.items()}
     for key, result in grade.evidence.items():
+        error = grade.errors.get(key)
+        if error is not None and item.help_level == 0 and not activity_type.multi_knowledge:
+            error = with_speed(error, duration_ms)
         session.add(
             db.AttemptEvidence(
                 attempt_id=attempt.id,
                 knowledge_id=key_to_id[key],
-                result=round(result, 2),
+                result=round(result_with_help(result, item.help_level), 2),
                 weight=round(weight, 2),
+                error_type=error,
             )
         )
     return grade
+
+
+async def _evaluate(
+    session: AsyncSession,
+    revision: db.RevisionSession,
+    activity_type: OpenQuestionActivity,
+    activity: BuiltActivity,
+    response: dict[str, Any],
+    text: str,
+    evaluator: AnswerEvaluator,
+) -> Grade | None:
+    """Correction par l'IA, journalisée dans ai_runs ; None si elle n'a pas abouti."""
+    lesson = await session.get(db.Lesson, revision.lesson_id)
+    child = await session.get(db.Child, revision.child_id)
+    grade_label = (lesson.grade if lesson else None) or (child.grade if child else "CM1")
+    s = activity.solution
+    done = await evaluator.evaluate(
+        prompt=activity.payload["prompt"],
+        key_points=s["key_points"],
+        model_answer=s["model_answer"],
+        answer=text,
+        grade=grade_label,
+    )
+    run = done.run
+    session.add(
+        db.AiRun(
+            lesson_id=revision.lesson_id,
+            stage=run.stage,
+            provider=run.provider,
+            model=run.model,
+            prompt_version=run.prompt_version,
+            input_tokens=run.input_tokens,
+            output_tokens=run.output_tokens,
+            latency_ms=run.latency_ms,
+            status=run.status,
+            warnings=run.warnings[:10],
+        )
+    )
+    if done.evaluation is None:
+        return None
+    return activity_type.grade_with(activity, response, done.evaluation)
+
+
+# --------------------------------------------------------------------------- #
+# « Je n'ai pas compris »
+# --------------------------------------------------------------------------- #
+
+
+class HelpUnavailable(Exception):
+    pass
+
+
+async def request_help(
+    session: AsyncSession, revision: db.RevisionSession, item: db.SessionItem, registry: ActivityRegistry
+) -> HelpStep:
+    """Aide suivante pour une activité pas encore répondue ; le niveau atteint est enregistré."""
+    if revision.status != "active":
+        raise SessionClosed
+    if await session.scalar(select(db.Attempt.id).where(db.Attempt.session_item_id == item.id)):
+        raise AlreadyAnswered
+    if registry.get(item.activity_type).multi_knowledge:
+        raise HelpUnavailable
+    lesson_row = await session.get(db.Lesson, revision.lesson_id)
+    assert lesson_row is not None
+    lesson = await load_units(session, lesson_row)
+    activity = activity_of(item, lesson.id_to_key)
+    unit = next(u for u in lesson.units if u.id == activity.knowledge_ids[0])
+    step = next_help(unit, activity, item.help_level)
+    item.help_level = step.level
+    return step
 
 
 async def _key_map(session: AsyncSession, lesson_id: uuid.UUID) -> list[tuple[uuid.UUID, str]]:
@@ -255,6 +345,7 @@ async def load_evidences(
             db.SessionItem.activity_type,
             db.SessionItem.block,
             db.SessionItem.cognitive_level,
+            db.SessionItem.help_level,
         )
         .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
@@ -262,8 +353,16 @@ async def load_evidences(
         .order_by(db.SessionItem.position)
     )
     return [
-        Evidence(id_to_key[k], float(result), float(weight), ActivityCode(kind), block == Block.REPLAY, level)
-        for k, result, weight, kind, block, level in rows
+        Evidence(
+            id_to_key[k],
+            float(result),
+            float(weight),
+            ActivityCode(kind),
+            block == Block.REPLAY,
+            level,
+            help_level,
+        )
+        for k, result, weight, kind, block, level, help_level in rows
     ]
 
 

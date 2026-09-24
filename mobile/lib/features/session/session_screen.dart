@@ -8,6 +8,7 @@ import '../home/home_providers.dart';
 import '../report/report_view.dart';
 import 'activities/activity_registry.dart';
 import 'correction_view.dart';
+import 'help_sheet.dart';
 import 'session_controller.dart';
 
 /// Écrans 5 (jeu), 6 (correction) et 7 (bilan), dans une seule route.
@@ -100,12 +101,24 @@ class SessionScreen extends ConsumerWidget {
             switch (state.phase) {
               Phase.loading => const Center(child: CircularProgressIndicator()),
               Phase.completing => const _Waiting('On prépare ton bilan…'),
-              Phase.question || Phase.submitting when item != null => AbsorbPointer(
-                absorbing: state.phase == Phase.submitting,
-                child: KeyedSubtree(
-                  key: ValueKey(item.id),
-                  child: activityRegistry[item.type]!(item.payload, controller.submit),
-                ),
+              Phase.question || Phase.submitting when item != null => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AbsorbPointer(
+                    absorbing: state.phase == Phase.submitting,
+                    child: KeyedSubtree(
+                      key: ValueKey(item.id),
+                      child: activityRegistry[item.type]!(item.payload, controller.submit),
+                    ),
+                  ),
+                  if (item.helpAvailable && state.phase == Phase.question) ...[
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => showHelp(context, sessionId, item.id),
+                      child: const Text('❓ Je n\'ai pas compris'),
+                    ),
+                  ],
+                ],
               ),
               Phase.correction when item != null && state.correction != null => CorrectionView(
                 item: item,

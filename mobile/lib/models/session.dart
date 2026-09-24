@@ -22,9 +22,11 @@ class SessionItem {
     required this.difficulty,
     required this.payload,
     this.result,
+    this.helpAvailable = false,
   });
 
   factory SessionItem.fromJson(Json json) => SessionItem(
+    helpAvailable: json['help_available'] as bool? ?? false,
     id: json['id'] as String,
     position: json['position'] as int,
     block: Block.values.byName(json['block'] as String),
@@ -49,6 +51,9 @@ class SessionItem {
   /// Déjà répondu (reprise d'une séance).
   final AttemptResult? result;
 
+  /// Bouton « Je n'ai pas compris » proposé (activités sur une seule notion).
+  final bool helpAvailable;
+
   bool get answered => result != null;
 
   SessionItem answeredWith(AttemptResult value) => SessionItem(
@@ -59,6 +64,7 @@ class SessionItem {
     difficulty: difficulty,
     payload: payload,
     result: value,
+    helpAvailable: helpAvailable,
   );
 }
 
@@ -210,4 +216,34 @@ class Report {
     for (final k in knowledge)
       if (k.levelledUp) k,
   ];
+}
+
+/// « Je n'ai pas compris » : une aide (1 indice, 2 rappel, 3 exemple, 4 étapes, 5 la réponse).
+class HelpStep {
+  const HelpStep({
+    required this.level,
+    required this.kind,
+    required this.title,
+    required this.text,
+    this.lines = const [],
+    this.last = false,
+  });
+
+  factory HelpStep.fromJson(Json json) => HelpStep(
+    level: json['level'] as int,
+    kind: json['kind'] as String,
+    title: json['title'] as String,
+    text: json['text'] as String,
+    lines: [for (final l in json['lines'] as List<dynamic>? ?? const []) l as String],
+    last: json['last'] as bool? ?? false,
+  );
+
+  final int level;
+  final String kind;
+  final String title;
+  final String text;
+  final List<String> lines;
+
+  /// Plus d'aide après celle-ci.
+  final bool last;
 }

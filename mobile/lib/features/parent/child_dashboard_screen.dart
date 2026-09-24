@@ -19,6 +19,7 @@ Séances : séances terminées dans la semaine ; la note moyenne est celle de ce
 Temps : temps passé à répondre (une réponse compte au plus 5 minutes), plus quelques secondes pour lire chaque correction.
 Réussite par matière : maîtrise actuelle des notions déjà révisées, les notions importantes comptant davantage. Une leçon jamais révisée n'y figure pas.
 À renforcer : les notions révisées pas encore maîtrisées, les plus fragiles d'abord. Une notion réussie en QCM mais jamais retrouvée sans aide y figure encore : la phrase sous la notion dit ce qui manque.
+Erreurs fréquentes : ce que disent les erreurs des 30 derniers jours (confusion, oubli, réponse trop rapide…) ; 🔁 la même erreur sur la même notion dans au moins 3 séances.
 Couleurs : 🟢 80 % et plus, 🟠 de 50 à 79 %, 🔴 moins de 50 %.''';
 
 /// Écran P3 : tableau de bord d'un enfant.
@@ -145,6 +146,25 @@ class ChildDashboardScreen extends ConsumerWidget {
             detail: [?n.explanation, ?n.lessonTitle].join(' · '),
             trailing: LevelStars(n.level, size: 14),
           ),
+      ],
+      if (board.recurringErrors.isNotEmpty || board.errorTypes.isNotEmpty) ...[
+        section('Erreurs fréquentes'),
+        for (final e in board.recurringErrors)
+          _Row(
+            leading: const Text('🔁', style: TextStyle(fontSize: 16)),
+            label: '${e.label} : ${e.errorLabel.toLowerCase()}',
+            detail: [?e.lessonTitle, 'dans ${e.sessions} séances'].join(' · '),
+          ),
+        if (board.errorTypes.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final e in board.errorTypes) Chip(label: Text('${e.label} · ${e.count}')),
+            ],
+          ),
+        ],
       ],
       const SizedBox(height: 8),
       OutlinedButton.icon(

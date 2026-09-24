@@ -115,8 +115,35 @@ class WeakNotion {
   final String? explanation;
 }
 
+/// Type d'erreur et nombre de fois (30 derniers jours).
+typedef ErrorCount = ({String errorType, String label, int count});
+
+/// Même erreur sur la même notion dans au moins 3 séances.
+class RecurringError {
+  const RecurringError({
+    required this.label,
+    required this.errorLabel,
+    required this.sessions,
+    this.lessonTitle,
+  });
+
+  factory RecurringError.fromJson(Json json) => RecurringError(
+    label: json['label'] as String,
+    lessonTitle: json['lesson_title'] as String?,
+    errorLabel: json['error_label'] as String,
+    sessions: json['sessions'] as int,
+  );
+
+  final String label;
+  final String? lessonTitle;
+  final String errorLabel;
+  final int sessions;
+}
+
 class Dashboard {
   const Dashboard({
+    this.errorTypes = const [],
+    this.recurringErrors = const [],
     required this.thisWeek,
     required this.lessonsAddedThisWeek,
     required this.activities,
@@ -138,8 +165,22 @@ class Dashboard {
     reviewsDue: json['reviews_due'] as int,
     weeks: [for (final w in json['weeks'] as List<dynamic>) WeekStats.fromJson(w as Json)],
     trend: json['trend'] as String?,
+    errorTypes: [
+      for (final e in (json['error_types'] as List<dynamic>? ?? const []).cast<Json>())
+        (
+          errorType: e['error_type'] as String,
+          label: e['label'] as String,
+          count: e['count'] as int,
+        ),
+    ],
+    recurringErrors: [
+      for (final e in json['recurring_errors'] as List<dynamic>? ?? const [])
+        RecurringError.fromJson(e as Json),
+    ],
   );
 
+  final List<ErrorCount> errorTypes;
+  final List<RecurringError> recurringErrors;
   final WeekStats thisWeek;
   final int lessonsAddedThisWeek;
   final Map<String, int> activities;

@@ -9,6 +9,7 @@ from app.domain.activities.fill_blank import FillBlank
 from app.domain.activities.flashcard import Flashcard
 from app.domain.activities.match import Match
 from app.domain.activities.mcq import Mcq
+from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.true_false import TrueFalse
 from app.domain.knowledge import KnowledgeUnit
@@ -58,4 +59,6 @@ class ActivityRegistry:
 
 
 def default_registry() -> ActivityRegistry:
-    return ActivityRegistry([Mcq(), TrueFalse(), FillBlank(), Match(), SpeedChallenge(), Flashcard()])
+    return ActivityRegistry(
+        [Mcq(), TrueFalse(), FillBlank(), Match(), SpeedChallenge(), Flashcard(), OpenQuestionActivity()]
+    )

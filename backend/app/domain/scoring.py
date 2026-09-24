@@ -13,6 +13,7 @@ from enum import StrEnum
 
 from app.domain.activities.base import ActivityCode, BuiltActivity, Grade
 from app.domain.activities.registry import ActivityRegistry
+from app.domain.help import LEVEL_PROOF_MAX_HELP, result_with_help
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE, Mastery, lesson_review, update_mastery
 from app.domain.understanding import NotionLevel, cognitive_level, notion_level
 
@@ -35,6 +36,7 @@ class Evidence:
     activity_type: ActivityCode
     replay: bool = False  # tentative du bloc « reprise des erreurs »
     cognitive_level: int = 1  # niveau de compréhension sollicité par l'activité
+    help_level: int = 0  # aide la plus forte demandée avant la réponse (0 à 5)
 
 
 def evidence_weight(activity_type: ActivityCode, difficulty: int, registry: ActivityRegistry) -> float:
@@ -42,12 +44,25 @@ def evidence_weight(activity_type: ActivityCode, difficulty: int, registry: Acti
 
 
 def evidences_from(
-    activity: BuiltActivity, grade: Grade, registry: ActivityRegistry, replay: bool = False
+    activity: BuiltActivity,
+    grade: Grade,
+    registry: ActivityRegistry,
+    replay: bool = False,
+    help_level: int = 0,
 ) -> list[Evidence]:
+    """Preuves d'une tentative ; une réussite obtenue avec beaucoup d'aide prouve moins."""
     weight = evidence_weight(activity.type, activity.difficulty, registry)
     level = cognitive_level(activity.type, activity.difficulty)
     return [
-        Evidence(knowledge_id, result, weight, activity.type, replay, level)
+        Evidence(
+            knowledge_id,
+            result_with_help(result, help_level),
+            weight,
+            activity.type,
+            replay,
+            level,
+            help_level,
+        )
         for knowledge_id, result in grade.evidence.items()
     ]
 
@@ -65,10 +80,13 @@ def validated_levels(evidences: Sequence[Evidence]) -> dict[str, frozenset[int]]
     """Niveaux de compréhension validés pendant la séance, par notion.
 
     Un niveau est validé quand le taux pondéré des réponses de ce niveau atteint 80 %
-    (le seuil de « maîtrisée » du bilan), reprise des erreurs comprise.
+    (le seuil de « maîtrisée » du bilan), reprise des erreurs comprise. Une réponse donnée après
+    l'exemple ou la solution (aide ≥ 3) ne valide pas de niveau.
     """
     by_level: dict[tuple[str, int], list[Evidence]] = {}
     for e in evidences:
+        if e.help_level > LEVEL_PROOF_MAX_HELP:
+            continue
         by_level.setdefault((e.knowledge_id, e.cognitive_level), []).append(e)
     validated: dict[str, set[int]] = {}
     for (knowledge_id, level), group in by_level.items():

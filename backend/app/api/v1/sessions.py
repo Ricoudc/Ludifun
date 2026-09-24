@@ -7,13 +7,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app import clock
-from app.api.deps import ChildInScope, DbSession, Registry
+from app.api.deps import Ai, AppSettings, ChildInScope, DbSession, Registry
 from app.api.errors import ApiError
 from app.api.v1.lessons import lesson_of_child
 from app.api.v1.schemas_learning import (
     AttemptIn,
     AttemptOut,
     AttemptSummary,
+    HelpOut,
     KnowledgeResultOut,
     ReplayOut,
     ReportOut,
@@ -22,13 +23,15 @@ from app.api.v1.schemas_learning import (
     SessionOut,
 )
 from app.db.models import Attempt, Child, RevisionSession, SessionItem
-from app.domain.activities.base import InvalidResponse
+from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.composer import Block, NothingToReview
 from app.domain.scoring import KnowledgeStatus
-from app.services import learning
+from app.services import ai_budget, learning
+from app.services.answer_evaluation import AnswerEvaluator
 
 router = APIRouter(tags=["séances"])
 
+MULTI_KNOWLEDGE = {ActivityCode.MATCH, ActivityCode.SPEED_CHALLENGE}
 SESSION_CLOSED = ApiError(409, "session_closed", "Cette séance est terminée.")
 NOTHING_TO_REVIEW = ApiError(409, "nothing_to_review", "🎉 Tout est à jour ! Rien à réviser pour l'instant.")
 
@@ -46,6 +49,8 @@ def attempt_summary(attempt: Attempt | None) -> AttemptSummary | None:
 
 def item_out(item: SessionItem, attempt: Attempt | None = None) -> SessionItemOut:
     return SessionItemOut(
+        help_available=item.activity_type not in MULTI_KNOWLEDGE,
+        help_level=item.help_level,
         id=item.id,
         position=item.position,
         block=item.block,
@@ -104,20 +109,44 @@ async def get_session(session_id: uuid.UUID, child: ChildInScope, db: DbSession)
     return await session_out(db, await session_of_child(db, child, session_id))
 
 
-@router.post("/sessions/{session_id}/attempts")
-async def submit_attempt(
-    session_id: uuid.UUID, body: AttemptIn, child: ChildInScope, db: DbSession, registry: Registry
-) -> AttemptOut:
-    """Écran 6 : correction immédiate, avec l'astuce et l'explication."""
-    revision = await session_of_child(db, child, session_id)
+async def item_of_session(db: DbSession, revision: RevisionSession, item_id: uuid.UUID) -> SessionItem:
     item = await db.scalar(
-        select(SessionItem).where(SessionItem.id == body.item_id, SessionItem.session_id == revision.id)
+        select(SessionItem).where(SessionItem.id == item_id, SessionItem.session_id == revision.id)
     )
     if item is None:
         raise ApiError(404, "item_not_found", "Activité introuvable dans cette séance.")
+    return item
+
+
+async def evaluator_within_budget(db: DbSession, settings: AppSettings, ai: Ai) -> AnswerEvaluator | None:
+    """Correcteur IA des réponses rédigées ; aucun si le plafond de coût du jour est atteint."""
+    if await ai_budget.seconds_until_budget(db, settings.ai_daily_budget_usd, clock.now()) is not None:
+        return None
+    return AnswerEvaluator(ai.llm)
+
+
+@router.post("/sessions/{session_id}/attempts")
+async def submit_attempt(
+    session_id: uuid.UUID,
+    body: AttemptIn,
+    child: ChildInScope,
+    db: DbSession,
+    registry: Registry,
+    settings: AppSettings,
+    ai: Ai,
+) -> AttemptOut:
+    """Écran 6 : correction immédiate, avec l'astuce et l'explication. Une question ouverte est
+    corrigée par l'IA (quelques secondes), ou par ses mots clés si l'IA n'est pas disponible."""
+    revision = await session_of_child(db, child, session_id)
+    item = await item_of_session(db, revision, body.item_id)
+    evaluator = (
+        await evaluator_within_budget(db, settings, ai)
+        if item.activity_type == ActivityCode.OPEN_QUESTION
+        else None
+    )
     try:
         grade = await learning.answer(
-            db, revision, item, body.response, body.duration_ms, registry, clock.now()
+            db, revision, item, body.response, body.duration_ms, registry, clock.now(), evaluator
         )
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc
@@ -142,6 +171,35 @@ async def submit_attempt(
         tip=grade.tip,
         explanation=grade.explanation,
         details=grade.details,
+    )
+
+
+@router.post("/sessions/{session_id}/items/{item_id}/help")
+async def get_help(
+    session_id: uuid.UUID, item_id: uuid.UUID, child: ChildInScope, db: DbSession, registry: Registry
+) -> HelpOut:
+    """« ❓ Je n'ai pas compris » : chaque appel donne l'aide suivante (indice, rappel, exemple,
+    étapes, puis la réponse). L'aide ne change pas la note, seulement la maîtrise (§5.4)."""
+    revision = await session_of_child(db, child, session_id)
+    item = await item_of_session(db, revision, item_id)
+    try:
+        step = await learning.request_help(db, revision, item, registry)
+    except learning.SessionClosed as exc:
+        raise SESSION_CLOSED from exc
+    except learning.AlreadyAnswered as exc:
+        raise ApiError(409, "already_answered", "Cette activité a déjà une réponse.") from exc
+    except learning.HelpUnavailable as exc:
+        raise ApiError(
+            409, "help_unavailable", "Pas d'aide pour ce jeu : essaie, tu verras la correction."
+        ) from exc
+    await db.commit()
+    return HelpOut(
+        level=step.level,
+        kind=step.kind.value,
+        title=step.title,
+        text=step.text,
+        lines=step.lines,
+        last=step.last,
     )
 
 

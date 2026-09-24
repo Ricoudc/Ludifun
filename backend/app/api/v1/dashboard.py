@@ -13,18 +13,21 @@ from app.api.deps import AppSettings, CurrentParent, DbSession
 from app.api.v1.children import own_child
 from app.api.v1.schemas_dashboard import (
     DashboardOut,
+    ErrorCountOut,
     HistoryEntryOut,
     HistoryOut,
     LessonProgressOut,
     LevelOut,
     NotionProgressOut,
     NotionResultOut,
+    RecurringErrorOut,
     SkillProgressOut,
     SkillsOut,
     SubjectOut,
     WeakNotionOut,
     WeekOut,
 )
+from app.domain.errors import ERROR_LABELS
 from app.domain.knowledge import SkillVerb
 from app.domain.understanding import LEVEL_LABELS, MasteryLevel, level_color
 from app.services import dashboard, export
@@ -82,6 +85,22 @@ async def get_dashboard(
         reviews_due=board.due_now,
         weeks=[week_out(w) for w in board.weeks],
         trend=board.trend,
+        error_types=[
+            ErrorCountOut(error_type=e.error_type, label=ERROR_LABELS[e.error_type], count=e.count)
+            for e in board.error_types
+        ],
+        recurring_errors=[
+            RecurringErrorOut(
+                knowledge_id=r.knowledge_id,
+                label=r.label,
+                lesson_title=r.lesson_title,
+                error_type=r.error_type,
+                error_label=ERROR_LABELS[r.error_type],
+                sessions=r.sessions,
+                last_at=r.last_at,
+            )
+            for r in board.recurring_errors
+        ],
     )
 
 

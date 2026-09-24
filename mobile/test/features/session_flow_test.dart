@@ -155,6 +155,88 @@ void main() {
     expect(find.text('🎉 Révision terminée !'), findsOneWidget);
   });
 
+  testWidgets('« Je n\'ai pas compris » : une aide à la fois, la réponse en dernier', (
+    tester,
+  ) async {
+    final backend = FakeSessionBackend(server, 's1', [mcq('i1')]);
+    await open(tester, 's1');
+    await tapAndSettle(tester, '❓ Je n\'ai pas compris');
+    expect(find.text('💡 Un indice'), findsOneWidget);
+    expect(find.text('Pense à la prise de la Bastille.'), findsOneWidget);
+    expect(find.text('✅ La réponse'), findsNothing);
+
+    await tapAndSettle(tester, 'Encore de l\'aide');
+    expect(find.text('📖 Rappel de la leçon'), findsOneWidget);
+    // Fermer puis rouvrir : les aides déjà vues restent, sans nouvel appel.
+    await tapAndSettle(tester, 'J\'essaie !');
+    await tapAndSettle(tester, '❓ Je n\'ai pas compris');
+    expect(find.text('💡 Un indice'), findsOneWidget);
+    expect(backend.helpLevels['i1'], 2);
+
+    await tapAndSettle(tester, 'Encore de l\'aide');
+    expect(find.text('1. Retrouve le siècle.'), findsOneWidget);
+    await tester.ensureVisible(find.text('Encore de l\'aide'));
+    await tapAndSettle(tester, 'Encore de l\'aide');
+    expect(find.text('✅ La réponse'), findsOneWidget);
+    expect(find.text('Encore de l\'aide'), findsNothing); // plus rien après la réponse
+    await tester.ensureVisible(find.text('J\'essaie !'));
+    await tapAndSettle(tester, 'J\'essaie !');
+
+    await tapAndSettle(tester, '1789');
+    expect(find.text('✅ Bravo !'), findsOneWidget); // l'aide ne change pas la correction
+    expect(find.text('❓ Je n\'ai pas compris'), findsNothing);
+  });
+
+  testWidgets('question ouverte : réponse rédigée, points clés trouvés et manquants', (
+    tester,
+  ) async {
+    final backend = FakeSessionBackend(server, 's1', [
+      FakeItem('o1', 'OPEN_QUESTION', {
+        'prompt': 'Explique pourquoi 5/8 est plus grand que 3/8.',
+        'max_length': 600,
+      }, {}),
+    ]);
+    server.on('POST /v1/sessions/s1/attempts', (r) {
+      final response = (r.data as Map<String, dynamic>)['response'] as Map<String, dynamic>;
+      backend.items.single.answer = {'text': response['text']};
+      return (
+        200,
+        {
+          'item_id': 'o1',
+          'result': 'incorrect',
+          'score': 0.33,
+          'correct_answer': 'Même dénominateur : on compare les numérateurs, 5 > 3.',
+          'tip': null,
+          'explanation': 'C\'est un début : tu as vu que les dénominateurs sont égaux.',
+          'details': [
+            {'point': 'même dénominateur', 'found': true},
+            {'point': 'on compare les numérateurs', 'found': false},
+          ],
+        },
+      );
+    });
+    await open(tester, 's1');
+    expect(find.text('Réponds avec tes mots'), findsOneWidget);
+    final validate = find.widgetWithText(FilledButton, 'Valider');
+    expect(tester.widget<FilledButton>(validate).onPressed, isNull); // rien d'écrit
+    await tester.enterText(find.byType(TextField), 'Elles ont le même dénominateur.');
+    await tester.pump();
+    await tapAndSettle(tester, 'Valider');
+
+    expect(backend.items.single.answer, {'text': 'Elles ont le même dénominateur.'});
+    expect(find.text('❌ Pas tout à fait !'), findsOneWidget);
+    expect(
+      find.text('Une réponse possible : Même dénominateur : on compare les numérateurs, 5 > 3.'),
+      findsOneWidget,
+    );
+    expect(find.text('même dénominateur'), findsOneWidget);
+    expect(find.text('on compare les numérateurs (il manquait)'), findsOneWidget);
+    expect(
+      find.text('C\'est un début : tu as vu que les dénominateurs sont égaux.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('séance déjà terminée', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1')]).completed = 1;
     await open(tester, 's1');

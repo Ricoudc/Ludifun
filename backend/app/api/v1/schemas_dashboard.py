@@ -38,6 +38,22 @@ class WeakNotionOut(BaseModel):
     explanation: str = Field(description="Ce qui manque encore, en une phrase.")
 
 
+class ErrorCountOut(BaseModel):
+    error_type: str
+    label: str = Field(description="Ce que l'erreur dit de l'enfant (« Confond avec une autre notion »).")
+    count: int
+
+
+class RecurringErrorOut(BaseModel):
+    knowledge_id: uuid.UUID
+    label: str
+    lesson_title: str | None
+    error_type: str
+    error_label: str
+    sessions: int = Field(description="Séances où cette erreur est revenue sur cette notion.")
+    last_at: datetime
+
+
 class DashboardOut(BaseModel):
     """Écran P3."""
 
@@ -54,6 +70,12 @@ class DashboardOut(BaseModel):
     weeks: list[WeekOut] = Field(description="De la plus ancienne à la semaine en cours.")
     trend: Literal["up", "down", "stable"] | None = Field(
         description="Note moyenne des deux dernières semaines actives (±0,5)."
+    )
+    error_types: list[ErrorCountOut] = Field(
+        [], description="Types des erreurs des 30 derniers jours, les plus fréquents d'abord."
+    )
+    recurring_errors: list[RecurringErrorOut] = Field(
+        [], description="Au plus 5 : même erreur sur la même notion dans 3 séances (60 derniers jours)."
     )
 
 

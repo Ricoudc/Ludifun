@@ -22,8 +22,8 @@ class CognitiveLevel(IntEnum):
     RECOGNIZE = 1  # reconnaître la bonne réponse parmi d'autres
     RECALL = 2  # retrouver la réponse sans la voir
     APPLY = 3  # utiliser une règle, une formule, une méthode
-    EXPLAIN = 4  # expliquer pourquoi (questions ouvertes, étape 14)
-    TRANSFER = 5  # réutiliser dans une situation nouvelle (étape 14)
+    EXPLAIN = 4  # expliquer pourquoi (question ouverte)
+    TRANSFER = 5  # réutiliser dans une situation nouvelle (question ouverte)
 
 
 LEVEL_NAMES = {
@@ -41,11 +41,14 @@ APPLICABLE = frozenset({KnowledgeType.RULE, KnowledgeType.FORMULA, KnowledgeType
 def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel:
     """Niveau sollicité par une activité.
 
-    QCM de difficulté 3 : la question demande de relier ou d'appliquer (§6.3 V1) ; texte à trous
+    Question ouverte : niveau 3, 4 ou 5 selon la question. QCM de difficulté 3 : la question
+    demande de relier ou d'appliquer (§6.3 V1) ; texte à trous
     et carte mémoire : l'enfant doit retrouver la réponse sans la voir ; tout le reste (QCM,
     vrai/faux, association, défi rapide) : reconnaître.
     """
     code = ActivityCode(code)
+    if code is ActivityCode.OPEN_QUESTION:
+        return CognitiveLevel(min(5, difficulty + 2))  # difficulté 1, 2, 3 → appliquer, expliquer, transférer
     if code is ActivityCode.MCQ and difficulty >= 3:
         return CognitiveLevel.APPLY
     if code in (ActivityCode.FILL_BLANK, ActivityCode.FLASHCARD):
@@ -54,7 +57,8 @@ def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel
 
 
 def ceiling(knowledge_type: KnowledgeType | str) -> CognitiveLevel:
-    """Niveau le plus élevé exigé pour « maîtrisée » (explication et transfert : étape 14)."""
+    """Niveau le plus élevé exigé pour « maîtrisée ». Expliquer et transférer approfondissent une
+    notion déjà maîtrisée (questions ouvertes) sans être exigés."""
     return CognitiveLevel.APPLY if KnowledgeType(knowledge_type) in APPLICABLE else CognitiveLevel.RECALL
 
 

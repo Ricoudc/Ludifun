@@ -23,9 +23,12 @@ class Settings(BaseSettings):
     ai_ocr_model: str = "claude-opus-5"
     ai_analysis_model: str = "claude-opus-5"
     ai_material_model: str = "claude-opus-5"
+    # Correction des réponses rédigées, pendant la séance : rapide et peu coûteuse.
+    ai_evaluation_model: str = "claude-sonnet-5"
     ai_ocr_effort: Effort = "low"
     ai_analysis_effort: Effort = "high"
     ai_material_effort: Effort = "medium"
+    ai_evaluation_effort: Effort = "low"
     max_lesson_chars: int = 20000
     # Plafond de dépense IA par jour (UTC), tous comptes confondus ; vide = pas de plafond.
     ai_daily_budget_usd: float | None = 50.0

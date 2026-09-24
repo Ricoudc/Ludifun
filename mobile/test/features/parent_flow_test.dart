@@ -73,6 +73,21 @@ final dashboard = {
     },
   ],
   'reviews_due': 3,
+  'error_types': [
+    {'error_type': 'confusion', 'label': 'Confond avec une autre notion', 'count': 7},
+    {'error_type': 'random', 'label': 'Répond trop vite, au hasard', 'count': 2},
+  ],
+  'recurring_errors': [
+    {
+      'knowledge_id': 'k2',
+      'label': 'Numérateur',
+      'lesson_title': 'Les fractions',
+      'error_type': 'confusion',
+      'error_label': 'Confond avec une autre notion',
+      'sessions': 3,
+      'last_at': '2026-09-23T15:00:00Z',
+    },
+  ],
   'weeks': [
     week('2026-08-31', 1, 8, 5.5),
     week('2026-09-07', 2, 15, 6.5),
@@ -191,6 +206,13 @@ void main() {
     );
     expect(find.text('100 %'), findsNothing);
     expect(find.bySemanticsLabel('Niveau 3 sur 5 : En cours d\'acquisition'), findsOneWidget);
+
+    // Erreurs fréquentes : l'erreur récurrente, puis les types d'erreurs du mois.
+    expect(find.text('Erreurs fréquentes'), findsOneWidget);
+    expect(find.text('Numérateur : confond avec une autre notion'), findsOneWidget);
+    expect(find.text('Les fractions · dans 3 séances'), findsOneWidget);
+    expect(find.text('Confond avec une autre notion · 7'), findsOneWidget);
+    expect(find.text('Répond trop vite, au hasard · 2'), findsOneWidget);
     expect(find.text('Note moyenne par semaine · en progression ↗'), findsOneWidget);
     expect(
       find.bySemanticsLabel('Semaine du 21/9 : 4 séances, 37 min, 8,5 / 10 en moyenne'),

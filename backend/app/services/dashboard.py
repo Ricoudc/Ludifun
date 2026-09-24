@@ -10,7 +10,9 @@ Définitions (affichées telles quelles au parent) :
   moyenne pondérée par l'importance des notions ;
 - **à renforcer** : notions travaillées pas encore maîtrisées (niveau 3 ou moins sur 5) : score
   sous 80 %, ou niveau de compréhension manquant (réussie en QCM mais jamais retrouvée seul…) ;
-- **compétences** : niveau 0 à 5 de chaque compétence de la leçon, d'après ses notions.
+- **compétences** : niveau 0 à 5 de chaque compétence de la leçon, d'après ses notions ;
+- **erreurs** : types des erreurs des 30 derniers jours, et erreurs récurrentes (même erreur sur
+  la même notion dans 3 séances, sur 60 jours).
 """
 
 import uuid
@@ -24,11 +26,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
+from app.domain.errors import ErrorOccurrence, ErrorType, recurring_errors
 from app.domain.knowledge import Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, to_mastery
 
+ERROR_TYPES_WINDOW = timedelta(days=30)
+RECURRING_WINDOW = timedelta(days=60)
 MAX_ANSWER_S = 300
 FEEDBACK_S = 8
 Color = Literal["green", "orange", "red"]
@@ -96,6 +101,22 @@ class WeakNotion:
 
 
 @dataclass(frozen=True)
+class ErrorCount:
+    error_type: ErrorType
+    count: int
+
+
+@dataclass(frozen=True)
+class RecurringNotion:
+    knowledge_id: uuid.UUID
+    label: str
+    lesson_title: str | None
+    error_type: ErrorType
+    sessions: int
+    last_at: datetime
+
+
+@dataclass(frozen=True)
 class Dashboard:
     this_week: WeekStats
     lessons_added_this_week: int
@@ -105,6 +126,8 @@ class Dashboard:
     weeks: list[WeekStats]  # de la plus ancienne à la semaine en cours
     trend: Trend | None
     activities: dict[str, int]  # activités réalisées cette semaine, par type
+    error_types: list[ErrorCount] = field(default_factory=list)  # les plus fréquentes d'abord
+    recurring_errors: list[RecurringNotion] = field(default_factory=list)
 
 
 def trend_of(weeks: list[WeekStats]) -> Trend | None:
@@ -193,7 +216,10 @@ async def build_dashboard(
         .where(db.Lesson.child_id == child_id, db.Lesson.created_at >= local_midnight(current, tz))
     )
     due_now = sum(1 for mastery, _, _ in rows if mastery.next_review_at <= now)
+    error_types, recurring = await error_summary(session, child_id, now)
     return Dashboard(
+        error_types=error_types,
+        recurring_errors=recurring,
         this_week=closed[-1],
         lessons_added_this_week=lessons_added or 0,
         subjects=subjects,
@@ -202,6 +228,53 @@ async def build_dashboard(
         weeks=closed,
         trend=trend_of(closed),
         activities=dict(activities),
+    )
+
+
+async def error_summary(
+    session: AsyncSession, child_id: uuid.UUID, now: datetime
+) -> tuple[list[ErrorCount], list[RecurringNotion]]:
+    rows = (
+        await session.execute(
+            select(
+                db.AttemptEvidence.knowledge_id,
+                db.AttemptEvidence.error_type,
+                db.SessionItem.session_id,
+                db.Attempt.created_at,
+                db.KnowledgeItem.label,
+                db.Lesson.title,
+            )
+            .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
+            .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+            .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+            .join(db.KnowledgeItem, db.KnowledgeItem.id == db.AttemptEvidence.knowledge_id)
+            .join(db.Lesson, db.Lesson.id == db.KnowledgeItem.lesson_id)
+            .where(
+                db.RevisionSession.child_id == child_id,
+                db.AttemptEvidence.error_type.is_not(None),
+                db.Attempt.created_at >= now - RECURRING_WINDOW,
+            )
+        )
+    ).all()
+    counts = Counter(ErrorType(error) for _, error, _, at, _, _ in rows if at >= now - ERROR_TYPES_WINDOW)
+    names = {knowledge_id: (label, title) for knowledge_id, _, _, _, label, title in rows}
+    recurring = recurring_errors(
+        ErrorOccurrence(str(knowledge_id), ErrorType(error), str(session_id), at)
+        for knowledge_id, error, session_id, at, _, _ in rows
+    )
+    return (
+        [ErrorCount(error, count) for error, count in counts.most_common()],
+        [
+            RecurringNotion(
+                knowledge_id=uuid.UUID(r.knowledge_id),
+                label=names[uuid.UUID(r.knowledge_id)][0],
+                lesson_title=names[uuid.UUID(r.knowledge_id)][1],
+                error_type=r.error_type,
+                sessions=r.sessions,
+                last_at=r.last_at,
+            )
+            for r in recurring[:5]
+        ],
     )
 
 

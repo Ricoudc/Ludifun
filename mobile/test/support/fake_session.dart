@@ -36,7 +36,52 @@ class FakeSessionBackend {
         completed++;
         return (200, report);
       });
+    for (final item in [...items, ...replay]) {
+      server.on('POST /v1/sessions/$id/items/${item.id}/help', (_) {
+        final level = (helpLevels[item.id] ?? 0) + 1;
+        helpLevels[item.id] = level;
+        return (200, helpSteps[level - 1]);
+      });
+    }
   }
+
+  /// Aide demandée par activité (« Je n'ai pas compris »).
+  final helpLevels = <String, int>{};
+
+  static const helpSteps = [
+    {
+      'level': 1,
+      'kind': 'hint',
+      'title': '💡 Un indice',
+      'text': 'Pense à la prise de la Bastille.',
+      'lines': <String>[],
+      'last': false,
+    },
+    {
+      'level': 2,
+      'kind': 'reminder',
+      'title': '📖 Rappel de la leçon',
+      'text': 'La Révolution commence l\'année des États généraux.',
+      'lines': <String>[],
+      'last': false,
+    },
+    {
+      'level': 4,
+      'kind': 'steps',
+      'title': '🪜 Étape par étape',
+      'text': 'Suis ces étapes :',
+      'lines': ['Retrouve le siècle.', 'Retrouve la décennie.'],
+      'last': false,
+    },
+    {
+      'level': 5,
+      'kind': 'answer',
+      'title': '✅ La réponse',
+      'text': '1789',
+      'lines': ['En 1789, le peuple conteste le pouvoir du roi.'],
+      'last': true,
+    },
+  ];
 
   final FakeServer server;
   final String id;
@@ -86,6 +131,7 @@ class FakeSessionBackend {
     'difficulty': 1,
     'knowledge_ids': ['k1'],
     'payload': item.payload,
+    'help_available': !{'MATCH', 'SPEED_CHALLENGE'}.contains(item.type),
     'attempt': switch (item.answer) {
       null => null,
       {'skipped': true} => {'result': 'skipped', 'score': 0},

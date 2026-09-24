@@ -13,6 +13,7 @@ from app.domain.activities.base import (
     ResponseModel,
     parse_response,
 )
+from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 
 STATEMENTS = 5
@@ -117,9 +118,11 @@ class SpeedChallenge(ActivityType):
             details.append(detail)
 
         good = sum(1 for d in details if d["correct"])
+        evidence = {k: sum(v) / len(v) for k, v in per_knowledge.items()}
         return Grade(
             score=good / len(expected),
-            evidence={k: sum(v) / len(v) for k, v in per_knowledge.items()},
+            evidence=evidence,
+            errors={k: ErrorType.KNOWLEDGE for k, result in evidence.items() if result < 1},
             correct_answer=f"{good} bonne(s) réponse(s) sur {len(expected)}",
             details=details,
         )

@@ -11,20 +11,26 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.domain.errors import ErrorType
 from app.domain.knowledge import (
     Cloze,
     Flashcard,
+    HelpLadder,
     KnowledgeItem,
     KnowledgeMaterial,
     LessonAnalysis,
     LessonInfo,
     MaterialQuestion,
+    OpenQuestion,
     Pair,
     Skill,
+    WorkedExample,
 )
 from app.domain.text import compatible_natures, contains_words, fuzzy_contains, normalize
 
 TIP_MAX_LENGTH = 120
+HELP_TEXT_MAX_LENGTH = 300
+OPEN_QUESTIONS_MAX = 2
 BLANK = "___"
 
 
@@ -59,6 +65,8 @@ class MaterialValidation:
             + len(m.true_statements)
             + len(m.false_statements)
             + sum(x is not None for x in optional)
+            + len(m.open_questions)
+            + (m.help is not None)
         )
 
     @property
@@ -177,18 +185,25 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
     stem = str(raw.get("stem", "")).strip()
     raw_distractors = raw.get("distractors")
     distractors: list[str] = []
+    misconceptions: list[str | None] = []
     seen = {normalize(answer)}
     for d in raw_distractors if isinstance(raw_distractors, list) else []:
-        text = str(d).strip()
+        # Matériel v2 : {"text", "misconception"} ; v1 : le texte seul.
+        text = str(d.get("text", "") if isinstance(d, dict) else d).strip()
+        kind = d.get("misconception") if isinstance(d, dict) else None
         if text and normalize(text) not in seen and compatible_natures(answer, text):
             seen.add(normalize(text))
             distractors.append(text)
+            misconceptions.append(kind if kind in ErrorType else None)
     if answer and stem and contains_words(stem, answer):
         return None, "l'énoncé contient la réponse"
     if len(distractors) < 3:
         return None, "moins de 3 distracteurs valides (distincts, différents de la réponse, de même nature)"
     try:
-        return MaterialQuestion.model_validate({**raw, "distractors": distractors[:3]}), ""
+        data = {**raw, "distractors": distractors[:3], "misconceptions": misconceptions[:3]}
+        if not any(misconceptions[:3]):
+            data["misconceptions"] = []
+        return MaterialQuestion.model_validate(data), ""
     except ValidationError as exc:
         return None, _first_error(exc)
 
@@ -294,6 +309,15 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         rejected.append(Rejection("explanation", "absente : la phrase « à retenir » est utilisée"))
         explanation = item.statement
 
+    help_ladder = _check_help(raw.get("help"), item, rejected)
+    open_questions: list[OpenQuestion] = []
+    raw_open = raw.get("open_questions")
+    for i, raw_question in enumerate(raw_open if isinstance(raw_open, list) else []):
+        try:
+            open_questions.append(OpenQuestion.model_validate(raw_question))
+        except ValidationError as exc:
+            rejected.append(Rejection(f"open_questions[{i}]", _first_error(exc)))
+
     material = KnowledgeMaterial(
         knowledge_id=item.id,
         questions=questions,
@@ -304,5 +328,35 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         flashcard=flashcard,
         tip=tip,
         explanation=explanation.strip(),
+        help=help_ladder,
+        open_questions=open_questions[:OPEN_QUESTIONS_MAX],
     )
     return MaterialValidation(material, rejected)
+
+
+def _check_help(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) -> HelpLadder | None:
+    """Aides graduées : l'indice et le rappel n'inventent rien (comme l'astuce) ; l'exemple, lui,
+    prend volontairement d'autres valeurs que la leçon. Qu'une aide ne dévoile pas la réponse
+    d'un exercice est vérifié au moment de la montrer (`app.domain.help`)."""
+    if not isinstance(raw, dict):
+        return None
+    hint = raw.get("hint") if isinstance(raw.get("hint"), str) and raw["hint"].strip() else None
+    if hint is not None and (reason := _check_tip(hint.strip(), item)):
+        rejected.append(Rejection("help.hint", reason.replace("astuce", "indice")))
+        hint = None
+    reminder = (
+        raw.get("reminder") if isinstance(raw.get("reminder"), str) and raw["reminder"].strip() else None
+    )
+    if reminder is not None and len(reminder) > HELP_TEXT_MAX_LENGTH:
+        rejected.append(Rejection("help.reminder", f"rappel trop long (> {HELP_TEXT_MAX_LENGTH} caractères)"))
+        reminder = None
+    example: WorkedExample | None = None
+    if raw.get("example") is not None:
+        try:
+            example = WorkedExample.model_validate(raw["example"])
+        except ValidationError as exc:
+            rejected.append(Rejection("help.example", _first_error(exc)))
+    raw_steps = raw.get("steps")
+    steps = [str(s).strip() for s in (raw_steps if isinstance(raw_steps, list) else []) if str(s).strip()]
+    ladder = HelpLadder(hint=hint, reminder=reminder, example=example, steps=steps[:6])
+    return ladder if (hint or reminder or example or steps) else None

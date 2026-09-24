@@ -25,8 +25,10 @@ class CorrectionView extends StatelessWidget {
       AttemptResult.partial => ('👍 Presque !', LudiColors.toReview),
       _ => ('❌ Pas tout à fait !', LudiColors.notMastered),
     };
-    final details = _details();
-    final showAnswer = correction.result != AttemptResult.correct && details.isEmpty;
+    final openQuestion = item.type == 'OPEN_QUESTION';
+    final details = openQuestion ? _keyPoints() : _details();
+    final showAnswer =
+        correction.result != AttemptResult.correct && (details.isEmpty || openQuestion);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -45,7 +47,13 @@ class CorrectionView extends StatelessWidget {
                 style: Theme.of(context).textTheme.headlineMedium
                     ?.copyWith(color: color, fontWeight: FontWeight.w800),
               ),
-              if (showAnswer && correction.correctAnswer != null) ...[
+              if (showAnswer && openQuestion && correction.correctAnswer != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Une réponse possible : ${correction.correctAnswer}',
+                  style: const TextStyle(fontSize: 19),
+                ),
+              ] else if (showAnswer && correction.correctAnswer != null) ...[
                 const SizedBox(height: 12),
                 Text.rich(
                   TextSpan(
@@ -82,6 +90,38 @@ class CorrectionView extends StatelessWidget {
       ],
     );
   }
+
+  /// Question ouverte : les points clés trouvés dans la réponse de l'enfant, et ceux qui manquent.
+  List<Widget> _keyPoints() => [
+    if (correction.details.isNotEmpty)
+      const Padding(
+        padding: EdgeInsets.only(bottom: 8),
+        child: Text(
+          'Ce qu\'on attendait :',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+    for (final Json d in correction.details)
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              d['found'] == true ? Icons.check_circle : Icons.radio_button_unchecked,
+              color: d['found'] == true ? LudiColors.mastered : LudiColors.toReview,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${d['point']}${d['found'] == true ? '' : ' (il manquait)'}',
+                style: const TextStyle(fontSize: 17),
+              ),
+            ),
+          ],
+        ),
+      ),
+  ];
 
   /// Association et défi rapide : le résultat élément par élément.
   List<Widget> _details() {

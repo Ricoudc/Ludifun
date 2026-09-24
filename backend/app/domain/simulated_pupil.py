@@ -24,6 +24,8 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"text": s["answers"][0] if single_ok else "je ne sais pas"}
         case ActivityCode.FLASHCARD:
             return {"self_assessment": "knew" if single_ok else "didnt_know"}
+        case ActivityCode.OPEN_QUESTION:
+            return {"text": s["model_answer"] if single_ok else "je ne sais pas"}
         case ActivityCode.MATCH:
             known = [
                 [left, right] for left, right in s["pairs"].items() if knows(s["knowledge_by_left"][left])

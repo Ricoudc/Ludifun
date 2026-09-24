@@ -34,6 +34,7 @@ REPLAY_MAX = 3
 ERRORS_PER_NOTION = 2
 EXPRESS_BELOW = 3  # moins de 3 notions à travailler : révision express
 LEVEL_UP_SCORE = 50  # à partir de ce score, on vise le niveau de compréhension manquant
+DEEPEN_SCORE = 80  # notion maîtrisée et due : question ouverte d'explication ou de transfert
 MISSING_LEVEL_SCORE = 70  # score retenu pour la priorité d'une notion à qui il manque un niveau
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 
@@ -42,6 +43,9 @@ CORRECTION_S = 8
 REPLAY_PROVISION_S = 0.3 * REPLAY_MAX * 20
 
 EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
+# Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
+# jamais « par défaut », ni dans la reprise des erreurs.
+ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
 INTERMEDIATE = frozenset({ActivityCode.FILL_BLANK, ActivityCode.MCQ, ActivityCode.FLASHCARD})
 
 
@@ -199,8 +203,18 @@ class SessionComposer:
     ) -> tuple[tuple[int, ...], frozenset[ActivityCode] | None]:
         """Révision : difficulté selon le score ; au-delà de 50, le premier niveau manquant."""
         missing = self._missing(unit, mastery)
+        target: int | None = None
         if mastery is not None and mastery.score >= LEVEL_UP_SCORE and missing:
             target = min(missing)
+        elif mastery is not None and mastery.score >= DEEPEN_SCORE:
+            # Tous les niveaux exigés sont validés : on approfondit (expliquer, transférer).
+            deeper = (
+                {cognitive_level(code, difficulty) for code, difficulty in self.registry.single_options(unit)}
+                - mastery.levels
+                - required_levels(unit, self.registry)
+            )
+            target = min(deeper, default=None)
+        if target is not None:
             options = [
                 (code, difficulty)
                 for code, difficulty in self.registry.single_options(unit)
@@ -323,7 +337,9 @@ class SessionComposer:
                 codes = sorted(
                     code
                     for code, d in available
-                    if d == difficulty and code not in already and (allowed is None or code in allowed)
+                    if d == difficulty
+                    and code not in already
+                    and (code in allowed if allowed is not None else code not in ON_REQUEST)
                 )
                 rng.shuffle(codes)
                 result += [(code, difficulty) for code in codes if (code, difficulty) not in result]

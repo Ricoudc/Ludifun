@@ -16,7 +16,8 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.ai.ports import LLMResult, PageImage, Prompt, Stage, Usage
-from app.ai.schemas import AnalysisOutput, MaterialBatchOutput, OcrPage, OcrResult
+from app.ai.schemas import AnalysisOutput, EvaluationOutput, MaterialBatchOutput, OcrPage, OcrResult
+from app.domain.activities.open_question import point_found
 
 REFERENCE_LESSONS = Path(__file__).resolve().parents[3] / "reference_lessons"
 DEMO_LESSON = REFERENCE_LESSONS / "history_cm1_revolution.json"
@@ -63,8 +64,52 @@ def analysis_output(raw: dict[str, Any]) -> AnalysisOutput:
 def material_output(material: dict[str, dict[str, Any]], ids: list[str]) -> MaterialBatchOutput:
     defaults: dict[str, Any] = {"questions": [], "true_statements": [], "false_statements": []}
     defaults |= {"cloze": None, "pair": None, "flashcard": None, "tip": None}
+    defaults |= {"help": None, "open_questions": []}
+
+    def v2(raw: dict[str, Any]) -> dict[str, Any]:
+        """Distracteurs v1 (texte seul) → v2 ({text, misconception}), aides complétées."""
+        questions = []
+        for q in raw.get("questions", []):
+            kinds = q.get("misconceptions", [])
+            distractors = [
+                d
+                if isinstance(d, dict)
+                else {"text": d, "misconception": kinds[i] if i < len(kinds) else None}
+                for i, d in enumerate(q["distractors"])
+            ]
+            questions.append({**q, "distractors": distractors})
+        help_ = raw.get("help")
+        if help_ is not None:
+            help_ = {"hint": None, "reminder": None, "example": None, "steps": [], **help_}
+            if help_["example"] is not None:
+                help_["example"] = {"why": None, **help_["example"]}
+        return {**raw, "questions": questions, "help": help_}
+
     return MaterialBatchOutput.model_validate(
-        {"materials": [{**defaults, **material[k], "knowledge_id": k} for k in ids if k in material]}
+        {"materials": [{**defaults, **v2(material[k]), "knowledge_id": k} for k in ids if k in material]}
+    )
+
+
+_POINTS = re.compile(r"<points_cles>\n(.*?)\n</points_cles>", re.DOTALL)
+_ANSWER = re.compile(r"<reponse_eleve>\n(.*?)\n</reponse_eleve>", re.DOTALL)
+
+
+def evaluation_output(input: str) -> EvaluationOutput:
+    """Correction factice, déterministe : les points clés dont les mots sont dans la réponse."""
+    points_match, answer_match = _POINTS.search(input), _ANSWER.search(input)
+    points = [p.removeprefix("- ") for p in points_match.group(1).splitlines()] if points_match else []
+    answer = answer_match.group(1) if answer_match else ""
+    found = [p for p in points if point_found(answer, p)]
+    score = round(len(found) / len(points), 2) if points else 0.0
+    return EvaluationOutput(
+        score=score,
+        key_points_found=found,
+        missing=[p for p in points if p not in found],
+        error_type=None if score == 1 else "forgotten" if not answer.strip() else "knowledge",
+        confidence=0.9,
+        feedback="Bravo, ta réponse est complète !"
+        if score == 1
+        else "C'est un début : relis la correction.",
     )
 
 
@@ -116,6 +161,8 @@ class FakeProvider:
                 for i in range(images)
             ]
             return OcrResult(pages=pages, language="fr", warnings=[])
+        if stage == "evaluation":
+            return evaluation_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

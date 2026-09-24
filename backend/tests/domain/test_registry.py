@@ -13,15 +13,16 @@ V1_CODES = {
     ActivityCode.MATCH,
     ActivityCode.SPEED_CHALLENGE,
     ActivityCode.FLASHCARD,
+    ActivityCode.OPEN_QUESTION,  # étape 14
 }
 
 
-def test_registry_holds_the_six_v1_activities(registry: ActivityRegistry) -> None:
+def test_registry_holds_the_seven_activities(registry: ActivityRegistry) -> None:
     assert set(registry.codes) == V1_CODES
     assert all(registry.get(code).code == code for code in V1_CODES)
 
 
-@pytest.mark.parametrize("code", ["ORDER", "MEMORY", "OPEN_QUESTION", "PUZZLE", ""])
+@pytest.mark.parametrize("code", ["ORDER", "MEMORY", "PUZZLE", ""])
 def test_unimplemented_or_unknown_activity(registry: ActivityRegistry, code: str) -> None:
     with pytest.raises(UnknownActivity):
         registry.get(code)

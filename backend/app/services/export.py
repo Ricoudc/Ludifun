@@ -122,11 +122,19 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
         .order_by(db.RevisionSession.started_at)
     ):
         answers = await session.execute(
-            select(db.SessionItem.activity_type, db.Attempt)
+            select(db.SessionItem.activity_type, db.SessionItem.help_level, db.Attempt)
             .join(db.Attempt, db.Attempt.session_item_id == db.SessionItem.id)
             .where(db.SessionItem.session_id == revision.id)
             .order_by(db.Attempt.created_at)
         )
+        errors: dict[uuid.UUID, list[str]] = {}
+        for attempt_id, error_type in await session.execute(
+            select(db.AttemptEvidence.attempt_id, db.AttemptEvidence.error_type)
+            .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
+            .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+            .where(db.SessionItem.session_id == revision.id, db.AttemptEvidence.error_type.is_not(None))
+        ):
+            errors.setdefault(attempt_id, []).append(error_type)
         out.append(
             {
                 "id": str(revision.id),
@@ -143,8 +151,10 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
                         "duration_ms": attempt.duration_ms,
                         "score": float(attempt.score),
                         "response": attempt.response,
+                        "help_level": help_level,
+                        "error_types": errors.get(attempt.id, []),
                     }
-                    for activity, attempt in answers
+                    for activity, help_level, attempt in answers
                 ],
             }
         )

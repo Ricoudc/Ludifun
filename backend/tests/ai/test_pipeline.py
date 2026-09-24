@@ -56,7 +56,7 @@ async def test_reference_lessons_go_through_the_pipeline(lesson: Path) -> None:
     assert [r.stage for r in result.runs] == ["ocr", "analysis"] + ["material"] * batches
     assert all(r.status == "ok" for r in result.runs)
     assert [r.prompt_version for r in result.runs[:2]] == ["v1", "v2"]
-    assert result.prompt_versions == {"ocr": "v1", "analysis": "v2", "material": "v1"}
+    assert result.prompt_versions == {"ocr": "v1", "analysis": "v2", "material": "v2"}
     # Compétences reliées aux notions, et niveaux de compréhension exigés pour chaque notion.
     assert len(result.analysis.skills) == 3
     assert all(set(s.knowledge_ids) <= {u.id for u in result.units} for s in result.analysis.skills)

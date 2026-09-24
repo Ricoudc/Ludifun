@@ -134,7 +134,8 @@
       "cloze": {"text": "Le 5 mai 1789, Louis XVI réunit les ___ à Versailles.", "answers": ["États généraux"]},
       "pair": {"left": "5 mai 1789", "right": "Réunion des États généraux"},
       "tip": "Les États généraux se réunissent à Versailles.",
-      "explanation": "Pour trouver de l'argent, Louis XVI réunit les États généraux à Versailles le 5 mai 1789."
+      "explanation": "Pour trouver de l'argent, Louis XVI réunit les États généraux à Versailles le 5 mai 1789.",
+      "help": {"hint": "Pense à la grande réunion demandée par le roi quand il manque d'argent."}
     },
     "k4": {
       "knowledge_id": "k4",
@@ -160,7 +161,8 @@
       "cloze": {"text": "Le 26 août 1789, l'Assemblée adopte la ___ des droits de l'homme et du citoyen.", "answers": ["Déclaration"]},
       "pair": {"left": "26 août 1789", "right": "Déclaration des droits de l'homme"},
       "tip": "Déclaration de 1789 : les hommes naissent libres et égaux.",
-      "explanation": "Le 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen : les hommes naissent libres et égaux en droits."
+      "explanation": "Le 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen : les hommes naissent libres et égaux en droits.",
+      "open_questions": [{"level": 4, "prompt": "Explique ce que dit la Déclaration des droits de l'homme et du citoyen.", "key_points": ["les hommes naissent libres", "égaux en droits"], "model_answer": "Elle dit que les hommes naissent et demeurent libres et égaux en droits."}]
     },
     "k6": {
       "knowledge_id": "k6",

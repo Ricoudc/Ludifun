@@ -12,6 +12,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.errors import written_answer_error
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 from app.domain.text import matches_with_typos
 
@@ -57,6 +58,7 @@ class FillBlank(ActivityType):
         return Grade(
             score=score,
             evidence={activity.knowledge_ids[0]: score},
+            errors={} if score else {activity.knowledge_ids[0]: written_answer_error(given, answers)},
             correct_answer=activity.solution["display"],
             tip=activity.solution["tip"],
             explanation=activity.solution["explanation"],

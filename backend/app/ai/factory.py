@@ -16,11 +16,13 @@ def build_providers(settings: Settings) -> tuple[OcrProvider, LLMProvider]:
                 "ocr": settings.ai_ocr_model,
                 "analysis": settings.ai_analysis_model,
                 "material": settings.ai_material_model,
+                "evaluation": settings.ai_evaluation_model,
             },
             efforts={
                 "ocr": settings.ai_ocr_effort,
                 "analysis": settings.ai_analysis_effort,
                 "material": settings.ai_material_effort,
+                "evaluation": settings.ai_evaluation_effort,
             },
         )
     return VisionLLMOcr(llm), llm

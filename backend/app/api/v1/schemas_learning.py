@@ -93,6 +93,8 @@ class SessionItemOut(BaseModel):
     knowledge_ids: list[uuid.UUID]
     payload: dict[str, Any]
     attempt: AttemptSummary | None = Field(None, description="Réponse déjà donnée (reprise d'une séance).")
+    help_available: bool = Field(True, description="Bouton « Je n'ai pas compris » proposé.")
+    help_level: int = Field(0, description="Aide déjà demandée pour cette activité (0 à 5).")
 
 
 class SessionOut(BaseModel):
@@ -135,6 +137,17 @@ class AttemptOut(BaseModel):
     tip: str | None
     explanation: str | None
     details: list[dict[str, Any]] = []
+
+
+class HelpOut(BaseModel):
+    """« Je n'ai pas compris » : l'aide suivante. Avant le niveau 5, jamais la réponse."""
+
+    level: int = Field(description="1 indice, 2 rappel, 3 exemple, 4 étapes, 5 la réponse.")
+    kind: Literal["hint", "reminder", "example", "steps", "answer"]
+    title: str
+    text: str
+    lines: list[str] = Field(description="Étapes, ou réponse et explication de l'exemple.")
+    last: bool = Field(description="Plus d'aide après celle-ci.")
 
 
 class ReplayOut(BaseModel):

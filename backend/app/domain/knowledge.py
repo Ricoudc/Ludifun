@@ -230,6 +230,12 @@ class MaterialQuestion(_Model):
     stem: NonEmpty
     answer: NonEmpty
     distractors: list[NonEmpty] = Field(min_length=3, max_length=3)
+    # Type d'erreur que révèle chaque distracteur (même ordre), quand l'IA l'a indiqué.
+    misconceptions: list[str | None] = Field(default_factory=list)
+
+    def misconception_of(self, distractor: str) -> str | None:
+        index = self.distractors.index(distractor)
+        return self.misconceptions[index] if index < len(self.misconceptions) else None
 
 
 class Cloze(_Model):
@@ -247,6 +253,36 @@ class Flashcard(_Model):
     back: NonEmpty
 
 
+class WorkedExample(_Model):
+    """Un exemple semblable, résolu (aide de niveau 3)."""
+
+    question: NonEmpty
+    answer: NonEmpty
+    why: NonEmpty | None = None
+
+
+class HelpLadder(_Model):
+    """Aides graduées du bouton « Je n'ai pas compris » (spécification technique §5.4).
+
+    Niveau 1 indice, 2 rappel, 3 exemple semblable, 4 étapes ; le niveau 5 (la réponse) vient
+    de l'activité elle-même.
+    """
+
+    hint: NonEmpty | None = None
+    reminder: NonEmpty | None = None
+    example: WorkedExample | None = None
+    steps: list[NonEmpty] = Field(default_factory=list)
+
+
+class OpenQuestion(_Model):
+    """Question à réponse rédigée, corrigée d'après ses points clés (§6.2, §6.4)."""
+
+    level: int = Field(ge=3, le=5)  # 3 appliquer, 4 expliquer, 5 transférer
+    prompt: NonEmpty
+    key_points: list[NonEmpty] = Field(min_length=1, max_length=5)
+    model_answer: NonEmpty
+
+
 class KnowledgeMaterial(_Model):
     """Matériel validé : chaque élément présent a passé les contrôles de §6.4."""
 
@@ -259,9 +295,14 @@ class KnowledgeMaterial(_Model):
     flashcard: Flashcard | None = None
     tip: NonEmpty | None = None
     explanation: NonEmpty
+    help: HelpLadder | None = None
+    open_questions: list[OpenQuestion] = Field(default_factory=list)
 
     def questions_of(self, difficulty: int) -> list[MaterialQuestion]:
         return [q for q in self.questions if q.difficulty == difficulty]
+
+    def open_questions_of(self, level: int) -> list[OpenQuestion]:
+        return [q for q in self.open_questions if q.level == level]
 
 
 class KnowledgeUnit(_Model):

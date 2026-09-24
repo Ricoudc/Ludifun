@@ -5,6 +5,7 @@ import 'fill_blank_view.dart';
 import 'flashcard_view.dart';
 import 'match_view.dart';
 import 'mcq_view.dart';
+import 'open_question_view.dart';
 import 'speed_challenge_view.dart';
 import 'true_false_view.dart';
 
@@ -21,6 +22,7 @@ final activityRegistry = <String, ActivityBuilder>{
   'SPEED_CHALLENGE': (payload, onSubmit) =>
       SpeedChallengeView(payload: payload, onSubmit: onSubmit),
   'FLASHCARD': (payload, onSubmit) => FlashcardView(payload: payload, onSubmit: onSubmit),
+  'OPEN_QUESTION': (payload, onSubmit) => OpenQuestionView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

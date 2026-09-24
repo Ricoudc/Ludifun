@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.domain.errors import ErrorType
 from app.domain.knowledge import (
     ANALYSIS_SCHEMA_VERSION,
     Grade,
@@ -145,11 +146,21 @@ class AnalysisOutput(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
+class DistractorOut(BaseModel):
+    text: str
+    misconception: ErrorType | None = Field(
+        description="L'erreur que révèle ce choix : confusion (avec une autre notion), calculation, "
+        "method, reading, imprecision (presque juste), knowledge (ne sait pas) ; null si aucune."
+    )
+
+
 class QuestionOut(BaseModel):
     difficulty: int = Field(description="1 reconnaître, 2 se rappeler, 3 relier / appliquer.")
     stem: str = Field(description="L'énoncé, qui ne doit pas contenir la réponse.")
     answer: str
-    distractors: list[str] = Field(description="Exactement 3 mauvaises réponses plausibles, de même nature.")
+    distractors: list[DistractorOut] = Field(
+        description="Exactement 3 mauvaises réponses plausibles, de même nature."
+    )
 
 
 class ClozeOut(BaseModel):
@@ -167,6 +178,30 @@ class FlashcardOut(BaseModel):
     back: str
 
 
+class WorkedExampleOut(BaseModel):
+    question: str = Field(description="Un exercice semblable, avec d'autres valeurs que celles de la leçon.")
+    answer: str
+    why: str | None
+
+
+class HelpOut(BaseModel):
+    """Aides graduées « Je n'ai pas compris » ; aucune ne doit donner la réponse d'un exercice."""
+
+    hint: str | None = Field(description="Niveau 1 : un indice qui met sur la piste, 120 caractères au plus.")
+    reminder: str | None = Field(description="Niveau 2 : le rappel de la leçon utile, sans la réponse.")
+    example: WorkedExampleOut | None = Field(description="Niveau 3 : un exemple semblable résolu.")
+    steps: list[str] = Field(description="Niveau 4 : la démarche en 2 à 4 étapes courtes.")
+
+
+class OpenQuestionOut(BaseModel):
+    level: int = Field(
+        description="3 appliquer, 4 expliquer pourquoi, 5 réutiliser dans une situation nouvelle."
+    )
+    prompt: str = Field(description="La question, à laquelle l'enfant répond en une ou deux phrases.")
+    key_points: list[str] = Field(description="1 à 4 points clés attendus, courts, tirés de la leçon.")
+    model_answer: str = Field(description="Une réponse modèle, au niveau de l'enfant.")
+
+
 class MaterialOut(BaseModel):
     knowledge_id: str
     questions: list[QuestionOut]
@@ -177,7 +212,23 @@ class MaterialOut(BaseModel):
     flashcard: FlashcardOut | None
     tip: str | None = Field(description="Astuce pour retenir, 120 caractères au plus, sans rien inventer.")
     explanation: str = Field(description="Explication courte et bienveillante.")
+    help: HelpOut | None
+    open_questions: list[OpenQuestionOut] = Field(description="0 à 2 questions ouvertes.")
 
 
 class MaterialBatchOutput(BaseModel):
     materials: list[MaterialOut]
+
+
+# --------------------------------------------------------------------------- #
+# ④ Correction d'une réponse rédigée
+# --------------------------------------------------------------------------- #
+
+
+class EvaluationOutput(BaseModel):
+    score: float = Field(description="Entre 0 et 1 : part des points clés présents dans la réponse.")
+    key_points_found: list[str] = Field(description="Points clés présents, recopiés tels quels.")
+    missing: list[str] = Field(description="Points clés absents, recopiés tels quels.")
+    error_type: ErrorType | None = Field(description="Principale erreur si la réponse n'est pas complète.")
+    confidence: float = Field(description="Confiance dans la correction, entre 0 et 1.")
+    feedback: str = Field(description="Un retour bienveillant de 1 à 2 phrases, en tutoyant l'enfant.")

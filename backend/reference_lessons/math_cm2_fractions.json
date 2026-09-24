@@ -97,7 +97,8 @@
       "pair": {"left": "Numérateur", "right": "Nombre de parts que l'on prend"},
       "flashcard": {"front": "Numérateur", "back": "Le nombre de parts que l'on prend"},
       "tip": "Numérateur : le nombre de parts que l'on prend.",
-      "explanation": "Dans 3/4, on prend 3 parts : 3 est le numérateur."
+      "explanation": "Dans 3/4, on prend 3 parts : 3 est le numérateur.",
+      "help": {"hint": "Pense à la place du nombre dans la fraction : en haut ou en bas ?"}
     },
     "k3": {
       "knowledge_id": "k3",
@@ -117,7 +118,7 @@
       "knowledge_id": "k4",
       "questions": [
         {"difficulty": 1, "stem": "Quelle fraction est la plus grande ?", "answer": "5/8", "distractors": ["3/8", "1/8", "2/8"]},
-        {"difficulty": 2, "stem": "Deux fractions ont le même dénominateur. Laquelle est la plus grande ?", "answer": "Celle qui a le plus grand numérateur", "distractors": ["Celle qui a le plus petit numérateur", "Elles sont toujours égales", "Celle qui est écrite en premier"]},
+        {"difficulty": 2, "stem": "Deux fractions ont le même dénominateur. Laquelle est la plus grande ?", "answer": "Celle qui a le plus grand numérateur", "distractors": ["Celle qui a le plus petit numérateur", "Elles sont toujours égales", "Celle qui est écrite en premier"], "misconceptions": ["method", "knowledge", "reading"]},
         {"difficulty": 3, "stem": "Quelle fraction est plus grande que 4/7 ?", "answer": "6/7", "distractors": ["3/7", "2/7", "1/7"]}
       ],
       "true_statements": ["5/8 est plus grand que 3/8."],
@@ -125,7 +126,9 @@
       "cloze": {"text": "Avec le même dénominateur, la plus grande fraction a le plus grand ___.", "answers": ["numérateur"]},
       "flashcard": {"front": "Comparer deux fractions de même dénominateur", "back": "La plus grande a le plus grand numérateur"},
       "tip": "Même dénominateur : on compare les numérateurs.",
-      "explanation": "5/8 et 3/8 ont le même dénominateur : on compare 5 et 3, donc 5/8 est la plus grande."
+      "explanation": "5/8 et 3/8 ont le même dénominateur : on compare 5 et 3, donc 5/8 est la plus grande.",
+      "help": {"hint": "Regarde d'abord le nombre du bas de chaque fraction.", "reminder": "Quand deux fractions ont le même dénominateur, on compare leurs numérateurs.", "example": {"question": "Quelle fraction est la plus grande : 2/7 ou 6/7 ?", "answer": "6/7", "why": "Même dénominateur 7 : on compare 6 et 2."}, "steps": ["Vérifie que les deux dénominateurs sont égaux.", "Compare les numérateurs.", "La plus grande fraction a le plus grand numérateur."]},
+      "open_questions": [{"level": 4, "prompt": "Explique pourquoi 5/8 est plus grand que 3/8.", "key_points": ["même dénominateur", "on compare les numérateurs", "5 est plus grand que 3"], "model_answer": "Les deux fractions ont le même dénominateur, donc on compare les numérateurs : 5 est plus grand que 3, donc 5/8 est plus grand que 3/8."}]
     },
     "k5": {
       "knowledge_id": "k5",
@@ -137,7 +140,9 @@
       "false_statements": ["La fraction 4/4 est égale à 4."],
       "cloze": {"text": "Quand le numérateur est égal au dénominateur, la fraction est égale à ___.", "answers": ["1"]},
       "flashcard": {"front": "Numérateur égal au dénominateur", "back": "La fraction est égale à 1"},
-      "explanation": "Dans 4/4, on prend les 4 parts sur 4 : on a l'unité entière, donc 4/4 = 1."
+      "explanation": "Dans 4/4, on prend les 4 parts sur 4 : on a l'unité entière, donc 4/4 = 1.",
+      "help": {"hint": "Compare le nombre du haut et le nombre du bas.", "example": {"question": "Combien vaut 7/7 ?", "answer": "1", "why": "On prend les 7 parts sur 7 : c'est l'unité entière."}},
+      "open_questions": [{"level": 3, "prompt": "Invente une fraction égale à 1 et explique pourquoi elle vaut 1.", "key_points": ["le numérateur est égal au dénominateur"], "model_answer": "6/6 est égale à 1, car le numérateur est égal au dénominateur : on prend toutes les parts."}]
     }
   }
 }

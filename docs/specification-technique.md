@@ -25,12 +25,12 @@ ont été mises à jour depuis.
 | §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v2.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
-| §15, §65 | Mémorisation vs compréhension, transfert | 🟡 étape 13 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer ; 4 expliquer et 5 transférer à l'étape 14 (questions ouvertes) | `domain/understanding.py` |
+| §15, §65 | Mémorisation vs compréhension, transfert | ✅ étapes 13-14 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer (exigés), 4 expliquer et 5 transférer (questions ouvertes d'approfondissement) | `domain/understanding.py` |
 | §16-§18 | Moteur qui choisit l'activité ; QCM, vrai/faux, flashcards, texte à trous, association, défi rapide | ✅ 6 activités, composition par blocs selon la maîtrise | `domain/composer.py`, `domain/activities/` |
-| §18 | Questions ouvertes, memory, classement | ⏳ déclarés (`OPEN_QUESTION`, `MEMORY`, `ORDER`), non implémentés | étapes 14, 18 |
+| §18 | Questions ouvertes, memory, classement | ✅ questions ouvertes (étape 14) ; ⏳ `MEMORY`, `ORDER` déclarés | `domain/activities/open_question.py` ; V2 |
 | §19-§25 | Pratique par matière, activités visuelles, géographie, histoire, sciences, maths | ⏳ V2-V3 | §9 de ce document |
 | §26, §83 | Oral, « Enseigne-moi » | 🔮 V4 | |
-| §27-§28 | « Je n'ai pas compris » (5 niveaux), langage adapté à l'âge | 🟡 astuce et explication après correction ; langage adapté au niveau dans les prompts | étape 14 |
+| §27-§28 | « Je n'ai pas compris » (5 niveaux), langage adapté à l'âge | ✅ étape 14 : indice, rappel, exemple, étapes, réponse | `domain/help.py`, `features/session/help_sheet.dart` |
 | §29 | Mode devoirs | 🔮 V3 | |
 | §31 | Durée de séance choisie par le parent | 🟡 durée estimée affichée ; pas de durée cible | étape 16 |
 | §32 | Fatigue / désengagement | ⏳ | étape 17 |
@@ -39,7 +39,7 @@ ont été mises à jour depuis.
 | §35-§36 | Adaptation en temps réel, difficulté dynamique | 🟡 reprise des erreurs en fin de séance ; difficulté 1-3 selon la maîtrise | étape 17 |
 | §37-§39, §85 | Missions, XP, badges, séries | 🟡 « mission du jour » ; pas d'XP ni de badges | V2 |
 | §40-§42 | Tableaux de bord enfant et parent, statuts 🟢🟠🔴 | ✅ | `features/home`, `features/parent/child_dashboard_screen.dart` |
-| §43, §62-§63 | Historique des erreurs, types d'erreurs | 🟡 résultat par notion et par séance ; pas de type d'erreur | étape 14 |
+| §43, §62-§63 | Historique des erreurs, types d'erreurs | ✅ étape 14 : type d'erreur par notion ratée, erreurs récurrentes au tableau de bord | `domain/errors.py` |
 | §44-§45 | Historique, graphiques | ✅ historique paginé, progression par semaine | `services/dashboard.py` |
 | §46 | Assistant parent | 🔮 V5 | |
 | §47 | Objectifs parent | ⏳ | étape 16 |
@@ -81,15 +81,15 @@ backend/app/
 ├── domain/                     # pur Python, sans infrastructure (test d'architecture)
 │   ├── knowledge.py            # + Skill, SkillVerb (étape 13 ✅)
 │   ├── understanding.py        # niveaux de compréhension, niveau affiché 0-5 (étape 13 ✅)
-│   ├── help.py                 # NOUVEAU : aide progressive (§27)
-│   ├── errors.py               # NOUVEAU : types d'erreurs, erreurs récurrentes (§43, §63)
+│   ├── help.py                 # aide progressive (§27) (étape 14 ✅)
+│   ├── errors.py               # types d'erreurs, erreurs récurrentes (§43, §63) (étape 14 ✅)
 │   ├── remediation.py          # NOUVEAU : adaptation en temps réel (§35)
 │   ├── engagement.py           # NOUVEAU : signaux de fatigue (§32)
 │   ├── planning.py             # NOUVEAU : séance à durée cible, plan avant contrôle (§31, §33)
 │   ├── composer.py             # + durée cible, niveaux de compréhension
-│   └── activities/             # + open_question.py, order.py, memory.py
-├── ai/prompts/                 # analysis.v2 (compétences, ✅), material.v2 (aides, erreurs types),
-│                               # ocr.v2 (passages incertains), evaluation.v1 (réponses ouvertes)
+│   └── activities/             # + open_question.py (étape 14 ✅), order.py, memory.py
+├── ai/prompts/                 # analysis.v2 (compétences, ✅), material.v2 (aides, erreurs types, ✅),
+│                               # ocr.v2 (passages incertains), evaluation.v1 (réponses ouvertes, ✅)
 ├── services/                   # goals.py, revision_plans.py (NOUVEAUX)
 └── api/v1/                     # goals.py, help (dans sessions.py), review (dans lessons.py)
 
@@ -143,17 +143,23 @@ exigés d'après le matériel, niveaux validés d'après les réponses des séan
 d'une compétence n'est pas stocké : il se calcule à partir de ses notions (§5.3), ce qui évite
 une table `skill_mastery` à tenir à jour.
 
-### 4.2 Prévu (étapes 14 à 17)
+### 4.2 Migration `0004` (étape 14, faite)
 
 ```sql
--- Étape 14 — évaluation détaillée (CDC §62-§63).
-ALTER TABLE attempts ADD COLUMN help_level SMALLINT NOT NULL DEFAULT 0
-    CHECK (help_level BETWEEN 0 AND 5);             -- aide la plus forte utilisée avant la réponse
-ALTER TABLE attempts ADD COLUMN confidence REAL;     -- évaluateur IA (questions ouvertes)
+-- L'aide est demandée avant la réponse : elle est portée par l'activité, pas par la tentative.
+ALTER TABLE session_items ADD COLUMN help_level SMALLINT NOT NULL DEFAULT 0
+    CHECK (help_level BETWEEN 0 AND 5);             -- aide la plus forte demandée
 ALTER TABLE attempt_evidence ADD COLUMN error_type TEXT CHECK (error_type IN (
     'knowledge','calculation','method','reading','confusion',
     'forgotten','imprecision','random','statement')); -- NULL si réussi
+-- Nouvelle étape IA journalisée : 'evaluation' dans ai_runs.stage.
+```
 
+La confiance de l'évaluateur n'est pas stockée : sous 0,4, sa correction est écartée (§6.4).
+
+### 4.3 Prévu (étapes 15 à 17)
+
+```sql
 -- Étape 15 — source d'une leçon et relecture de l'OCR (CDC §8.5, §10).
 ALTER TABLE lessons ADD COLUMN source TEXT NOT NULL DEFAULT 'camera'
     CHECK (source IN ('camera','gallery','text','pdf'));
@@ -207,10 +213,13 @@ donnée de classement entre enfants (CDC §108.8).
 | Niveau | Activités | Évaluation |
 |---|---|---|
 | 1 Reconnaître | QCM (difficultés 1 et 2), vrai/faux, association, défi rapide ; memory (V2) | déterministe |
-| 2 Se rappeler | texte à trous, carte mémoire (auto-évaluée, poids réduit) ; question ouverte courte (étape 14) | déterministe (tolérance aux fautes) |
-| 3 Appliquer | QCM de difficulté 3 (« relier, appliquer ») ; question ouverte « applique », classement, calcul (étape 14) | déterministe ou IA |
-| 4 Expliquer | question ouverte « explique pourquoi » (étape 14) | IA (§6.4) |
-| 5 Transférer | question ouverte en situation nouvelle (étape 14) | IA |
+| 2 Se rappeler | texte à trous, carte mémoire (auto-évaluée, poids réduit) | déterministe (tolérance aux fautes) |
+| 3 Appliquer | QCM de difficulté 3 (« relier, appliquer ») ; question ouverte « applique » ; classement, calcul (plus tard) | déterministe ou IA |
+| 4 Expliquer | question ouverte « explique pourquoi » | IA (§6.4), mots clés en secours |
+| 5 Transférer | question ouverte en situation nouvelle | IA (§6.4), mots clés en secours |
+
+Question ouverte : difficulté 1, 2, 3 ↔ niveau 3, 4, 5 (la base garde la contrainte de
+difficulté 1-3).
 
 Le niveau de chaque activité est enregistré (`session_items.cognitive_level`). En révision, une
 notion dont le score atteint 50 est travaillée à son **premier niveau exigé non validé** ; en
@@ -227,8 +236,13 @@ d'au plus 70.
 - **Validés** (`knowledge_mastery.levels`) : un niveau est validé quand, dans une séance, le taux
   pondéré des réponses de ce niveau atteint 80 % (reprise des erreurs comprise). Un niveau validé
   le reste.
-- Le score 0-100, les boîtes et les intervalles de révision ne changent pas. La pondération des
-  preuves selon le niveau et l'aide utilisée viendra avec l'aide progressive (étape 14).
+- Le score 0-100, les boîtes et les intervalles de révision ne changent pas. L'aide demandée
+  réduit la preuve (§5.4) ; une réponse donnée après l'exemple ou la solution ne valide pas de
+  niveau.
+- **Approfondir** (étape 14) : une notion maîtrisée à tous ses niveaux exigés, dont la révision
+  est due et le score ≥ 80, reçoit une question ouverte de niveau 4 (expliquer) puis 5
+  (transférer) quand la leçon en a. Ces niveaux enrichissent la maîtrise sans être exigés. Une
+  question ouverte n'est jamais proposée « par défaut » (première séance, reprise des erreurs).
 
 ### 5.3 Niveau affiché 0-5 (CDC §14, arbitrage A4)
 
@@ -254,22 +268,33 @@ liste les notions de niveau 3 ou moins, même réussies à 100 % en QCM.
 
 ### 5.4 Aide progressive (CDC §27)
 
-Chaque notion reçoit à l'analyse cinq aides graduées (§6.2) : indice → rappel → exemple
-similaire → explication étape par étape → solution. Un appui sur « ❓ Je n'ai pas compris »
-renvoie l'aide suivante **sans la bonne réponse** avant le niveau 5. Le niveau atteint est
-enregistré (`attempts.help_level`) et réduit la preuve (§5.2) : l'aide n'est jamais punie à
-l'écran, seulement comptée pour la maîtrise.
+Chaque notion reçoit à l'analyse ses aides graduées (§6.2) : indice → rappel → exemple
+semblable → étapes ; le niveau 5 est la réponse de l'activité elle-même, avec son explication.
+Chaque appui sur « ❓ Je n'ai pas compris » renvoie l'aide suivante. Avant le niveau 5, une aide
+qui dévoilerait la réponse de l'activité est **sautée** (vérifié au moment de la montrer : mots de
+la réponse, pluriel, faute) ; une aide absente aussi. Leçons d'avant l'étape 14 : l'astuce sert
+d'indice, l'énoncé d'une règle sert de rappel. Proposée pour les activités sur une seule notion
+(pas l'association ni le défi rapide).
+
+Le niveau atteint est enregistré (`session_items.help_level`). L'aide n'est jamais punie à
+l'écran (la note de la séance ne change pas) ; pour la maîtrise, le résultat est multiplié par
+1 (indice, rappel), 0,75 (exemple), 0,5 (étapes), 0 (réponse vue).
 
 ### 5.5 Types d'erreurs (CDC §43, §63)
 
 - **QCM et vrai/faux** : chaque distracteur porte, dès la génération, le type d'erreur qu'il
   révèle (`misconception`, §6.2) ; choisir ce distracteur donne ce type.
-- **Texte à trous** : faute proche de la réponse → `imprecision` ; autre notion de la leçon →
-  `confusion` ; vide ou « je ne sais pas » → `forgotten`.
-- **Réponses très rapides et fausses** (< 1,5 s) → `random`.
-- **Questions ouvertes** : type donné par l'évaluateur IA (§6.4).
-- **Erreur récurrente** : même type d'erreur sur la même notion dans 3 séances distinctes →
-  signalée au parent (« confond régulièrement numérateur et dénominateur »).
+  Sans type indiqué (leçons d'avant l'étape 14, vrai/faux) : `knowledge`.
+- **Texte à trous** : réponse proche mais hors tolérance → `imprecision` ; vide ou « je ne sais
+  pas » → `forgotten` ; sinon `knowledge` (la confusion avec une autre notion viendra plus tard).
+- **Carte mémoire** « je ne savais pas » → `forgotten` ; **association** ratée → `confusion` ;
+  **défi rapide** → `knowledge`.
+- **Réponses très rapides et fausses** (< 1,5 s, sans aide, activité sur une notion) → `random`.
+- **Questions ouvertes** : type donné par l'évaluateur IA (§6.4) ; en secours, `forgotten`,
+  `imprecision` ou `knowledge` selon les points clés trouvés.
+- **Erreur récurrente** : même type d'erreur sur la même notion dans 3 séances distinctes (60
+  derniers jours ; les réponses au hasard ne comptent pas) → signalée au parent dans le tableau de
+  bord, avec les types d'erreurs des 30 derniers jours.
 
 ### 5.6 Adaptation en temps réel (CDC §35)
 
@@ -371,9 +396,13 @@ la leçon entière (CDC §91). Effort faible, 2-5 s.
  "confidence": 0.85, "feedback": "Presque ! Tu as bien vu que…"}
 ```
 
-Si l'appel échoue : la question devient une auto-évaluation (comme une flashcard), sans perdre
-la réponse. Le prompt interdit de dévoiler la réponse modèle avant la correction et impose un
-retour bienveillant adapté à la classe (CDC §28, §39).
+Modèle rapide (Sonnet 5, effort faible par défaut : `LUDIFUN_AI_EVALUATION_MODEL`), appel
+journalisé dans `ai_runs` (étape `evaluation`) et soumis au plafond de coût journalier. Garde-fous :
+seuls les points clés de la question sont retenus, score borné, retour de 400 caractères au plus,
+confiance ≥ 0,4 ; la réponse de l'enfant est placée entre balises et traitée comme une donnée.
+
+Si l'appel échoue, est écarté ou si le plafond est atteint : correction par les **mots clés** de
+chaque point (deux tiers des mots importants présents), jamais bloquante pour l'enfant.
 
 ### 6.5 Plus tard
 
@@ -389,11 +418,11 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 |---|---|---|
 | POST | `/v1/lessons` (JSON `{text, grade?}`) | leçon depuis un texte (CDC §8.5) |
 | GET · POST | `/v1/lessons/{id}/review` | passages incertains à vérifier ; réponses de l'enfant |
-| POST | `/v1/sessions/{id}/items/{item_id}/help` | aide suivante (niveau 1 → 5) |
+| POST | `/v1/sessions/{id}/items/{item_id}/help` | ✅ étape 14 : aide suivante (niveau 1 → 5) |
 | POST | `/v1/sessions/{id}/extend` | activités supplémentaires (enfant rapide) |
 | POST | `/v1/lessons/{id}/sessions` `{target_minutes?}` | séance à durée cible |
 | GET | `/v1/children/{id}/skills` | ✅ étape 13 : compétences et notions de chaque leçon, niveau 0-5, couleur et explication |
-| GET | `/v1/children/{id}/errors` | erreurs par type et erreurs récurrentes |
+| GET | `/v1/children/{id}/dashboard` | ✅ étape 14 : `error_types` et `recurring_errors` ajoutés (pas de route séparée) |
 | GET · POST · DELETE | `/v1/children/{id}/goals[/{goal_id}]` | temps quotidien, contrôle, matière prioritaire |
 | GET | `/v1/children/{id}/goals/{goal_id}/plan` | plan de révision jour par jour |
 | GET | `/v1/me/plan` | l'enfant : séance du jour selon le plan (remplace la mission quand un contrôle approche) |
@@ -409,11 +438,11 @@ et ont leurs tests de séparation.
 | CDC §77 | Existant | À faire |
 |---|---|---|
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
-| 5 Dashboard parent | ✅ ; compétences par leçon et « à renforcer » expliqué (étape 13) | erreurs récurrentes, objectifs (étapes 14, 16) |
+| 5 Dashboard parent | ✅ ; compétences par leçon et « à renforcer » expliqué (étape 13) ; erreurs fréquentes (étape 14) | objectifs (étape 16) |
 | 6 Dashboard enfant | ✅ mission du jour | plan du contrôle, durée du jour (étape 16) ; XP et série en V2 |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ | import de texte (étape 15) |
 | 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et niveau de chaque notion en étoiles (étape 13) | « Peux-tu vérifier ? » (étape 15) |
-| 12-16 Activité, réponse, correction, aide, suivante | ✅ sauf l'aide | bouton « ❓ Je n'ai pas compris » (étape 14), question ouverte (étape 14), remédiation (étape 17) |
+| 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) | remédiation (étape 17) |
 | 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
 
@@ -427,7 +456,7 @@ documentation, intégration continue verte.
 | # | Étape | Contenu | Terminé quand… |
 |---|---|---|---|
 | 13 ✅ | **Compétences et niveaux de compréhension** | migration 0003 (compétences, niveaux), analyse v2, maîtrise par niveau et par compétence, niveau affiché 0-5, statuts expliqués, écrans leçon, bilan et tableau de bord | une leçon réelle donne des compétences reliées aux notions ; 5 QCM réussis ne suffisent plus à « maîtrisé » (test) |
-| 14 | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
+| 14 ✅ | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
 | 15 | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
 | 16 | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
 | 17 | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |

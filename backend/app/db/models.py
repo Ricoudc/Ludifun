@@ -39,8 +39,19 @@ PAGE_QUALITIES = ("good", "partial", "unreadable")
 SESSION_KINDS = ("first", "review", "errors")
 SESSION_STATUSES = ("active", "completed", "abandoned")
 SESSION_BLOCKS = ("warmup", "core", "match", "speed", "replay")
+ERROR_TYPES = (
+    "knowledge",
+    "calculation",
+    "method",
+    "reading",
+    "confusion",
+    "forgotten",
+    "imprecision",
+    "random",
+    "statement",
+)
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
-AI_STAGES = ("ocr", "analysis", "material")
+AI_STAGES = ("ocr", "analysis", "material", "evaluation")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 
 
@@ -328,6 +339,8 @@ class SessionItem(Base):
     difficulty: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     # 1 reconnaître, 2 se rappeler, 3 appliquer, 4 expliquer, 5 transférer.
     cognitive_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="1")
+    # Aide la plus forte demandée (« Je n'ai pas compris ») avant la réponse : 0 à 5.
+    help_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     knowledge_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # envoyé au téléphone
     solution: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # jamais avant la réponse
@@ -337,6 +350,7 @@ class SessionItem(Base):
         CheckConstraint(_in("block", SESSION_BLOCKS), name="block"),
         CheckConstraint("difficulty BETWEEN 1 AND 3", name="difficulty"),
         CheckConstraint("cognitive_level BETWEEN 1 AND 5", name="cognitive_level"),
+        CheckConstraint("help_level BETWEEN 0 AND 5", name="help_level"),
     )
 
 
@@ -368,10 +382,12 @@ class AttemptEvidence(Base):
     )
     result: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
     weight: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
+    error_type: Mapped[str | None] = mapped_column(Text)  # notion ratée : pourquoi (§5.5)
 
     __table_args__ = (
         CheckConstraint("result BETWEEN 0 AND 1", name="result"),
         CheckConstraint("weight > 0 AND weight <= 1", name="weight"),
+        CheckConstraint(_in("error_type", ERROR_TYPES), name="error_type"),
     )
 
 

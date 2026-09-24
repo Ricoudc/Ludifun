@@ -267,6 +267,12 @@ class LudifunApi {
     return Correction.fromJson(r.data!);
   });
 
+  /// « Je n'ai pas compris » : l'aide suivante pour cette activité (le serveur retient le niveau).
+  Future<HelpStep> help(String sessionId, String itemId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/sessions/$sessionId/items/$itemId/help');
+    return HelpStep.fromJson(r.data!);
+  });
+
   /// Reprise des erreurs, après la dernière activité principale (liste vide s'il n'y en a pas).
   Future<List<SessionItem>> replay(String sessionId) => _call(() async {
     final r = await _dio.post<Json>('/v1/sessions/$sessionId/replay');

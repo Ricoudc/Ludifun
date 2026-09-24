@@ -10,6 +10,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 
 
@@ -55,6 +56,7 @@ class Flashcard(ActivityType):
         return Grade(
             score=score,
             evidence={activity.knowledge_ids[0]: score},
+            errors={} if knew else {activity.knowledge_ids[0]: ErrorType.FORGOTTEN},
             correct_answer=activity.solution["display"],
             tip=activity.solution["tip"],
             explanation=activity.solution["explanation"],

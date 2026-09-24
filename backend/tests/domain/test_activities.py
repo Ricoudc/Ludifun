@@ -17,6 +17,7 @@ PAYLOAD_KEYS = {
     ActivityCode.MATCH: {"left", "right"},
     ActivityCode.SPEED_CHALLENGE: {"time_limit_s", "statements"},
     ActivityCode.FLASHCARD: {"front", "back"},
+    ActivityCode.OPEN_QUESTION: {"prompt", "max_length"},
 }
 
 
@@ -35,6 +36,8 @@ def perfect_response(activity: BuiltActivity) -> dict[str, Any]:
             return {"answers": [{"id": i, "value": v} for i, v in s["answers"].items()], "elapsed_ms": 12000}
         case ActivityCode.FLASHCARD:
             return {"self_assessment": "knew"}
+        case ActivityCode.OPEN_QUESTION:
+            return {"text": s["model_answer"]}
     raise AssertionError(activity.type)
 
 
@@ -55,6 +58,8 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             return {"answers": [{"id": i, "value": not v} for i, v in s["answers"].items()]}
         case ActivityCode.FLASHCARD:
             return {"self_assessment": "didnt_know"}
+        case ActivityCode.OPEN_QUESTION:
+            return {"text": ""}
     raise AssertionError(activity.type)
 
 
@@ -97,6 +102,7 @@ def test_every_single_activity_builds_and_grades(lesson: ReferenceLesson, regist
         bad = activity_type.grade(activity, wrong_response(activity))
         assert (bad.score, bad.result) == (0.0, "incorrect")
         assert bad.evidence == {activity.knowledge_ids[0]: 0.0}
+        assert set(bad.errors) == {activity.knowledge_ids[0]} and good.errors == {}
 
 
 def test_multi_activities_build_on_every_lesson(lesson: ReferenceLesson, registry: ActivityRegistry) -> None:

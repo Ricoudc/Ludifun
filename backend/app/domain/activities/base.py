@@ -15,6 +15,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 
 
@@ -59,6 +60,7 @@ class Grade:
     tip: str | None = None
     explanation: str | None = None
     details: list[dict[str, Any]] = field(default_factory=list)  # élément par élément (MATCH, SPEED)
+    errors: dict[str, ErrorType] = field(default_factory=dict)  # type d'erreur par notion ratée
 
     @property
     def result(self) -> Result:

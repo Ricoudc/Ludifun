@@ -115,6 +115,7 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_AI_PROVIDER` | `claude` (`fake` : réponses rejouées depuis `reference_lessons/`) |
 | `LUDIFUN_AI_OCR_MODEL`, `…_ANALYSIS_MODEL`, `…_MATERIAL_MODEL` | `claude-opus-5` |
 | `LUDIFUN_AI_OCR_EFFORT`, `…_ANALYSIS_EFFORT`, `…_MATERIAL_EFFORT` | `low`, `high`, `medium` |
+| `LUDIFUN_AI_EVALUATION_MODEL`, `…_EVALUATION_EFFORT` | `claude-sonnet-5`, `low` : correction des réponses rédigées, pendant la séance |
 | `LUDIFUN_MAX_LESSON_CHARS` | `20000` |
 | `LUDIFUN_AI_DAILY_BUDGET_USD` | `50` : plafond de dépense IA par jour (UTC), tous comptes confondus ; vide = sans plafond |
 | `LUDIFUN_JWT_SECRET` | secret de développement ; **obligatoire en production** (l'API refuse de démarrer sans) |
