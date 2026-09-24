@@ -230,6 +230,33 @@ class LudifunApi {
     return lesson(r.data!['id'] as String, childId: childId);
   });
 
+  /// Leçon collée ou tapée : même analyse que pour une photo.
+  Future<Lesson> lessonFromText(String text, {String? childId}) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/lessons/text',
+      data: {'text': text},
+      queryParameters: _forChild(childId),
+    );
+    return lesson(r.data!['id'] as String, childId: childId);
+  });
+
+  /// « Peux-tu vérifier ? » : `status` confirmed, corrected (avec `text`) ou unknown, par passage.
+  Future<void> reviewLesson(
+    String id,
+    List<({String itemId, String status, String? text})> answers, {
+    String? childId,
+  }) => _call(
+    () => _dio.post<Json>(
+      '/v1/lessons/$id/review',
+      data: {
+        'answers': [
+          for (final a in answers) {'item_id': a.itemId, 'status': a.status, 'text': ?a.text},
+        ],
+      },
+      queryParameters: _forChild(childId),
+    ),
+  );
+
   Future<void> retryLesson(String id, {String? childId}) =>
       _call(() => _dio.post<Json>('/v1/lessons/$id/retry', queryParameters: _forChild(childId)));
 

@@ -33,7 +33,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 
-LESSON_STATUSES = ("uploaded", "reading", "analyzing", "generating", "ready", "failed")
+LESSON_STATUSES = ("uploaded", "reading", "needs_review", "analyzing", "generating", "ready", "failed")
+LESSON_SOURCES = ("photo", "text")
+REVIEW_STATUSES = ("pending", "confirmed", "corrected", "unknown")
 FAILURE_REASONS = ("unreadable", "not_a_lesson", "too_long", "ai_error")
 PAGE_QUALITIES = ("good", "partial", "unreadable")
 SESSION_KINDS = ("first", "review", "errors")
@@ -203,6 +205,7 @@ class Lesson(Base):
     objective: Mapped[str | None] = mapped_column(Text)
     summary: Mapped[str | None] = mapped_column(Text)
     page_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default="photo")  # photo ou texte collé
     analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     prompt_versions: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _created_at()
@@ -213,6 +216,7 @@ class Lesson(Base):
     __table_args__ = (
         CheckConstraint(_in("status", LESSON_STATUSES), name="status"),
         CheckConstraint(_in("failure_reason", FAILURE_REASONS), name="failure_reason"),
+        CheckConstraint(_in("source", LESSON_SOURCES), name="source"),
         CheckConstraint("page_count BETWEEN 1 AND 6", name="page_count"),
         Index("ix_lessons_child_recent", "child_id", text("created_at DESC")),
     )
@@ -231,6 +235,26 @@ class LessonPage(Base):
     quality: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (CheckConstraint(_in("quality", PAGE_QUALITIES), name="quality"),)
+
+
+class LessonReviewItem(Base):
+    """Passage mal lu sur la photo, à vérifier par l'enfant avant l'analyse (étape 15)."""
+
+    __tablename__ = "lesson_review_items"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    page_index: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    read_text: Mapped[str] = mapped_column(Text, nullable=False)  # ce que l'OCR croit avoir lu
+    context: Mapped[str] = mapped_column(Text, nullable=False)  # les mots autour, pour le retrouver
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    answer: Mapped[str | None] = mapped_column(Text)  # la correction de l'enfant
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "position"),
+        CheckConstraint(_in("status", REVIEW_STATUSES), name="status"),
+    )
 
 
 class KnowledgeItem(Base):

@@ -17,12 +17,16 @@ from app.api.v1.schemas_learning import (
     LessonOut,
     LessonPatch,
     LessonSummaryOut,
+    LessonTextIn,
     MissionLesson,
     MissionOut,
+    ReviewIn,
+    ReviewItemOut,
     SkillOut,
 )
-from app.db.models import Child, Lesson, LessonPage
+from app.db.models import Child, Lesson, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
+from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.services import ai_budget, learning
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
@@ -36,11 +40,14 @@ FAILURE_MESSAGES = {
     "ai_error": "Petit souci de mon côté, réessaie.",
 }
 STEPS = ("reading", "analyzing", "generating")
+MIN_TEXT_CHARS = 40
 
 
 def steps_of(lesson_status: str) -> dict[str, str] | None:
     if lesson_status == "failed":
         return None
+    if lesson_status == "needs_review":
+        return {"reading": "done", "analyzing": "pending", "generating": "pending"}
     if lesson_status == "ready":
         return dict.fromkeys(STEPS, "done")
     current = STEPS.index(lesson_status) if lesson_status in STEPS else -1
@@ -142,6 +149,92 @@ async def create_lesson(
     return LessonAccepted(id=lesson.id, status=lesson.status)
 
 
+@router.post("/lessons/text", status_code=status.HTTP_202_ACCEPTED)
+async def create_lesson_from_text(
+    body: LessonTextIn,
+    request: Request,
+    child: ChildInScope,
+    db: DbSession,
+    settings: AppSettings,
+    ai: Ai,
+    registry: Registry,
+    background: BackgroundTasks,
+) -> LessonAccepted:
+    """Leçon collée ou tapée : même analyse que pour une photo, sans l'étape de lecture."""
+    text = body.text.strip()
+    if len(text) < MIN_TEXT_CHARS:
+        raise ApiError(422, "text_too_short", "C'est un peu court pour une leçon : colle-la en entier.")
+    if len(text) > settings.max_lesson_chars:
+        raise ApiError(422, "too_long", FAILURE_MESSAGES["too_long"])
+    await ensure_ai_budget(db, settings)
+    rate_limit(request, f"lessons:{child.id}", limit=settings.lessons_per_day, window_s=86400)
+    lesson = Lesson(child_id=child.id, status="uploaded", page_count=1, source="text", created_at=clock.now())
+    db.add(lesson)
+    await db.commit()
+    background.add_task(
+        process_lesson, get_database(request), ai.ocr, ai.llm, registry, settings, lesson.id, (), text
+    )
+    return LessonAccepted(id=lesson.id, status=lesson.status)
+
+
+async def review_items(db: DbSession, lesson: Lesson) -> list[LessonReviewItem]:
+    return list(
+        await db.scalars(
+            select(LessonReviewItem)
+            .where(LessonReviewItem.lesson_id == lesson.id)
+            .order_by(LessonReviewItem.position)
+        )
+    )
+
+
+@router.post("/lessons/{lesson_id}/review", status_code=status.HTTP_202_ACCEPTED)
+async def review_lesson(
+    lesson_id: uuid.UUID,
+    body: ReviewIn,
+    request: Request,
+    child: ChildInScope,
+    db: DbSession,
+    settings: AppSettings,
+    ai: Ai,
+    registry: Registry,
+    background: BackgroundTasks,
+) -> LessonAccepted:
+    """« Peux-tu vérifier ? » : une réponse par passage douteux, puis l'analyse reprend sur le
+    texte corrigé. « Je ne sais pas » garde la lecture telle quelle."""
+    lesson = await lesson_of_child(db, child, lesson_id)
+    if lesson.status != "needs_review":
+        raise ApiError(409, "not_awaiting_review", "Cette leçon n'attend pas de vérification.")
+    items = {i.id: i for i in await review_items(db, lesson)}
+    answers = {a.item_id: a for a in body.answers}
+    if set(answers) != set(items):
+        raise ApiError(422, "review_incomplete", "Réponds pour chaque passage à vérifier.")
+    for item_id, answer in answers.items():
+        correction = (answer.text or "").strip()
+        if answer.status == "corrected" and not correction:
+            raise ApiError(422, "review_incomplete", "Écris le bon mot, ou choisis « Je ne sais pas ».")
+        item = items[item_id]
+        item.status, item.answer = answer.status, correction if answer.status == "corrected" else None
+    await ensure_ai_budget(db, settings)
+
+    corrections = [
+        Answer(i.page_index, i.read_text, i.context, ReviewStatus(i.status), i.answer) for i in items.values()
+    ]
+    pages = list(
+        await db.scalars(
+            select(LessonPage).where(LessonPage.lesson_id == lesson.id).order_by(LessonPage.page_index)
+        )
+    )
+    for page in pages:
+        page.ocr_text = apply_answers(page.page_index, page.ocr_text, corrections)
+    text = "\n\n".join(p.ocr_text for p in pages)
+    lesson.status = "uploaded"
+    await db.commit()
+    background.add_task(
+        process_lesson, get_database(request), ai.ocr, ai.llm, registry, settings, lesson.id, (), text
+    )
+    return LessonAccepted(id=lesson.id, status=lesson.status)
+
+
 @router.get("/lessons/{lesson_id}")
 async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -> LessonOut:
     """Interrogé toutes les 1,5 s par l'écran 3, puis affiché par l'écran 4."""
@@ -152,7 +245,13 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
         steps=steps_of(lesson.status),
         failure_message=FAILURE_MESSAGES.get(lesson.failure_reason or ""),
         can_retry=await can_retry(db, lesson),
+        source=lesson.source,
     )
+    if lesson.status == "needs_review":
+        out.review = [
+            ReviewItemOut(id=i.id, page_index=i.page_index, read_text=i.read_text, context=i.context)
+            for i in await review_items(db, lesson)
+        ]
     if lesson.status == "ready":
         units = await load_units(db, lesson)
         levels = notion_levels(units, await load_masteries(db, child.id, units))

@@ -202,6 +202,10 @@ class _LessonRow extends ConsumerWidget {
         'Leçon non analysée',
         const Chip(label: Text('Réessayer'), avatar: Icon(Icons.refresh, size: 18)),
       ),
+      LessonStatus.needsReview => (
+        'Un mot à vérifier',
+        const Chip(label: Text('Vérifier'), avatar: Icon(Icons.search, size: 18)),
+      ),
       LessonStatus.ready => (
         lesson.title ?? 'Leçon',
         Text(

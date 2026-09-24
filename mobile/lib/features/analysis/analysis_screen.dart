@@ -12,6 +12,7 @@ import '../../core/session.dart';
 import '../../models/lesson.dart';
 import '../capture/capture_controller.dart';
 import '../home/home_providers.dart';
+import 'review_form.dart';
 import 'step_pacer.dart';
 
 const pollInterval = Duration(milliseconds: 1500);
@@ -73,9 +74,7 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     try {
       final lesson = await ref.read(apiProvider).lesson(widget.lessonId, childId: widget.childId);
       if (!mounted) return;
-      if (lesson.status == LessonStatus.ready || lesson.status == LessonStatus.failed) {
-        _poll?.cancel();
-      }
+      if (!lesson.status.inProgress) _poll?.cancel(); // prête, en échec, ou à vérifier
       _pacer.serverDone(lesson.stepsDone);
       setState(() {
         _lesson = lesson;
@@ -111,6 +110,18 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
           context.go(widget.home);
         }
       });
+    }
+  }
+
+  /// « Peux-tu vérifier ? » envoyé : l'analyse reprend sur le texte corrigé.
+  Future<void> _sendReview(List<ReviewAnswer> answers) async {
+    try {
+      await ref.read(apiProvider).reviewLesson(widget.lessonId, answers, childId: widget.childId);
+      if (mounted) setState(_start);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
     }
   }
 
@@ -162,6 +173,13 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
             )
           else if (failed)
             ..._failure(lesson!)
+          else if (lesson != null && lesson.status == LessonStatus.needsReview)
+            ReviewForm(
+              key: ValueKey(lesson.review.map((i) => i.id).join()),
+              items: lesson.review,
+              photos: [for (final page in ref.watch(captureProvider)) page.bytes],
+              onSubmit: _sendReview,
+            )
           else if (_offline)
             const Text(
               'Connexion perdue… je réessaie.',

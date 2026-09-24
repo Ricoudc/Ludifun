@@ -52,6 +52,7 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
                 "id": str(lesson.id),
                 "created_at": _iso(lesson.created_at),
                 "status": lesson.status,
+                "source": lesson.source,
                 "subject": lesson.subject,
                 "grade": lesson.grade,
                 "title": lesson.title,

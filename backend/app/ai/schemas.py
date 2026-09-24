@@ -24,10 +24,21 @@ from app.domain.knowledge import (
 # --------------------------------------------------------------------------- #
 
 
+class UncertainOut(BaseModel):
+    text: str = Field(description="Le passage douteux tel que tu l'as transcrit (ou « [illisible] »).")
+    context: str = Field(
+        description="6 à 12 mots de ta transcription qui contiennent ce passage, recopiés exactement."
+    )
+
+
 class OcrPage(BaseModel):
     index: int = Field(description="Numéro de la page, à partir de 0, dans l'ordre des images.")
     quality: Literal["good", "partial", "unreadable"]
     text: str = Field(description="Transcription fidèle ; « [illisible] » pour un passage illisible.")
+    uncertain: list[UncertainOut] = Field(
+        default_factory=list,
+        description="Passages importants dont la lecture est douteuse (0 à 5) ; vide si tout est sûr.",
+    )
 
 
 class OcrResult(BaseModel):

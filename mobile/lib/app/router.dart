@@ -6,6 +6,7 @@ import '../core/session.dart';
 import '../core/storage/credentials.dart';
 import '../features/analysis/analysis_screen.dart';
 import '../features/capture/capture_screen.dart';
+import '../features/capture/text_import_screen.dart';
 import '../features/home/child_home_screen.dart';
 import '../features/lesson/lesson_screen.dart';
 import '../features/link/link_screen.dart';
@@ -39,10 +40,12 @@ abstract final class Routes {
   static String childSkills(String childId) => '/parent/enfants/$childId/competences';
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
+  static String childPaste(String childId) => '/parent/enfants/$childId/texte';
   static const link = '/lier';
   static const scanQr = '/lier/qr';
   static const childHome = '/enfant';
   static const capture = '/enfant/photo';
+  static const paste = '/enfant/texte';
   static String analysis(String lessonId, {String? childId}) =>
       childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
@@ -125,6 +128,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => CaptureScreen(childId: state.pathParameters['id']),
               ),
               GoRoute(
+                path: 'texte',
+                builder: (_, state) => TextImportScreen(childId: state.pathParameters['id']),
+              ),
+              GoRoute(
                 path: 'analyse/:lesson',
                 builder: (_, state) => AnalysisScreen(
                   lessonId: state.pathParameters['lesson']!,
@@ -142,6 +149,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const ChildHomeScreen(),
         routes: [
           GoRoute(path: 'photo', builder: (_, _) => const CaptureScreen()),
+          GoRoute(path: 'texte', builder: (_, _) => const TextImportScreen()),
           GoRoute(
             path: 'analyse/:id',
             builder: (_, state) => AnalysisScreen(lessonId: state.pathParameters['id']!),

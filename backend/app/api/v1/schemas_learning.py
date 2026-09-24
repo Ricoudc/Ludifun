@@ -54,6 +54,37 @@ class LessonSummaryOut(BaseModel):
     mastered: bool = False
 
 
+class ReviewItemOut(BaseModel):
+    """« Peux-tu vérifier ? » : un passage que la lecture de la photo n'est pas sûre d'avoir bien lu."""
+
+    id: uuid.UUID
+    page_index: int
+    read_text: str = Field(description="Ce qui a été lu (ou « [illisible] »).")
+    context: str = Field(description="Les mots autour, pour retrouver le passage sur le cahier.")
+
+
+class LessonTextIn(BaseModel):
+    """Leçon collée ou tapée (cahier des charges complet §8.5)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(max_length=40_000)
+
+
+class ReviewAnswerIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    item_id: uuid.UUID
+    status: Literal["confirmed", "corrected", "unknown"]
+    text: str | None = Field(None, max_length=120, description="Le bon mot, pour « corrected ».")
+
+
+class ReviewIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    answers: list[ReviewAnswerIn] = Field(max_length=10)
+
+
 class LessonOut(LessonSummaryOut):
     """Écrans 3 (statut et étapes) et 4 (leçon et notions)."""
 
@@ -64,6 +95,8 @@ class LessonOut(LessonSummaryOut):
     summary: str | None = None
     knowledge: list[KnowledgeOut] = []
     skills: list[SkillOut] = Field([], description="Vide pour une leçon analysée avant l'étape 13.")
+    source: Literal["photo", "text"] = "photo"
+    review: list[ReviewItemOut] = Field([], description="Passages à vérifier (statut `needs_review`).")
     can_retry: bool = False
 
 

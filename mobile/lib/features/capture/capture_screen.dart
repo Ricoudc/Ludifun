@@ -94,7 +94,17 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
             icon: const Icon(Icons.photo_library_outlined),
             label: const Text('Ajouter depuis la galerie'),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: sending
+                ? null
+                : () => context.go(
+                    widget.childId == null ? Routes.paste : Routes.childPaste(widget.childId!),
+                  ),
+            icon: const Icon(Icons.content_paste),
+            label: const Text('J\'ai le texte de la leçon'),
+          ),
+          const SizedBox(height: 12),
           if (pages.isEmpty)
             const _Tip()
           else ...[

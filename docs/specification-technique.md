@@ -19,9 +19,9 @@ ont été mises à jour depuis.
 | §5-§6 | Espaces parent et enfant, plusieurs enfants, code à 6 chiffres et QR code, séparation stricte | ✅ | `api/v1/children.py`, `features/parent`, `features/link` ; tests de séparation |
 | §8.1-8.3 | Photo, galerie, plusieurs pages réordonnables | ✅ | `features/capture` |
 | §8.4 | PDF | ⏳ V1.5 | — |
-| §8.5 | Texte collé ou saisi | 🟡 le pipeline sait partir d'un texte (relance) ; pas de route ni d'écran | étape 15 |
+| §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
-| §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | 🟡 citation source obligatoire par notion (vérifiée à 90 %), qualité par page ; pas de vérification par l'enfant | étape 15 |
+| §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
 | §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v2.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
@@ -89,7 +89,7 @@ backend/app/
 │   ├── composer.py             # + durée cible, niveaux de compréhension
 │   └── activities/             # + open_question.py (étape 14 ✅), order.py, memory.py
 ├── ai/prompts/                 # analysis.v2 (compétences, ✅), material.v2 (aides, erreurs types, ✅),
-│                               # ocr.v2 (passages incertains), evaluation.v1 (réponses ouvertes, ✅)
+│                               # ocr.v2 (passages incertains, ✅), evaluation.v1 (réponses ouvertes, ✅)
 ├── services/                   # goals.py, revision_plans.py (NOUVEAUX)
 └── api/v1/                     # goals.py, help (dans sessions.py), review (dans lessons.py)
 
@@ -99,8 +99,8 @@ mobile/lib/
 └── features/
 ├── session/help_sheet.dart     # « ❓ Je n'ai pas compris »
 ├── session/activities/         # + open_question_view, order_view, memory_view
-├── analysis/ocr_review_screen.dart   # « Peux-tu vérifier ? »
-├── capture/text_import_screen.dart   # coller une leçon
+├── analysis/review_form.dart         # « Peux-tu vérifier ? » (étape 15 ✅)
+├── capture/text_import_screen.dart   # coller une leçon (étape 15 ✅)
 └── parent/goals_screen.dart          # temps quotidien, date de contrôle, plan
 ```
 
@@ -157,23 +157,32 @@ ALTER TABLE attempt_evidence ADD COLUMN error_type TEXT CHECK (error_type IN (
 
 La confiance de l'évaluateur n'est pas stockée : sous 0,4, sa correction est écartée (§6.4).
 
-### 4.3 Prévu (étapes 15 à 17)
+### 4.3 Migration `0005` (étape 15, faite)
 
 ```sql
--- Étape 15 — source d'une leçon et relecture de l'OCR (CDC §8.5, §10).
-ALTER TABLE lessons ADD COLUMN source TEXT NOT NULL DEFAULT 'camera'
-    CHECK (source IN ('camera','gallery','text','pdf'));
+ALTER TABLE lessons ADD COLUMN source TEXT NOT NULL DEFAULT 'photo'
+    CHECK (source IN ('photo','text'));             -- 'pdf' viendra avec l'import de PDF
 -- + statut 'needs_review' dans lessons.status
 CREATE TABLE lesson_review_items (
     id          UUID PRIMARY KEY,
     lesson_id   UUID NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+    position    SMALLINT NOT NULL,
     page_index  SMALLINT NOT NULL,
-    read_text   TEXT NOT NULL,                  -- ce que l'OCR croit avoir lu
-    box         REAL[4],                        -- zone de la page (0-1), pour zoomer
-    answer      TEXT,                           -- confirmé / corrigé par l'enfant
-    answered_at TIMESTAMPTZ
+    read_text   TEXT NOT NULL,                  -- ce que l'OCR croit avoir lu (ou « [illisible] »)
+    context     TEXT NOT NULL,                  -- les mots autour, recopiés de la transcription
+    status      TEXT NOT NULL DEFAULT 'pending' -- confirmed, corrected, unknown
+    answer      TEXT,                           -- le bon mot, écrit par l'enfant
+    UNIQUE (lesson_id, position)
 );
+```
 
+Pas de coordonnées dans la photo : les modèles les donnent mal, et le **contexte** (6 à 12 mots
+recopiés) suffit à l'enfant pour retrouver le passage sur son cahier. Les passages disparaissent
+une fois la leçon analysée.
+
+### 4.4 Prévu (étapes 16 et 17)
+
+```sql
 -- Étape 16 — objectifs et plans de révision (CDC §31, §33, §47).
 CREATE TABLE goals (
     id              UUID PRIMARY KEY,
@@ -378,12 +387,19 @@ une notion existante.
 
 ```json
 {"pages": [{"index": 0, "quality": "partial", "text": "…",
-            "uncertain": [{"text": "l'Assemblée constituante", "box": [0.12, 0.40, 0.70, 0.46]}]}]}
+            "uncertain": [{"text": "Bastile",
+                           "context": "le peuple de Paris prend la Bastile, une prison"}]}]}
 ```
 
-Au moins un passage incertain qui touche une notion importante → statut `needs_review` :
-l'enfant confirme ou corrige chaque passage (zoom sur `box`, photo encore sur le téléphone),
-puis l'analyse continue.
+Le prompt ne demande que les passages **importants** (nom propre, date, nombre, mot de
+vocabulaire, titre, encadré), « [illisible] » compris, 5 au plus. Un passage n'est retenu que
+s'il figure dans son contexte et si le contexte figure mot pour mot dans la transcription.
+
+Au moins un passage retenu → statut `needs_review`, avant l'analyse (on n'analyse pas un texte
+douteux). L'enfant répond pour chacun « c'est bien ça », écrit le bon mot, ou « je ne sais
+pas » (la lecture est gardée) ; il peut zoomer sur sa photo, encore sur le téléphone. La
+correction remplace le passage dans son contexte seulement, puis l'analyse reprend sur le texte
+corrigé (`POST /v1/lessons/{id}/review`, plafond de coût vérifié).
 
 ### 6.4 Évaluation d'une réponse ouverte (nouvel appel)
 
@@ -416,8 +432,8 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 
 | Méthode | Route | Rôle |
 |---|---|---|
-| POST | `/v1/lessons` (JSON `{text, grade?}`) | leçon depuis un texte (CDC §8.5) |
-| GET · POST | `/v1/lessons/{id}/review` | passages incertains à vérifier ; réponses de l'enfant |
+| POST | `/v1/lessons/text` `{text}` | ✅ étape 15 : leçon depuis un texte (CDC §8.5) ; 40 à 20 000 caractères |
+| POST | `/v1/lessons/{id}/review` `{answers}` | ✅ étape 15 : réponses de l'enfant ; les passages sont dans `GET /v1/lessons/{id}` (`review`) |
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | ✅ étape 14 : aide suivante (niveau 1 → 5) |
 | POST | `/v1/sessions/{id}/extend` | activités supplémentaires (enfant rapide) |
 | POST | `/v1/lessons/{id}/sessions` `{target_minutes?}` | séance à durée cible |
@@ -440,8 +456,8 @@ et ont leurs tests de séparation.
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
 | 5 Dashboard parent | ✅ ; compétences par leçon et « à renforcer » expliqué (étape 13) ; erreurs fréquentes (étape 14) | objectifs (étape 16) |
 | 6 Dashboard enfant | ✅ mission du jour | plan du contrôle, durée du jour (étape 16) ; XP et série en V2 |
-| 7-9 Ajouter une leçon, caméra, pages | ✅ | import de texte (étape 15) |
-| 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et niveau de chaque notion en étoiles (étape 13) | « Peux-tu vérifier ? » (étape 15) |
+| 7-9 Ajouter une leçon, caméra, pages | ✅ ; « J'ai le texte de la leçon » (étape 15) | PDF (V1.5) |
+| 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et étoiles (étape 13) ; « Peux-tu vérifier ? » (étape 15) | — |
 | 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) | remédiation (étape 17) |
 | 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
@@ -457,7 +473,7 @@ documentation, intégration continue verte.
 |---|---|---|---|
 | 13 ✅ | **Compétences et niveaux de compréhension** | migration 0003 (compétences, niveaux), analyse v2, maîtrise par niveau et par compétence, niveau affiché 0-5, statuts expliqués, écrans leçon, bilan et tableau de bord | une leçon réelle donne des compétences reliées aux notions ; 5 QCM réussis ne suffisent plus à « maîtrisé » (test) |
 | 14 ✅ | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
-| 15 | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
+| 15 ✅ | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
 | 16 | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
 | 17 | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
 | 18 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1 | critères de passage atteints |

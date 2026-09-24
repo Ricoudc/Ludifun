@@ -6,15 +6,41 @@ import 'level.dart';
 enum LessonStatus {
   uploaded,
   reading,
+
+  /// « Peux-tu vérifier ? » : l'analyse attend que l'enfant relise des mots mal lus.
+  needsReview,
   analyzing,
   generating,
   ready,
   failed;
 
-  static LessonStatus parse(String value) =>
-      values.firstWhere((s) => s.name == value, orElse: () => LessonStatus.uploaded);
+  static LessonStatus parse(String value) => value == 'needs_review'
+      ? needsReview
+      : values.firstWhere((s) => s.name == value, orElse: () => LessonStatus.uploaded);
 
-  bool get inProgress => this != ready && this != failed;
+  /// L'analyse avance sans l'enfant (l'accueil l'attend).
+  bool get inProgress => this != ready && this != failed && this != needsReview;
+}
+
+/// Un passage que la lecture de la photo n'est pas sûre d'avoir bien lu.
+class ReviewItem {
+  const ReviewItem({required this.id, required this.readText, required this.context});
+
+  factory ReviewItem.fromJson(Json json) => ReviewItem(
+    id: json['id'] as String,
+    readText: json['read_text'] as String,
+    context: json['context'] as String,
+  );
+
+  final String id;
+
+  /// Ce qui a été lu, ou « [illisible] ».
+  final String readText;
+
+  /// Les mots autour, pour le retrouver sur le cahier.
+  final String context;
+
+  bool get unreadable => readText == '[illisible]';
 }
 
 /// Étapes de l'analyse suivies par l'écran 3, dans l'ordre.
@@ -105,6 +131,7 @@ class Lesson extends LessonSummary {
     this.summary,
     this.knowledge = const [],
     this.skills = const [],
+    this.review = const [],
     this.canRetry = false,
   });
 
@@ -136,6 +163,10 @@ class Lesson extends LessonSummary {
       skills: [
         for (final s in json['skills'] as List<dynamic>? ?? const []) Skill.fromJson(s as Json),
       ],
+      review: [
+        for (final r in json['review'] as List<dynamic>? ?? const [])
+          ReviewItem.fromJson(r as Json),
+      ],
       canRetry: json['can_retry'] as bool? ?? false,
     );
   }
@@ -149,6 +180,9 @@ class Lesson extends LessonSummary {
 
   /// Vide pour une leçon analysée avant les compétences.
   final List<Skill> skills;
+
+  /// Passages à vérifier (statut « à vérifier »).
+  final List<ReviewItem> review;
   final bool canRetry;
 
   /// Étapes terminées côté serveur (0 à 3).

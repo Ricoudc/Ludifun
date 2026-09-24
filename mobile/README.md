@@ -35,7 +35,9 @@ Au premier lancement, l'appareil choisit son espace :
 
 Espace enfant : mission du jour et dernières leçons, photo (1 à 6 pages, compressées sur le
 téléphone : 2000 px, JPEG 80, sans métadonnées EXIF), suivi de l'analyse, résumé de la leçon.
-Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont effacées.
+Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont effacées. Une leçon
+peut aussi être collée en texte ; si un mot de la photo est mal lu, l'écran « Peux-tu vérifier ? »
+le fait confirmer ou corriger avant l'analyse.
 
 Espace parent (écrans P1 à P4) : connexion, mot de passe oublié (le lien de l'e-mail
 `ludifun://app/parent/nouveau-mot-de-passe?jeton=…` ouvre l'application), profils des enfants avec

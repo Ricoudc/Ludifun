@@ -31,6 +31,7 @@ from app.ai.ports import (
 from app.ai.schemas import AnalysisOutput, MaterialBatchOutput, OcrPage, OcrResult
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit, LessonAnalysis
+from app.domain.ocr_review import Uncertain, select_uncertain
 from app.domain.understanding import required_levels
 from app.domain.validation import (
     AnalysisError,
@@ -81,13 +82,15 @@ class PipelineResult:
     analysis: LessonAnalysis | None = None
     units: list[KnowledgeUnit] = field(default_factory=list)
     required_levels: dict[str, frozenset[int]] = field(default_factory=dict)  # par notion retenue
+    # Passages douteux à faire vérifier par l'enfant : l'analyse attend sa relecture.
+    review: list[Uncertain] = field(default_factory=list)
     rejected: list[Rejection] = field(default_factory=list)
     runs: list[AiRunRecord] = field(default_factory=list)
     prompt_versions: dict[str, str] = field(default_factory=dict)
 
     @property
     def ready(self) -> bool:
-        return self.failure_reason is None
+        return self.failure_reason is None and not self.review
 
 
 class _Failed(Exception):
@@ -153,6 +156,12 @@ class LessonPipeline:
         lesson_text = result.ocr.text
         if len(lesson_text) > self.max_chars:
             raise _Failed(FailureReason.TOO_LONG)
+        if text is None:
+            result.review = select_uncertain(
+                (p.index, p.text, [(u.text, u.context) for u in p.uncertain]) for p in result.ocr.pages
+            )
+            if result.review:
+                return  # « Peux-tu vérifier ? » : l'analyse reprendra sur le texte corrigé
 
         # ② Analyse pédagogique
         await self._status(LessonStatus.ANALYZING)

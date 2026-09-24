@@ -65,6 +65,20 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
         )
     lesson.prompt_versions = result.prompt_versions
 
+    await session.execute(delete(db.LessonReviewItem).where(db.LessonReviewItem.lesson_id == lesson.id))
+    if result.failure_reason is None and result.review:
+        for position, uncertain in enumerate(result.review):
+            session.add(
+                db.LessonReviewItem(
+                    lesson_id=lesson.id,
+                    position=position,
+                    page_index=uncertain.page_index,
+                    read_text=uncertain.text,
+                    context=uncertain.context,
+                )
+            )
+        lesson.status, lesson.failure_reason = "needs_review", None
+        return
     if not result.ready:
         lesson.status, lesson.failure_reason = "failed", result.failure_reason
         return

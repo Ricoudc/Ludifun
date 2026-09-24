@@ -374,6 +374,124 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
   });
 
+  testWidgets('coller le texte d\'une leçon au lieu de la photographier', (tester) async {
+    const text =
+        'La Révolution française. En 1789, la France est en crise : le roi manque d\'argent.';
+    server
+      ..on('POST /v1/lessons/text', (r) {
+        expect(r.data, {'text': text});
+        return (202, {'id': 'l1', 'status': 'uploaded'});
+      })
+      ..on('GET /v1/lessons/l1', (_) => (200, lessonJson('ready')))
+      ..on('POST /v1/lessons/l1/sessions', (_) => (200, session));
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Nouvelle leçon'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('J\'ai le texte de la leçon'));
+    await tester.pumpAndSettle();
+    expect(find.text('📋 Coller une leçon'), findsOneWidget);
+
+    final analyze = find.widgetWithText(FilledButton, 'Analyser ma leçon');
+    await tester.enterText(find.byType(TextField), 'Trop court');
+    await tester.pump();
+    expect(find.text('C\'est un peu court pour une leçon.'), findsOneWidget);
+    expect(tester.widget<FilledButton>(analyze).onPressed, isNull);
+
+    await tester.enterText(find.byType(TextField), '  $text  ');
+    await tester.pump();
+    await tester.tap(analyze);
+    await advanceUntil(tester, find.text('C\'est prêt ! 🎉'));
+    await advance(tester, const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('La Révolution française'), findsOneWidget);
+  });
+
+  testWidgets('« Peux-tu vérifier ? » : un mot mal lu, un mot illisible, puis l\'analyse reprend', (
+    tester,
+  ) async {
+    var reviewed = false;
+    Map<String, Object?>? sent;
+    server
+      ..on(
+        'GET /v1/lessons/l1',
+        (_) => (
+          200,
+          reviewed
+              ? lessonJson('ready')
+              : {
+                  ...lessonJson('reading'),
+                  'status': 'needs_review',
+                  'steps': {'reading': 'done', 'analyzing': 'pending', 'generating': 'pending'},
+                  'review': [
+                    {
+                      'id': 'r1',
+                      'page_index': 0,
+                      'read_text': 'Bastile',
+                      'context': 'le peuple de Paris prend la Bastile, une prison',
+                    },
+                    {
+                      'id': 'r2',
+                      'page_index': 0,
+                      'read_text': '[illisible]',
+                      'context': 'le 5 mai 1789 à [illisible]',
+                    },
+                  ],
+                },
+        ),
+      )
+      ..on('POST /v1/lessons/l1/review', (r) {
+        sent = (r.data as Map<String, dynamic>).cast<String, Object?>();
+        reviewed = true;
+        return (202, {'id': 'l1', 'status': 'uploaded'});
+      })
+      ..on('POST /v1/lessons/l1/sessions', (_) => (200, session));
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go('/enfant/analyse/l1');
+    await advanceUntil(tester, find.text('🔍 Peux-tu vérifier ?'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.text('J\'ai lu « Bastile » ici :'), findsOneWidget);
+    expect(find.text('Je n\'ai pas pu lire un mot ici :'), findsOneWidget);
+    expect(find.text('✓ C\'est bien ça'), findsOneWidget); // pas pour un mot illisible
+
+    final submit = find.widgetWithText(FilledButton, 'Continuer l\'analyse');
+    await tester.ensureVisible(find.text('✏️ Je corrige'));
+    await tester.tap(find.text('✏️ Je corrige'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), 'Bastille');
+    await tester.pump();
+    expect(tester.widget<FilledButton>(submit).onPressed, isNull); // un passage sans réponse
+    await tester.ensureVisible(find.text('🤷 Je ne sais pas').last);
+    await tester.tap(find.text('🤷 Je ne sais pas').last);
+    await tester.pump();
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
+    await advanceUntil(tester, find.text('C\'est prêt ! 🎉'));
+    expect(sent, {
+      'answers': [
+        {'item_id': 'r1', 'status': 'corrected', 'text': 'Bastille'},
+        {'item_id': 'r2', 'status': 'unknown'},
+      ],
+    });
+    await advance(tester, const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('La Révolution française'), findsOneWidget);
+  });
+
+  testWidgets('accueil : une leçon à vérifier', (tester) async {
+    server.on(
+      'GET /v1/lessons',
+      (_) => (
+        200,
+        [
+          {...lessonJson('reading'), 'status': 'needs_review'},
+        ],
+      ),
+    );
+    await launch(tester, MemoryCredentialStore(child));
+    expect(find.text('Un mot à vérifier'), findsOneWidget);
+    expect(find.text('Vérifier'), findsOneWidget);
+  });
+
   testWidgets('leçon à jour : pas de séance, date de la prochaine révision', (tester) async {
     server
       ..on(
