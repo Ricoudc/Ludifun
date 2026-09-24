@@ -21,7 +21,7 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 | Double-cliquer sur | Ce que ça fait |
 |---|---|
 | `Demarrer-Ludifun.bat` | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
-| `Changer-IA-Ludifun.bat` | changer de clé ou passer de l'IA factice à la vraie IA (et inversement), puis redémarrer |
+| `Changer-IA-Ludifun.bat` | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
 | `Arreter-Ludifun.bat` | arrêter le serveur (les données sont gardées) |
 | `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
 | `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
@@ -29,7 +29,7 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 La clé d'API est enregistrée dans le fichier `.env` du dossier : il reste sur le PC et n'est
 jamais envoyé sur GitHub. La dépense d'IA est plafonnée à 5 $ par jour
 (`LUDIFUN_AI_DAILY_BUDGET_USD` dans `.env`). Pour vérifier quelle IA est active, ouvrez
-<http://localhost:8000/health/ready> : `"ai":"claude"` (vraie analyse) ou `"ai":"fake"`.
+<http://localhost:8000/health/ready> : le nom de l'IA (`"ai":"claude"`, `"mistral"`…) ou `"ai":"fake"` pour l'IA factice.
 
 Ensuite, passez directement au §3 (installer l'application). Les paragraphes suivants font la
 même chose à la main (et sur macOS ou Linux).

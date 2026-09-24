@@ -14,8 +14,18 @@ x-api-env: &api-env
   LUDIFUN_ENVIRONMENT: prod
   LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:${POSTGRES_PASSWORD:?}@db:5432/ludifun
   LUDIFUN_JWT_SECRET: ${LUDIFUN_JWT_SECRET:?}
-  LUDIFUN_AI_PROVIDER: claude
-  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?}
+  # claude, openai, gemini, mistral, groq, xai ou compatible : le fournisseur choisi est un
+  # sous-traitant à déclarer (politique de confidentialité, registre, DPA ; docs/deploiement.md).
+  LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-claude}
+  LUDIFUN_AI_MODEL: ${LUDIFUN_AI_MODEL:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+  GROQ_API_KEY: ${GROQ_API_KEY:-}
+  XAI_API_KEY: ${XAI_API_KEY:-}
+  LUDIFUN_AI_BASE_URL: ${LUDIFUN_AI_BASE_URL:-}
+  LUDIFUN_AI_API_KEY: ${LUDIFUN_AI_API_KEY:-}
   LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-20}
   LUDIFUN_SMTP_HOST: ${LUDIFUN_SMTP_HOST:?}
   LUDIFUN_SMTP_PORT: ${LUDIFUN_SMTP_PORT:-587}

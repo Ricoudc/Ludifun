@@ -16,10 +16,12 @@ Internet ──443──▶ Caddy (HTTPS, HSTS) ──▶ API ──▶ PostgreS
 |---|---|---|
 | Serveur virtuel (2 vCPU, 4 Go, 40 Go) | Scaleway (Paris), OVHcloud (Roubaix, Gravelines), Hetzner (Falkenstein, Helsinki) | centre de données dans l'UE, contrat de sous-traitance (DPA) signé |
 | E-mails (SMTP) | Brevo, Scaleway Transactional Email, Mailjet | serveurs dans l'UE, DPA, domaine d'envoi vérifié |
-| IA | Anthropic | DPA signé, clé d'API dédiée à la production, plafond de dépense dans la console |
+| IA | Anthropic (par défaut), ou Mistral AI (hébergé en France), OpenAI, Google, Groq, xAI via `LUDIFUN_AI_PROVIDER` | DPA signé, pas d'entraînement sur les données envoyées (offres payantes : l'offre gratuite de Gemini peut les réutiliser), clé dédiée à la production, plafond de dépense dans la console |
 
 Chaque fournisseur est à reporter dans le [registre des traitements](rgpd/registre-des-traitements.md)
-et dans les réglages des pages publiques (ci-dessous).
+et dans les réglages des pages publiques (ci-dessous). La politique de confidentialité
+(`backend/app/web/confidentialite.html`), le registre et l'[AIPD](rgpd/aipd.md) décrivent
+Anthropic : avec une autre IA, mettez-les à jour (nom, pays, transfert hors UE, entraînement).
 
 ## 2. Préparer le serveur
 

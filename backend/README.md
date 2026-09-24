@@ -103,20 +103,35 @@ ouvrent les liens des e-mails). HTML statique, sans script, dans `app/web/`. Dé
 
 ## Fournisseurs d'IA
 
-`LUDIFUN_AI_PROVIDER` choisit l'IA : `claude` (API Anthropic, clé `ANTHROPIC_API_KEY`) ou `fake`
-(réponses rejouées, sans clé). `/health/ready` indique celle qui est active (`"ai"`).
+`LUDIFUN_AI_PROVIDER` choisit l'IA ; `/health/ready` indique celle qui est active (`"ai"`). Sous
+Windows, `Changer-IA-Ludifun.bat` écrit ces réglages dans `.env`.
 
-Pour en ajouter une autre (autre fournisseur, autre clé) :
+| `LUDIFUN_AI_PROVIDER` | Service | Clé | Modèles conseillés (lecture et analyse / correction) |
+|---|---|---|---|
+| `claude` (défaut) | Claude, Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-5` / `claude-sonnet-5` |
+| `openai` | ChatGPT, OpenAI | `OPENAI_API_KEY` | `gpt-5` / `gpt-5-mini` |
+| `gemini` | Gemini, Google | `GEMINI_API_KEY` | `gemini-2.5-pro` / `gemini-2.5-flash` |
+| `mistral` | Mistral AI (France) | `MISTRAL_API_KEY` | `mistral-medium-latest` / `mistral-small-latest` |
+| `groq` | Groq | `GROQ_API_KEY` | `meta-llama/llama-4-maverick-17b-128e-instruct` / `openai/gpt-oss-120b` |
+| `xai` | Grok, xAI | `XAI_API_KEY` | `grok-4` |
+| `compatible` | tout service compatible OpenAI : Azure OpenAI (l'IA de Copilot, qui n'a pas d'API à elle), OpenRouter, Ollama… | `LUDIFUN_AI_API_KEY`, avec `LUDIFUN_AI_BASE_URL` | `LUDIFUN_AI_MODEL` (obligatoire) |
+| `fake` | IA factice, réponses rejouées | — | — |
 
-1. une classe dans `app/ai/providers/<nom>.py` qui respecte `LLMProvider` (`app/ai/ports.py`) :
-   `structured()` renvoie une sortie validée par le schéma Pydantic demandé, avec les images des
-   pages pour la lecture ; `model_for()` donne le modèle de chaque étape (journal des coûts) ;
-2. une entrée dans `PROVIDERS` (`app/ai/factory.py`) et le nom dans `Settings.ai_provider` ;
-3. sa clé dans l'environnement (`.env`, `docker-compose.yml`, `deploy/`), et ses prix dans
-   `app/ai/pricing.py` pour le plafond de dépense ;
-4. mesurer la qualité avec `app.tools.evaluate` avant de l'utiliser (`eval/README.md`).
+- Les modèles changent vite : `LUDIFUN_AI_MODEL` en impose un pour toutes les étapes,
+  `LUDIFUN_AI_OCR_MODEL`, `…_ANALYSIS_MODEL`, `…_MATERIAL_MODEL`, `…_EVALUATION_MODEL` étape par
+  étape. Le modèle doit savoir lire les images (lecture des photos).
+- Claude passe par son adaptateur (`app/ai/providers/claude.py`) ; les autres par l'adaptateur
+  compatible OpenAI (`openai_compatible.py`) : schéma JSON demandé (`response_format`), un seul
+  nouvel essai en objet JSON simple si le service ne le connaît pas, réponse toujours validée.
+- Les prompts ont été mis au point avec Claude : mesurez un autre fournisseur avec
+  `app.tools.evaluate --provider mistral …` avant de vous y fier (`eval/README.md`).
+- Plafond de dépense : prix des modèles conseillés dans `app/ai/pricing.py`, arrondis à la
+  hausse ; un modèle inconnu est compté au prix le plus élevé.
+- En production, le fournisseur choisi est un sous-traitant : voir `docs/deploiement.md`.
 
-Le pipeline, la correction des réponses rédigées et le plafond de dépense ne changent pas.
+Ajouter un fournisseur au format différent : une classe qui respecte `LLMProvider`
+(`app/ai/ports.py`) dans `app/ai/providers/`, une entrée dans `build_llm` (`app/ai/factory.py`)
+et dans `app/ai/presets.py`, son nom dans `Settings.ai_provider`.
 
 ## Analyser une vraie leçon (sans l'application)
 

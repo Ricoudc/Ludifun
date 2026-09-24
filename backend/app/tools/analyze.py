@@ -21,6 +21,7 @@ from typing import Any, TextIO
 from app.ai.factory import build_providers
 from app.ai.images import detect_media_type
 from app.ai.ports import MediaType, PageImage
+from app.ai.presets import PRESETS
 from app.config import get_settings
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.activities.registry import default_registry
@@ -183,7 +184,7 @@ def main(argv: list[str] | None = None, out: TextIO = sys.stdout) -> int:
     parser.add_argument("photos", nargs="*", help="photos de la leçon, dans l'ordre des pages (6 au plus)")
     parser.add_argument("--text", help="fichier texte de la leçon (saute l'OCR)")
     parser.add_argument(
-        "--provider", choices=["claude", "fake"], help="fournisseur d'IA (défaut : configuration)"
+        "--provider", choices=[*sorted(PRESETS), "fake"], help="fournisseur d'IA (défaut : configuration)"
     )
     parser.add_argument("--seed", type=int, default=1, help="graine de la séance composée")
     parser.add_argument("--json", help="enregistre le résultat complet dans ce fichier")

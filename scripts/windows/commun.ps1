@@ -71,36 +71,98 @@ function Ecrire-Env($valeurs) {
     [System.IO.File]::WriteAllLines($FichierEnv, [string[]]$lignes, (New-Object System.Text.UTF8Encoding($false)))
 }
 
+$Fournisseurs = @(
+    @{ Num = '1'; Code = 'claude'; Nom = 'Claude (Anthropic)'; Cle = 'ANTHROPIC_API_KEY'; Prefixe = 'sk-ant-'
+       Site = 'https://console.anthropic.com (API Keys)'; Conseil = 'claude-opus-5' },
+    @{ Num = '2'; Code = 'openai'; Nom = 'ChatGPT (OpenAI)'; Cle = 'OPENAI_API_KEY'; Prefixe = 'sk-'
+       Site = 'https://platform.openai.com/api-keys'; Conseil = 'gpt-5' },
+    @{ Num = '3'; Code = 'gemini'; Nom = 'Gemini (Google)'; Cle = 'GEMINI_API_KEY'; Prefixe = ''
+       Site = 'https://aistudio.google.com/apikey'; Conseil = 'gemini-2.5-pro' },
+    @{ Num = '4'; Code = 'mistral'; Nom = 'Mistral (français, serveurs en Europe)'; Cle = 'MISTRAL_API_KEY'; Prefixe = ''
+       Site = 'https://console.mistral.ai/api-keys'; Conseil = 'mistral-medium-latest' },
+    @{ Num = '5'; Code = 'groq'; Nom = 'Groq (très rapide)'; Cle = 'GROQ_API_KEY'; Prefixe = 'gsk_'
+       Site = 'https://console.groq.com/keys'; Conseil = 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+    @{ Num = '6'; Code = 'xai'; Nom = 'Grok (xAI)'; Cle = 'XAI_API_KEY'; Prefixe = 'xai-'
+       Site = 'https://console.x.ai'; Conseil = 'grok-4' },
+    @{ Num = '7'; Code = 'compatible'; Nom = 'Copilot / Azure OpenAI, OpenRouter, Ollama… (compatible OpenAI)'
+       Cle = 'LUDIFUN_AI_API_KEY'; Prefixe = ''; Site = 'la console de ton service'; Conseil = '' },
+    @{ Num = '8'; Code = 'fake'; Nom = 'IA factice : gratuite, toute photo devient une leçon d''exemple'; Cle = '' }
+)
+
+function Nom-IA([string]$code) {
+    foreach ($f in $Fournisseurs) { if ($f.Code -eq $code) { return $f.Nom } }
+    return $code
+}
+
+function Demander-Cle($f, $valeurs) {
+    $actuelle = $valeurs[$f.Cle]
+    if ($actuelle) {
+        $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
+        $garder = Read-Host "Une clé $($f.Nom) est déjà enregistrée (…$fin). La garder ? (O/N)"
+        if ($garder -notmatch '^[nN]') { return $actuelle }
+    }
+    while ($true) {
+        Write-Host "Colle ta clé d'API $($f.Nom) (clic droit pour coller). Elle se crée sur : $($f.Site)"
+        $saisie = (Read-Host 'Clé').Trim()
+        if (-not $saisie) {
+            if ($f.Code -eq 'compatible') { return '' }  # Ollama : pas de clé
+            Write-Host 'Il faut une clé : réessaie.' -ForegroundColor Red
+            continue
+        }
+        if ($f.Prefixe -and -not $saisie.StartsWith($f.Prefixe)) {
+            if ($f.Code -eq 'claude') { Write-Host "Une clé Anthropic commence par $($f.Prefixe) : réessaie." -ForegroundColor Red; continue }
+            $sur = Read-Host "D'habitude, cette clé commence par $($f.Prefixe). La garder quand même ? (O/N)"
+            if ($sur -notmatch '^[oOyY]') { continue }
+        }
+        return $saisie
+    }
+}
+
 function Choisir-IA {
     $valeurs = Lire-Env
     Write-Host ''
     Write-Host 'Quelle IA doit lire les photos et créer les jeux ?'
-    Write-Host '  1. Claude (Anthropic) : la vraie analyse de tes leçons (clé d''API, payant à l''usage)'
-    Write-Host '  2. IA factice : gratuite, toute photo devient une leçon d''exemple (pour découvrir)'
-    $choix = Read-Host 'Tape 1 ou 2 puis Entrée'
-    if ($choix -eq '2') {
-        $valeurs['LUDIFUN_AI_PROVIDER'] = 'fake'
+    foreach ($f in $Fournisseurs) { Write-Host "  $($f.Num). $($f.Nom)" }
+    $choix = $null
+    while (-not $choix) {
+        $num = (Read-Host 'Tape le numéro puis Entrée').Trim()
+        $choix = $Fournisseurs | Where-Object { $_.Num -eq $num } | Select-Object -First 1
+    }
+    $valeurs['LUDIFUN_AI_PROVIDER'] = $choix.Code
+    if ($choix.Code -eq 'fake') {
         Ecrire-Env $valeurs
         Ok 'IA factice choisie'
         return
     }
-    $actuelle = $valeurs['ANTHROPIC_API_KEY']
-    if ($actuelle) {
-        $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
-        $garder = Read-Host "Une clé Anthropic est déjà enregistrée (…$fin). La garder ? (O/N)"
-        if ($garder -match '^[nN]') { $actuelle = '' }
+
+    if ($choix.Code -eq 'compatible') {
+        Write-Host 'Adresse de l''API (se termine souvent par /v1). Exemples :'
+        Write-Host '  Azure OpenAI (Copilot) : https://<ta-ressource>.openai.azure.com/openai/v1'
+        Write-Host '  OpenRouter : https://openrouter.ai/api/v1'
+        Write-Host '  Ollama sur ce PC : http://host.docker.internal:11434/v1'
+        $url = ''
+        while (-not $url) { $url = (Read-Host 'Adresse').Trim() }
+        $valeurs['LUDIFUN_AI_BASE_URL'] = $url
     }
-    while (-not $actuelle) {
-        Write-Host 'Colle ta clé d''API Anthropic (clic droit pour coller). Elle commence par sk-ant-'
-        Write-Host '(Elle se crée sur https://console.anthropic.com → API Keys.)'
-        $saisie = (Read-Host 'Clé').Trim()
-        if ($saisie -like 'sk-ant-*') { $actuelle = $saisie } else { Write-Host 'Cette clé ne commence pas par sk-ant- : réessaie.' -ForegroundColor Red }
+    $valeurs[$choix.Cle] = Demander-Cle $choix $valeurs
+
+    if ($choix.Conseil) {
+        $modele = (Read-Host "Modèle (Entrée = conseillé : $($choix.Conseil))").Trim()
+    } else {
+        $modele = ''
+        while (-not $modele) { $modele = (Read-Host 'Nom du modèle (il doit savoir lire les images), par exemple gpt-5').Trim() }
     }
-    $valeurs['LUDIFUN_AI_PROVIDER'] = 'claude'
-    $valeurs['ANTHROPIC_API_KEY'] = $actuelle
+    if ($modele) { $valeurs['LUDIFUN_AI_MODEL'] = $modele } else { $valeurs.Remove('LUDIFUN_AI_MODEL') }
+
     if (-not $valeurs['LUDIFUN_AI_DAILY_BUDGET_USD']) { $valeurs['LUDIFUN_AI_DAILY_BUDGET_USD'] = '5' }
     Ecrire-Env $valeurs
-    Ok "Claude choisi (dépense plafonnée à $($valeurs['LUDIFUN_AI_DAILY_BUDGET_USD']) `$ par jour, modifiable dans le fichier .env)"
+    Ok "$($choix.Nom) choisi (dépense plafonnée à $($valeurs['LUDIFUN_AI_DAILY_BUDGET_USD']) `$ par jour, modifiable dans .env)"
+    if ($choix.Code -ne 'claude') {
+        Write-Host 'Bon à savoir : Ludifun a été réglé avec Claude ; avec une autre IA, vérifie que les jeux créés sont justes.' -ForegroundColor Yellow
+    }
+    if ($choix.Code -eq 'gemini') {
+        Write-Host 'Gemini gratuit peut réutiliser les données envoyées : pour des leçons d''enfants, active la facturation (offre payante).' -ForegroundColor Yellow
+    }
 }
 
 function Assurer-Env {
@@ -123,8 +185,8 @@ function Attendre-Serveur {
 }
 
 function Afficher-IA($sante) {
-    if ($sante.ai -eq 'claude') {
-        Ok 'IA : Claude (vraie analyse des photos)'
+    if ($sante.ai -and $sante.ai -ne 'fake') {
+        Ok "IA : $(Nom-IA $sante.ai) (vraie analyse des photos)"
     } else {
         Write-Host 'IA : factice (toute photo devient une leçon d''exemple). Pour la vraie IA : Changer-IA-Ludifun.bat' -ForegroundColor Yellow
     }

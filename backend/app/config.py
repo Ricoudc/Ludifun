@@ -6,6 +6,7 @@ from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
+AiProviderName = Literal["claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake"]
 DEV_JWT_SECRET = "dev-uniquement-a-remplacer-en-production-0123456789"
 
 
@@ -18,13 +19,18 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun"
     log_level: str = "INFO"
 
-    # IA (cahier des charges §5.4) : fournisseur, puis modèle et effort par étape.
-    ai_provider: Literal["claude", "fake"] = "claude"
-    ai_ocr_model: str = "claude-opus-5"
-    ai_analysis_model: str = "claude-opus-5"
-    ai_material_model: str = "claude-opus-5"
+    # IA (cahier des charges §5.4) : fournisseur, puis modèle et effort par étape. Sans modèle
+    # précisé, chaque fournisseur a ses modèles conseillés (app/ai/presets.py).
+    ai_provider: AiProviderName = "claude"
+    ai_model: str | None = None  # un seul modèle pour toutes les étapes
+    ai_ocr_model: str | None = None
+    ai_analysis_model: str | None = None
+    ai_material_model: str | None = None
     # Correction des réponses rédigées, pendant la séance : rapide et peu coûteuse.
-    ai_evaluation_model: str = "claude-sonnet-5"
+    ai_evaluation_model: str | None = None
+    # Fournisseur « compatible » (Azure OpenAI, OpenRouter, Ollama…) : adresse et clé de l'API.
+    ai_base_url: str | None = None
+    ai_api_key: SecretStr | None = None
     ai_ocr_effort: Effort = "low"
     ai_analysis_effort: Effort = "high"
     ai_material_effort: Effort = "medium"

@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.factory import build_providers
 from app.ai.ports import PageImage
+from app.ai.presets import PRESETS
 from app.ai.pricing import run_cost
 from app.config import get_settings
 from app.domain.activities.registry import default_registry
@@ -399,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("corpus", type=Path, help="dossier contenant un sous-dossier par leçon")
     parser.add_argument("--out", type=Path, help="dossier des résultats (défaut : <corpus>/../results)")
     parser.add_argument(
-        "--provider", choices=["claude", "fake"], help="fournisseur d'IA (défaut : configuration)"
+        "--provider", choices=[*sorted(PRESETS), "fake"], help="fournisseur d'IA (défaut : configuration)"
     )
     parser.add_argument("--only", help="noms de leçons séparés par des virgules")
     parser.add_argument("--concurrency", type=int, default=3, help="leçons traitées en parallèle")

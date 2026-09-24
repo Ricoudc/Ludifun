@@ -24,13 +24,22 @@ services:
     environment:
       LUDIFUN_ENVIRONMENT: dev
       LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
-      # IA factice par défaut (aucune clé nécessaire). Pour la vraie IA, dans un fichier .env à la
-      # racine du dépôt (Windows : Demarrer-Ludifun.bat le crée) :
-      #   LUDIFUN_AI_PROVIDER=claude
-      #   ANTHROPIC_API_KEY=sk-ant-...
+      # IA factice par défaut (aucune clé nécessaire). Pour une vraie IA, dans un fichier .env à la
+      # racine du dépôt (Windows : Demarrer-Ludifun.bat ou Changer-IA-Ludifun.bat le crée) :
+      #   LUDIFUN_AI_PROVIDER=claude      (ou openai, gemini, mistral, groq, xai, compatible)
+      #   ANTHROPIC_API_KEY=sk-ant-...    (ou la clé du fournisseur choisi)
       #   LUDIFUN_AI_DAILY_BUDGET_USD=5
       LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-fake}
+      LUDIFUN_AI_MODEL: ${LUDIFUN_AI_MODEL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      # « compatible » : Azure OpenAI (l'IA de Copilot), OpenRouter, Ollama…
+      LUDIFUN_AI_BASE_URL: ${LUDIFUN_AI_BASE_URL:-}
+      LUDIFUN_AI_API_KEY: ${LUDIFUN_AI_API_KEY:-}
       # Plafond de dépense IA par jour, en dollars : au-delà, les analyses attendent le lendemain.
       LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-5}
     ports:

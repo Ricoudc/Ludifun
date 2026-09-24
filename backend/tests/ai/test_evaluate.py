@@ -43,6 +43,10 @@ def test_match_notion() -> None:
         ("claude-opus-5-5", 4.0 + 20.0),  # le préfixe le plus précis l'emporte
         ("claude-sonnet-5", 2.0 + 10.0),
         ("fake", 0.0),
+        ("gpt-5-mini-2026-01-01", 0.5 + 4.0),  # gpt-5-mini avant gpt-5
+        ("gpt-5-2026-01-01", 2.0 + 15.0),
+        ("models/gemini-2.5-flash", 0.5 + 4.0),
+        ("mistral-medium-latest", 1.0 + 5.0),
         ("modele-inconnu", None),
     ],
 )
