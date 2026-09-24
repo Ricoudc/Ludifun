@@ -107,6 +107,19 @@ void main() {
     expect(find.textContaining('États généraux ·'), findsNothing);
     expect(find.text('📅 Prochaine révision : jeudi 24 septembre'), findsOneWidget);
 
+    // Étape 18 : un toucher pour dire si la séance a plu.
+    Object? feedback;
+    server.on('POST /v1/feedback', (r) {
+      feedback = r.data;
+      return (201, {'id': 'f1'});
+    });
+    expect(find.text('Tu as aimé cette séance ?'), findsOneWidget);
+    await tester.ensureVisible(find.text('😍'));
+    await tapAndSettle(tester, '😍');
+    expect(feedback, {'rating': 5, 'screen': 'report', 'session_id': 's1'});
+    expect(find.text('Merci ! 💜'), findsOneWidget);
+    expect(find.text('😕'), findsNothing);
+
     // « Revoir mes erreurs » : une nouvelle séance courte.
     await tapAndSettle(tester, 'Revoir mes erreurs');
     expect(find.text('Question 1 / 1'), findsOneWidget);

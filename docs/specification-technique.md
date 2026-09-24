@@ -211,6 +211,26 @@ ALTER TABLE sessions ADD COLUMN extended BOOLEAN NOT NULL DEFAULT false;  -- dé
 La difficulté propre à chaque notion (CDC §36, §56) est reportée à la V3 : la difficulté des
 activités suit déjà la maîtrise de l'enfant et ses niveaux de compréhension.
 
+### 4.6 Migration `0008` (étape 18, faite)
+
+```sql
+CREATE TABLE feedback (
+  id UUID PRIMARY KEY,
+  parent_id UUID REFERENCES parents(id) ON DELETE CASCADE,     -- avis du parent
+  child_id UUID REFERENCES children(id) ON DELETE CASCADE,     -- avis de l'enfant, ou enfant cité
+  author TEXT NOT NULL CHECK (author IN ('parent', 'child')),
+  rating SMALLINT CHECK (rating BETWEEN 1 AND 5),              -- enfant : 1 😕, 3 🙂, 5 😍
+  message TEXT,                                                -- 1000 caractères au plus
+  screen TEXT,                                                 -- report, parent_home…
+  session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  CHECK (rating IS NOT NULL OR message IS NOT NULL)
+);
+```
+
+L'avis est lu par l'équipe seulement (rapport `app.tools.pilot_report`), figure dans l'export
+RGPD de l'enfant et disparaît avec son auteur. 30 avis par jour et par auteur au plus.
+
 V2 (gamification, CDC §37-§39) : `xp_events(child_id, reason, points, session_id, created_at)`,
 `badges(child_id, code, earned_at)`, série calculée depuis `sessions`. Aucune
 donnée de classement entre enfants (CDC §108.8).
@@ -461,6 +481,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | GET | `/v1/children/{id}/dashboard` | ✅ étape 14 : `error_types` et `recurring_errors` ajoutés (pas de route séparée) |
 | PATCH | `/v1/children/{id}` `{daily_minutes, priority_subject}` | ✅ étape 16 : temps quotidien, matière prioritaire (`null` : libre, aucune) |
 | GET · POST · DELETE | `/v1/children/{id}/exams[/{exam_id}]` | ✅ étape 16 : contrôles à venir, chacun avec son `plan` jour par jour |
+| POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
 
 Réponse enrichie de `POST /v1/sessions/{id}/attempts` : `error_type`, `inserted_items`,
@@ -474,12 +495,12 @@ et ont leurs tests de séparation.
 | CDC §77 | Existant | À faire |
 |---|---|---|
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
-| 5 Dashboard parent | ✅ ; compétences (étape 13) ; erreurs fréquentes (étape 14) ; objectifs et contrôles (étape 16) | — |
+| 5 Dashboard parent | ✅ ; compétences (étape 13) ; erreurs fréquentes (étape 14) ; objectifs et contrôles (étape 16) ; « Donner mon avis » (étape 18) | — |
 | 6 Dashboard enfant | ✅ mission du jour, étape du plan avant un contrôle (étape 16) | XP et série en V2 |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ ; « J'ai le texte de la leçon » (étape 15) | PDF (V1.5) |
 | 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et étoiles (étape 13) ; « Peux-tu vérifier ? » (étape 15) | — |
 | 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) ; rappel et remédiation, pause, défis bonus (étape 17) | — |
-| 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) | — |
+| 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) ; « Tu as aimé cette séance ? » 😕 🙂 😍 (étape 18) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
 
 ---
@@ -496,7 +517,7 @@ documentation, intégration continue verte.
 | 15 ✅ | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
 | 16 ✅ | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
 | 17 ✅ | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
-| 18 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1 | critères de passage atteints |
+| 18 🟡 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1. Outillage fait : migration 0008 (avis), `POST /v1/feedback`, note rapide en fin de séance et « Donner mon avis » côté parent, rapport `app.tools.pilot_report`, protocole [`tests-familles.md`](tests-familles.md) | critères de passage atteints (en attente des familles, des leçons et d'une clé API) |
 | 19 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé | 20 familles testeuses |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :

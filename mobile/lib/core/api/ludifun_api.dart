@@ -34,6 +34,27 @@ class LudifunApi {
     }
   }
 
+  /// Avis sur l'application (tests en famille) : une note de 1 à 5 et/ou un message.
+  /// L'enfant peut citer sa séance ; le parent, l'enfant concerné.
+  Future<void> sendFeedback({
+    int? rating,
+    String? message,
+    String? screen,
+    String? sessionId,
+    String? childId,
+  }) => _call(
+    () => _dio.post<void>(
+      '/v1/feedback',
+      data: {
+        'rating': ?rating,
+        'message': ?message,
+        'screen': ?screen,
+        'session_id': ?sessionId,
+        'child_id': ?childId,
+      },
+    ),
+  );
+
   // Espace parent ------------------------------------------------------------
 
   Future<ParentTokens> register({required String email, required String password}) =>

@@ -70,6 +70,19 @@ jouer ses révisions. Les leçons passent par l'IA factice : aucun appel payant.
 jouées par l'API elle-même, avec un « élève simulé » (`app/domain/simulated_pupil.py`) et une
 horloge simulée.
 
+## Rapport des tests en famille (étape 18)
+
+```bash
+uv run python -m app.tools.pilot_report                        # 14 derniers jours, affiché
+uv run python -m app.tools.pilot_report --since 2026-10-05 --until 2026-10-18 \
+    --out ../eval/results/pilote.md
+```
+
+Lit la base (`LUDIFUN_DATABASE_URL`) et résume la période : critères de passage (§17.3 V1),
+séances par enfant, aides, remédiations, pauses, défis bonus, erreurs, leçons, temps et coût
+d'IA, avis envoyés depuis l'application (`POST /v1/feedback`). Aucun prénom ni texte de leçon :
+les enfants sont numérotés. Protocole complet : [`docs/tests-familles.md`](../docs/tests-familles.md).
+
 ## Analyser une vraie leçon (sans l'application)
 
 ```bash

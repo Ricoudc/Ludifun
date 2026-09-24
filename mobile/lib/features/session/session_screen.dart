@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
+import '../../core/session.dart';
 import '../home/home_providers.dart';
 import '../report/report_view.dart';
 import 'activities/activity_registry.dart';
@@ -175,6 +176,9 @@ class SessionScreen extends ConsumerWidget {
                 report: state.report!,
                 onReviewErrors: () => _reviewErrors(context, ref),
                 onDone: () => _leave(context, ref, state),
+                onRate: (rating) => ref
+                    .read(apiProvider)
+                    .sendFeedback(rating: rating, screen: 'report', sessionId: sessionId),
               ),
               Phase.error => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

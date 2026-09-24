@@ -5,6 +5,7 @@ import '../../app/level_stars.dart';
 import '../../app/theme.dart';
 import '../../models/level.dart';
 import '../../models/session.dart';
+import 'quick_rating.dart';
 
 /// Écran 7 : bilan de la séance.
 class ReportView extends StatelessWidget {
@@ -12,12 +13,16 @@ class ReportView extends StatelessWidget {
     required this.report,
     required this.onReviewErrors,
     required this.onDone,
+    this.onRate,
     super.key,
   });
 
   final Report report;
   final VoidCallback? onReviewErrors;
   final VoidCallback onDone;
+
+  /// Note rapide de la séance ; sans elle, pas de question.
+  final Future<void> Function(int rating)? onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -95,6 +100,7 @@ class ReportView extends StatelessWidget {
             style: const TextStyle(fontSize: 18),
           ),
         ],
+        if (onRate != null) ...[const SizedBox(height: 24), QuickRating(onRate: onRate!)],
         const SizedBox(height: 28),
         if (report.canReviewErrors && onReviewErrors != null) ...[
           FilledButton(

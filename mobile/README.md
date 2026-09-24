@@ -45,13 +45,13 @@ consentement parental, code à 6 chiffres et QR code de liaison, tableau de bord
 objectifs (temps par jour, matière à privilégier, contrôles à venir et leur plan de révision),
 compétences par leçon (niveau 0 à 5 de chaque compétence et notion, et ce qui manque encore),
 historique des séances, appareils liés, export des données d'un enfant (fichier JSON, par la
-feuille de partage du téléphone), suppression d'un enfant ou du compte. Le parent peut aussi
-photographier une leçon pour son enfant.
+feuille de partage du téléphone), suppression d'un enfant ou du compte, « Donner mon avis » (note
+et message, menu *Mon compte*). Le parent peut aussi photographier une leçon pour son enfant.
 
 Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,
 association, défi rapide chronométré, carte mémoire) viennent d'un registre de widgets ; un type
-inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan et
-« Revoir mes erreurs ». Une séance interrompue reprend à la première activité sans réponse.
+inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan (avec « Tu as
+aimé cette séance ? » 😕 🙂 😍, facultatif) et « Revoir mes erreurs ». Une séance interrompue reprend à la première activité sans réponse.
 
 Les identifiants restent sur l'appareil, chiffrés par le système. Le jeton d'accès du
 parent (15 minutes) est renouvelé automatiquement ; si l'appareil de l'enfant est délié,

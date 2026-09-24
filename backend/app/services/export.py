@@ -92,6 +92,18 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
             for device in devices
         ],
         "lessons": lessons,
+        "feedback": [
+            {
+                "author": f.author,
+                "rating": f.rating,
+                "message": f.message,
+                "screen": f.screen,
+                "sent_at": _iso(f.created_at),
+            }
+            for f in await session.scalars(
+                select(db.Feedback).where(db.Feedback.child_id == child.id).order_by(db.Feedback.created_at)
+            )
+        ],
         "sessions": await _sessions(session, child.id),
     }
 

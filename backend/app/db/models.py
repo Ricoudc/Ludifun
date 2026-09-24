@@ -467,6 +467,31 @@ class KnowledgeMastery(Base):
     )
 
 
+class Feedback(Base):
+    """Avis d'un parent ou d'un enfant (tests en famille, étape 18). Supprimé avec son auteur."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID | None] = _fk("parents.id", nullable=True)
+    child_id: Mapped[uuid.UUID | None] = _fk("children.id", nullable=True)
+    author: Mapped[str] = mapped_column(Text, nullable=False)  # parent ou child
+    rating: Mapped[int | None] = mapped_column(SmallInteger)  # 1 à 5
+    message: Mapped[str | None] = mapped_column(Text)
+    screen: Mapped[str | None] = mapped_column(Text)  # d'où vient l'avis (bilan, réglages…)
+    session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (
+        CheckConstraint(_in("author", ("parent", "child")), name="author"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="rating"),
+        CheckConstraint("rating IS NOT NULL OR message IS NOT NULL", name="content"),
+        CheckConstraint("(author = 'parent') = (parent_id IS NOT NULL)", name="parent_author"),
+        CheckConstraint("author = 'parent' OR child_id IS NOT NULL", name="child_author"),
+        Index(None, "created_at"),
+    )
+
+
 class AiRun(Base):
     """Coût, latence et qualité de chaque appel IA. Aucun contenu de leçon ici."""
 

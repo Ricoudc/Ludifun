@@ -9,6 +9,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
 import '../../models/account.dart';
+import 'feedback_dialog.dart';
 import 'parent_providers.dart';
 
 /// Écran P2 : les enfants de la famille.
@@ -49,10 +50,12 @@ class ParentHomeScreen extends ConsumerWidget {
             icon: const Icon(Icons.account_circle_outlined),
             onSelected: (choice) => switch (choice) {
               'logout' => ref.read(sessionProvider.notifier).signOut(),
+              'feedback' => showFeedbackDialog(context),
               _ => _deleteAccount(context, ref),
             },
             itemBuilder: (_) => [
               PopupMenuItem(enabled: false, child: Text(email)),
+              const PopupMenuItem(value: 'feedback', child: Text('Donner mon avis')),
               const PopupMenuItem(value: 'logout', child: Text('Me déconnecter')),
               const PopupMenuItem(
                 value: 'delete',

@@ -453,6 +453,29 @@ void main() {
     expect(find.text('Qui utilise cet appareil ?'), findsOneWidget);
   });
 
+  testWidgets('donner son avis (tests en famille)', (tester) async {
+    final sent = <Object?>[];
+    server.on('POST /v1/feedback', (r) {
+      sent.add(r.data);
+      return (201, {'id': 'f1'});
+    });
+    await launch(tester);
+    await tap(tester, find.byTooltip('Mon compte'));
+    await tap(tester, find.text('Donner mon avis'));
+    expect(find.text('Ludifun vous est-il utile ?'), findsOneWidget);
+    final send = find.widgetWithText(FilledButton, 'Envoyer');
+    expect(tester.widget<FilledButton>(send).onPressed, isNull); // ni note ni message
+
+    await tap(tester, find.byTooltip('4 sur 5'));
+    await tester.enterText(find.byType(TextField), '  Emma adore les défis bonus.  ');
+    await tap(tester, send);
+    expect(sent, [
+      {'rating': 4, 'message': 'Emma adore les défis bonus.', 'screen': 'parent_home'},
+    ]);
+    expect(find.text('Merci pour votre avis !'), findsOneWidget);
+    expect(find.text('Ludifun vous est-il utile ?'), findsNothing);
+  });
+
   testWidgets('compétences par leçon, avec ce qui manque encore', (tester) async {
     Map<String, Object?> level(int value, String label, String color) => {
       'value': value,
