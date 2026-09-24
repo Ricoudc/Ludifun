@@ -1,12 +1,15 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from app.ai.ocr.vision_llm import VisionLLMOcr
+from app.ai.ports import PageImage
 from app.ai.pricing import run_cost
-from app.ai.providers.fake import FakeProvider
+from app.ai.providers.fake import DEMO_LESSON, FakeProvider, LessonScript
+from app.ai.schemas import OcrPage, OcrResult, UncertainOut
 from app.domain.activities.registry import default_registry
+from app.domain.knowledge import Grade, Subject
 from app.services.lesson_pipeline import LessonPipeline
 from app.tools.evaluate import (
     Expected,
@@ -16,6 +19,7 @@ from app.tools.evaluate import (
     match_notion,
     metrics,
     render_report,
+    resume_after_review,
     score,
 )
 from tests.domain.conftest import load_lesson
@@ -51,8 +55,12 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     [run_dir] = list(tmp_path.iterdir())
     report = (run_dir / "report.md").read_text(encoding="utf-8")
     measures = report.split("## Par leçon")[0]
-    assert measures.count("| ✅ |") == 7  # toutes les mesures à seuil sont atteintes
-    assert "❌" not in measures
+    assert measures.count("| ✅ |") == 9  # toutes les mesures à seuil sont atteintes…
+    # …sauf les aides : les leçons de référence de l'IA factice datent d'avant l'étape 14.
+    assert [line.split(" |")[0] for line in measures.splitlines() if "❌" in line] == [
+        "| Notions avec indice et rappel"
+    ]
+    assert "| Noms personnels dans le texte lu | — (aucune annotation) | 0 | · |" in measures
     assert "piege_liste_de_courses | photo | 1 | ✅ not_a_lesson (piège)" in report
     for name in ("history_cm1_revolution", "math_cm2_fractions", "science_ce2_water_states"):
         assert (run_dir / f"{name}.json").exists()
@@ -86,3 +94,55 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     report = render_report([good, failed], "fake", datetime(2026, 9, 23))
     assert "- **histoire** : Napoléon Bonaparte" in report
     assert "- **crepes** : verbe" in report
+
+
+HISTORY = LessonScript.from_file(DEMO_LESSON).ocr_text
+PHOTO = PageImage(b"\xff\xd8\xff\xe0photo", "image/jpeg")
+REVOLUTION = Expected(
+    subject=Subject.HISTORY,
+    grade=Grade.CM1,
+    support="cahier",
+    essential=[ExpectedNotion(label="1789"), ExpectedNotion(label="Louis XVI")],
+    personal=["Emma Martin", "école Jules Ferry"],
+)
+
+
+def blurry_page_with_a_name() -> OcrResult:
+    """Le nom de l'élève a été recopié, et un mot bien lu reste douteux pour la lecture."""
+    text = "Emma Martin\n" + HISTORY
+    return OcrResult(
+        pages=[
+            OcrPage(
+                index=0,
+                quality="partial",
+                text=text,
+                uncertain=[
+                    UncertainOut(text="Bastille", context="le peuple de Paris prend la Bastille, une prison")
+                ],
+            )
+        ],
+        language="fr",
+        warnings=[],
+    )
+
+
+async def test_a_photo_to_check_is_still_analysed_and_measured() -> None:
+    llm = FakeProvider(overrides={"ocr": blurry_page_with_a_name()})
+    pipeline = LessonPipeline(VisionLLMOcr(llm), llm, default_registry())
+    paused = await pipeline.run([PHOTO])
+    assert paused.review and paused.analysis is None  # l'application attendrait l'enfant
+
+    result = await resume_after_review(pipeline, paused)
+    assert result.failure_reason is None and result.analysis is not None
+    assert [r.stage for r in result.runs] == ["ocr", "analysis", "material", "material"]
+    s = score("revolution", REVOLUTION, result, pages=1, duration_s=2.0)
+    assert s.review == 1 and s.recall == 1.0
+    assert s.notions == len(result.units) > 0
+    assert s.personal_leaks == 1  # « Emma Martin », pas l'école
+    assert s.with_help <= s.notions and s.in_skill <= s.notions
+
+    report = render_report([s], "fake", datetime.now(UTC))
+    assert "## ⚠ Noms personnels retrouvés dans le texte lu" in report
+    assert "Emma Martin" not in report  # le rapport ne recopie jamais le nom
+    assert "| Noms personnels dans le texte lu | 1 (1 leçon(s) annotée(s)) | 0 | ❌ |" in report
+    assert "| Photos à faire vérifier (passages douteux) | 100 % | à suivre | · |" in report

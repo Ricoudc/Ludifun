@@ -25,7 +25,7 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 2 | Domaine : connaissances et activités | ✅ |
 | 3 | Domaine : séance, notation, mémorisation | ✅ |
 | 4 | Pipeline IA (+ outil `python -m app.tools.analyze`) | ✅ |
-| 5 | Mesure sur de vraies leçons | 🟡 outillage prêt, en attente des leçons ([`eval/`](eval/README.md)) |
+| 5 | Mesure sur de vraies leçons | 🟡 outillage prêt et à jour des étapes 13 à 15 (compétences, aides, passages douteux, noms personnels), en attente des leçons et d'une clé API ([`eval/`](eval/README.md)) |
 | 6 | API : comptes parent, profils enfants, liaison par code / QR | ✅ |
 | 7 | API : leçons et séances, mission du jour | ✅ |
 | 8 | API : tableau de bord parent | ✅ |

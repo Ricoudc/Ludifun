@@ -45,8 +45,10 @@ Flux de données :
 ## 4. Plan d'action avant la bêta
 
 - [ ] Signer les DPA (hébergeur, e-mails, Anthropic) et compléter le registre.
-- [ ] Mesurer, sur les 30 leçons de l'étape 18, combien de transcriptions contiennent encore un
-      nom propre de l'enfant ou de l'école. Si c'est trop fréquent, renforcer la consigne du prompt.
+- [ ] Mesurer, sur les 30 leçons de l'étape 5, combien de transcriptions contiennent encore un
+      nom de l'élève, de l'école ou de l'enseignant (champ `personal` de `expected.json`, mesure
+      « Noms personnels dans le texte lu » du rapport, seuil 0). Si le seuil n'est pas atteint,
+      renforcer la consigne du prompt de lecture.
 - [ ] Faire valider cette AIPD et la politique de confidentialité par le responsable du
       traitement (conseil juridique ou DPO).
 - [ ] Réexaminer l'AIPD avant la bêta publique ou tout nouveau traitement (oral, V4).

@@ -41,6 +41,7 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
     { "label": "États généraux", "aliases": ["réunion des États généraux"] },
     { "label": "Prise de la Bastille" }
   ],
+  "personal": ["Emma Martin", "École Jules Ferry"],
   "notes": "Leçon recopiée au tableau, écriture de l'enfant."
 }
 ```
@@ -48,6 +49,11 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
 - `subject` : `french`, `math`, `history`, `geography`, `science`, `english`, `civics`, `other`.
 - `grade` : `CP`, `CE1`, `CE2`, `CM1`, `CM2`, `6e`, `5e`, `4e`, `3e`.
 - `essential` : 3 à 8 notions indispensables, avec leur nom le plus courant. `aliases` accepte d'autres façons de les nommer. La correspondance ignore la casse, les accents et les petites fautes.
+- `personal` (facultatif) : les noms écrits sur les pages (élève, école, enseignant). La lecture
+  ne doit jamais les recopier ; le rapport compte ceux qui sont retrouvés dans le texte lu, sans
+  jamais les écrire. C'est une mesure de l'analyse d'impact
+  ([`docs/rgpd/aipd.md`](../docs/rgpd/aipd.md)) : **à remplir chaque fois qu'un nom est visible**
+  sur la photo.
 - Cas piège : `"is_lesson": false` et `"essential": []`.
 
 Des exemples complets sont dans `eval/example/`.
@@ -61,6 +67,20 @@ uv run python -m app.tools.evaluate ../eval/lessons
 ```
 
 Options : `--only lecon1,lecon2`, `--concurrency 3` (leçons en parallèle), `--provider fake` (démonstration hors ligne sur `eval/example`).
+
+Quand la lecture d'une photo signale des passages douteux, l'application demanderait à l'enfant
+« Peux-tu vérifier ? ». L'évaluation joue l'enfant qui confirme ce qui a été lu, puis
+l'analyse reprend : ces passages sont comptés, et la leçon est quand même mesurée.
+
+En plus des mesures du §17.2, le rapport suit ce qu'ont ajouté les étapes 13 à 15 :
+
+| Mesure | Seuil |
+|---|---|
+| Photos à faire vérifier (passages douteux) | à suivre : trop de passages lassent l'enfant, trop peu laissent passer des erreurs de lecture |
+| Notions reliées à une compétence | ≥ 90 % |
+| Notions avec indice et rappel (« Je n'ai pas compris ») | ≥ 90 % |
+| Questions ouvertes par leçon | ≥ 1 en moyenne |
+| Noms personnels dans le texte lu | 0 |
 
 Chaque lancement crée `eval/results/<date-heure>/` :
 
