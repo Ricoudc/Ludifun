@@ -6,6 +6,7 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
+from fastapi.responses import JSONResponse
 
 from app import clock
 from app.api.deps import AppSettings, CurrentParent, DbSession
@@ -19,7 +20,7 @@ from app.api.v1.schemas_dashboard import (
     WeakNotionOut,
     WeekOut,
 )
-from app.services import dashboard
+from app.services import dashboard, export
 from app.services.dashboard import WeekStats
 
 router = APIRouter(tags=["espace parent"])
@@ -107,3 +108,13 @@ async def get_history(
         ],
         next_before=entries[-1].started_at if len(entries) == limit else None,
     )
+
+
+@router.get("/children/{child_id}/export")
+async def export_child(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> JSONResponse:
+    """§16.2 : toutes les données de l'enfant, en un fichier JSON (droit d'accès et de portabilité)."""
+    child = await own_child(db, parent, child_id)
+    now = clock.now()
+    data = await export.export_child(db, child, now)
+    filename = f"ludifun-{child.id}-{now.date().isoformat()}.json"
+    return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="{filename}"'})

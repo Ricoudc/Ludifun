@@ -50,7 +50,13 @@ class SessionScreen extends ConsumerWidget {
 
   Future<void> _reviewErrors(BuildContext context, WidgetRef ref) async {
     final id = await ref.read(sessionControllerProvider(sessionId).notifier).reviewErrors();
-    if (id != null && context.mounted) context.go(Routes.session(id));
+    if (!context.mounted) return;
+    if (id != null) {
+      context.go(Routes.session(id));
+    } else if (ref.read(sessionControllerProvider(sessionId)).phase != Phase.error) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Aucune erreur à revoir : bravo !')));
+    }
   }
 
   @override

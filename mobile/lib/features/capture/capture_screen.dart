@@ -50,6 +50,7 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               if (mounted && total > 0) setState(() => _progress = sent / total);
             },
           );
+      ref.read(captureProvider.notifier).markSent(lesson.id);
       refreshHome(ref);
       if (mounted) context.go(Routes.analysis(lesson.id, childId: widget.childId));
     } on ApiException catch (error) {

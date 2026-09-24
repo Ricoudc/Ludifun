@@ -174,9 +174,11 @@ async def create_demo_family(
     scripts = {path.stem: LessonScript.from_file(path) for path in REFERENCE_LESSONS.glob("*.json")}
     lessons: dict[str, str] = {}
     sessions = 0
+    # Une séance prévue « aujourd'hui à 8 h » ne doit pas être dans le futur si l'outil tourne plus tôt.
+    latest = datetime.now(UTC) - timedelta(minutes=30)
     with simulated_clock(datetime.now(UTC)) as now:
         for revision in PLAN:
-            now[0] = local(today - timedelta(days=revision.days_ago), revision.hour, tz)
+            now[0] = min(local(today - timedelta(days=revision.days_ago), revision.hour, tz), latest)
             if revision.lesson not in lessons:
                 llm.script = scripts[revision.lesson]
                 files = [("pages", ("page1.jpg", PHOTO, "image/jpeg"))]

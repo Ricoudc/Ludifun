@@ -33,6 +33,16 @@ class CaptureController extends Notifier<List<CapturedPage>> {
 
   int get remaining => maxPages - state.length;
 
+  /// Leçon envoyée avec ces photos : elles sont gardées jusqu'à sa fin d'analyse.
+  String? sentLessonId;
+
+  void markSent(String lessonId) => sentLessonId = lessonId;
+
+  /// Fin d'analyse d'une leçon : ses photos quittent le téléphone (§15), et seulement elles.
+  void analysisFinished(String lessonId) {
+    if (sentLessonId == lessonId) clear();
+  }
+
   Future<void> takePhoto() async {
     if (remaining <= 0) return;
     final photo = await ref.read(imagePickerProvider).pickImage(source: ImageSource.camera);
@@ -46,6 +56,7 @@ class CaptureController extends Notifier<List<CapturedPage>> {
   }
 
   Future<void> _add(Iterable<XFile> files) async {
+    sentLessonId = null; // de nouvelles photos : une nouvelle leçon
     final pages = [
       for (final file in files)
         CapturedPage(bytes: await file.readAsBytes(), path: kIsWeb ? null : file.path),
@@ -75,6 +86,7 @@ class CaptureController extends Notifier<List<CapturedPage>> {
   void clear() {
     state.forEach(_deleteFile);
     state = const [];
+    sentLessonId = null;
   }
 
   static void _deleteFile(CapturedPage page) {

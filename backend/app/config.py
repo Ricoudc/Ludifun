@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     ai_analysis_effort: Effort = "high"
     ai_material_effort: Effort = "medium"
     max_lesson_chars: int = 20000
+    # Plafond de dépense IA par jour (UTC), tous comptes confondus ; vide = pas de plafond.
+    ai_daily_budget_usd: float | None = 50.0
     max_pages: int = 6
     max_image_bytes: int = 8 * 1024 * 1024
     lessons_per_day: int = 20  # par enfant

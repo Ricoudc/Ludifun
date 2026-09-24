@@ -21,7 +21,7 @@ from app.api.v1.schemas_learning import (
     MissionOut,
 )
 from app.db.models import Child, Lesson, LessonPage
-from app.services import learning
+from app.services import ai_budget, learning
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_units, review_state
 
@@ -46,6 +46,18 @@ def steps_of(lesson_status: str) -> dict[str, str] | None:
         step: "done" if i < current else "running" if i == current else "pending"
         for i, step in enumerate(STEPS)
     }
+
+
+async def ensure_ai_budget(db: DbSession, settings: AppSettings) -> None:
+    """503 tant que le plafond IA du jour est atteint (§16.1)."""
+    wait = await ai_budget.seconds_until_budget(db, settings.ai_daily_budget_usd, clock.now())
+    if wait is not None:
+        raise ApiError(
+            503,
+            "ai_budget_exhausted",
+            "Ludifun a analysé beaucoup de leçons aujourd'hui : réessaie demain.",
+            headers={"Retry-After": str(wait)},
+        )
 
 
 async def lesson_of_child(db: DbSession, child: Child, lesson_id: uuid.UUID) -> Lesson:
@@ -116,6 +128,7 @@ async def create_lesson(
                 415, "unsupported_media_type", "Format de photo non pris en charge (JPEG, PNG, WebP)."
             )
         images.append(PageImage(data, media_type))
+    await ensure_ai_budget(db, settings)
     rate_limit(request, f"lessons:{child.id}", limit=settings.lessons_per_day, window_s=86400)
 
     lesson = Lesson(child_id=child.id, status="uploaded", page_count=len(images), created_at=clock.now())
@@ -189,6 +202,7 @@ async def retry_lesson(
     lesson = await lesson_of_child(db, child, lesson_id)
     if not await can_retry(db, lesson):
         raise ApiError(409, "cannot_retry", "Cette leçon ne peut pas être relancée : reprends la photo.")
+    await ensure_ai_budget(db, settings)
     pages = await db.scalars(
         select(LessonPage).where(LessonPage.lesson_id == lesson.id).order_by(LessonPage.page_index)
     )

@@ -137,6 +137,20 @@ void main() {
     expect(find.text('Question 2 / 2'), findsOneWidget);
   });
 
+  testWidgets('« Revoir mes erreurs » sans erreur à revoir', (tester) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    server.on(
+      'POST /v1/sessions/s1/errors-session',
+      (_) => FakeServer.error(409, 'no_errors', 'Aucune erreur à revoir : bravo !'),
+    );
+    await open(tester, 's1');
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+    await tapAndSettle(tester, 'Revoir mes erreurs');
+    expect(find.text('Aucune erreur à revoir : bravo !'), findsOneWidget);
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+  });
+
   testWidgets('séance déjà terminée', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1')]).completed = 1;
     await open(tester, 's1');

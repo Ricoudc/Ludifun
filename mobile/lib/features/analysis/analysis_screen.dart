@@ -97,7 +97,8 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     if (_pacer.finished && _lesson?.status == LessonStatus.ready && !_leaving) {
       _leaving = true;
       _pace?.cancel();
-      ref.read(captureProvider.notifier).clear(); // les photos quittent le téléphone (§15)
+      // Les photos de cette leçon quittent le téléphone (§15) ; pas celles d'une autre.
+      ref.read(captureProvider.notifier).analysisFinished(widget.lessonId);
       refreshHome(ref);
       Timer(readyPause, () {
         if (!mounted) return;

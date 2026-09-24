@@ -782,6 +782,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | GET · DELETE | `/v1/children/{id}/devices[/{device_id}]` | appareils liés · délier |
 | GET | `/v1/children/{id}/dashboard?weeks=4` | tableau de bord (écran P3) : `this_week`, `subjects`, `to_strengthen`, `reviews_due`, `weeks`, `trend`, `activities_this_week` |
 | GET | `/v1/children/{id}/history?limit=20&before=` | séances (écran P4) : `{sessions, next_before}` |
+| GET | `/v1/children/{id}/export` | toutes les données de l'enfant en JSON (§16.2, droit d'accès et de portabilité) |
 
 **Espace enfant** (jeton d'appareil ; un parent peut aussi appeler ces routes avec `?child_id=`)
 
@@ -1283,10 +1284,16 @@ Exception encadrée : pour constituer le corpus de test (§17), les photos sont 
 - **Séparation stricte** : un appareil enfant n'accède qu'aux données de son enfant, jamais au tableau de bord ni aux autres profils ; un parent n'accède qu'aux enfants de sa famille. Toute autre ressource renvoie 404. Des tests couvrent chaque route pour les deux rôles.
 - HTTPS obligatoire (reverse proxy), HSTS, pas de CORS (application mobile uniquement).
 - Limites de débit :
-  - 20 leçons par jour et par appareil ;
+  - 20 leçons par jour et par enfant ;
   - 300 requêtes par minute et par appareil ;
-  - plafond de coût IA journalier global, avec alerte.
-- Toutes les entrées sont validées par Pydantic, avec des tailles maximales partout.
+  - plafond de coût IA journalier global (`LUDIFUN_AI_DAILY_BUDGET_USD`, 50 $ par défaut),
+    calculé sur le journal `ai_runs` : une fois atteint, les nouvelles analyses sont refusées
+    jusqu'au lendemain (503, « réessaie demain ») et une alerte est écrite dans les journaux ;
+  - le limiteur oublie les clés expirées : sa mémoire reste bornée.
+- Toutes les entrées sont validées par Pydantic, avec des tailles maximales partout : corps de
+  requête limité aux photos d'une leçon (6 × 8 Mo + 1 Mo), réponse à une activité ≤ 16 Ko.
+- Jetons de renouvellement et liens de réinitialisation verrouillés en base (pas de double usage
+  simultané) ; un nouveau mot de passe annule les autres liens de réinitialisation.
 - Injection de prompt : le texte de la leçon est une donnée entre balises. Les sorties sont validées par schéma, les modèles n'ont accès à aucun outil, et un texte étrange donne au pire une leçon ratée.
 - Secrets dans des variables d'environnement, jamais dans le code. Dépendances figées et analysées en intégration continue.
 - Journaux sans contenu de leçon ni jeton.
@@ -1296,7 +1303,7 @@ Exception encadrée : pour constituer le corpus de test (§17), les photos sont 
 - **Minimisation** : pour le parent, un e-mail ; pour l'enfant, un prénom ou pseudo, une classe et un avatar. Ni nom de famille, ni date de naissance, ni e-mail de l'enfant.
 - **Consentement parental** recueilli à la création de chaque profil enfant (horodaté).
 - Pas de photo conservée. La transcription exclut les en-têtes personnels.
-- Effacement : `DELETE /v1/lessons/{id}`, `DELETE /v1/children/{id}` et `DELETE /v1/parent` suppriment tout, en cascade ; export des données d'un enfant sur demande.
+- Effacement : `DELETE /v1/lessons/{id}`, `DELETE /v1/children/{id}` et `DELETE /v1/parent` suppriment tout, en cascade ; export des données d'un enfant : `GET /v1/children/{id}/export` (profil, appareils, texte des leçons, notions et maîtrise, séances et réponses).
 - Conservation : suppression automatique d'un compte inactif depuis 12 mois, après un e-mail de prévenance.
 - Fournisseurs d'IA : contrat de sous-traitance (DPA) et absence d'entraînement sur les données transmises. Hébergement de l'API et de la base dans l'UE.
 - Pas de publicité, pas de traceur tiers, pas de classement.

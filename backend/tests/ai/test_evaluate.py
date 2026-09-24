@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from app.ai.ocr.vision_llm import VisionLLMOcr
+from app.ai.pricing import run_cost
 from app.ai.providers.fake import FakeProvider
 from app.domain.activities.registry import default_registry
 from app.services.lesson_pipeline import LessonPipeline
@@ -15,7 +16,6 @@ from app.tools.evaluate import (
     match_notion,
     metrics,
     render_report,
-    run_cost,
     score,
 )
 from tests.domain.conftest import load_lesson

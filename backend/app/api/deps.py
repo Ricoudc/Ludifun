@@ -72,9 +72,18 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "inconnu"
 
 
+# Au-delà, les clés sans essai récent sont oubliées (fenêtre la plus longue : une journée).
+RATE_LIMIT_MAX_KEYS = 10_000
+RATE_LIMIT_LONGEST_WINDOW_S = 86_400
+# §16.1 : 300 requêtes par minute et par appareil.
+DEVICE_REQUESTS = (300, 60.0)
+
+
 def rate_limit(request: Request, key: str, limit: int, window_s: float, *, record: bool = True) -> None:
     """429 si la limite est atteinte ; `record=False` vérifie sans compter d'essai."""
     limiter: RateLimiter = request.app.state.rate_limiter
+    if len(limiter) > RATE_LIMIT_MAX_KEYS:
+        limiter.purge(RATE_LIMIT_LONGEST_WINDOW_S)
     wait = limiter.hit(key, limit, window_s) if record else limiter.exceeded(key, limit, window_s)
     if wait is not None:
         raise ApiError(
@@ -122,6 +131,7 @@ async def current_principal(request: Request, db: DbSession, settings: AppSettin
     if device is None:
         raise ApiError(401, "invalid_token", "Cet appareil n'est plus lié.", _UNAUTHORIZED)
     await db.commit()  # dernière utilisation de l'appareil
+    rate_limit(request, f"device:{device.id}", *DEVICE_REQUESTS)
     return DevicePrincipal(device.child_id, device.id)
 
 

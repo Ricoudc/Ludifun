@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy import Select, delete, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
@@ -54,7 +55,11 @@ async def register_parent(db: AsyncSession, email: str, password: str, now: date
     parent = Parent(email=email, password_hash=hash_password(password), privacy_accepted_at=now)
     family = Family()
     db.add_all([parent, family])
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:  # inscription simultanée avec le même e-mail
+        await db.rollback()
+        raise EmailTaken from exc
     db.add(FamilyMember(family_id=family.id, parent_id=parent.id, role="owner"))
     await db.flush()
     return parent
@@ -94,7 +99,9 @@ async def rotate_refresh_token(db: AsyncSession, token: str, settings: Settings,
     Présenter un jeton déjà utilisé signale un vol probable : toute la chaîne de
     jetons du parent est révoquée et il doit se reconnecter.
     """
-    stored = await db.scalar(select(RefreshToken).where(RefreshToken.token_hash == tokens.sha256(token)))
+    stored = await db.scalar(
+        select(RefreshToken).where(RefreshToken.token_hash == tokens.sha256(token)).with_for_update()
+    )
     if stored is None or stored.expires_at <= now:
         raise InvalidCredentials
     if stored.revoked_at is not None:
@@ -157,7 +164,9 @@ async def request_password_reset(
 
 async def reset_password(db: AsyncSession, token: str, new_password: str, now: datetime) -> None:
     reset = await db.scalar(
-        select(PasswordResetToken).where(PasswordResetToken.token_hash == tokens.sha256(token))
+        select(PasswordResetToken)
+        .where(PasswordResetToken.token_hash == tokens.sha256(token))
+        .with_for_update()
     )
     if reset is None or reset.used_at is not None or reset.expires_at <= now:
         raise InvalidCredentials
@@ -165,6 +174,12 @@ async def reset_password(db: AsyncSession, token: str, new_password: str, now: d
     assert parent is not None
     parent.password_hash = hash_password(new_password)
     reset.used_at = now
+    # Les autres liens de réinitialisation encore valables ne servent plus.
+    await db.execute(
+        update(PasswordResetToken)
+        .where(PasswordResetToken.parent_id == parent.id, PasswordResetToken.used_at.is_(None))
+        .values(used_at=now)
+    )
     await revoke_all_refresh_tokens(db, parent.id, now)  # déconnecte les autres téléphones
 
 

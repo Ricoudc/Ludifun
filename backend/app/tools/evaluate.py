@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from app.ai.factory import build_providers
 from app.ai.ports import PageImage
+from app.ai.pricing import run_cost
 from app.config import get_settings
 from app.domain.activities.registry import default_registry
 from app.domain.knowledge import Grade, KnowledgeItem, Subject
@@ -39,14 +40,6 @@ GRADES = [g.value for g in Grade]
 # Prix publics en dollars par million de jetons (entrée, sortie). Les jetons de
 # réflexion sont comptés en sortie ; les lectures de cache, moins chères, sont
 # comptées au plein tarif : l'estimation est donc prudente.
-PRICES_PER_MTOK = {
-    "claude-opus-5-5": (4.0, 20.0),
-    "claude-opus-5": (5.0, 25.0),
-    "claude-fable-5": (10.0, 50.0),
-    "claude-sonnet-5": (2.0, 10.0),
-    "claude-haiku-4-5": (1.0, 5.0),
-    "fake": (0.0, 0.0),
-}
 
 
 class ExpectedNotion(BaseModel):
@@ -105,13 +98,6 @@ def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> st
                 or SequenceMatcher(None, normalize(item.label), normalize(name)).ratio() >= 0.85
             ):
                 return item.id
-    return None
-
-
-def run_cost(model: str, input_tokens: int | None, output_tokens: int | None) -> float | None:
-    for prefix, (price_in, price_out) in PRICES_PER_MTOK.items():
-        if model.startswith(prefix):
-            return ((input_tokens or 0) * price_in + (output_tokens or 0) * price_out) / 1_000_000
     return None
 
 

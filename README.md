@@ -38,6 +38,17 @@ Plan de la V1 : cahier des charges §18.
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).
 
+### Reste à faire avant la bêta publique (§16)
+
+- hébergement : HTTPS et HSTS par un reverse proxy, API et base dans l'UE ;
+- e-mails réels : un fournisseur d'envoi, puis la vérification de l'e-mail du parent ;
+- conservation : suppression automatique d'un compte inactif depuis 12 mois, après un e-mail
+  de prévenance (nécessite le fournisseur d'e-mails) ;
+- limites de débit dans un stockage partagé (Redis) si l'API tourne sur plusieurs instances ;
+- documents : politique de confidentialité, registre des traitements, analyse d'impact (AIPD),
+  contrat de sous-traitance (DPA) avec le fournisseur d'IA ;
+- export des données dans l'application parent (l'API `GET /v1/children/{id}/export` existe).
+
 ## Démarrage rapide
 
 ```bash

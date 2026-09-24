@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.factory import build_providers
 from app.api import health, v1
+from app.api.body_limit import BodySizeLimit
 from app.api.deps import AiProviders
 from app.api.errors import install_error_handlers
 from app.config import Settings, get_settings
@@ -51,6 +52,8 @@ def create_app(
         openapi_url=None if settings.environment == "prod" else "/openapi.json",
     )
     install_error_handlers(app)
+    # Photos d'une leçon au maximum, plus 1 Mo pour l'enveloppe multipart.
+    app.add_middleware(BodySizeLimit, max_bytes=settings.max_pages * settings.max_image_bytes + 2**20)
     app.include_router(health.router)
     app.include_router(v1.router)
     return app

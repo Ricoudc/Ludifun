@@ -1,10 +1,11 @@
 """Formats de l'API v1 pour les leçons, les séances et la mission du jour (§11)."""
 
+import json
 import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.knowledge import Grade
 
@@ -90,12 +91,22 @@ class SessionOut(BaseModel):
     score_on_10: float | None = None
 
 
+MAX_RESPONSE_BYTES = 16_000
+
+
 class AttemptIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     item_id: uuid.UUID
     response: dict[str, Any]
     duration_ms: int | None = Field(None, ge=0, le=3_600_000)
+
+    @field_validator("response")
+    @classmethod
+    def _bounded(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if len(json.dumps(value, ensure_ascii=False)) > MAX_RESPONSE_BYTES:
+            raise ValueError("réponse trop volumineuse")
+        return value
 
 
 class AttemptOut(BaseModel):
