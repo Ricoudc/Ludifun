@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 /// Erreur de l'API (§11.3) ou du réseau, avec un message affichable tel quel.
@@ -19,7 +21,7 @@ class ApiException implements Exception {
     if (response == null) {
       return const ApiException('network', 'Pas de connexion. Vérifie Internet et réessaie.');
     }
-    final body = response.data;
+    final body = _json(response.data);
     if (body is Map && body['error'] is Map) {
       final detail = body['error'] as Map;
       return ApiException(
@@ -32,6 +34,16 @@ class ApiException implements Exception {
   }
 
   static const unexpected = 'Petit souci de notre côté, réessaie.';
+
+  /// Corps d'erreur déjà décodé, ou reçu en octets (téléchargement de fichier).
+  static Object? _json(Object? data) {
+    if (data is! List<int>) return data;
+    try {
+      return jsonDecode(utf8.decode(data));
+    } on FormatException {
+      return null;
+    }
+  }
 
   final String code;
   final String message;

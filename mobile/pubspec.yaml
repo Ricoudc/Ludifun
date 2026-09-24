@@ -44,7 +44,7 @@ dependencies:
   flutter_image_compress: ^2.5.1
   mobile_scanner: ^7.4.2
   qr_flutter: ^4.1.0
-
+  share_plus: ^13.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

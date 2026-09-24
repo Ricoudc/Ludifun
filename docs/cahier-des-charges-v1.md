@@ -298,6 +298,8 @@ Activités     🎮 Quiz 4 · 🃏 Cartes 2 · ✍️ Textes à trous 6
 - Séances de l'enfant, de la plus récente à la plus ancienne (date, leçon, durée, note, résultat par notion),
   par pages : `GET /v1/children/{id}/history?limit=20&before=<next_before>`.
 - Appareils liés (nom, dernière utilisation) et *Délier*.
+- *Exporter les données d'Emma* (§16.2) : un fichier JSON, remis par la feuille de partage du téléphone
+  (enregistrer dans Fichiers ou Drive, envoyer par e-mail…).
 - Modifier le profil ; *Supprimer l'enfant et toutes ses données* (confirmation) ; supprimer le compte parent.
 
 ---

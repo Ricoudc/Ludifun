@@ -46,8 +46,7 @@ git (commit `3362b04`).
   de prévenance (nécessite le fournisseur d'e-mails) ;
 - limites de débit dans un stockage partagé (Redis) si l'API tourne sur plusieurs instances ;
 - documents : politique de confidentialité, registre des traitements, analyse d'impact (AIPD),
-  contrat de sous-traitance (DPA) avec le fournisseur d'IA ;
-- export des données dans l'application parent (l'API `GET /v1/children/{id}/export` existe).
+  contrat de sous-traitance (DPA) avec le fournisseur d'IA.
 
 ## Démarrage rapide
 

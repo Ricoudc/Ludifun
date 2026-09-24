@@ -40,7 +40,8 @@ Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont ef
 Espace parent (écrans P1 à P4) : connexion, mot de passe oublié (le lien de l'e-mail
 `ludifun://app/parent/nouveau-mot-de-passe?jeton=…` ouvre l'application), profils des enfants avec
 consentement parental, code à 6 chiffres et QR code de liaison, tableau de bord de la semaine,
-historique des séances, appareils liés, suppression d'un enfant ou du compte. Le parent peut aussi
+historique des séances, appareils liés, export des données d'un enfant (fichier JSON, par la
+feuille de partage du téléphone), suppression d'un enfant ou du compte. Le parent peut aussi
 photographier une leçon pour son enfant.
 
 Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,

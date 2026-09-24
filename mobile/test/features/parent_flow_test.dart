@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +9,7 @@ import 'package:ludifun/app/router.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/capture/capture_controller.dart';
 import 'package:ludifun/features/home/home_providers.dart';
+import 'package:ludifun/features/parent/file_sharer.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../support/fake_server.dart';
@@ -91,11 +95,26 @@ Map<String, Object?> session(String id, String title, String startedAt, double s
   ],
 };
 
+/// Feuille de partage simulée : garde les fichiers remis au parent.
+class FakeSharer implements FileSharer {
+  final shared = <({String filename, Uint8List bytes, String mimeType, String? subject})>[];
+
+  @override
+  Future<void> share({
+    required String filename,
+    required Uint8List bytes,
+    required String mimeType,
+    String? subject,
+  }) async => shared.add((filename: filename, bytes: bytes, mimeType: mimeType, subject: subject));
+}
+
 void main() {
   late FakeServer server;
+  late FakeSharer sharer;
   late Map<String, Object?> emmaChild;
 
   setUp(() {
+    sharer = FakeSharer();
     emmaChild = child();
     server = FakeServer()
       ..on('GET /v1/children', (_) => (200, [emmaChild]))
@@ -116,6 +135,7 @@ void main() {
           nowProvider.overrideWithValue(() => now),
           imagePickerProvider.overrideWithValue(FakeImagePicker(gallery: 1)),
           imageCompressorProvider.overrideWithValue(FakeCompressor()),
+          fileSharerProvider.overrideWithValue(sharer),
         ],
         retry: noRetry,
         child: const LudifunApp(),
@@ -398,5 +418,42 @@ void main() {
     await tap(tester, find.widgetWithText(FilledButton, 'Supprimer définitivement'));
     expect(server.routes, contains('DELETE /v1/parent'));
     expect(find.text('Qui utilise cet appareil ?'), findsOneWidget);
+  });
+
+  testWidgets('exporter les données d\'Emma (RGPD)', (tester) async {
+    final export = {
+      'format': 'ludifun-export-v1',
+      'child': {'display_name': 'Emma'},
+      'lessons': <Object>[],
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/history',
+        (_) => (200, {'sessions': <Object>[], 'next_before': null}),
+      )
+      ..on('GET /v1/children/c1/devices', (_) => (200, <Object>[]))
+      ..on(
+        'GET /v1/children/c1/export',
+        (_) => (200, export),
+        headers: {'content-disposition': 'attachment; filename="ludifun-c1-2026-09-24.json"'},
+      );
+    final container = await launch(tester);
+    await go(tester, container, Routes.childSettings('c1'));
+
+    await tap(tester, find.text('Exporter les données de Emma'));
+    final file = sharer.shared.single;
+    expect(file.filename, 'ludifun-c1-2026-09-24.json');
+    expect(file.mimeType, 'application/json');
+    expect(file.subject, 'Données Ludifun de Emma');
+    expect(jsonDecode(utf8.decode(file.bytes)), export);
+
+    // Erreur du serveur : message, et le bouton redevient utilisable.
+    server.on(
+      'GET /v1/children/c1/export',
+      (_) => FakeServer.error(404, 'child_not_found', 'Enfant introuvable.'),
+    );
+    await tap(tester, find.text('Exporter les données de Emma'));
+    expect(find.text('Enfant introuvable.'), findsOneWidget);
+    expect(sharer.shared, hasLength(1));
   });
 }

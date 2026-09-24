@@ -19,7 +19,13 @@ class FakeServer implements HttpClientAdapter {
   /// Corps envoyés (multipart compris), dans l'ordre des requêtes.
   final bodies = <Uint8List>[];
 
-  void on(String route, Handler handler) => handlers[route] = handler;
+  /// En-têtes de réponse supplémentaires, par route.
+  final headers = <String, Map<String, String>>{};
+
+  void on(String route, Handler handler, {Map<String, String> headers = const {}}) {
+    handlers[route] = handler;
+    this.headers[route] = headers;
+  }
 
   List<String> get routes => [for (final r in requests) '${r.method} ${r.path}'];
 
@@ -39,7 +45,8 @@ class FakeServer implements HttpClientAdapter {
     requests.add(options);
     final chunks = requestStream == null ? const <Uint8List>[] : await requestStream.toList();
     bodies.add(Uint8List.fromList([for (final chunk in chunks) ...chunk]));
-    final handler = handlers['${options.method} ${options.path}'];
+    final route = '${options.method} ${options.path}';
+    final handler = handlers[route];
     final (status, body) = handler == null
         ? error(404, 'not_found', 'Introuvable.')
         : await handler(options);
@@ -48,6 +55,7 @@ class FakeServer implements HttpClientAdapter {
       status,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
+        for (final MapEntry(:key, :value) in (headers[route] ?? const {}).entries) key: [value],
       },
     );
   }

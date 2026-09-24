@@ -11,6 +11,7 @@ import '../../core/session.dart';
 import '../../models/parent.dart';
 import '../../models/subject.dart';
 import '../home/home_providers.dart';
+import 'file_sharer.dart';
 import 'parent_home_screen.dart';
 import 'parent_providers.dart';
 
@@ -70,6 +71,32 @@ class _ChildSettingsScreenState extends ConsumerState<ChildSettingsScreen> {
         ..invalidate(childrenProvider);
     } on ApiException catch (error) {
       if (mounted) showError(context, error);
+    }
+  }
+
+  bool _exporting = false;
+
+  /// §16.2 : le parent récupère toutes les données de son enfant dans un fichier.
+  Future<void> _export(String name) async {
+    setState(() => _exporting = true);
+    try {
+      final export = await ref.read(apiProvider).exportChild(widget.childId);
+      await ref
+          .read(fileSharerProvider)
+          .share(
+            filename: export.filename,
+            bytes: export.bytes,
+            mimeType: 'application/json',
+            subject: 'Données Ludifun de $name',
+          );
+    } on ApiException catch (error) {
+      if (mounted) showError(context, error);
+    } on Exception {
+      if (mounted) {
+        showError(context, const ApiException('share', 'Impossible de partager le fichier.'));
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
   }
 
@@ -154,6 +181,23 @@ class _ChildSettingsScreenState extends ConsumerState<ChildSettingsScreen> {
             ],
             _ => [const Center(child: CircularProgressIndicator())],
           },
+          section('Données'),
+          Text(
+            'Un fichier avec tout ce que Ludifun conserve sur $name : profil, appareils, texte '
+            'des leçons, notions, résultats et réponses (droit d\'accès, RGPD).',
+            style: const TextStyle(color: Colors.black54),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _exporting ? null : () => _export(name),
+            icon: _exporting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_outlined),
+            label: Text(name.isEmpty ? 'Exporter les données' : 'Exporter les données de $name'),
+          ),
           section('Profil'),
           OutlinedButton.icon(
             onPressed: () => context.go(Routes.childEdit(widget.childId)),

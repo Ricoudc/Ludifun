@@ -113,6 +113,18 @@ class LudifunApi {
     return [for (final d in r.data!) Device.fromJson(d as Json)];
   });
 
+  /// §16.2 : toutes les données de l'enfant, en JSON (nom de fichier proposé par le serveur).
+  Future<({String filename, Uint8List bytes})> exportChild(String childId) => _call(() async {
+    final r = await _dio.get<List<int>>(
+      '/v1/children/$childId/export',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final disposition = r.headers.value('content-disposition') ?? '';
+    final filename =
+        RegExp(r'filename="([^"]+)"').firstMatch(disposition)?.group(1) ?? 'ludifun-$childId.json';
+    return (filename: filename, bytes: Uint8List.fromList(r.data!));
+  });
+
   Future<void> revokeDevice(String childId, String deviceId) =>
       _call(() => _dio.delete<void>('/v1/children/$childId/devices/$deviceId'));
 
