@@ -50,6 +50,11 @@ class PasswordResetConfirmIn(_In):
 class ParentOut(BaseModel):
     id: uuid.UUID
     email: str
+    email_verified: bool = Field(description="Adresse confirmée par le lien envoyé à l'inscription.")
+
+
+class EmailVerificationIn(_In):
+    token: Annotated[str, Field(max_length=200)]
 
 
 class TokensOut(BaseModel):

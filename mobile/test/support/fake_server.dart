@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:ludifun/core/api/ludifun_api.dart';
+import 'package:ludifun/core/link_opener.dart';
 import 'package:ludifun/core/session.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 
@@ -76,8 +77,20 @@ Map<String, Object?> tokens(String access, String refresh) => {
 
 const emma = {'id': 'c1', 'display_name': 'Emma', 'grade': 'CM1', 'avatar': null};
 
-List<Override> overridesFor(FakeServer server, CredentialStore store) => [
+/// Pages ouvertes dans le navigateur (politique de confidentialité…).
+class FakeLinkOpener implements LinkOpener {
+  final opened = <Uri>[];
+
+  @override
+  Future<bool> open(Uri uri) async {
+    opened.add(uri);
+    return true;
+  }
+}
+
+List<Override> overridesFor(FakeServer server, CredentialStore store, [LinkOpener? links]) => [
   credentialStoreProvider.overrideWithValue(store),
+  linkOpenerProvider.overrideWithValue(links ?? FakeLinkOpener()),
   bareDioProvider.overrideWithValue(buildDio('http://api.test')..httpClientAdapter = server),
 ];
 

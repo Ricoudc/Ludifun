@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/link_opener.dart';
 import '../../core/session.dart';
 
 /// Écran P1 : connexion ou création du compte parent.
@@ -108,6 +109,14 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
                 title: const Text(
                   'J\'accepte la politique de confidentialité : les photos des leçons ne sont '
                   'jamais conservées, aucune publicité.',
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => openPublicPage(ref, '/confidentialite'),
+                  icon: const Icon(Icons.open_in_new, size: 18),
+                  label: const Text('Lire la politique de confidentialité'),
                 ),
               ),
             ],

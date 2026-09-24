@@ -6,9 +6,11 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/link_opener.dart';
 import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
 import '../../models/account.dart';
+import 'email_banner.dart';
 import 'feedback_dialog.dart';
 import 'parent_providers.dart';
 
@@ -51,11 +53,13 @@ class ParentHomeScreen extends ConsumerWidget {
             onSelected: (choice) => switch (choice) {
               'logout' => ref.read(sessionProvider.notifier).signOut(),
               'feedback' => showFeedbackDialog(context),
+              'privacy' => openPublicPage(ref, '/confidentialite'),
               _ => _deleteAccount(context, ref),
             },
             itemBuilder: (_) => [
               PopupMenuItem(enabled: false, child: Text(email)),
               const PopupMenuItem(value: 'feedback', child: Text('Donner mon avis')),
+              const PopupMenuItem(value: 'privacy', child: Text('Confidentialité')),
               const PopupMenuItem(value: 'logout', child: Text('Me déconnecter')),
               const PopupMenuItem(
                 value: 'delete',
@@ -69,10 +73,14 @@ class ParentHomeScreen extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref.refresh(childrenProvider.future),
+        onRefresh: () {
+          ref.invalidate(parentProfileProvider);
+          return ref.refresh(childrenProvider.future);
+        },
         child: CenteredBody(
           top: true,
           children: [
+            const EmailVerificationBanner(),
             ...switch (children) {
               AsyncData(value: final list) when list.isEmpty => [
                 const Text('👋', textAlign: TextAlign.center, style: TextStyle(fontSize: 48)),

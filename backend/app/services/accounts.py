@@ -12,6 +12,7 @@ from app.config import Settings
 from app.db.models import (
     Child,
     Device,
+    EmailVerificationToken,
     Family,
     FamilyMember,
     LinkCode,
@@ -21,7 +22,7 @@ from app.db.models import (
 )
 from app.security import tokens
 from app.security.passwords import hash_password, needs_rehash, verify_password
-from app.services.email import Email, EmailSender
+from app.services.email import Email, EmailNotSent, EmailSender
 
 
 class EmailTaken(Exception):
@@ -160,6 +161,59 @@ async def request_password_reset(
             ),
         )
     )
+
+
+async def send_email_verification(
+    db: AsyncSession, parent: Parent, settings: Settings, sender: EmailSender, now: datetime
+) -> bool:
+    """« Confirmez votre adresse » : un lien valable 7 jours ; les liens précédents restent
+    valables jusqu'à leur expiration. Faux si l'e-mail n'a pas pu partir (on réessaiera)."""
+    link = tokens.opaque_token(tokens.VERIFY_PREFIX)
+    db.add(
+        EmailVerificationToken(
+            parent_id=parent.id,
+            token_hash=link.hash,
+            expires_at=now + timedelta(days=settings.email_verification_days),
+        )
+    )
+    await db.flush()
+    try:
+        await sender.send(
+            Email(
+                to=parent.email,
+                subject="Ludifun : confirmez votre adresse e-mail",
+                body=(
+                    "Bienvenue sur Ludifun !\n\n"
+                    "Pour confirmer que cette adresse est bien la vôtre, ouvrez ce lien "
+                    f"(valable {settings.email_verification_days} jours) :\n"
+                    f"{settings.email_verification_url}{link.value}\n\n"
+                    "Elle ne sert qu'à votre compte : mot de passe oublié et messages importants "
+                    "sur les données de vos enfants. Jamais de publicité.\n\n"
+                    "Si vous n'avez pas créé de compte, ignorez ce message : sans confirmation, "
+                    "le compte ne recevra plus rien de notre part."
+                ),
+            )
+        )
+    except EmailNotSent:
+        return False
+    return True
+
+
+async def verify_email(db: AsyncSession, token: str, now: datetime) -> Parent:
+    link = await db.scalar(
+        select(EmailVerificationToken)
+        .where(EmailVerificationToken.token_hash == tokens.sha256(token))
+        .with_for_update()
+    )
+    if link is None or link.expires_at <= now:
+        raise InvalidCredentials
+    parent = await db.get(Parent, link.parent_id)
+    assert parent is not None
+    if link.used_at is None:
+        link.used_at = now
+    if parent.email_verified_at is None:
+        parent.email_verified_at = now
+    return parent
 
 
 async def reset_password(db: AsyncSession, token: str, new_password: str, now: datetime) -> None:

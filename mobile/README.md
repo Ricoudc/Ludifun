@@ -28,6 +28,10 @@ Sur un vrai téléphone : l'APK de test est produit par l'intégration continue 
 « ludifun-apk-test ») et l'adresse du serveur se règle sur l'écran de premier lancement (versions
 de test uniquement). Pas à pas : [`docs/tester-sur-telephone.md`](../docs/tester-sur-telephone.md).
 
+Play Store (test fermé) : le workflow « Android (Play Store) » produit un bundle signé, avec
+l'adresse de l'API fixée (`--dart-define=API_URL=https://…`). La signature vient de
+`android/key.properties`, jamais versionné. Pas à pas : [`docs/play-store.md`](../docs/play-store.md).
+
 Au premier lancement, l'appareil choisit son espace :
 
 - **parent** : connexion ou création du compte (e-mail et mot de passe) ;
@@ -46,7 +50,9 @@ objectifs (temps par jour, matière à privilégier, contrôles à venir et leur
 compétences par leçon (niveau 0 à 5 de chaque compétence et notion, et ce qui manque encore),
 historique des séances, appareils liés, export des données d'un enfant (fichier JSON, par la
 feuille de partage du téléphone), suppression d'un enfant ou du compte, « Donner mon avis » (note
-et message, menu *Mon compte*). Le parent peut aussi photographier une leçon pour son enfant.
+et message, menu *Mon compte*), bandeau « Confirmez votre adresse » avec renvoi du lien, lien
+`ludifun://app/parent/verifier-email?jeton=…`, politique de confidentialité ouverte dans le
+navigateur (inscription et menu *Mon compte*). Le parent peut aussi photographier une leçon pour son enfant.
 
 Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,
 association, défi rapide chronométré, carte mémoire) viennent d'un registre de widgets ; un type

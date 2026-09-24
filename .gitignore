@@ -23,3 +23,7 @@ mobile/.flutter-plugins-dependencies
 # Évaluation : les photos réelles et les résultats restent hors du dépôt (données d’enfants)
 eval/lessons/
 eval/results/
+
+# Déploiement : secrets et sauvegardes locales
+deploy/.env
+deploy/backups/

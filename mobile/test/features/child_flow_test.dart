@@ -180,7 +180,8 @@ void main() {
     // Écran 2 : deux pages de la galerie et une photo, puis la photo passe en premier.
     await tester.tap(find.text('Nouvelle leçon'));
     await tester.pumpAndSettle();
-    expect(find.text('Pose le cahier à plat, avec de la lumière.'), findsOneWidget);
+    expect(find.textContaining('Pose le cahier à plat'), findsOneWidget);
+    expect(find.textContaining('sans ton nom ni ton visage'), findsOneWidget);
     await tester.tap(find.text('Ajouter depuis la galerie'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Prendre une photo'));

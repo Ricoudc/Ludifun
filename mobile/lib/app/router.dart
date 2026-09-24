@@ -15,6 +15,7 @@ import '../features/parent/child_dashboard_screen.dart';
 import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
 import '../features/parent/child_skills_screen.dart';
+import '../features/parent/email_verification_screen.dart';
 import '../features/parent/goals_screen.dart';
 import '../features/parent/link_code_screen.dart';
 import '../features/parent/parent_home_screen.dart';
@@ -34,6 +35,9 @@ abstract final class Routes {
 
   /// Ouvert par le lien de l'e-mail : `ludifun://app/parent/nouveau-mot-de-passe?jeton=…`.
   static const newPassword = '/parent/nouveau-mot-de-passe';
+
+  /// Ouvert par le lien « Confirmez votre adresse » : `ludifun://app/parent/verifier-email?jeton=…`.
+  static const verifyEmail = '/parent/verifier-email';
   static const addChild = '/parent/enfants/nouveau';
   static String childDashboard(String childId) => '/parent/enfants/$childId';
   static String childLink(String childId) => '/parent/enfants/$childId/lier';
@@ -67,7 +71,8 @@ String? redirect(AsyncValue<Credentials> session, String location) {
     Routes.scanQr,
     Routes.forgotPassword,
   };
-  if (location == Routes.newPassword) return null; // lien de l'e-mail, quel que soit l'espace
+  // Liens des e-mails, quel que soit l'espace ouvert sur le téléphone.
+  if (location == Routes.newPassword || location == Routes.verifyEmail) return null;
   final target = switch (credentials) {
     NoCredentials() => signedOut.contains(location) ? location : Routes.start,
     ParentCredentials() =>
@@ -99,6 +104,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.newPassword,
         builder: (_, state) => PasswordResetScreen(token: state.uri.queryParameters['jeton'] ?? ''),
+      ),
+      GoRoute(
+        path: Routes.verifyEmail,
+        builder: (_, state) =>
+            EmailVerificationScreen(token: state.uri.queryParameters['jeton'] ?? ''),
       ),
       GoRoute(
         path: Routes.parentHome,

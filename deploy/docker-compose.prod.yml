@@ -1,0 +1,109 @@
+# Production (bêta) : un seul serveur dans l'UE. Voir docs/deploiement.md.
+#
+#   cp deploy/.env.example deploy/.env     # puis remplir (jamais dans git)
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
+#
+# Seul Caddy est exposé (80 et 443) : HTTPS automatique (Let's Encrypt) et HSTS.
+# L'API et la base restent sur le réseau interne.
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }  # journaux bornés en taille (§16.1)
+
+x-api-env: &api-env
+  LUDIFUN_ENVIRONMENT: prod
+  LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:${POSTGRES_PASSWORD:?}@db:5432/ludifun
+  LUDIFUN_JWT_SECRET: ${LUDIFUN_JWT_SECRET:?}
+  LUDIFUN_AI_PROVIDER: claude
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?}
+  LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-20}
+  LUDIFUN_SMTP_HOST: ${LUDIFUN_SMTP_HOST:?}
+  LUDIFUN_SMTP_PORT: ${LUDIFUN_SMTP_PORT:-587}
+  LUDIFUN_SMTP_USERNAME: ${LUDIFUN_SMTP_USERNAME:-}
+  LUDIFUN_SMTP_PASSWORD: ${LUDIFUN_SMTP_PASSWORD:-}
+  LUDIFUN_EMAIL_FROM: ${LUDIFUN_EMAIL_FROM:?}
+  LUDIFUN_EMAIL_VERIFICATION_URL: https://${LUDIFUN_DOMAIN:?}/verifier-email?jeton=
+  LUDIFUN_LEGAL_ENTITY: ${LUDIFUN_LEGAL_ENTITY:?}
+  LUDIFUN_CONTACT_EMAIL: ${LUDIFUN_CONTACT_EMAIL:?}
+  LUDIFUN_HOSTING_PROVIDER: ${LUDIFUN_HOSTING_PROVIDER:?}
+  LUDIFUN_EMAIL_PROVIDER: ${LUDIFUN_EMAIL_PROVIDER:?}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ludifun
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ludifun
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ludifun -d ludifun"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  api:
+    build: ../backend
+    restart: unless-stopped
+    environment:
+      <<: *api-env
+      # Caddy est le seul client : on lui fait confiance pour l'adresse IP réelle (limites de débit).
+      FORWARDED_ALLOW_IPS: "*"
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      LUDIFUN_DOMAIN: ${LUDIFUN_DOMAIN:?}
+      ACME_EMAIL: ${LUDIFUN_CONTACT_EMAIL:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api: { condition: service_healthy }
+    logging: *logging
+
+  # Conservation (§16.2) : prévenance puis suppression des comptes inactifs, une fois par jour.
+  retention:
+    build: ../backend
+    restart: unless-stopped
+    environment: *api-env
+    command: ["sh", "-c", "while true; do python -m app.tools.retention; sleep 86400; done"]
+    depends_on:
+      api: { condition: service_healthy }  # migrations appliquées
+    logging: *logging
+
+  # Sauvegarde chiffrée chaque nuit (clé publique age), gardée 30 jours.
+  backup:
+    build: ./backup
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ludifun
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      PGDATABASE: ludifun
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:?}
+      BACKUP_KEEP_DAYS: "30"
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    depends_on:
+      db: { condition: service_healthy }
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

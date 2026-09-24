@@ -92,6 +92,8 @@ class Parent(Base):
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = _created_at()
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Conservation (§16.2) : e-mail de prévenance envoyé avant la suppression d'un compte inactif.
+    inactivity_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Family(Base):
@@ -203,6 +205,21 @@ class RefreshToken(Base):
 
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "parent_id"),)
+
+
+class EmailVerificationToken(Base):
+    """Lien « Confirmer mon adresse » envoyé au parent (étape 19)."""
+
+    __tablename__ = "email_verification_tokens"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     parent_id: Mapped[uuid.UUID] = _fk("parents.id")

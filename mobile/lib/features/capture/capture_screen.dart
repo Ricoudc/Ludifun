@@ -161,7 +161,8 @@ class _Tip extends StatelessWidget {
           SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Pose le cahier à plat, avec de la lumière.',
+              'Pose le cahier à plat, avec de la lumière. Photographie seulement la leçon, '
+              'sans ton nom ni ton visage.',
               style: TextStyle(fontSize: 18),
             ),
           ),

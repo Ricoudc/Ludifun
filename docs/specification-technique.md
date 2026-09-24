@@ -71,6 +71,7 @@ Ce sont les étapes 13 et 14, avant les tests avec de vraies familles.
 | A7 | Routes de l'API | §58 : `/families`, `/activities/generate`, `/answers`… | Garder les routes existantes (même rôle, déjà testées) : `/children`, `/lessons/{id}/sessions`, `/sessions/{id}/attempts`… Nouvelles routes au §7. | proposé |
 | A8 | Orchestrateur IA | §59 : 12 « agents » | Des **étapes** au contrat strict, pas des agents autonomes : lecture, analyse, matériel (existants), puis évaluation des réponses ouvertes, aides, assistant parent. La planification, l'adaptation et la révision restent **déterministes** (moteur pédagogique, §92). | proposé |
 | A9 | Modèles de repli | — | Garder le basculement automatique vers un autre modèle en cas de refus. | question ouverte |
+| A10 | Confirmation de l'e-mail du parent | V1 §16.2 | **Rappeler sans bloquer** : un bandeau jusqu'à la confirmation ; l'adresse sert au mot de passe oublié et à la prévenance avant suppression (§4.7). | à valider |
 
 ---
 
@@ -230,6 +231,22 @@ CREATE TABLE feedback (
 
 L'avis est lu par l'équipe seulement (rapport `app.tools.pilot_report`), figure dans l'export
 RGPD de l'enfant et disparaît avec son auteur. 30 avis par jour et par auteur au plus.
+
+### 4.7 Migration `0009` (étape 19, faite)
+
+```sql
+CREATE TABLE email_verification_tokens (   -- « Confirmez votre adresse » : haché, 7 jours
+  id UUID PRIMARY KEY,
+  parent_id UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  token_hash BYTEA NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL, expires_at TIMESTAMPTZ NOT NULL, used_at TIMESTAMPTZ
+);
+ALTER TABLE parents ADD COLUMN inactivity_warned_at TIMESTAMPTZ;  -- prévenance avant suppression
+```
+
+La confirmation de l'e-mail ne bloque rien (arbitrage A10 proposé) : un bandeau la rappelle au
+parent, et l'adresse sert au mot de passe oublié et à la prévenance avant suppression. La
+bloquer gênerait l'inscription des familles de la bêta si les e-mails arrivent en retard.
 
 V2 (gamification, CDC §37-§39) : `xp_events(child_id, reason, points, session_id, created_at)`,
 `badges(child_id, code, earned_at)`, série calculée depuis `sessions`. Aucune
@@ -481,6 +498,8 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | GET | `/v1/children/{id}/dashboard` | ✅ étape 14 : `error_types` et `recurring_errors` ajoutés (pas de route séparée) |
 | PATCH | `/v1/children/{id}` `{daily_minutes, priority_subject}` | ✅ étape 16 : temps quotidien, matière prioritaire (`null` : libre, aucune) |
 | GET · POST · DELETE | `/v1/children/{id}/exams[/{exam_id}]` | ✅ étape 16 : contrôles à venir, chacun avec son `plan` jour par jour |
+| POST | `/v1/auth/verify-email` `{token}` · `/v1/parent/verify-email` | ✅ étape 19 : confirmation de l'adresse du parent ; renvoi du lien (3 par heure) |
+| GET | `/confidentialite` · `/suppression-compte` · `/verifier-email` | ✅ étape 19 : pages web publiques (HTML sans script) |
 | POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
 
@@ -518,7 +537,7 @@ documentation, intégration continue verte.
 | 16 ✅ | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
 | 17 ✅ | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
 | 18 🟡 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1. Outillage fait : migration 0008 (avis), `POST /v1/feedback`, note rapide en fin de séance et « Donner mon avis » côté parent, rapport `app.tools.pilot_report`, protocole [`tests-familles.md`](tests-familles.md) | critères de passage atteints (en attente des familles, des leçons et d'une clé API) |
-| 19 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé | 20 familles testeuses |
+| 19 🟡 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé. Fait : migration 0009, e-mails SMTP, confirmation de l'e-mail du parent, suppression des comptes inactifs (`app.tools.retention`), pages `/confidentialite`, `/suppression-compte`, `/verifier-email`, `deploy/` (Caddy HTTPS et HSTS, sauvegardes chiffrées), bundle signé (workflow « Android (Play Store) »), [`deploiement.md`](deploiement.md), [`play-store.md`](play-store.md), [registre](rgpd/registre-des-traitements.md) et [AIPD](rgpd/aipd.md) en brouillon | 20 familles testeuses (en attente des comptes Play et fournisseurs, de la relecture juridique et des familles) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 

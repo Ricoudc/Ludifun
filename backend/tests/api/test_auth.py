@@ -104,6 +104,7 @@ async def test_invalid_access_tokens(client: AsyncClient, problem: str) -> None:
 
 async def test_password_reset(client: AsyncClient, mailer: MemoryEmailSender) -> None:
     old = await register(client)
+    mailer.sent.clear()  # « Confirmez votre adresse »
     unknown = await client.post("/v1/auth/password-reset", json={"email": "inconnu@example.fr"})
     known = await client.post("/v1/auth/password-reset", json={"email": "parent@example.fr"})
     assert unknown.status_code == known.status_code == 202 and unknown.json() == known.json()

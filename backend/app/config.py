@@ -44,7 +44,38 @@ class Settings(BaseSettings):
     password_reset_minutes: int = 60
     # Lien ouvert par l'application (écran « nouveau mot de passe ») ; le jeton est ajouté à la fin.
     password_reset_url: str = "ludifun://app/parent/nouveau-mot-de-passe?jeton="
+    # Confirmation de l'adresse du parent (étape 19) : page web de l'API en production
+    # (https://…/verifier-email?jeton=), sinon l'application.
+    email_verification_url: str = "ludifun://app/parent/verifier-email?jeton="
+    email_verification_days: int = 7
+
+    # E-mails (étape 19) : fournisseur SMTP hébergé dans l'UE ; sans hôte, journal (dev seulement).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: SecretStr | None = None
+    email_from: str = "Ludifun <bonjour@ludifun.fr>"
+
+    # Conservation (§16.2) : prévenance puis suppression d'un compte inactif.
+    inactive_warning_days: int = 335  # environ 11 mois
+    inactive_delete_days: int = 365
+    inactive_notice_days: int = 30  # délai minimal entre la prévenance et la suppression
+
+    # Pages publiques (confidentialité, suppression du compte) : à renseigner avant la bêta.
+    legal_entity: str = "[À COMPLÉTER : nom et adresse de l'éditeur]"
+    contact_email: str = "[À COMPLÉTER : adresse de contact]"
+    hosting_provider: str = "[À COMPLÉTER : hébergeur]"
+    email_provider: str = "[À COMPLÉTER : fournisseur d'e-mails]"
+    privacy_updated: str = "24/09/2026"
+
     family_timezone: str = "Europe/Paris"  # semaines du tableau de bord parent (§11)
+
+    def missing_legal_details(self) -> list[str]:
+        """Réglages des pages publiques encore à compléter (LUDIFUN_LEGAL_ENTITY…)."""
+        fields = ("legal_entity", "contact_email", "hosting_provider", "email_provider")
+        return [
+            f"LUDIFUN_{name.upper()}" for name in fields if getattr(self, name).startswith("[À COMPLÉTER")
+        ]
 
     @field_validator("family_timezone")
     @classmethod

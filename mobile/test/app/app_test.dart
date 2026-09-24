@@ -15,10 +15,13 @@ void main() {
       ..on('GET /v1/lessons', (_) => (200, <Object>[])),
   );
 
+  late FakeLinkOpener links;
+  setUp(() => links = FakeLinkOpener());
+
   Future<void> launch(WidgetTester tester, MemoryCredentialStore store) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: overridesFor(server, store),
+        overrides: overridesFor(server, store, links),
         retry: noRetry,
         child: const LudifunApp(),
       ),
@@ -126,7 +129,13 @@ void main() {
     );
     expect(server.requests, isEmpty);
 
+    // Étape 19 : la politique se lit avant d'accepter (page servie par l'API).
+    await tester.ensureVisible(find.text('Lire la politique de confidentialité'));
+    await tester.tap(find.text('Lire la politique de confidentialité'));
+    expect(links.opened, [Uri.parse('http://api.test/confidentialite')]);
+
     await tester.tap(find.byType(CheckboxListTile));
+    await tester.ensureVisible(find.text('Créer mon compte'));
     await tester.tap(find.text('Créer mon compte'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Ajoutez le profil de votre enfant'), findsOneWidget);

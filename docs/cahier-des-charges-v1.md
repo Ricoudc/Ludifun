@@ -808,6 +808,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | POST | `/v1/lessons/text` · `/v1/lessons/{id}/review` | leçon collée ; réponses à « Peux-tu vérifier ? » (étape 15, [spécification technique](specification-technique.md) §6.3) |
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | « Je n'ai pas compris » : l'aide suivante, 1 à 5 (étape 14, [spécification technique](specification-technique.md) §5.4) |
 | POST | `/v1/sessions/{id}/extend` | défis bonus pour un enfant rapide, après `bonus_offer` (étape 17, [spécification technique](specification-technique.md) §5.8) |
+| POST | `/v1/auth/verify-email` · `/v1/parent/verify-email` | `{token}` : lien « Confirmez votre adresse » (sans connexion) ; renvoi du lien par le parent connecté, 3 par heure, 409 si déjà confirmée (étape 19) |
 | POST | `/v1/feedback` | `{rating?, message?, screen?, session_id?, child_id?}` → **201** : avis du parent ou de l'enfant (étape 18, [tests en famille](tests-familles.md)) ; supprimé avec son auteur |
 | POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) ; une fois toutes les activités principales répondues ; idempotent |
 | POST | `/v1/sessions/{id}/complete` | Clôture → bilan (écran 7) |

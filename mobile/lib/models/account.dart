@@ -27,6 +27,19 @@ class ParentTokens {
   final String email;
 }
 
+/// `GET /v1/parent` : le compte, et si l'adresse e-mail est confirmée (étape 19).
+class ParentProfile {
+  const ParentProfile({required this.email, required this.emailVerified});
+
+  factory ParentProfile.fromJson(Json json) => ParentProfile(
+    email: json['email'] as String,
+    emailVerified: json['email_verified'] as bool? ?? true,
+  );
+
+  final String email;
+  final bool emailVerified;
+}
+
 class Child {
   const Child({
     required this.id,

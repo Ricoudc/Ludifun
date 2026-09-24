@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.factory import build_providers
-from app.api import health, v1
+from app.api import health, v1, web
 from app.api.body_limit import BodySizeLimit
 from app.api.deps import AiProviders
 from app.api.errors import install_error_handlers
@@ -14,7 +14,7 @@ from app.config import Settings, get_settings
 from app.db.base import Database
 from app.domain.activities.registry import default_registry
 from app.security.rate_limit import RateLimiter
-from app.services.email import EmailSender, LogEmailSender
+from app.services.email import EmailSender, build_email_sender
 from app.services.lesson_processing import recover_interrupted_lessons
 
 
@@ -37,7 +37,12 @@ def create_app(
             await recover_interrupted_lessons(app.state.database)
         except (SQLAlchemyError, OSError):  # base injoignable : /health/ready le signalera
             logging.getLogger("ludifun").exception("Récupération des analyses interrompues impossible")
-        app.state.email_sender = email_sender or LogEmailSender(include_body=settings.environment != "prod")
+        app.state.email_sender = email_sender or build_email_sender(settings)
+        if settings.environment == "prod" and settings.missing_legal_details():
+            logging.getLogger("ludifun").warning(
+                "Pages publiques incomplètes (%s) : à renseigner avant la bêta.",
+                ", ".join(settings.missing_legal_details()),
+            )
         yield
         await app.state.database.dispose()
 
@@ -56,6 +61,7 @@ def create_app(
     app.add_middleware(BodySizeLimit, max_bytes=settings.max_pages * settings.max_image_bytes + 2**20)
     app.include_router(health.router)
     app.include_router(v1.router)
+    app.include_router(web.router)
     return app
 
 

@@ -39,26 +39,32 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | ✅ |
 | 17 | Adaptation en temps réel et engagement | ✅ |
 | 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | 🟡 outillage prêt (avis dans l'application, rapport, [protocole](docs/tests-familles.md)), en attente des familles |
-| 19 | Bêta Android (Play Store, test fermé) | |
+| 19 | Bêta Android (Play Store, test fermé) | 🟡 prête à déployer ([serveur](docs/deploiement.md), [Play Store](docs/play-store.md), [RGPD](docs/rgpd/registre-des-traitements.md)), en attente des comptes, fournisseurs et familles |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).
 
-### Reste à faire avant la bêta publique (§16)
+### Reste à faire avant la bêta (§16)
 
-- hébergement : HTTPS et HSTS par un reverse proxy, API et base dans l'UE ;
-- e-mails réels : un fournisseur d'envoi, puis la vérification de l'e-mail du parent ;
-- conservation : suppression automatique d'un compte inactif depuis 12 mois, après un e-mail
-  de prévenance (nécessite le fournisseur d'e-mails) ;
-- limites de débit dans un stockage partagé (Redis) si l'API tourne sur plusieurs instances ;
-- documents : politique de confidentialité, registre des traitements, analyse d'impact (AIPD),
-  contrat de sous-traitance (DPA) avec le fournisseur d'IA.
+Le code est prêt (étape 19) : HTTPS et HSTS par Caddy, e-mails SMTP, confirmation de l'e-mail
+du parent, suppression des comptes inactifs, sauvegardes chiffrées, pages de confidentialité et
+de suppression du compte, bundle signé pour le Play Store. Restent des décisions et des comptes
+à créer :
+
+- choisir l'éditeur, l'hébergeur et le fournisseur d'e-mails dans l'UE ; signer les contrats de
+  sous-traitance (DPA), y compris avec Anthropic ;
+- faire relire la politique de confidentialité, le [registre](docs/rgpd/registre-des-traitements.md)
+  et l'[AIPD](docs/rgpd/aipd.md) ;
+- déployer ([`docs/deploiement.md`](docs/deploiement.md)) et publier en test fermé
+  ([`docs/play-store.md`](docs/play-store.md)) ;
+- plus tard : limites de débit dans un stockage partagé (Redis) si l'API tourne sur plusieurs
+  instances.
 
 ## Démarrage rapide
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0008"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0009"}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)

@@ -453,6 +453,39 @@ void main() {
     expect(find.text('Qui utilise cet appareil ?'), findsOneWidget);
   });
 
+  testWidgets('confirmer son adresse e-mail : bandeau, renvoi du lien, lien ouvert', (
+    tester,
+  ) async {
+    var verified = false;
+    Object? verification;
+    server
+      ..on(
+        'GET /v1/parent',
+        (_) => (200, {'id': 'p1', 'email': 'parent@example.fr', 'email_verified': verified}),
+      )
+      ..on('POST /v1/parent/verify-email', (_) => (202, {'status': 'ok'}))
+      ..on('POST /v1/auth/verify-email', (r) {
+        verification = r.data;
+        verified = true;
+        return (200, {'id': 'p1', 'email': 'parent@example.fr', 'email_verified': true});
+      });
+    final container = await launch(tester);
+    expect(find.text('📧 Confirmez votre adresse'), findsOneWidget);
+    expect(find.textContaining('Ouvrez le lien envoyé à parent@example.fr'), findsOneWidget);
+
+    await tap(tester, find.text('Renvoyer le lien'));
+    expect(server.routes, contains('POST /v1/parent/verify-email'));
+    expect(find.text('Lien envoyé : regardez votre boîte e-mail.'), findsOneWidget);
+
+    // Le lien de l'e-mail ouvre l'application.
+    await go(tester, container, '${Routes.verifyEmail}?jeton=ldf_v_abc');
+    expect(verification, {'token': 'ldf_v_abc'});
+    expect(find.text('Adresse confirmée, merci !'), findsOneWidget);
+    await tap(tester, find.text('Continuer'));
+    expect(find.text('Mes enfants'), findsOneWidget);
+    expect(find.text('📧 Confirmez votre adresse'), findsNothing);
+  });
+
   testWidgets('donner son avis (tests en famille)', (tester) async {
     final sent = <Object?>[];
     server.on('POST /v1/feedback', (r) {

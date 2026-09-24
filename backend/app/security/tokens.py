@@ -12,6 +12,7 @@ ALGORITHM = "HS256"
 DEVICE_PREFIX = "ldf_d_"
 REFRESH_PREFIX = "ldf_r_"
 RESET_PREFIX = "ldf_p_"
+VERIFY_PREFIX = "ldf_v_"
 
 
 def sha256(value: str) -> bytes:

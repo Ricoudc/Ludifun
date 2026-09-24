@@ -9,6 +9,11 @@ final childrenProvider = FutureProvider.autoDispose<List<Child>>(
   (ref) => ref.watch(apiProvider).children(),
 );
 
+/// Le compte du parent : l'adresse est-elle confirmée ? (bandeau de l'accueil parent)
+final parentProfileProvider = FutureProvider.autoDispose<ParentProfile>(
+  (ref) => ref.watch(apiProvider).parent(),
+);
+
 /// Un enfant de la famille (dans la liste déjà chargée).
 final childProvider = FutureProvider.autoDispose.family<Child?, String>((ref, id) async {
   final children = await ref.watch(childrenProvider.future);

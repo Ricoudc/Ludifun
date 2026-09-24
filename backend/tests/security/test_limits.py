@@ -121,6 +121,7 @@ async def test_simultaneous_registrations(client: AsyncClient) -> None:
 
 async def test_reset_invalidates_other_reset_links(client: AsyncClient, mailer: MemoryEmailSender) -> None:
     await register(client)
+    mailer.sent.clear()  # « Confirmez votre adresse »
     for _ in range(2):
         await client.post("/v1/auth/password-reset", json={"email": "parent@example.fr"})
     first, second = (m.body.split("jeton=")[1].split()[0] for m in mailer.sent)

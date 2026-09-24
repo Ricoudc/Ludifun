@@ -83,6 +83,24 @@ séances par enfant, aides, remédiations, pauses, défis bonus, erreurs, leçon
 d'IA, avis envoyés depuis l'application (`POST /v1/feedback`). Aucun prénom ni texte de leçon :
 les enfants sont numérotés. Protocole complet : [`docs/tests-familles.md`](../docs/tests-familles.md).
 
+## Comptes inactifs (étape 19)
+
+```bash
+uv run python -m app.tools.retention --dry-run   # qui serait prévenu ou supprimé
+uv run python -m app.tools.retention             # en production : chaque jour (deploy/)
+```
+
+Un compte sans activité depuis 11 mois (connexion du parent, révision d'un enfant) reçoit un
+e-mail de prévenance. Il est supprimé à 12 mois, et au moins 30 jours après cet e-mail. Revenir
+une seule fois annule la suppression.
+
+## Pages publiques
+
+`/confidentialite` (politique de confidentialité), `/suppression-compte` (exigée par le Play
+Store) et `/verifier-email` (lien « Confirmez votre adresse », avec un bouton, car les antivirus
+ouvrent les liens des e-mails). HTML statique, sans script, dans `app/web/`. Déploiement :
+[`docs/deploiement.md`](../docs/deploiement.md).
+
 ## Analyser une vraie leçon (sans l'application)
 
 ```bash
@@ -135,4 +153,9 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
 | `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |
 | `LUDIFUN_PASSWORD_RESET_URL` | `ludifun://app/parent/nouveau-mot-de-passe?jeton=` (le jeton est ajouté à la fin) |
+| `LUDIFUN_EMAIL_VERIFICATION_URL`, `…_EMAIL_VERIFICATION_DAYS` | `ludifun://app/parent/verifier-email?jeton=`, `7` ; en production `https://<domaine>/verifier-email?jeton=` (page de l'API, ouvrable sur tout appareil) |
+| `LUDIFUN_SMTP_HOST`, `…_SMTP_PORT`, `…_SMTP_USERNAME`, `…_SMTP_PASSWORD` | vide, `587` (STARTTLS ; `465` : TLS direct) ; sans hôte, les e-mails vont au journal (contenu en développement seulement) |
+| `LUDIFUN_EMAIL_FROM` | `Ludifun <bonjour@ludifun.fr>` |
+| `LUDIFUN_INACTIVE_WARNING_DAYS`, `…_INACTIVE_DELETE_DAYS`, `…_INACTIVE_NOTICE_DAYS` | `335`, `365`, `30` : prévenance, suppression, délai minimal entre les deux |
+| `LUDIFUN_LEGAL_ENTITY`, `…_CONTACT_EMAIL`, `…_HOSTING_PROVIDER`, `…_EMAIL_PROVIDER` | « À COMPLÉTER » : repris dans `/confidentialite` et `/suppression-compte` |
 | `LUDIFUN_FAMILY_TIMEZONE` | `Europe/Paris` (découpage en semaines du tableau de bord parent) |

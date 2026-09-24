@@ -97,6 +97,19 @@ class LudifunApi {
   );
 
   /// Droit à l'effacement : le compte, la famille et tous les enfants.
+  Future<ParentProfile> parent() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent');
+    return ParentProfile.fromJson(r.data!);
+  });
+
+  /// Renvoie « Confirmez votre adresse » (3 fois par heure).
+  Future<void> resendEmailVerification() => _call(() => _dio.post<void>('/v1/parent/verify-email'));
+
+  /// Lien de l'e-mail ouvert dans l'application (sans être connecté).
+  Future<void> verifyEmail(String token) => _call(
+    () => _dio.post<void>('/v1/auth/verify-email', data: {'token': token}, options: _anonymous),
+  );
+
   Future<void> deleteAccount() => _call(() => _dio.delete<void>('/v1/parent'));
 
   Future<Child> createChild({required String displayName, required String grade, String? avatar}) =>
