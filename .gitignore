@@ -27,3 +27,6 @@ eval/results/
 # Déploiement : secrets et sauvegardes locales
 deploy/.env
 deploy/backups/
+
+# Démarrage Windows : famille de démonstration déjà proposée
+.ludifun-demo

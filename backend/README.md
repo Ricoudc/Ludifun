@@ -101,6 +101,23 @@ Store) et `/verifier-email` (lien « Confirmez votre adresse », avec un bouton,
 ouvrent les liens des e-mails). HTML statique, sans script, dans `app/web/`. Déploiement :
 [`docs/deploiement.md`](../docs/deploiement.md).
 
+## Fournisseurs d'IA
+
+`LUDIFUN_AI_PROVIDER` choisit l'IA : `claude` (API Anthropic, clé `ANTHROPIC_API_KEY`) ou `fake`
+(réponses rejouées, sans clé). `/health/ready` indique celle qui est active (`"ai"`).
+
+Pour en ajouter une autre (autre fournisseur, autre clé) :
+
+1. une classe dans `app/ai/providers/<nom>.py` qui respecte `LLMProvider` (`app/ai/ports.py`) :
+   `structured()` renvoie une sortie validée par le schéma Pydantic demandé, avec les images des
+   pages pour la lecture ; `model_for()` donne le modèle de chaque étape (journal des coûts) ;
+2. une entrée dans `PROVIDERS` (`app/ai/factory.py`) et le nom dans `Settings.ai_provider` ;
+3. sa clé dans l'environnement (`.env`, `docker-compose.yml`, `deploy/`), et ses prix dans
+   `app/ai/pricing.py` pour le plafond de dépense ;
+4. mesurer la qualité avec `app.tools.evaluate` avant de l'utiliser (`eval/README.md`).
+
+Le pipeline, la correction des réponses rédigées et le plafond de dépense ne changent pas.
+
 ## Analyser une vraie leçon (sans l'application)
 
 ```bash

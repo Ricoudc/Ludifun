@@ -63,6 +63,10 @@ de suppression du compte, bundle signé pour le Play Store. Restent des décisio
 
 ## Démarrage rapide
 
+**Windows, sans ligne de commande** : double-cliquer sur `Demarrer-Ludifun.bat` (choix de l'IA,
+serveur, adresse à saisir sur le téléphone) ; voir
+[`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).
+
 ```bash
 docker compose up -d --build
 curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0011"}

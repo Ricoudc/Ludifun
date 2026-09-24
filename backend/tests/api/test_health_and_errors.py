@@ -15,7 +15,7 @@ async def test_liveness(client: AsyncClient) -> None:
 async def test_readiness_reports_migrated_schema(client: AsyncClient) -> None:
     r = await client.get("/health/ready")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "schema": "0011"}
+    assert r.json() == {"status": "ok", "schema": "0011", "ai": "fake"}
 
 
 async def test_readiness_fails_cleanly_without_database() -> None:

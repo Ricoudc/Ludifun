@@ -13,6 +13,27 @@ Le téléphone joint l'ordinateur par le Wi-Fi : les deux doivent être sur **le
  (APK de test)                  IA factice par défaut, ou Claude avec une clé d'API
 ```
 
+## Le plus simple : Windows, en double-cliquant
+
+Une fois le dépôt téléchargé (`git clone`, ou le ZIP de GitHub décompressé) et Docker Desktop
+installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludifun` :
+
+| Double-cliquer sur | Ce que ça fait |
+|---|---|
+| `Demarrer-Ludifun.bat` | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
+| `Changer-IA-Ludifun.bat` | changer de clé ou passer de l'IA factice à la vraie IA (et inversement), puis redémarrer |
+| `Arreter-Ludifun.bat` | arrêter le serveur (les données sont gardées) |
+| `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
+| `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
+
+La clé d'API est enregistrée dans le fichier `.env` du dossier : il reste sur le PC et n'est
+jamais envoyé sur GitHub. La dépense d'IA est plafonnée à 5 $ par jour
+(`LUDIFUN_AI_DAILY_BUDGET_USD` dans `.env`). Pour vérifier quelle IA est active, ouvrez
+<http://localhost:8000/health/ready> : `"ai":"claude"` (vraie analyse) ou `"ai":"fake"`.
+
+Ensuite, passez directement au §3 (installer l'application). Les paragraphes suivants font la
+même chose à la main (et sur macOS ou Linux).
+
 ## 1. Lancer le serveur sur l'ordinateur
 
 Prérequis : [Git](https://git-scm.com/) et [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -34,7 +55,8 @@ La dernière commande crée une famille de démonstration et affiche :
   Code pour lier un téléphone au profil d'Emma : 836128 (valable 10 minutes)
 ```
 
-Vérification : <http://localhost:8000/health/ready> doit afficher `"status":"ok"`.
+Vérification : <http://localhost:8000/health/ready> doit afficher `"status":"ok"`, et `"ai"`
+l'IA utilisée (`fake` ou `claude`).
 
 Par défaut, l'**IA est factice** : aucune clé n'est nécessaire, et toute photo est lue comme
 l'une des trois leçons de référence (la Révolution française, les fractions ou les états de
@@ -88,14 +110,16 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 
-Créez un fichier `.env` à la racine du dépôt (il n'est jamais envoyé sur GitHub) :
+Sous Windows : `Changer-IA-Ludifun.bat`. Sinon, créez un fichier `.env` à la racine du dépôt
+(il n'est jamais envoyé sur GitHub) :
 
 ```
 LUDIFUN_AI_PROVIDER=claude
 ANTHROPIC_API_KEY=sk-ant-...
+LUDIFUN_AI_DAILY_BUDGET_USD=5
 ```
 
-puis relancez `docker compose up -d`. Les photos sont alors lues et analysées pour de vrai
+puis relancez `docker compose up -d` et vérifiez `"ai":"claude"` sur `/health/ready`. Les photos sont alors lues et analysées pour de vrai
 (quelques secondes à quelques dizaines de secondes par leçon, avec un coût par analyse).
 
 ## En cas de problème
@@ -104,7 +128,8 @@ puis relancez `docker compose up -d`. Les photos sont alors lues et analysées p
 |---|---|
 | « Serveur injoignable » | Même Wi-Fi ? Pas de VPN sur le téléphone ? Le pare-feu de l'ordinateur doit autoriser le port 8000 sur le réseau privé (Windows : autoriser Docker Desktop). Un Wi-Fi public ou d'entreprise peut isoler les appareils : essayez le partage de connexion du téléphone. |
 | `/health/ready` répond `database_unavailable` | `docker compose ps` : la base doit être `healthy` ; sinon `docker compose up -d` à nouveau. |
-| Toute photo devient « La Révolution française » | C'est l'IA factice (voir §5). |
+| Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Changer-IA-Ludifun.bat`). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
+| Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Voir-les-erreurs-Ludifun.bat` montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |
 | L'outil de démonstration refuse | Le compte existe déjà : ajoutez `--replace`. |
 | Pas d'« Artifacts » sur la page GitHub | L'exécution n'est pas terminée, a échoué, ou date de plus de 30 jours. |
