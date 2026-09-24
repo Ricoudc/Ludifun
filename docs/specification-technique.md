@@ -70,7 +70,7 @@ Ce sont les étapes 13 et 14, avant les tests avec de vraies familles.
 | A6 | Adaptation | §31, §109 : réussite → plus difficile, difficulté → aide | Conforme à ce qui est codé (question ouverte depuis l'étape 5 : **tranchée par le CDC**). | ✅ |
 | A7 | Routes de l'API | §58 : `/families`, `/activities/generate`, `/answers`… | Garder les routes existantes (même rôle, déjà testées) : `/children`, `/lessons/{id}/sessions`, `/sessions/{id}/attempts`… Nouvelles routes au §7. | proposé |
 | A8 | Orchestrateur IA | §59 : 12 « agents » | Des **étapes** au contrat strict, pas des agents autonomes : lecture, analyse, matériel (existants), puis évaluation des réponses ouvertes, aides, assistant parent. La planification, l'adaptation et la révision restent **déterministes** (moteur pédagogique, §92). | proposé |
-| A9 | Modèles de repli | — | Garder le basculement automatique vers un autre modèle en cas de refus. | question ouverte |
+| A9 | Modèles de repli | — | Garder le basculement automatique vers un autre modèle en cas de refus (déjà en place : `fallbacks="default"` dans `app/ai/providers/claude.py`, modèle réellement utilisé enregistré dans `ai_runs` pour le coût). Le repli reste chez Anthropic : rien ne change pour les sous-traitants. | ✅ validé (24/09/2026) |
 | A10 | Confirmation de l'e-mail du parent | V1 §16.2 | **Rappeler sans bloquer** : un bandeau jusqu'à la confirmation ; l'adresse sert au mot de passe oublié et à la prévenance avant suppression (§4.7). | ✅ validé (24/09/2026) |
 
 ---
