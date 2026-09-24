@@ -116,5 +116,4 @@ et refaire le volet concerné avant la bêta Android (étape 19).
   uniquement les chiffres agrégés.
 - Proposer aux familles de garder leur compte pour la bêta, ou de le supprimer depuis
   l'application (tout est effacé, avis compris).
-- Reporter les résultats dans la spécification technique (§9, étape 18) et les décisions en
-  attente (A9).
+- Reporter les résultats dans la spécification technique (§9, étape 18).
