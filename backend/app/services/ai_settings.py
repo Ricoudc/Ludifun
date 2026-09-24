@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.factory import AiChoice, build_providers
 from app.ai.ports import LLMProvider, OcrProvider
 from app.config import AiProviderName, Settings
-from app.db.models import Child, FamilyAiSettings, FamilyMember
+from app.db.models import Child, FamilyAiProvider, FamilyAiSettings, FamilyMember
 
 logger = logging.getLogger("ludifun.ai")
 
@@ -58,10 +58,17 @@ async def family_of_parent(db: AsyncSession, parent_id: uuid.UUID) -> uuid.UUID 
 
 
 async def load(db: AsyncSession, family_id: uuid.UUID) -> FamilyAiSettings | None:
+    """L'IA active de la famille ; `None` : celle du serveur."""
     return await db.get(FamilyAiSettings, family_id)
 
 
-def choice_of(row: FamilyAiSettings, settings: Settings) -> AiChoice:
+async def load_providers(db: AsyncSession, family_id: uuid.UUID) -> dict[str, FamilyAiProvider]:
+    """Les IA déjà réglées par la famille (clé, modèle, adresse), par nom."""
+    rows = await db.scalars(select(FamilyAiProvider).where(FamilyAiProvider.family_id == family_id))
+    return {row.provider: row for row in rows}
+
+
+def choice_of(row: FamilyAiProvider, settings: Settings) -> AiChoice:
     key = decrypt(settings, row.api_key_encrypted) if row.api_key_encrypted else None
     provider: AiProviderName = row.provider  # type: ignore[assignment]  # contrainte en base
     return AiChoice(provider, row.model, row.base_url, key)
@@ -74,23 +81,37 @@ async def save(
     choice: AiChoice,
     now: datetime,
     keep_key: bool,
-) -> FamilyAiSettings:
-    """Enregistre le choix. `keep_key` : garder la clé déjà enregistrée (même fournisseur)."""
-    row = await load(db, family_id)
+) -> None:
+    """Enregistre le réglage de cette IA et la rend active. `keep_key` : garder sa clé déjà
+    enregistrée. Les réglages des autres IA restent, pour y revenir sans tout ressaisir."""
+    row = await db.get(FamilyAiProvider, (family_id, choice.provider))
     if row is None:
-        row = FamilyAiSettings(family_id=family_id, provider=choice.provider, updated_at=now)
+        row = FamilyAiProvider(family_id=family_id, provider=choice.provider, updated_at=now)
         db.add(row)
-    row.provider, row.model, row.base_url, row.updated_at = (
-        choice.provider,
-        choice.model,
-        choice.base_url,
-        now,
-    )
+    row.model, row.base_url, row.updated_at = choice.model, choice.base_url, now
     if not keep_key:
         row.api_key_encrypted = encrypt(settings, choice.api_key) if choice.api_key else None
         row.key_hint = hint(choice.api_key) if choice.api_key else None
+    active = await load(db, family_id)
+    if active is None:
+        db.add(FamilyAiSettings(family_id=family_id, provider=choice.provider, updated_at=now))
+    else:
+        active.provider, active.updated_at = choice.provider, now
     await db.flush()
-    return row
+
+
+async def forget(db: AsyncSession, family_id: uuid.UUID, provider: str) -> bool:
+    """Oublie le réglage (et la clé) d'une IA ; si c'était l'IA active, la famille revient à
+    celle du serveur. Faux si rien n'était enregistré."""
+    row = await db.get(FamilyAiProvider, (family_id, provider))
+    active = await load(db, family_id)
+    if active is not None and active.provider == provider:
+        await db.delete(active)
+    if row is None:
+        return False
+    await db.delete(row)
+    await db.flush()
+    return True
 
 
 @dataclass
@@ -116,7 +137,10 @@ class AiResolver:
         self._cache.clear()
 
     async def for_child(self, db: AsyncSession, child: Child) -> tuple[OcrProvider, LLMProvider]:
-        row = await load(db, child.family_id)
-        if row is None:
+        active = await load(db, child.family_id)
+        if active is None:
             return self.default
+        row = await db.get(FamilyAiProvider, (child.family_id, active.provider))
+        if row is None:  # IA active sans réglage : ses valeurs par défaut
+            return self.for_choice(AiChoice(active.provider))  # type: ignore[arg-type]
         return self.for_choice(choice_of(row, self.settings))

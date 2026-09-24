@@ -507,8 +507,10 @@ void main() {
       'available': true,
     };
     Object? family;
+    final configs = <String, Map<String, Object?>>{};
     Map<String, Object?> settings() => {
       'family': family,
+      'saved': configs.values.toList(),
       'server_provider': 'fake',
       'providers': [
         provider(
@@ -540,13 +542,21 @@ void main() {
       ..on('PUT /v1/parent/ai', (r) {
         saved.add(r.data);
         final body = r.data as Map<String, dynamic>;
-        family = {
-          'provider': body['provider'],
+        final code = body['provider'] as String;
+        final key = body['api_key'] as String?;
+        final previousHint = configs[code]?['key_hint'];
+        family = configs[code] = {
+          'provider': code,
           'model': body['model'],
           'base_url': body['base_url'],
-          'key_hint': body['api_key'] == null ? null : '…1234',
+          'key_hint': key == null ? previousHint : '…${key.substring(key.length - 4)}',
         };
         return (200, settings());
+      })
+      ..on('DELETE /v1/parent/ai/providers/claude', (_) {
+        configs.remove('claude');
+        family = null;
+        return (204, null);
       });
     await launch(tester);
     await tap(tester, find.byTooltip('Mon compte'));
@@ -591,6 +601,28 @@ void main() {
     expect(saved.last, {'provider': 'claude', 'api_key': 'sk-ant-secret-1234'});
     expect(find.text('Clé enregistrée …1234 : laissez vide pour la garder.'), findsOneWidget);
     expect(find.text('sk-ant-secret-1234'), findsNothing);
+    expect(find.textContaining('🔑 Clé enregistrée …1234'), findsOneWidget);
+
+    // Retour à Ollama : son modèle est resté ; Claude garde sa clé pour plus tard.
+    await tap(tester, find.text('Ollama (sur ce PC) · conseillé'));
+    expect(find.widgetWithText(TextField, 'llama3:8b'), findsOneWidget);
+    await tap(tester, find.text('Enregistrer'));
+    expect(saved.last, {
+      'provider': 'ollama',
+      'model': 'llama3:8b',
+      'base_url': 'http://localhost:11434',
+    });
+    await tap(tester, find.text('Claude (Anthropic)'));
+    expect(find.text('Clé enregistrée …1234 : laissez vide pour la garder.'), findsOneWidget);
+    await tap(tester, find.text('Enregistrer'));
+    expect(saved.last, {'provider': 'claude'}); // la clé enregistrée sert, sans la ressaisir
+
+    // Oublier la clé de Claude.
+    await tap(tester, find.text('Oublier la clé de Claude (Anthropic)'));
+    await tap(tester, find.text('Oublier'));
+    expect(server.routes, contains('DELETE /v1/parent/ai/providers/claude'));
+    expect(find.textContaining('🔑 Clé enregistrée'), findsNothing);
+    expect(find.text('Collez la clé : la vérification se lancera toute seule.'), findsOneWidget);
   });
 
   testWidgets('une IA qui ne fonctionne pas : prévenu avant d\'enregistrer', (tester) async {

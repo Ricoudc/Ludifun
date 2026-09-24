@@ -68,7 +68,12 @@ class FamilyAi {
 }
 
 class AiSettings {
-  const AiSettings({required this.family, required this.serverProvider, required this.providers});
+  const AiSettings({
+    required this.family,
+    required this.serverProvider,
+    required this.providers,
+    this.saved = const [],
+  });
 
   factory AiSettings.fromJson(Json json) => AiSettings(
     family: switch (json['family']) {
@@ -76,11 +81,19 @@ class AiSettings {
       _ => null,
     },
     serverProvider: json['server_provider'] as String,
+    saved: [
+      for (final s in json['saved'] as List<dynamic>? ?? const []) FamilyAi.fromJson(s as Json),
+    ],
     providers: [for (final p in json['providers'] as List<dynamic>) AiProvider.fromJson(p as Json)],
   );
 
-  /// `null` : la famille utilise l'IA du serveur.
+  /// IA active ; `null` : la famille utilise celle du serveur.
   final FamilyAi? family;
+
+  /// Toutes les IA déjà réglées : chacune garde sa clé, son modèle et son adresse.
+  final List<FamilyAi> saved;
+
+  FamilyAi? savedFor(String code) => saved.where((s) => s.provider == code).firstOrNull;
   final String serverProvider;
   final List<AiProvider> providers;
 

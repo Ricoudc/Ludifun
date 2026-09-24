@@ -148,7 +148,11 @@ class LudifunApi {
     return AiSettings.fromJson(r.data!);
   });
 
-  /// Revenir à l'IA du serveur.
+  /// Oublier une IA : sa clé est effacée (retour à l'IA du serveur si elle était active).
+  Future<void> forgetAiProvider(String provider) =>
+      _call(() => _dio.delete<void>('/v1/parent/ai/providers/$provider'));
+
+  /// Revenir à l'IA du serveur (les clés enregistrées restent).
   Future<void> resetAiSettings() => _call(() => _dio.delete<void>('/v1/parent/ai'));
 
   /// « Tester » : le service répond-il, la clé est-elle acceptée ? (rien n'est facturé)

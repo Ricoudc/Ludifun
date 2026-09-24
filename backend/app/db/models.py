@@ -123,7 +123,7 @@ class Family(Base):
 
 
 class FamilyAiSettings(Base):
-    """L'IA choisie par la famille dans l'espace parent ; sans ligne, le réglage du serveur."""
+    """L'IA active de la famille (espace parent) ; sans ligne, le réglage du serveur."""
 
     __tablename__ = "family_ai_settings"
 
@@ -131,6 +131,21 @@ class FamilyAiSettings(Base):
         Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
     )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("provider", AI_PROVIDERS), name="provider"),)
+
+
+class FamilyAiProvider(Base):
+    """Réglage d'une IA pour la famille : chaque IA garde sa clé, son modèle et son adresse, pour
+    passer de l'une à l'autre sans tout ressaisir."""
+
+    __tablename__ = "family_ai_providers"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    provider: Mapped[str] = mapped_column(Text, primary_key=True)
     model: Mapped[str | None] = mapped_column(Text)
     base_url: Mapped[str | None] = mapped_column(Text)
     # Clé d'API chiffrée (Fernet) ; jamais renvoyée à l'application, seulement ses 4 derniers signes.

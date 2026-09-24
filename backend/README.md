@@ -110,8 +110,9 @@ Windows, `Changer-IA-Ludifun.bat` écrit ces réglages dans `.env`.
 `GET`, `PUT`, `DELETE /v1/parent/ai`, `POST /v1/parent/ai/test`). La vérification, lancée dès
 qu'une IA est choisie : service joignable et clé acceptée (liste des modèles), modèle installé
 et capable de lire les images (Ollama), puis une petite demande d'essai (`app/ai/check.py`). Les leçons et les réponses
-rédigées de ses enfants passent alors par cette IA ; sans choix, par celle du serveur. La clé
-est chiffrée en base (`LUDIFUN_SECRETS_KEY`, sinon dérivée de `LUDIFUN_JWT_SECRET`) et n'est
+rédigées de ses enfants passent alors par cette IA ; sans choix, par celle du serveur. Chaque
+IA garde sa clé, son modèle et son adresse : on passe de l'une à l'autre sans rien ressaisir
+(`DELETE /v1/parent/ai/providers/{ia}` oublie une clé). Les clés sont chiffrées en base (`LUDIFUN_SECRETS_KEY`, sinon dérivée de `LUDIFUN_JWT_SECRET`) et n'est
 jamais renvoyée. Ollama et les services compatibles font appeler une adresse choisie par le
 parent : refusés en production, sauf `LUDIFUN_ALLOW_CUSTOM_AI_URL=true` (serveur familial).
 

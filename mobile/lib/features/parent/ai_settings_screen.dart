@@ -63,7 +63,9 @@ class _AiFormState extends ConsumerState<_AiForm> {
 
   AiSettings get _settings => widget.settings;
   AiProvider get _provider => _settings.provider(_code)!;
-  FamilyAi? get _saved => _settings.family?.provider == _code ? _settings.family : null;
+
+  /// Ce qui est déjà enregistré pour l'IA sélectionnée (clé, modèle, adresse).
+  FamilyAi? get _saved => _settings.savedFor(_code);
 
   @override
   void initState() {
@@ -201,10 +203,52 @@ class _AiFormState extends ConsumerState<_AiForm> {
     showSnack(context, 'IA enregistrée : elle servira dès la prochaine leçon.');
   });
 
+  Future<void> _forget() => _run(() async {
+    final label = _provider.label;
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Oublier la clé de $label ?'),
+            content: const Text('Il faudra la coller de nouveau pour utiliser cette IA.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Annuler'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Oublier'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    await ref.read(apiProvider).forgetAiProvider(_code);
+    ref.invalidate(aiSettingsProvider);
+    if (!mounted) return;
+    setState(() {
+      _check = null;
+      _checkedFor = null;
+    });
+  });
+
   Future<void> _reset() => _run(() async {
     await ref.read(apiProvider).resetAiSettings();
     ref.invalidate(aiSettingsProvider);
   });
+
+  /// Sous chaque IA : la clé déjà enregistrée, et la note de l'IA sélectionnée.
+  Widget? _subtitle(AiProvider provider) {
+    final saved = _settings.savedFor(provider.code);
+    final lines = [
+      if (_settings.family?.provider == provider.code) '✔ IA active',
+      if (saved?.keyHint case final hint?) '🔑 Clé enregistrée $hint',
+      if (provider.code == _code && provider.note.isNotEmpty) provider.note,
+    ];
+    return lines.isEmpty ? null : Text(lines.join('\n'));
+  }
 
   Widget _status(TextTheme theme) {
     if (_checking) {
@@ -309,9 +353,7 @@ class _AiFormState extends ConsumerState<_AiForm> {
                         fontWeight: provider.recommended ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
-                    subtitle: provider.code == _code && provider.note.isNotEmpty
-                        ? Text(provider.note)
-                        : null,
+                    subtitle: _subtitle(provider),
                   ),
             ],
           ),
@@ -390,6 +432,13 @@ class _AiFormState extends ConsumerState<_AiForm> {
           onPressed: _busy || _checking ? null : _save,
           child: const Text('Enregistrer'),
         ),
+        if (_saved?.keyHint != null) ...[
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _busy ? null : _forget,
+            child: Text('Oublier la clé de ${_provider.label}'),
+          ),
+        ],
         if (family != null) ...[
           const SizedBox(height: 12),
           TextButton(

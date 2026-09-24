@@ -49,7 +49,10 @@ class FamilyAiOut(BaseModel):
 
 
 class AiSettingsOut(BaseModel):
-    family: FamilyAiOut | None = Field(description="null : la famille utilise l'IA du serveur.")
+    family: FamilyAiOut | None = Field(description="IA active ; null : la famille utilise celle du serveur.")
+    saved: list[FamilyAiOut] = Field(
+        description="Toutes les IA déjà réglées (chacune garde sa clé), pour passer de l'une à l'autre."
+    )
     server_provider: str = Field(description="IA du serveur, utilisée sans choix de la famille.")
     providers: list[ProviderOut]
 
@@ -61,7 +64,7 @@ class AiSettingsIn(BaseModel):
     model: Short | None = None
     base_url: Url | None = None
     api_key: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = Field(
-        None, description="null : garder la clé enregistrée (même fournisseur)."
+        None, description="null : garder la clé déjà enregistrée pour cette IA."
     )
 
 
@@ -119,16 +122,25 @@ async def _family(db: DbSession, parent: CurrentParent) -> uuid.UUID:
 async def settings_out(
     db: DbSession, family_id: uuid.UUID, settings: Settings, resolver: Resolver
 ) -> AiSettingsOut:
-    row = await ai_settings.load(db, family_id)
-    return AiSettingsOut(
-        family=None
-        if row is None
-        else FamilyAiOut(
+    active = await ai_settings.load(db, family_id)
+    rows = await ai_settings.load_providers(db, family_id)
+    saved = {
+        name: FamilyAiOut(
             provider=row.provider,  # contrainte en base : un nom connu
             model=row.model,
             base_url=row.base_url,
             key_hint=row.key_hint,
-        ),
+        )
+        for name, row in rows.items()
+    }
+    family = None
+    if active is not None:
+        family = saved.get(active.provider) or FamilyAiOut(
+            provider=active.provider, model=None, base_url=None, key_hint=None
+        )
+    return AiSettingsOut(
+        family=family,
+        saved=[saved[code] for code in ORDER if code in saved],
         server_provider=resolver.default[1].name,
         providers=providers_out(settings),
     )
@@ -147,8 +159,8 @@ async def _choice(
         raise ApiError(422, "base_url_required", "Indiquez l'adresse de l'API (souvent terminée par /v1).")
     if body.provider not in CUSTOM_URL:
         base_url = None
-    row = await ai_settings.load(db, family_id)
-    keep = body.api_key is None and row is not None and row.provider == body.provider
+    row = (await ai_settings.load_providers(db, family_id)).get(body.provider)
+    keep = body.api_key is None and row is not None
     key = body.api_key or None
     if keep and row is not None and row.api_key_encrypted:
         key = ai_settings.decrypt(settings, row.api_key_encrypted)
@@ -183,11 +195,20 @@ async def put_ai_settings(
 
 @router.delete("/parent/ai", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ai_settings(parent: CurrentParent, db: DbSession) -> Response:
-    """Revenir à l'IA du serveur (la clé enregistrée est effacée)."""
+    """Revenir à l'IA du serveur. Les clés enregistrées restent, pour y revenir plus tard."""
     row = await ai_settings.load(db, await _family(db, parent))
     if row is not None:
         await db.delete(row)
         await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete("/parent/ai/providers/{provider}", status_code=status.HTTP_204_NO_CONTENT)
+async def forget_ai_provider(provider: AiProviderName, parent: CurrentParent, db: DbSession) -> Response:
+    """Oublier une IA : sa clé est effacée. Si c'était l'IA active, retour à celle du serveur."""
+    if not await ai_settings.forget(db, await _family(db, parent), provider):
+        raise ApiError(404, "ai_provider_not_saved", "Aucun réglage enregistré pour cette IA.")
+    await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

@@ -15,7 +15,7 @@ from app.ai.ocr.vision_llm import VisionLLMOcr
 from app.ai.ports import AIError, LLMProvider, LLMResult, OcrProvider, PageImage, Prompt, Stage, Usage
 from app.ai.providers.fake import FakeProvider
 from app.config import Settings
-from app.db.models import AiRun, FamilyAiSettings
+from app.db.models import AiRun, FamilyAiProvider
 from app.services.ai_settings import decrypt
 from tests.api.helpers import auth, family_with_device, upload_lesson
 
@@ -97,17 +97,80 @@ async def test_api_keys_are_encrypted_and_never_returned(
         and "sk-ant" not in (await client.get("/v1/parent/ai", headers=auth(parent))).text
     )
 
-    row = await db.scalar(select(FamilyAiSettings))
+    row = await db.scalar(select(FamilyAiProvider))
     assert row is not None and row.api_key_encrypted is not None
     assert b"sk-ant" not in row.api_key_encrypted
     assert decrypt(app.state.settings, row.api_key_encrypted) == "sk-ant-secret-1234"
 
-    # Même fournisseur, sans clé : la clé enregistrée est gardée ; autre fournisseur : il en faut une.
+    # Même IA, sans clé : la clé enregistrée est gardée ; nouvelle IA : il en faut une.
     kept = await put(client, parent, {"provider": "claude", "model": "claude-sonnet-5"})
     assert kept["family"]["key_hint"] == "…1234" and kept["family"]["model"] == "claude-sonnet-5"
     await put(client, parent, {"provider": "mistral"}, 422)
     switched = await put(client, parent, {"provider": "mistral", "api_key": "mistral-key-9876"})
     assert switched["family"]["key_hint"] == "…9876"
+
+
+async def test_each_ai_keeps_its_own_key(app: FastAPI, client: AsyncClient, db: AsyncSession) -> None:
+    """Chaque IA garde sa clé et son modèle : on passe de l'une à l'autre sans rien ressaisir."""
+    built = record_builds(app)
+    family = await family_with_device(client)
+    parent = family["parent"]
+    await put(
+        client, parent, {"provider": "claude", "api_key": "sk-ant-secret-1234", "model": "claude-sonnet-5"}
+    )
+    await put(client, parent, {"provider": "mistral", "api_key": "mistral-key-9876"})
+    await put(client, parent, {"provider": "ollama", "model": "gemma3:12b"})
+
+    # Retour à Claude sans clé : la sienne est toujours là, avec son modèle.
+    back = await put(client, parent, {"provider": "claude", "model": "claude-sonnet-5"})
+    assert back["family"] == {
+        "provider": "claude",
+        "model": "claude-sonnet-5",
+        "base_url": None,
+        "key_hint": "…1234",
+    }
+    assert [(s["provider"], s["key_hint"]) for s in back["saved"]] == [
+        ("ollama", None),
+        ("claude", "…1234"),
+        ("mistral", "…9876"),
+    ]
+    await upload_lesson(client, family["device"])
+    assert set(await db.scalars(select(AiRun.provider))) == {"claude"}
+    assert AiChoice("claude", "claude-sonnet-5", None, "sk-ant-secret-1234") in built
+
+    # Le test d'une IA déjà réglée utilise sa clé enregistrée, même si elle n'est pas active.
+    app.state.ai_check_client = httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: (
+                httpx.Response(200, json={"data": [{"id": "mistral-medium-latest"}]})
+                if request.headers.get("Authorization") == "Bearer mistral-key-9876"
+                else httpx.Response(401)
+            )
+        )
+    )
+    stub = ProbeStub(fails=False)
+    app.state.ai_resolver.builder = lambda settings, choice: (VisionLLMOcr(stub), stub)
+    app.state.ai_resolver.forget()
+    tested = (
+        await client.post("/v1/parent/ai/test", json={"provider": "mistral"}, headers=auth(parent))
+    ).json()
+    assert tested["ok"], tested
+
+    # Revenir à l'IA du serveur garde les clés ; oublier une IA efface la sienne.
+    assert (await client.delete("/v1/parent/ai", headers=auth(parent))).status_code == 204
+    seen = (await client.get("/v1/parent/ai", headers=auth(parent))).json()
+    assert seen["family"] is None and len(seen["saved"]) == 3
+    assert (await client.delete("/v1/parent/ai/providers/mistral", headers=auth(parent))).status_code == 204
+    assert (await client.delete("/v1/parent/ai/providers/mistral", headers=auth(parent))).status_code == 404
+    await put(client, parent, {"provider": "mistral"}, 422)  # clé oubliée
+    # Oublier l'IA active : retour au serveur.
+    await put(client, parent, {"provider": "claude"})
+    assert (await client.delete("/v1/parent/ai/providers/claude", headers=auth(parent))).status_code == 204
+    final = (await client.get("/v1/parent/ai", headers=auth(parent))).json()
+    assert final["family"] is None and [s["provider"] for s in final["saved"]] == ["ollama"]
+    # L'enfant ne peut rien oublier.
+    r = await client.delete("/v1/parent/ai/providers/ollama", headers=auth(family["device"]))
+    assert r.status_code == 403
 
 
 async def test_validation_and_separation(app: FastAPI, client: AsyncClient) -> None:

@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
-from sqlalchemy import Connection, func, select
+from sqlalchemy import Connection, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
@@ -254,3 +254,32 @@ async def test_migration_0003_fills_levels_from_existing_data(engine: AsyncEngin
     assert required == {"k1": [1, 2], "k2": [1, 2, 3]}
     assert levels == {k1: [1], k2.id: [3]}
     assert sorted(items) == [("FILL_BLANK", 2, 2), ("MCQ", 1, 1), ("MCQ", 3, 3)]
+
+
+async def test_migration_0013_keeps_the_family_ai_setting(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Le réglage d'IA d'avant (un seul, clé comprise) devient l'IA active et son réglage."""
+    await db.commit()
+    await run_alembic("downgrade", "0012")
+    async with engine.begin() as conn:
+        family_id = uuid.uuid4()
+        await conn.execute(
+            text("INSERT INTO families (id, created_at) VALUES (:id, now())"), {"id": family_id}
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO family_ai_settings "
+                "(family_id, provider, model, base_url, api_key_encrypted, key_hint, updated_at) "
+                "VALUES (:id, 'claude', 'claude-sonnet-5', NULL, :key, '…1234', now())"
+            ),
+            {"id": family_id, "key": b"chiffree"},
+        )
+    await run_alembic("upgrade", "head")
+    async with engine.connect() as conn:
+        active = (await conn.execute(text("SELECT provider FROM family_ai_settings"))).all()
+        saved = (
+            await conn.execute(
+                text("SELECT provider, model, api_key_encrypted, key_hint FROM family_ai_providers")
+            )
+        ).all()
+    assert [tuple(row) for row in active] == [("claude",)]
+    assert [tuple(row) for row in saved] == [("claude", "claude-sonnet-5", b"chiffree", "…1234")]

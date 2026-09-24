@@ -810,7 +810,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | POST | `/v1/sessions/{id}/extend` | défis bonus pour un enfant rapide, après `bonus_offer` (étape 17, [spécification technique](specification-technique.md) §5.8) |
 | PATCH | `/v1/parent` | `{first_name}` : prénom facultatif du parent, `null` pour l'effacer (arbitrage A2) |
 | POST | `/v1/auth/verify-email` · `/v1/parent/verify-email` | `{token}` : lien « Confirmez votre adresse » (sans connexion) ; renvoi du lien par le parent connecté, 3 par heure, 409 si déjà confirmée (étape 19) |
-| GET · PUT · DELETE | `/v1/parent/ai` | IA de la famille choisie par le parent (fournisseur, modèle, adresse, clé chiffrée jamais renvoyée) ; `POST /v1/parent/ai/test` teste la connexion et liste les modèles |
+| GET · PUT · DELETE | `/v1/parent/ai` | IA de la famille choisie par le parent (fournisseur, modèle, adresse, clé chiffrée jamais renvoyée) ; chaque IA garde sa clé (`saved`), `DELETE /v1/parent/ai/providers/{ia}` l'oublie ; `POST /v1/parent/ai/test` teste la connexion et liste les modèles |
 | GET | `/v1/me/progress` | XP, niveau, série et badges de l'enfant (`?child_id=` pour le parent) ; le bilan de séance renvoie aussi `rewards` (étape 20) |
 | POST | `/v1/feedback` | `{rating?, message?, screen?, session_id?, child_id?}` → **201** : avis du parent ou de l'enfant (étape 18, [tests en famille](tests-familles.md)) ; supprimé avec son auteur |
 | POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) ; une fois toutes les activités principales répondues ; idempotent |
