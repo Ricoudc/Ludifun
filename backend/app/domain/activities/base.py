@@ -26,10 +26,12 @@ class ActivityCode(StrEnum):
     MATCH = "MATCH"
     SPEED_CHALLENGE = "SPEED_CHALLENGE"
     FLASHCARD = "FLASHCARD"
-    # Déclarés, implémentés plus tard (§7.1).
-    ORDER = "ORDER"
-    MEMORY = "MEMORY"
     OPEN_QUESTION = "OPEN_QUESTION"
+    # Activités graphiques (étape 21).
+    ORDER = "ORDER"  # remettre les étapes dans l'ordre
+    TIMELINE = "TIMELINE"  # frise chronologique
+    CLASSIFY = "CLASSIFY"  # ranger dans les bonnes cases
+    MEMORY = "MEMORY"  # retrouver les paires
 
 
 Result = Literal["correct", "partial", "incorrect"]
@@ -110,6 +112,10 @@ class ActivityType(ABC):
             and all(self.accepts(u) for u in units)
             and self._can_combine(units, difficulty)
         )
+
+    def combinable(self, units: list[KnowledgeUnit], difficulty: int) -> bool:
+        """Ces notions peuvent aller ensemble (activités à plusieurs notions), quel que soit leur nombre."""
+        return all(self.accepts(u) for u in units) and self._can_combine(units, difficulty)
 
     def build(self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random) -> BuiltActivity:
         if not self.can_build(units, difficulty):

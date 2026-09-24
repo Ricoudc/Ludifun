@@ -27,6 +27,7 @@ from app.api.v1.schemas_learning import (
 )
 from app.db.models import Attempt, Child, RevisionSession, SessionItem
 from app.domain.activities.base import ActivityCode, InvalidResponse
+from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, NothingToReview
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
@@ -35,7 +36,8 @@ from app.services.answer_evaluation import AnswerEvaluator
 
 router = APIRouter(tags=["séances"])
 
-MULTI_KNOWLEDGE = {ActivityCode.MATCH, ActivityCode.SPEED_CHALLENGE}
+# Jeux à plusieurs notions : pas de « Je n'ai pas compris » (l'aide est propre à une notion).
+MULTI_KNOWLEDGE = {t.code for t in default_registry().all() if t.multi_knowledge}
 SESSION_CLOSED = ApiError(409, "session_closed", "Cette séance est terminée.")
 NOTHING_TO_REVIEW = ApiError(409, "nothing_to_review", "🎉 Tout est à jour ! Rien à réviser pour l'instant.")
 

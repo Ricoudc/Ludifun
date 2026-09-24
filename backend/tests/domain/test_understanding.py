@@ -62,8 +62,8 @@ def test_required_levels_follow_the_material_and_the_type(
     assert required_levels(math.unit("k4"), registry) == {1, 2, 3}
     # Terme : jamais « appliquer », même si une question difficile existait.
     assert required_levels(math.unit("k2"), registry) == {1, 2}
-    # Classification sans texte à trous ni carte : on n'exige pas un niveau impossible à prouver.
-    assert required_levels(science.unit("k1"), registry) == {1}
+    # Classification : « ranger dans les bonnes cases » (étape 21) prouve qu'on se la rappelle.
+    assert required_levels(science.unit("k1"), registry) == {1, 2}
 
 
 def test_every_reference_notion_can_reach_its_required_levels(

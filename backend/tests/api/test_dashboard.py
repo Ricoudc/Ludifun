@@ -121,6 +121,8 @@ async def test_dashboard_over_several_weeks(
         "MATCH",
         "SPEED_CHALLENGE",
         "FLASHCARD",
+        "TIMELINE",  # étape 21 : frise ou memory en fin de séance de révision
+        "MEMORY",
     }
 
     # Réussite par matière : maîtrise pondérée par l'importance des notions travaillées.

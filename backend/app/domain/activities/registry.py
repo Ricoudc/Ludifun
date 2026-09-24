@@ -5,11 +5,14 @@ Le composeur, la notation et la mémorisation n'ont pas à changer.
 """
 
 from app.domain.activities.base import ActivityCode, ActivityType, BuiltActivity
+from app.domain.activities.classify import Classify
 from app.domain.activities.fill_blank import FillBlank
 from app.domain.activities.flashcard import Flashcard
 from app.domain.activities.match import Match
 from app.domain.activities.mcq import Mcq
+from app.domain.activities.memory import Memory
 from app.domain.activities.open_question import OpenQuestionActivity
+from app.domain.activities.ordering import Order, Timeline
 from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.true_false import TrueFalse
 from app.domain.knowledge import KnowledgeUnit
@@ -60,5 +63,18 @@ class ActivityRegistry:
 
 def default_registry() -> ActivityRegistry:
     return ActivityRegistry(
-        [Mcq(), TrueFalse(), FillBlank(), Match(), SpeedChallenge(), Flashcard(), OpenQuestionActivity()]
+        [
+            Mcq(),
+            TrueFalse(),
+            FillBlank(),
+            Match(),
+            SpeedChallenge(),
+            Flashcard(),
+            OpenQuestionActivity(),
+            # Activités graphiques (étape 21)
+            Order(),
+            Classify(),
+            Timeline(),
+            Memory(),
+        ]
     )

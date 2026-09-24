@@ -203,7 +203,7 @@ void main() {
 
   testWidgets('activité inconnue de cette version : sautée sans être notée', (tester) async {
     final backend = FakeSessionBackend(server, 's1', [
-      FakeItem('x1', 'MEMORY', {'cards': <Object>[]}, {}),
+      FakeItem('x1', 'COLORING', {'cards': <Object>[]}, {}),
       mcq('i2'),
     ]);
     await open(tester, 's1');

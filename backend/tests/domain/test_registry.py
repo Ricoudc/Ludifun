@@ -15,14 +15,20 @@ V1_CODES = {
     ActivityCode.FLASHCARD,
     ActivityCode.OPEN_QUESTION,  # étape 14
 }
+GRAPHIC_CODES = {
+    ActivityCode.ORDER,
+    ActivityCode.TIMELINE,
+    ActivityCode.CLASSIFY,
+    ActivityCode.MEMORY,
+}  # étape 21
 
 
-def test_registry_holds_the_seven_activities(registry: ActivityRegistry) -> None:
-    assert set(registry.codes) == V1_CODES
-    assert all(registry.get(code).code == code for code in V1_CODES)
+def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
+    assert set(registry.codes) == V1_CODES | GRAPHIC_CODES == set(ActivityCode)
+    assert all(registry.get(code).code == code for code in registry.codes)
 
 
-@pytest.mark.parametrize("code", ["ORDER", "MEMORY", "PUZZLE", ""])
+@pytest.mark.parametrize("code", ["PUZZLE", "COLORING", ""])
 def test_unimplemented_or_unknown_activity(registry: ActivityRegistry, code: str) -> None:
     with pytest.raises(UnknownActivity):
         registry.get(code)
@@ -34,9 +40,15 @@ def test_an_activity_cannot_be_registered_twice() -> None:
 
 
 def test_evidence_factors(registry: ActivityRegistry) -> None:
-    """§9.3 : vrai/faux, défi rapide et carte mémoire comptent pour moitié."""
+    """§9.3 : vrai/faux, défi rapide, carte mémoire et memory (chance, place des cartes) comptent
+    pour moitié."""
     halved = {t.code for t in registry.all() if t.evidence_factor == 0.5}
-    assert halved == {ActivityCode.TRUE_FALSE, ActivityCode.SPEED_CHALLENGE, ActivityCode.FLASHCARD}
+    assert halved == {
+        ActivityCode.TRUE_FALSE,
+        ActivityCode.SPEED_CHALLENGE,
+        ActivityCode.FLASHCARD,
+        ActivityCode.MEMORY,
+    }
 
 
 def test_compatibility_matrix(registry: ActivityRegistry) -> None:

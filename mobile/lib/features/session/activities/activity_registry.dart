@@ -1,11 +1,14 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../models/account.dart';
+import 'classify_view.dart';
 import 'fill_blank_view.dart';
 import 'flashcard_view.dart';
 import 'match_view.dart';
 import 'mcq_view.dart';
+import 'memory_view.dart';
 import 'open_question_view.dart';
+import 'order_view.dart';
 import 'speed_challenge_view.dart';
 import 'true_false_view.dart';
 
@@ -23,6 +26,12 @@ final activityRegistry = <String, ActivityBuilder>{
       SpeedChallengeView(payload: payload, onSubmit: onSubmit),
   'FLASHCARD': (payload, onSubmit) => FlashcardView(payload: payload, onSubmit: onSubmit),
   'OPEN_QUESTION': (payload, onSubmit) => OpenQuestionView(payload: payload, onSubmit: onSubmit),
+  // Activités graphiques (étape 21)
+  'ORDER': (payload, onSubmit) => OrderView(payload: payload, onSubmit: onSubmit),
+  'TIMELINE': (payload, onSubmit) =>
+      OrderView(payload: payload, onSubmit: onSubmit, timeline: true),
+  'CLASSIFY': (payload, onSubmit) => ClassifyView(payload: payload, onSubmit: onSubmit),
+  'MEMORY': (payload, onSubmit) => MemoryView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

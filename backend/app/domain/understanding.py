@@ -43,16 +43,17 @@ def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel
 
     Question ouverte : niveau 3, 4 ou 5 selon la question. QCM de difficulté 3 : la question
     demande de relier ou d'appliquer (§6.3 V1) ; texte à trous
-    et carte mémoire : l'enfant doit retrouver la réponse sans la voir ; tout le reste (QCM,
-    vrai/faux, association, défi rapide) : reconnaître.
+    et carte mémoire, remettre dans l'ordre, ranger dans les cases : l'enfant doit retrouver la
+    réponse sans la voir ; tout le reste (QCM, vrai/faux, association, frise, memory, défi
+    rapide) : reconnaître.
     """
     code = ActivityCode(code)
     if code is ActivityCode.OPEN_QUESTION:
         return CognitiveLevel(min(5, difficulty + 2))  # difficulté 1, 2, 3 → appliquer, expliquer, transférer
     if code is ActivityCode.MCQ and difficulty >= 3:
         return CognitiveLevel.APPLY
-    if code in (ActivityCode.FILL_BLANK, ActivityCode.FLASHCARD):
-        return CognitiveLevel.RECALL
+    if code in (ActivityCode.FILL_BLANK, ActivityCode.FLASHCARD, ActivityCode.ORDER, ActivityCode.CLASSIFY):
+        return CognitiveLevel.RECALL  # remettre les étapes, ranger les éléments : sans les voir rangés
     return CognitiveLevel.RECOGNIZE
 
 

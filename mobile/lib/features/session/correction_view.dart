@@ -141,11 +141,11 @@ class CorrectionView extends StatelessWidget {
       ),
   ];
 
-  /// Association et défi rapide : le résultat élément par élément.
+  /// Association, défi rapide et jeux graphiques : le résultat élément par élément.
   List<Widget> _details() {
     if (correction.details.isEmpty) return const [];
     final texts = {
-      for (final key in ['left', 'statements'])
+      for (final key in ['left', 'statements', 'items'])
         if (item.payload[key] != null)
           for (final c in choicesOf(item.payload[key])) c.id: c.text,
     };
@@ -169,6 +169,9 @@ class CorrectionView extends StatelessWidget {
   }
 
   String _detailText(Json d, Map<String, String> texts) {
+    // Ordre et frise : la bonne place de chaque étiquette. Memory : la paire.
+    if (d['position'] case final int position) return '$position. ${d['expected']}';
+    if (d['pair'] case final String pair) return pair;
     final text = texts[d['id']] ?? '';
     return switch (d['expected']) {
       final String right => '$text → $right',

@@ -23,12 +23,10 @@ from app.domain.activities.registry import ActivityRegistry
 from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import IMPORTANT, KNOWN_SCORE, Mastery
 from app.domain.scoring import Evidence
-from app.domain.text import normalize
 from app.domain.understanding import cognitive_level, required_levels
 
 BLOCK_SIZE = 3  # activités dans l'échauffement et dans l'approfondissement
 STRONG_NOTIONS_NEEDED = 6  # en dessous, les notions d'importance ≤ 2 sont aussi utilisées
-MATCH_PAIRS = (3, 5)  # 4 à 5 visées ; 3 pour les petites leçons
 SPEED_NOTIONS = 5
 REPLAY_MAX = 3
 ERRORS_PER_NOTION = 2
@@ -46,7 +44,18 @@ EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
-INTERMEDIATE = frozenset({ActivityCode.FILL_BLANK, ActivityCode.MCQ, ActivityCode.FLASHCARD})
+INTERMEDIATE = frozenset(
+    {
+        ActivityCode.FILL_BLANK,
+        ActivityCode.MCQ,
+        ActivityCode.FLASHCARD,
+        ActivityCode.ORDER,
+        ActivityCode.CLASSIFY,
+    }
+)
+# 🧩 Jeu à plusieurs notions de fin de séance : l'association à la première séance, puis au choix
+# association, frise chronologique ou memory (étape 21), pour varier.
+PUZZLES = ((ActivityCode.MATCH, 2), (ActivityCode.TIMELINE, 2), (ActivityCode.MEMORY, 1))
 
 
 # Pour une notion : difficultés préférées (dans l'ordre) et formats autorisés (None = tous).
@@ -179,7 +188,7 @@ class SessionComposer:
             # 🧩 Association : d'abord les notions pas encore vues dans la séance.
             seen = {k for a in items for k in a.knowledge_ids}
             candidates = [u for u in ranked if u.id not in seen] + [u for u in ranked if u.id in seen]
-            add(self._match(candidates, rng), Block.MATCH)
+            add(self._puzzle(candidates, rng, first), Block.MATCH)
 
         # ⚡ Défi rapide : les notions à travailler d'abord, complétées par les autres si besoin.
         add(self._speed(ranked, rng), Block.SPEED)
@@ -426,14 +435,39 @@ class SessionComposer:
                 result += [(code, difficulty) for code in codes if (code, difficulty) not in result]
         return result
 
-    def _match(self, candidates: list[KnowledgeUnit], rng: random.Random) -> BuiltActivity | None:
-        match = self.registry.get(ActivityCode.MATCH)
-        chosen: list[KnowledgeUnit] = []
-        for unit in candidates:
-            # On n'ajoute une notion que si l'association reste sans ambiguïté.
-            if len(chosen) < MATCH_PAIRS[1] and match.accepts(unit) and _distinct_pairs([*chosen, unit]):
-                chosen.append(unit)
-        return match.build(chosen, 2, rng) if match.can_build(chosen, 2) else None
+    def _group(
+        self, code: ActivityCode, difficulty: int, candidates: list[KnowledgeUnit]
+    ) -> list[KnowledgeUnit]:
+        """Le plus grand groupe de notions compatibles pour ce jeu, en suivant l'ordre de priorité."""
+        activity = self.registry.get(code)
+        usable = [u for u in candidates if activity.accepts(u)]
+        best: list[KnowledgeUnit] = []
+        for start in range(len(usable)):
+            chosen: list[KnowledgeUnit] = []
+            for unit in usable[start:] + usable[:start]:
+                if len(chosen) < activity.max_units and activity.combinable([*chosen, unit], difficulty):
+                    chosen.append(unit)
+            if len(chosen) > len(best):
+                best = chosen
+            if len(best) == activity.max_units:
+                break
+        return best if activity.can_build(best, difficulty) else []
+
+    def _puzzle(
+        self, candidates: list[KnowledgeUnit], rng: random.Random, first: bool
+    ) -> BuiltActivity | None:
+        options = [
+            (code, difficulty, units)
+            for code, difficulty in PUZZLES
+            if code in self.registry.codes and (units := self._group(code, difficulty, candidates))
+        ]
+        if not options:
+            return None
+        if first and options[0][0] is ActivityCode.MATCH:
+            code, difficulty, units = options[0]
+        else:
+            code, difficulty, units = rng.choice(options)
+        return self.registry.get(code).build(units, difficulty, rng)
 
     def _speed(self, candidates: list[KnowledgeUnit], rng: random.Random) -> BuiltActivity | None:
         speed = self.registry.get(ActivityCode.SPEED_CHALLENGE)
@@ -452,11 +486,6 @@ def _eligible(units: Sequence[KnowledgeUnit]) -> list[KnowledgeUnit]:
     """Les notions d'importance ≤ 2 ne servent que si la leçon a moins de 6 notions importantes."""
     strong = [u for u in units if u.item.importance >= IMPORTANT]
     return strong if len(strong) >= STRONG_NOTIONS_NEEDED else list(units)
-
-
-def _distinct_pairs(units: list[KnowledgeUnit]) -> bool:
-    pairs = [u.material.pair for u in units if u.material.pair is not None]
-    return len({normalize(p.left) for p in pairs}) == len({normalize(p.right) for p in pairs}) == len(pairs)
 
 
 def _chain(

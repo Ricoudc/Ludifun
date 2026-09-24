@@ -450,6 +450,28 @@ entre enfants.
   Entraînement ») ; le rappel appartient à l'étape en cours, la reprise et les défis bonus
   viennent après.
 
+### 5.11 Activités graphiques (CDC §110 n° 17 ; étape 21)
+
+Quatre jeux s'ajoutent au registre, sans changer la notation ni la mémorisation :
+
+| Jeu | Notions | Charge utile → réponse | Notation |
+| --- | --- | --- | --- |
+| `ORDER` remettre dans l'ordre | un processus d'au moins 3 étapes | `{prompt, items}` → `{order}` | part des étapes à la bonne place ; erreur de méthode |
+| `TIMELINE` frise chronologique | 3 à 5 dates ou événements datés, comparables (pas une année seule avec une date du même an) | `{prompt, items}` (sans les dates) → `{order}` | chaque événement à sa place est une preuve pour sa notion ; erreur de confusion |
+| `CLASSIFY` ranger dans les cases | une classification | `{prompt, categories, items}` → `{assignments}` | part des étiquettes dans la bonne case |
+| `MEMORY` | 3 à 5 paires | `{prompt, cards:[{id, text, pair}]}` → `{moves}` | `min(1, 2 × paires / coups)` ; preuve pleine si au plus une erreur sur la paire, sinon moitié ; le jeu compte pour moitié (chance, place des cartes) |
+
+- Niveaux de compréhension : ordre et classement = rappel (niveau 2), comme l'association.
+- Composeur : l'entraînement intermédiaire propose aussi l'ordre et le classement ; le jeu à
+  plusieurs notions de la séance tourne entre association, frise et memory (la première séance
+  garde l'association).
+- Memory : le groupe de chaque carte (`p1`…) est envoyé, pour que l'application montre tout de
+  suite si les deux cartes vont ensemble ; il ne dit rien de la notion.
+- Application : un geste simple pour chaque jeu (toucher dans l'ordre ; toucher l'étiquette puis
+  la case ; retourner les cartes deux par deux), sans glisser-déposer, plus facile pour les petits.
+- **Reportés** : coloriage et carte, qui demandent une bibliothèque de gabarits d'images libres
+  de droits (planètes, carte de France, squelette…).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -596,11 +618,12 @@ documentation, intégration continue verte.
 | 18 🟡 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1. Outillage fait : migration 0008 (avis), `POST /v1/feedback`, note rapide en fin de séance et « Donner mon avis » côté parent, rapport `app.tools.pilot_report`, protocole [`tests-familles.md`](tests-familles.md) | critères de passage atteints (en attente des familles, des leçons et d'une clé API) |
 | 19 🟡 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé. Fait : migration 0009, e-mails SMTP, confirmation de l'e-mail du parent, suppression des comptes inactifs (`app.tools.retention`), pages `/confidentialite`, `/suppression-compte`, `/verifier-email`, `deploy/` (Caddy HTTPS et HSTS, sauvegardes chiffrées), bundle signé (workflow « Android (Play Store) »), [`deploiement.md`](deploiement.md), [`play-store.md`](play-store.md), [registre](rgpd/registre-des-traitements.md) et [AIPD](rgpd/aipd.md) en brouillon | 20 familles testeuses (en attente des comptes Play et fournisseurs, de la relecture juridique et des familles) |
 | 20 ✅ | **Missions et gamification** (V2, CDC §110 n° 16) | migration 0011, XP selon l'effort, niveau, série, 13 badges, message du bilan, étapes de mission (§5.10) ; `GET /v1/me/progress`, `rewards` dans le bilan ; accueil de l'enfant, écran « Mes badges », tableau de bord du parent | séance simulée : l'XP ne dépend pas de la note, une notion ratée la veille puis réussie donne « Revanche », la série suit les jours (test) |
+| 21 ✅ | **Activités graphiques** (V2, CDC §110 n° 17) | remettre dans l'ordre, frise chronologique, ranger dans les cases, memory (§5.11) : types d'activités, composeur, élève simulé, écrans de l'application, correction élément par élément | chaque jeu se construit sur la leçon de référence qui s'y prête et se note juste (tests) ; coloriage et carte reportés |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
-- **V2 — ludique** : ~~XP et série liés à l'effort, badges, missions narratives (§37)~~ (étape 20), activités
-  memory, classement, frise, association glisser-déposer, coloriage et carte (bibliothèque de
+- **V2 — ludique** : ~~XP et série liés à l'effort, badges, missions narratives (§37)~~ (étape 20), ~~activités
+  memory, classement, frise, remise en ordre~~ (étape 21), coloriage et carte (bibliothèque de
   gabarits d'images libres de droits : planètes, carte de France, squelette…) ;
 - **V3 — moteur avancé** : difficulté dynamique fine, transfert, mode devoirs, référentiel des
   programmes (§105), profil d'apprentissage non figé (§82) ;

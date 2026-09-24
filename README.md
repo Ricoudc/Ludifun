@@ -41,6 +41,7 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | 🟡 outillage prêt (avis dans l'application, rapport, [protocole](docs/tests-familles.md)), en attente des familles |
 | 19 | Bêta Android (Play Store, test fermé) | 🟡 prête à déployer ([serveur](docs/deploiement.md), [Play Store](docs/play-store.md), [RGPD](docs/rgpd/registre-des-traitements.md)), en attente des comptes, fournisseurs et familles |
 | 20 | Missions et gamification : XP selon l'effort, niveau, série, badges (V2) | ✅ |
+| 21 | Activités graphiques : remettre dans l'ordre, frise, ranger dans les cases, memory (V2) | ✅ (coloriage et carte reportés) |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).

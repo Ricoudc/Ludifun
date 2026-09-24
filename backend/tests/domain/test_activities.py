@@ -7,6 +7,7 @@ import pytest
 from app.domain.activities.base import ActivityCode, BuiltActivity, CannotBuild, InvalidResponse
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.knowledge import KnowledgeUnit
+from app.domain.simulated_pupil import respond
 from tests.domain.conftest import ReferenceLesson
 
 # Clés autorisées dans le payload envoyé au téléphone : rien qui trahisse la solution.
@@ -18,6 +19,10 @@ PAYLOAD_KEYS = {
     ActivityCode.SPEED_CHALLENGE: {"time_limit_s", "statements"},
     ActivityCode.FLASHCARD: {"front", "back"},
     ActivityCode.OPEN_QUESTION: {"prompt", "max_length"},
+    ActivityCode.ORDER: {"prompt", "items"},
+    ActivityCode.CLASSIFY: {"prompt", "categories", "items"},
+    ActivityCode.TIMELINE: {"prompt", "items"},
+    ActivityCode.MEMORY: {"prompt", "cards"},
 }
 
 
@@ -38,7 +43,7 @@ def perfect_response(activity: BuiltActivity) -> dict[str, Any]:
             return {"self_assessment": "knew"}
         case ActivityCode.OPEN_QUESTION:
             return {"text": s["model_answer"]}
-    raise AssertionError(activity.type)
+    return respond(activity, lambda _: True)
 
 
 def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
@@ -60,7 +65,7 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             return {"self_assessment": "didnt_know"}
         case ActivityCode.OPEN_QUESTION:
             return {"text": ""}
-    raise AssertionError(activity.type)
+    return respond(activity, lambda _: False)
 
 
 def build_all_single(lesson: ReferenceLesson, registry: ActivityRegistry) -> list[BuiltActivity]:

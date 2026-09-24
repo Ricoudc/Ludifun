@@ -56,8 +56,9 @@ avant d'enregistrer une IA qui ne répond pas), bandeau « Confirmez votre adres
 `ludifun://app/parent/verifier-email?jeton=…`, politique de confidentialité ouverte dans le
 navigateur (inscription et menu *Mon compte*). Le parent peut aussi photographier une leçon pour son enfant.
 
-Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,
-association, défi rapide chronométré, carte mémoire) viennent d'un registre de widgets ; un type
+Séance (écrans 5 à 7, une seule route) : les activités (QCM, vrai ou faux, texte à trou,
+association, défi rapide chronométré, carte mémoire, question rédigée, et depuis l'étape 21
+remettre dans l'ordre, frise chronologique, ranger dans les cases, memory) viennent d'un registre de widgets ; un type
 inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan (avec l'XP gagnée,
 le progrès du jour, les nouveaux badges et « Tu as aimé cette séance ? » 😕 🙂 😍, facultatif) et
 « Revoir mes erreurs ». Chaque bloc de la séance est une étape de la mission (« 🚀 Étape 2 / 4 »).
