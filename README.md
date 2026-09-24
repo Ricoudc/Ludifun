@@ -40,6 +40,7 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 17 | Adaptation en temps réel et engagement | ✅ |
 | 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | 🟡 outillage prêt (avis dans l'application, rapport, [protocole](docs/tests-familles.md)), en attente des familles |
 | 19 | Bêta Android (Play Store, test fermé) | 🟡 prête à déployer ([serveur](docs/deploiement.md), [Play Store](docs/play-store.md), [RGPD](docs/rgpd/registre-des-traitements.md)), en attente des comptes, fournisseurs et familles |
+| 20 | Missions et gamification : XP selon l'effort, niveau, série, badges (V2) | ✅ |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).
@@ -64,7 +65,7 @@ de suppression du compte, bundle signé pour le Play Store. Restent des décisio
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0010"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0011"}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)

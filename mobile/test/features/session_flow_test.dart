@@ -126,6 +126,63 @@ void main() {
     expect(server.routes, contains('GET /v1/sessions/s2'));
   });
 
+  testWidgets('étape 20 : étapes de la mission, puis XP et badges au bilan', (tester) async {
+    final backend = FakeSessionBackend(server, 's1', [mcq('i1', block: 'warmup'), mcq('i2')]);
+    server.on('POST /v1/sessions/s1/complete', (_) {
+      backend.completed++;
+      return (
+        200,
+        {
+          ...FakeSessionBackend.report,
+          'rewards': {
+            'xp': 27,
+            'lines': [
+              {'label': 'Séance terminée', 'xp': 10},
+              {'label': 'Activités faites', 'xp': 2},
+              {'label': 'Notions enfin réussies', 'xp': 10},
+              {'label': 'Régularité', 'xp': 5},
+            ],
+            'message': '🏆 Tu as réussi une notion qui te posait problème : États généraux !',
+            'new_badges': [
+              {
+                'code': 'comeback',
+                'emoji': '🏆',
+                'title': 'Revanche',
+                'how': 'Réussis une notion qui te posait problème.',
+                'earned_at': '2026-09-23T17:00:00Z',
+              },
+            ],
+            'progress': {
+              'total_xp': 187,
+              'level': 2,
+              'level_start_xp': 100,
+              'next_level_xp': 300,
+              'streak_days': 2,
+              'done_today': true,
+              'badges': <Object>[],
+            },
+          },
+        },
+      );
+    });
+    await open(tester, 's1');
+    expect(find.text('🚀 Étape 1 / 2 · Échauffement'), findsOneWidget);
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('🚀 Étape 2 / 2 · Entraînement'), findsOneWidget);
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+
+    expect(
+      find.text('🏆 Tu as réussi une notion qui te posait problème : États généraux !'),
+      findsOneWidget,
+    );
+    expect(find.text('⭐ +27 XP'), findsOneWidget);
+    expect(find.text('Notions enfin réussies  +10'), findsOneWidget);
+    expect(find.text('🔥 Série : 2 jours'), findsOneWidget);
+    expect(find.text('Nouveau badge : Revanche !'), findsOneWidget);
+  });
+
   testWidgets('reprise d\'une séance interrompue et pause confirmée', (tester) async {
     final first = trueFalse('i1')..answer = {'value': true};
     FakeSessionBackend(server, 's1', [first, mcq('i2')]);

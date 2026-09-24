@@ -5,6 +5,7 @@ import '../../app/level_stars.dart';
 import '../../app/theme.dart';
 import '../../models/level.dart';
 import '../../models/session.dart';
+import '../rewards/rewards_card.dart';
 import 'quick_rating.dart';
 
 /// Écran 7 : bilan de la séance.
@@ -54,6 +55,10 @@ class ReportView extends StatelessWidget {
           minHeight: 14,
           borderRadius: BorderRadius.circular(7),
         ),
+        if (report.rewards case final rewards?) ...[
+          const SizedBox(height: 20),
+          RewardsCard(rewards),
+        ],
         const SizedBox(height: 24),
         if (mastered.isNotEmpty)
           _Count(

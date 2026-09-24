@@ -252,9 +252,23 @@ La confirmation de l'e-mail ne bloque rien (arbitrage A10, validé) : un bandeau
 parent, et l'adresse sert au mot de passe oublié et à la prévenance avant suppression. La
 bloquer gênerait l'inscription des familles de la bêta si les e-mails arrivent en retard.
 
-V2 (gamification, CDC §37-§39) : `xp_events(child_id, reason, points, session_id, created_at)`,
-`badges(child_id, code, earned_at)`, série calculée depuis `sessions`. Aucune
-donnée de classement entre enfants (CDC §108.8).
+### 4.8 Migration `0011` (étape 20, faite)
+
+```sql
+ALTER TABLE sessions ADD COLUMN xp_earned SMALLINT;       -- XP gagnée à la clôture
+CREATE TABLE achievements (                                -- badges : un de chaque, jamais retiré
+  id UUID PRIMARY KEY,
+  child_id UUID NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+  code TEXT NOT NULL CHECK (code IN (…13 codes…)),
+  earned_at TIMESTAMPTZ NOT NULL,
+  session_id UUID REFERENCES sessions(id) ON DELETE SET NULL,
+  UNIQUE (child_id, code)
+);
+```
+
+Plus simple que la table `xp_events` envisagée : le détail de l'XP n'est utile qu'au bilan ;
+le total est la somme de `sessions.xp_earned`, la série se calcule depuis les séances
+terminées. Aucune donnée de classement entre enfants (CDC §108.8).
 
 ---
 
@@ -399,6 +413,37 @@ n'est pas faite ; « revoir tes erreurs » ne prend que les notions pas encore m
 « mini-contrôle » prend toute la leçon, même ce qui est su. La matière choisie par le parent
 passe en premier dans la mission ordinaire.
 
+### 5.10 Missions et gamification (CDC §37-§40, §86 ; `domain/rewards.py`)
+
+Les récompenses valorisent l'effort, la progression, la persévérance, la régularité et la
+compréhension (§39), **jamais la note** : une séance difficile rapporte autant qu'une séance
+réussie, et demander de l'aide ne fait rien perdre. Rien ne se perd : l'XP ne baisse jamais,
+une série interrompue recommence sans reproche, un badge gagné reste gagné. Aucune comparaison
+entre enfants.
+
+| XP gagnée à la clôture | |
+|---|---|
+| Séance terminée | +10 |
+| Activités faites (reprise, rappel et défis compris) | +1 chacune, 20 au plus |
+| Notions en progrès (un niveau de plus) | +5 chacune |
+| Notions enfin réussies (maîtrise < 60 avant, ≥ 80 % de réussite aujourd'hui) | +10 chacune, 3 au plus |
+| Rappel de la règle suivi jusqu'au bout, activité réussie après une aide, erreurs revues, défis bonus | +5 chacun |
+| Régularité (première séance du jour, série ≥ 2 jours) | +5 |
+| Plafond par jour | 150 : réviser plus n'est pas mieux |
+
+- **Niveau** : 0, 100, 300, 600, 1000, 1500 XP… (`50 × n × (n − 1)`).
+- **Série** : jours d'affilée avec une séance terminée (fuseau de la famille) ; celle d'hier
+  compte tant que la journée dure.
+- **Badges** (13) : premier pas, 10 et 50 séances, 3 et 7 jours de suite, revanche, persévérant,
+  curieux (réussite après une aide), sans peur des erreurs, bien expliqué (question rédigée),
+  notion maîtrisée, leçon maîtrisée, toujours plus (défis bonus). Aucun badge de note.
+- **Message du bilan** : le progrès le plus parlant, dans cet ordre : notion enfin réussie
+  (« 🏆 Tu as réussi une notion qui te posait problème : … ! »), notion maîtrisée, notion en
+  progrès, persévérance, régularité, effort.
+- **Mission** (§37) : les blocs de la séance sont les étapes de la mission (« 🚀 Étape 2 / 4 ·
+  Entraînement ») ; le rappel appartient à l'étape en cours, la reprise et les défis bonus
+  viennent après.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -504,6 +549,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | GET · POST · DELETE | `/v1/children/{id}/exams[/{exam_id}]` | ✅ étape 16 : contrôles à venir, chacun avec son `plan` jour par jour |
 | POST | `/v1/auth/verify-email` `{token}` · `/v1/parent/verify-email` | ✅ étape 19 : confirmation de l'adresse du parent ; renvoi du lien (3 par heure) |
 | GET | `/confidentialite` · `/suppression-compte` · `/verifier-email` | ✅ étape 19 : pages web publiques (HTML sans script) |
+| GET | `/v1/me/progress` (`?child_id=` pour le parent) | ✅ étape 20 : XP, niveau, série, badges gagnés et à gagner ; le bilan (`/complete`) renvoie `rewards` |
 | POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
 
@@ -519,11 +565,11 @@ et ont leurs tests de séparation.
 |---|---|---|
 | 1-4 Choix, connexion, création enfant, code/QR | ✅ | — |
 | 5 Dashboard parent | ✅ ; compétences (étape 13) ; erreurs fréquentes (étape 14) ; objectifs et contrôles (étape 16) ; « Donner mon avis » (étape 18) | — |
-| 6 Dashboard enfant | ✅ mission du jour, étape du plan avant un contrôle (étape 16) | XP et série en V2 |
+| 6 Dashboard enfant | ✅ mission du jour, étape du plan avant un contrôle (étape 16) ; XP, niveau, série et badges (étape 20) | — |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ ; « J'ai le texte de la leçon » (étape 15) | PDF (V1.5) |
 | 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et étoiles (étape 13) ; « Peux-tu vérifier ? » (étape 15) | — |
 | 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) ; rappel et remédiation, pause, défis bonus (étape 17) | — |
-| 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) ; « Tu as aimé cette séance ? » 😕 🙂 😍 (étape 18) | — |
+| 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) ; « Tu as aimé cette séance ? » 😕 🙂 😍 (étape 18) ; XP, message de progrès et nouveaux badges (étape 20) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
 
 ---
@@ -542,10 +588,11 @@ documentation, intégration continue verte.
 | 17 ✅ | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
 | 18 🟡 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1. Outillage fait : migration 0008 (avis), `POST /v1/feedback`, note rapide en fin de séance et « Donner mon avis » côté parent, rapport `app.tools.pilot_report`, protocole [`tests-familles.md`](tests-familles.md) | critères de passage atteints (en attente des familles, des leçons et d'une clé API) |
 | 19 🟡 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé. Fait : migration 0009, e-mails SMTP, confirmation de l'e-mail du parent, suppression des comptes inactifs (`app.tools.retention`), pages `/confidentialite`, `/suppression-compte`, `/verifier-email`, `deploy/` (Caddy HTTPS et HSTS, sauvegardes chiffrées), bundle signé (workflow « Android (Play Store) »), [`deploiement.md`](deploiement.md), [`play-store.md`](play-store.md), [registre](rgpd/registre-des-traitements.md) et [AIPD](rgpd/aipd.md) en brouillon | 20 familles testeuses (en attente des comptes Play et fournisseurs, de la relecture juridique et des familles) |
+| 20 ✅ | **Missions et gamification** (V2, CDC §110 n° 16) | migration 0011, XP selon l'effort, niveau, série, 13 badges, message du bilan, étapes de mission (§5.10) ; `GET /v1/me/progress`, `rewards` dans le bilan ; accueil de l'enfant, écran « Mes badges », tableau de bord du parent | séance simulée : l'XP ne dépend pas de la note, une notion ratée la veille puis réussie donne « Revanche », la série suit les jours (test) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
-- **V2 — ludique** : XP et série liés à l'effort, badges, missions narratives (§37), activités
+- **V2 — ludique** : ~~XP et série liés à l'effort, badges, missions narratives (§37)~~ (étape 20), activités
   memory, classement, frise, association glisser-déposer, coloriage et carte (bibliothèque de
   gabarits d'images libres de droits : planètes, carte de France, squelette…) ;
 - **V3 — moteur avancé** : difficulté dynamique fine, transfert, mode devoirs, référentiel des

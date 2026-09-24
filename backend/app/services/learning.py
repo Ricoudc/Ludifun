@@ -468,6 +468,7 @@ async def add_replay(
 class CompletedSession:
     outcome: SessionOutcome
     lesson: LessonUnits
+    previous: dict[str, Mastery]  # maîtrises avant la séance (récompenses, étape 20)
 
 
 async def complete(session: AsyncSession, revision: db.RevisionSession, now: datetime) -> CompletedSession:
@@ -491,7 +492,7 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
     )
     revision.status, revision.completed_at = "completed", now
     revision.score_on_10 = Decimal(str(outcome.score_on_10))
-    return CompletedSession(outcome, lesson)
+    return CompletedSession(outcome, lesson, masteries)
 
 
 # --------------------------------------------------------------------------- #

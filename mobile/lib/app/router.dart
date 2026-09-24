@@ -21,6 +21,7 @@ import '../features/parent/link_code_screen.dart';
 import '../features/parent/parent_home_screen.dart';
 import '../features/parent/parent_sign_in_screen.dart';
 import '../features/parent/password_reset_screen.dart';
+import '../features/rewards/badges_screen.dart';
 import '../features/session/session_screen.dart';
 import '../features/start/splash_screen.dart';
 import '../features/start/start_screen.dart';
@@ -52,6 +53,7 @@ abstract final class Routes {
   static const childHome = '/enfant';
   static const capture = '/enfant/photo';
   static const paste = '/enfant/texte';
+  static const badges = '/enfant/badges';
   static String analysis(String lessonId, {String? childId}) =>
       childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
@@ -166,6 +168,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'photo', builder: (_, _) => const CaptureScreen()),
           GoRoute(path: 'texte', builder: (_, _) => const TextImportScreen()),
+          GoRoute(path: 'badges', builder: (_, _) => const BadgesScreen()),
           GoRoute(
             path: 'analyse/:id',
             builder: (_, state) => AnalysisScreen(lessonId: state.pathParameters['id']!),

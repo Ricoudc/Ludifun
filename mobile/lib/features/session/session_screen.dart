@@ -108,6 +108,13 @@ class SessionScreen extends ConsumerWidget {
               Phase.question || Phase.submitting when item != null => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (state.missionStep case (final step, final steps, final label)) ...[
+                    Text(
+                      '🚀 Étape $step / $steps · $label',
+                      style: const TextStyle(fontSize: 16, color: LudiColors.primary),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (item.intro case final intro?) ...[
                     Card(
                       color: LudiColors.primary.withValues(alpha: 0.08),

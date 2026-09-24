@@ -30,7 +30,7 @@
 | Finalité | composer des séances de révision adaptées, suivre les progrès, tableau de bord du parent, objectifs et contrôles |
 | Base légale | consentement du titulaire de l'autorité parentale (enfant de moins de 15 ans, article 45 de la loi Informatique et Libertés), recueilli et horodaté pour chaque profil |
 | Personnes concernées | enfants du CP à la 3e (6 à 15 ans) |
-| Données | prénom ou pseudo, classe, avatar ; texte des leçons (photos non conservées), notions, réponses, résultats, niveaux, types d'erreurs, temps de révision ; objectifs fixés par le parent ; appareils liés (nom, dates) |
+| Données | prénom ou pseudo, classe, avatar ; texte des leçons (photos non conservées), notions, réponses, résultats, niveaux, types d'erreurs, temps de révision, XP et badges (sans classement entre enfants) ; objectifs fixés par le parent ; appareils liés (nom, dates) |
 | Données exclues | nom de famille, date de naissance, e-mail, voix, localisation, identifiants publicitaires |
 | Destinataires | le parent (tableau de bord, export) ; sous-traitants : hébergeur, Anthropic (texte et photos des leçons, réponses rédigées, sans prénom) |
 | Transfert hors UE | Anthropic (États-Unis) : clauses contractuelles types, DPA ; À COMPLÉTER : vérifier la certification Data Privacy Framework au moment de la signature |

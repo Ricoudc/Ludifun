@@ -1,4 +1,5 @@
 import 'account.dart';
+import 'rewards.dart';
 
 /// Formats de l'API des séances (§7.3 et §11) : écrans 4 à 7.
 
@@ -219,6 +220,7 @@ class Report {
     required this.lessonMastered,
     required this.canReviewErrors,
     this.nextReviewAt,
+    this.rewards,
   });
 
   factory Report.fromJson(Json json) => Report(
@@ -232,6 +234,10 @@ class Report {
     },
     lessonMastered: json['lesson_mastered'] as bool? ?? false,
     canReviewErrors: json['can_review_errors'] as bool? ?? false,
+    rewards: switch (json['rewards']) {
+      final Json rewards => Rewards.fromJson(rewards),
+      _ => null,
+    },
   );
 
   final double scoreOn10;
@@ -239,6 +245,9 @@ class Report {
   final DateTime? nextReviewAt;
   final bool lessonMastered;
   final bool canReviewErrors;
+
+  /// XP, badges et message de la séance (étape 20).
+  final Rewards? rewards;
 
   List<KnowledgeResult> withStatus(KnowledgeStatus status) => [
     for (final k in knowledge)

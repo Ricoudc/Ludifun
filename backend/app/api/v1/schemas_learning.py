@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.api.v1.schemas_rewards import RewardsOut
 from app.domain.knowledge import Grade, SkillVerb
 
 StepState = Literal["pending", "running", "done"]
@@ -219,6 +220,7 @@ class ReportOut(BaseModel):
     next_review_at: datetime | None
     lesson_mastered: bool
     can_review_errors: bool
+    rewards: RewardsOut | None = Field(None, description="XP, badges et message (étape 20).")
 
 
 class MissionLesson(BaseModel):

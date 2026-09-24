@@ -5,12 +5,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/session.dart';
 import '../../models/account.dart';
 import '../../models/lesson.dart';
+import '../../models/rewards.dart';
 
 /// Profil de l'enfant ; appelé à l'ouverture, il détecte aussi un appareil délié.
 final meProvider = FutureProvider.autoDispose<Child>((ref) => ref.watch(apiProvider).me());
 
 final missionProvider = FutureProvider.autoDispose<Mission>(
   (ref) => ref.watch(apiProvider).mission(),
+);
+
+/// XP, niveau, série et badges de l'enfant (étape 20).
+final progressProvider = FutureProvider.autoDispose<Progress>(
+  (ref) => ref.watch(apiProvider).progress(),
 );
 
 /// Horloge de l'affichage (« à revoir jeudi »), remplaçable dans les tests.
@@ -34,4 +40,5 @@ final lessonsProvider = FutureProvider.autoDispose<List<LessonSummary>>((ref) as
 void refreshHome(WidgetRef ref) {
   ref.invalidate(lessonsProvider);
   ref.invalidate(missionProvider);
+  ref.invalidate(progressProvider);
 }

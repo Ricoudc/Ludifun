@@ -503,6 +503,49 @@ void main() {
     expect(find.text('📐 Les fractions · ⏱️ 12 min'), findsOneWidget);
   });
 
+  testWidgets('étape 20 : XP, niveau, série et badges sur l\'accueil', (tester) async {
+    Map<String, Object?> badge(String code, String emoji, String title, String how, [String? at]) =>
+        {'code': code, 'emoji': emoji, 'title': title, 'how': how, 'earned_at': at};
+    server.on(
+      'GET /v1/me/progress',
+      (_) => (
+        200,
+        {
+          'total_xp': 160,
+          'level': 2,
+          'level_start_xp': 100,
+          'next_level_xp': 300,
+          'streak_days': 4,
+          'done_today': false,
+          'badges': [
+            badge(
+              'first_session',
+              '🌱',
+              'Premier pas',
+              'Termine ta première séance.',
+              '2026-09-20T17:00:00Z',
+            ),
+            badge('comeback', '🏆', 'Revanche', 'Réussis une notion qui te posait problème.'),
+          ],
+        },
+      ),
+    );
+    final container = await launch(tester, MemoryCredentialStore(child));
+    expect(find.text('⭐ 160 XP · Niveau 2'), findsOneWidget);
+    expect(find.text('🔥 Série : 4 jours'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('Encore 140 XP avant le niveau 3')), findsOneWidget);
+
+    await tester.tap(find.text('🏅 Mes badges (1)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mes badges'), findsOneWidget);
+    expect(find.text('Premier pas'), findsOneWidget);
+    expect(find.text('Gagné !'), findsOneWidget);
+    // Un badge pas encore gagné dit comment l'obtenir.
+    expect(find.text('Réussis une notion qui te posait problème.'), findsOneWidget);
+    expect(find.text('🔒'), findsOneWidget);
+    expect(container.read(routerProvider).state.matchedLocation, Routes.badges);
+  });
+
   testWidgets('accueil : une leçon à vérifier', (tester) async {
     server.on(
       'GET /v1/lessons',

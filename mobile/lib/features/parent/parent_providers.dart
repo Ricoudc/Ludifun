@@ -4,6 +4,7 @@ import '../../core/session.dart';
 import '../../models/account.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
+import '../../models/rewards.dart';
 
 final childrenProvider = FutureProvider.autoDispose<List<Child>>(
   (ref) => ref.watch(apiProvider).children(),
@@ -22,6 +23,11 @@ final childProvider = FutureProvider.autoDispose.family<Child?, String>((ref, id
 
 final dashboardProvider = FutureProvider.autoDispose.family<Dashboard, String>(
   (ref, childId) => ref.watch(apiProvider).dashboard(childId),
+);
+
+/// XP, série et badges de l'enfant (étape 20).
+final childProgressProvider = FutureProvider.autoDispose.family<Progress, String>(
+  (ref, childId) => ref.watch(apiProvider).progress(childId: childId),
 );
 
 final childSkillsProvider = FutureProvider.autoDispose.family<List<LessonProgress>, String>(

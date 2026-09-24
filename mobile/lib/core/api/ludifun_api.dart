@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../models/account.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
+import '../../models/rewards.dart';
 import '../../models/session.dart';
 import 'api_exception.dart';
 import 'auth_interceptor.dart';
@@ -262,6 +263,12 @@ class LudifunApi {
   Future<Child> me() => _call(() async {
     final r = await _dio.get<Json>('/v1/me');
     return Child.fromJson(r.data!);
+  });
+
+  /// XP, niveau, série et badges ; le parent précise l'enfant (`childId`).
+  Future<Progress> progress({String? childId}) => _call(() async {
+    final r = await _dio.get<Json>('/v1/me/progress', queryParameters: {'child_id': ?childId});
+    return Progress.fromJson(r.data!);
   });
 
   Future<Mission> mission() => _call(() async {

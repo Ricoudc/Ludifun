@@ -92,6 +92,14 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
             for device in devices
         ],
         "lessons": lessons,
+        "badges": [
+            {"code": a.code, "earned_at": _iso(a.earned_at)}
+            for a in await session.scalars(
+                select(db.Achievement)
+                .where(db.Achievement.child_id == child.id)
+                .order_by(db.Achievement.earned_at)
+            )
+        ],
         "feedback": [
             {
                 "author": f.author,
@@ -157,6 +165,7 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
                 "started_at": _iso(revision.started_at),
                 "completed_at": _iso(revision.completed_at),
                 "score_on_10": float(revision.score_on_10) if revision.score_on_10 is not None else None,
+                "xp_earned": revision.xp_earned,
                 "answers": [
                     {
                         "activity": activity,

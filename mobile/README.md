@@ -56,8 +56,10 @@ navigateur (inscription et menu *Mon compte*). Le parent peut aussi photographie
 
 Séance (écrans 5 à 7, une seule route) : les 6 activités (QCM, vrai ou faux, texte à trou,
 association, défi rapide chronométré, carte mémoire) viennent d'un registre de widgets ; un type
-inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan (avec « Tu as
-aimé cette séance ? » 😕 🙂 😍, facultatif) et « Revoir mes erreurs ». Une séance interrompue reprend à la première activité sans réponse.
+inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan (avec l'XP gagnée,
+le progrès du jour, les nouveaux badges et « Tu as aimé cette séance ? » 😕 🙂 😍, facultatif) et
+« Revoir mes erreurs ». Chaque bloc de la séance est une étape de la mission (« 🚀 Étape 2 / 4 »).
+L'accueil montre l'XP, le niveau, la série et « Mes badges » ; le tableau de bord du parent aussi. Une séance interrompue reprend à la première activité sans réponse.
 
 Les identifiants restent sur l'appareil, chiffrés par le système. Le jeton d'accès du
 parent (15 minutes) est renouvelé automatiquement ; si l'appareil de l'enfant est délié,

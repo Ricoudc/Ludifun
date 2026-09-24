@@ -11,6 +11,7 @@ from app import clock
 from app.api.deps import Ai, AppSettings, ChildInScope, DbSession, Registry
 from app.api.errors import ApiError
 from app.api.v1.lessons import lesson_of_child
+from app.api.v1.rewards import rewards_out
 from app.api.v1.schemas_learning import (
     AttemptIn,
     AttemptOut,
@@ -29,7 +30,7 @@ from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.composer import Block, NothingToReview
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
-from app.services import ai_budget, goals, learning
+from app.services import ai_budget, goals, learning, rewards
 from app.services.answer_evaluation import AnswerEvaluator
 
 router = APIRouter(tags=["séances"])
@@ -261,13 +262,17 @@ async def extend(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
 
 
 @router.post("/sessions/{session_id}/complete")
-async def complete(session_id: uuid.UUID, child: ChildInScope, db: DbSession) -> ReportOut:
-    """Écran 7 : bilan, nouvelles maîtrises et prochaine révision."""
+async def complete(
+    session_id: uuid.UUID, child: ChildInScope, db: DbSession, settings: AppSettings
+) -> ReportOut:
+    """Écran 7 : bilan, nouvelles maîtrises, prochaine révision, et ce que l'effort a rapporté."""
     revision = await session_of_child(db, child, session_id)
+    now = clock.now()
     try:
-        done = await learning.complete(db, revision, clock.now())
+        done = await learning.complete(db, revision, now)
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc
+    award = await rewards.award(db, revision, done, now, ZoneInfo(settings.family_timezone))
     await db.commit()
     outcome, lesson = done.outcome, done.lesson
     labels = {u.id: u.item.label for u in lesson.units}
@@ -291,6 +296,7 @@ async def complete(session_id: uuid.UUID, child: ChildInScope, db: DbSession) ->
         next_review_at=outcome.next_review_at,
         lesson_mastered=outcome.lesson_mastered,
         can_review_errors=outcome.can_review_errors,
+        rewards=rewards_out(award, now),
     )
 
 

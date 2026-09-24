@@ -10,6 +10,7 @@ import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
 import '../../models/parent.dart';
 import '../../models/subject.dart';
+import '../rewards/progress_strip.dart';
 import 'parent_providers.dart';
 import 'progress_chart.dart';
 
@@ -59,10 +60,17 @@ class ChildDashboardScreen extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () => ref.refresh(dashboardProvider(childId).future),
+        onRefresh: () {
+          ref.invalidate(childProgressProvider(childId));
+          return ref.refresh(dashboardProvider(childId).future);
+        },
         child: CenteredBody(
           top: true,
           children: [
+            if (ref.watch(childProgressProvider(childId)).value case final progress?) ...[
+              ProgressStrip(progress),
+              const SizedBox(height: 16),
+            ],
             ...switch (board) {
               AsyncData(:final value) => _content(context, value, name),
               AsyncError(:final error) => [

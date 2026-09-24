@@ -11,6 +11,7 @@ import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
 import '../../models/lesson.dart';
 import '../../models/subject.dart';
+import '../rewards/progress_strip.dart';
 import 'home_providers.dart';
 
 /// Écran 1 : mission du jour, nouvelle leçon, dernières révisions.
@@ -35,7 +36,12 @@ class ChildHomeScreen extends ConsumerWidget {
           top: true,
           children: [
             Text('Bonjour $name ! 👋', style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
+            if (ref.watch(progressProvider).value case final progress?) ...[
+              ProgressStrip(progress, onBadges: () => context.go(Routes.badges)),
+              const SizedBox(height: 12),
+            ] else
+              const SizedBox(height: 8),
             const _MissionCard(),
             const SizedBox(height: 16),
             OutlinedButton.icon(

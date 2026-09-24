@@ -64,6 +64,33 @@ class SessionState {
     return (group.indexWhere((i) => i.id == current?.id) + 1, group.length);
   }
 
+  static const _steps = {
+    Block.warmup: 'Échauffement',
+    Block.core: 'Entraînement',
+    Block.match: 'Associations',
+    Block.speed: 'Défi final',
+  };
+
+  /// « 🚀 Étape 2 / 4 · Entraînement » : les blocs principaux de la séance sont les étapes d'une
+  /// mission (cahier des charges complet §37). Un rappel inséré appartient à l'étape en cours ;
+  /// la reprise des erreurs et les défis bonus viennent après la mission.
+  (int, int, String)? get missionStep {
+    final steps = [
+      for (final block in _steps.keys)
+        if (items.any((i) => i.block == block)) block,
+    ];
+    final at = items.indexWhere((i) => i.id == current?.id);
+    if (at < 0 || steps.length < 2) return null;
+    for (var i = at; i >= 0; i--) {
+      final block = items[i].block;
+      if (block == Block.replay || block == Block.bonus) return null;
+      if (_steps.containsKey(block)) {
+        return (steps.indexOf(block) + 1, steps.length, _steps[block]!);
+      }
+    }
+    return null;
+  }
+
   /// Avancement des activités principales (0 à 1).
   double get progress {
     final main = [

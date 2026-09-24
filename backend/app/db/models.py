@@ -57,6 +57,21 @@ ERROR_TYPES = (
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
 AI_STAGES = ("ocr", "analysis", "material", "evaluation")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
+BADGE_CODES = (  # app.domain.rewards.BadgeCode
+    "first_session",
+    "sessions_10",
+    "sessions_50",
+    "streak_3",
+    "streak_7",
+    "comeback",
+    "persevering",
+    "help_used",
+    "errors_reviewed",
+    "explainer",
+    "notion_mastered",
+    "lesson_mastered",
+    "bonus",
+)
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -387,6 +402,8 @@ class RevisionSession(Base):
     # Étape 17 : réponses données quand la dernière pause a été proposée ; défis bonus ajoutés.
     hint_at_answer: Mapped[int | None] = mapped_column(SmallInteger)
     extended: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Étape 20 : XP gagnée à la clôture (effort, progrès ; jamais la note).
+    xp_earned: Mapped[int | None] = mapped_column(SmallInteger)
 
     __table_args__ = (
         CheckConstraint(_in("kind", SESSION_KINDS), name="kind"),
@@ -482,6 +499,23 @@ class KnowledgeMastery(Base):
         CheckConstraint("score BETWEEN 0 AND 100", name="score"),
         CheckConstraint("box BETWEEN 1 AND 5", name="box"),
         Index("ix_knowledge_mastery_due", "child_id", "next_review_at"),
+    )
+
+
+class Achievement(Base):
+    """Badge gagné par un enfant (étape 20) : une seule fois chacun, jamais retiré."""
+
+    __tablename__ = "achievements"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("child_id", "code"),
+        CheckConstraint(_in("code", BADGE_CODES), name="code"),
     )
 
 
