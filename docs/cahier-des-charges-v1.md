@@ -807,6 +807,7 @@ Une ressource hors de son périmètre répond 404, comme si elle n'existait pas.
 | POST | `/v1/sessions/{id}/attempts` | `{item_id, response, duration_ms}` → correction (écran 6) ; `{"skipped": true}` pour une activité que l'application ne sait pas afficher (ni notée, ni comptée dans la maîtrise) |
 | POST | `/v1/lessons/text` · `/v1/lessons/{id}/review` | leçon collée ; réponses à « Peux-tu vérifier ? » (étape 15, [spécification technique](specification-technique.md) §6.3) |
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | « Je n'ai pas compris » : l'aide suivante, 1 à 5 (étape 14, [spécification technique](specification-technique.md) §5.4) |
+| POST | `/v1/sessions/{id}/extend` | défis bonus pour un enfant rapide, après `bonus_offer` (étape 17, [spécification technique](specification-technique.md) §5.8) |
 | POST | `/v1/sessions/{id}/replay` | Génère le bloc de reprise des erreurs → `items[]` (éventuellement vide) ; une fois toutes les activités principales répondues ; idempotent |
 | POST | `/v1/sessions/{id}/complete` | Clôture → bilan (écran 7) |
 | POST | `/v1/sessions/{id}/errors-session` | Crée la séance « Revoir mes erreurs » |

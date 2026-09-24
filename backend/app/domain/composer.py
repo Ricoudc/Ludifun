@@ -59,6 +59,12 @@ class Block(StrEnum):
     MATCH = "match"
     SPEED = "speed"
     REPLAY = "replay"
+    REMEDIATION = "remediation"  # insérée après deux échecs sur une notion (étape 17)
+    BONUS = "bonus"  # défis en plus, quand l'enfant va vite (étape 17)
+
+
+# Blocs hors de la note sur 10 : on y apprend, on n'y est pas évalué.
+UNGRADED_BLOCKS = frozenset({"replay", "remediation", "bonus"})
 
 
 class SessionKind(StrEnum):
@@ -272,10 +278,64 @@ class SessionComposer:
 
         order = sorted(failed, key=lambda k: (worst[k], -by_id[k].item.importance, k))
         used = {k: set(types) for k, types in failed.items()}
+        # Tous les formats déjà ratés (après une remédiation, par exemple) : on en réutilise un.
+        for k in order:
+            if not self._options(by_id[k], (1, 2, 3), None, used, True, rng):
+                used[k] = set()
         any_format: Prefs = lambda unit: ((1, 2, 3), None)  # noqa: E731
         candidates = [by_id[k] for k in order if self._options(by_id[k], (1, 2, 3), None, used, True, rng)]
         activities = self._sequence(candidates[:REPLAY_MAX], any_format, list(previous), used, rng)
         return [PlannedItem(start_position + i, Block.REPLAY, a) for i, a in enumerate(activities)]
+
+    # ------------------------------------------------------------------ #
+    # Adaptation en temps réel (étape 17)
+    # ------------------------------------------------------------------ #
+
+    def remediation(
+        self,
+        unit: KnowledgeUnit,
+        previous: Sequence[BuiltActivity],
+        start_position: int,
+        seed: int,
+    ) -> list[PlannedItem]:
+        """Après deux échecs sur une notion : une activité facile (reconnaître), puis une autre dans
+        un format pas encore raté, à insérer tout de suite (le rappel de la règle les précède)."""
+        rng = random.Random(f"{seed}:remediation:{unit.id}")
+        failed = {a.type for a in previous if unit.id in a.knowledge_ids}
+        used = {unit.id: set(failed)}
+        easy: Prefs = lambda u: ((1,), EASY)  # noqa: E731
+        normal: Prefs = lambda u: ((2, 1), None)  # noqa: E731
+        first = self._sequence([unit], easy, previous, used, rng)
+        second = self._sequence([unit], normal, [*previous, *first], used, rng)
+        return [
+            PlannedItem(start_position + i, Block.REMEDIATION, a) for i, a in enumerate([*first, *second])
+        ]
+
+    def bonus(
+        self,
+        units: Sequence[KnowledgeUnit],
+        masteries: Mapping[str, Mastery],
+        previous: Sequence[BuiltActivity],
+        start_position: int,
+        seed: int,
+        count: int = 3,
+    ) -> list[PlannedItem]:
+        """Défis en plus pour un enfant rapide : les notions de la séance les mieux réussies, plus
+        difficiles, dans des formats qu'il n'a pas encore eus pour elles."""
+        rng = random.Random(f"{seed}:bonus")
+        seen = {k for a in previous for k in a.knowledge_ids}
+        used: dict[str, set[ActivityCode]] = {}
+        for activity in previous:
+            for k in activity.knowledge_ids:
+                used.setdefault(k, set()).add(activity.type)
+        candidates = sorted(
+            (u for u in units if u.id in seen),
+            key=lambda u: (-(masteries[u.id].score if u.id in masteries else 0), -u.item.importance, u.id),
+        )
+        harder: Prefs = lambda u: ((3, 2), None)  # noqa: E731
+        playable = [u for u in candidates if self._options(u, (3, 2), None, used, True, rng)]
+        activities = self._sequence(playable[:count], harder, list(previous), used, rng)
+        return [PlannedItem(start_position + i, Block.BONUS, a) for i, a in enumerate(activities)]
 
     # ------------------------------------------------------------------ #
     # Séance « Revoir mes erreurs » (§8.4)

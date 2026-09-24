@@ -11,14 +11,32 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity, Grade
 from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.registry import ActivityRegistry
-from app.domain.composer import BLOCK_SIZE, Block, NothingToReview, PlannedItem, SessionComposer, SessionPlan
+from app.domain.composer import (
+    BLOCK_SIZE,
+    UNGRADED_BLOCKS,
+    Block,
+    NothingToReview,
+    PlannedItem,
+    SessionComposer,
+    SessionPlan,
+)
+from app.domain.engagement import (
+    BONUS_ACTIVITIES,
+    FAILURE_BELOW,
+    MAX_REMEDIATIONS,
+    REMEDIATION_AFTER_FAILURES,
+    HintKind,
+    bonus_offered,
+    engagement_hint,
+)
+from app.domain.engagement import Answer as EngagementAnswer
 from app.domain.errors import with_speed
 from app.domain.help import HelpStep, next_help, result_with_help
 from app.domain.mastery import Mastery
@@ -90,9 +108,14 @@ async def attempts_by_item(
 
 
 def _persist_plan(
-    session: AsyncSession, revision: db.RevisionSession, planned: list[PlannedItem], lesson: LessonUnits
+    session: AsyncSession,
+    revision: db.RevisionSession,
+    planned: list[PlannedItem],
+    lesson: LessonUnits,
+    intro: str | None = None,
 ) -> None:
-    for item in planned:
+    """`intro` : texte affiché avant la première activité (rappel de la règle, remédiation)."""
+    for index, item in enumerate(planned):
         session.add(
             db.SessionItem(
                 session_id=revision.id,
@@ -104,6 +127,7 @@ def _persist_plan(
                 knowledge_ids=[lesson.key_to_id[k] for k in item.activity.knowledge_ids],
                 payload=item.activity.payload,
                 solution=item.activity.solution,
+                intro=intro if index == 0 else None,
             )
         )
 
@@ -457,7 +481,7 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
     main_scores = [
         float(a.score)
         for item_id, a in (await attempts_by_item(session, revision)).items()
-        if items[item_id].block != Block.REPLAY and a.response != {"skipped": True}
+        if items[item_id].block not in UNGRADED_BLOCKS and a.response != {"skipped": True}
     ]
     evidences = await load_evidences(session, revision, lesson.id_to_key)
     masteries = await load_masteries(session, revision.child_id, lesson)
@@ -544,3 +568,154 @@ async def mission_of_the_day(
         if (minutes := await estimate(lesson_row)) is not None:
             return Mission(lesson_row, "not_mastered" if practised else "latest", minutes)
     return None
+
+
+# --------------------------------------------------------------------------- #
+# Adaptation en temps réel (étape 17)
+# --------------------------------------------------------------------------- #
+
+MAIN_BLOCKS = (Block.WARMUP, Block.CORE, Block.MATCH, Block.SPEED)
+
+
+@dataclass(frozen=True)
+class Adaptation:
+    inserted: list[db.SessionItem]  # à jouer tout de suite après l'activité répondue
+    hint: HintKind | None
+
+
+async def adapt(
+    session: AsyncSession,
+    revision: db.RevisionSession,
+    item: db.SessionItem,
+    grade: Grade | None,
+    registry: ActivityRegistry,
+) -> Adaptation:
+    """Après une réponse : remédiation si une notion est ratée pour la deuxième fois dans la
+    séance, et proposition de pause si l'enfant répond au hasard ou n'y arrive plus."""
+    await session.flush()
+    inserted: list[db.SessionItem] = []
+    if grade is not None and item.block in MAIN_BLOCKS and revision.kind != "errors":
+        inserted = await _remediate(session, revision, item, grade, registry)
+
+    answers = [
+        EngagementAnswer(float(score), duration)
+        for score, duration, response in await session.execute(
+            select(db.Attempt.score, db.Attempt.duration_ms, db.Attempt.response)
+            .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+            .where(db.SessionItem.session_id == revision.id)
+            .order_by(db.Attempt.created_at, db.SessionItem.position)
+        )
+        if response != {"skipped": True}
+    ]
+    since = None if revision.hint_at_answer is None else len(answers) - revision.hint_at_answer
+    hint = engagement_hint(answers, since)
+    if hint is not None:
+        revision.hint_at_answer = len(answers)
+    return Adaptation(inserted, hint)
+
+
+async def _remediate(
+    session: AsyncSession,
+    revision: db.RevisionSession,
+    item: db.SessionItem,
+    grade: Grade,
+    registry: ActivityRegistry,
+) -> list[db.SessionItem]:
+    failing_now = [k for k, result in grade.evidence.items() if result < FAILURE_BELOW]
+    if not failing_now:
+        return []
+    items = await session_items(session, revision)
+    remediated = {k for i in items if i.block == Block.REMEDIATION for k in i.knowledge_ids}
+    if len(remediated) >= MAX_REMEDIATIONS:
+        return []
+    failures: dict[uuid.UUID, int] = {}
+    rows = await session.execute(
+        select(db.AttemptEvidence.knowledge_id, db.AttemptEvidence.result, db.Attempt.score, db.SessionItem)
+        .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
+        .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+        .where(db.SessionItem.session_id == revision.id)
+    )
+    for knowledge_id, result, score, row in rows:
+        # Le résultat pour la maîtrise est réduit par l'aide ; ici, seul l'échec réel compte.
+        raw = float(score) if row.help_level > 0 else float(result)
+        if row.block in MAIN_BLOCKS and raw < FAILURE_BELOW:
+            failures[knowledge_id] = failures.get(knowledge_id, 0) + 1
+
+    lesson_row = await session.get(db.Lesson, revision.lesson_id)
+    assert lesson_row is not None
+    lesson = await load_units(session, lesson_row)
+    for key in failing_now:
+        knowledge_id = lesson.key_to_id[key]
+        if failures.get(knowledge_id, 0) != REMEDIATION_AFTER_FAILURES or knowledge_id in remediated:
+            continue
+        unit = next(u for u in lesson.units if u.id == key)
+        previous = [activity_of(i, lesson.id_to_key) for i in items]
+        planned = SessionComposer(registry).remediation(unit, previous, item.position + 1, revision.seed)
+        if not planned:
+            return []
+        await _shift_after(session, revision, item.position, len(planned))
+        _persist_plan(session, revision, planned, lesson, intro=f"📖 Rappel : {unit.item.statement}")
+        await session.flush()
+        positions = {p.position for p in planned}
+        return [i for i in await session_items(session, revision) if i.position in positions]
+    return []
+
+
+async def _shift_after(session: AsyncSession, revision: db.RevisionSession, position: int, by: int) -> None:
+    """Décale les activités suivantes pour faire place aux activités insérées (en deux temps,
+    pour ne jamais violer l'unicité de la position)."""
+    later = db.SessionItem.session_id == revision.id
+    await session.execute(
+        update(db.SessionItem)
+        .where(later, db.SessionItem.position > position)
+        .values(position=-(db.SessionItem.position + by))
+    )
+    await session.execute(
+        update(db.SessionItem)
+        .where(later, db.SessionItem.position < 0)
+        .values(position=-db.SessionItem.position)
+    )
+
+
+async def bonus_offer(session: AsyncSession, revision: db.RevisionSession) -> bool:
+    """« Encore 3 défis ? » : séance bien réussie, nettement plus vite que prévu, sans reprise."""
+    if revision.status != "active" or revision.extended or revision.kind == "errors":
+        return False
+    items = {i.id: i for i in await session_items(session, revision)}
+    attempts = await attempts_by_item(session, revision)
+    if set(attempts) != set(items) or any(i.block == Block.REPLAY for i in items.values()):
+        return False
+    main = [
+        attempts[i.id]
+        for i in items.values()
+        if i.block in MAIN_BLOCKS and attempts[i.id].response != {"skipped": True}
+    ]
+    answered_ms = sum(a.duration_ms or 0 for a in main)
+    return bonus_offered([float(a.score) for a in main], answered_ms, revision.estimated_duration_s)
+
+
+async def extend(
+    session: AsyncSession, revision: db.RevisionSession, registry: ActivityRegistry
+) -> list[db.SessionItem]:
+    """Défis bonus, une fois par séance, après toutes les activités (hors note, comptés pour la maîtrise)."""
+    if revision.status != "active":
+        raise SessionClosed
+    items = await session_items(session, revision)
+    if revision.extended:
+        return [i for i in items if i.block == Block.BONUS]
+    attempts = await attempts_by_item(session, revision)
+    if any(i.id not in attempts for i in items):
+        raise MainNotFinished
+    lesson_row = await session.get(db.Lesson, revision.lesson_id)
+    assert lesson_row is not None
+    lesson = await load_units(session, lesson_row)
+    masteries = await load_masteries(session, revision.child_id, lesson)
+    previous = [activity_of(i, lesson.id_to_key) for i in items]
+    start = max((i.position for i in items), default=0) + 1
+    planned = SessionComposer(registry).bonus(
+        lesson.units, masteries, previous, start, revision.seed, count=BONUS_ACTIVITIES
+    )
+    _persist_plan(session, revision, planned, lesson)
+    revision.extended = True
+    await session.flush()
+    return [i for i in await session_items(session, revision) if i.block == Block.BONUS]

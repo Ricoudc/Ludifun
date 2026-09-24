@@ -337,8 +337,20 @@ class LudifunApi {
   });
 
   /// Reprise des erreurs, après la dernière activité principale (liste vide s'il n'y en a pas).
-  Future<List<SessionItem>> replay(String sessionId) => _call(() async {
+  /// `bonusOffer` : proposer « encore 3 défis ? » (séance réussie et rapide, sans reprise).
+  Future<({List<SessionItem> items, bool bonusOffer})> replay(String sessionId) => _call(() async {
     final r = await _dio.post<Json>('/v1/sessions/$sessionId/replay');
+    return (
+      items: [
+        for (final item in r.data!['items'] as List<dynamic>) SessionItem.fromJson(item as Json),
+      ],
+      bonusOffer: r.data!['bonus_offer'] as bool? ?? false,
+    );
+  });
+
+  /// Défis bonus (une fois par séance).
+  Future<List<SessionItem>> extend(String sessionId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/sessions/$sessionId/extend');
     return [
       for (final item in r.data!['items'] as List<dynamic>) SessionItem.fromJson(item as Json),
     ];

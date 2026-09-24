@@ -9,7 +9,19 @@ import 'activities/activity_registry.dart';
 /// §14.4 : loading → question ⇄ submitting → correction → question (suivante)
 ///   └→ fin des activités principales : reprise des erreurs → question …
 ///   └→ fin : completing → report
-enum Phase { loading, question, submitting, correction, completing, report, finished, error }
+enum Phase {
+  loading,
+  question,
+  submitting,
+  correction,
+
+  /// « Encore 3 défis ? » après une séance réussie et rapide.
+  bonusOffer,
+  completing,
+  report,
+  finished,
+  error,
+}
 
 class SessionState {
   const SessionState({
@@ -32,9 +44,18 @@ class SessionState {
 
   bool get inReplay => current?.block == Block.replay;
 
+  bool get inBonus => current?.block == Block.bonus;
+
+  /// Reprise des erreurs et défis bonus sont comptés à part.
+  static int _groupOf(Block block) => switch (block) {
+    Block.replay => 1,
+    Block.bonus => 2,
+    _ => 0,
+  };
+
   List<SessionItem> get _group => [
     for (final item in items)
-      if ((item.block == Block.replay) == inReplay) item,
+      if (_groupOf(item.block) == _groupOf(current?.block ?? Block.core)) item,
   ];
 
   /// « Question 3 / 8 » ou « Reprise des erreurs 1 / 2 ».
@@ -47,7 +68,7 @@ class SessionState {
   double get progress {
     final main = [
       for (final item in items)
-        if (item.block != Block.replay) item,
+        if (_groupOf(item.block) == 0) item,
     ];
     if (main.isEmpty) return 0;
     return main.where((i) => i.answered).length / main.length;
@@ -119,9 +140,17 @@ class SessionController extends Notifier<SessionState> {
       final correction = await ref
           .read(apiProvider)
           .answer(sessionId, item.id, response, durationMs: durationMs);
+      // Remédiation : les activités insérées se jouent juste après celle-ci.
+      final marked = _mark(item, correction.result);
+      final at = marked.indexWhere((i) => i.id == item.id) + 1;
+      final known = {for (final i in marked) i.id};
       state = state.copyWith(
         phase: Phase.correction,
-        items: _mark(item, correction.result),
+        items: [
+          ...marked.take(at),
+          ...correction.insertedItems.where((i) => !known.contains(i.id)),
+          ...marked.skip(at),
+        ],
         correction: correction,
       );
     } on ApiException catch (error) {
@@ -150,8 +179,12 @@ class SessionController extends Notifier<SessionState> {
           _replayRequested = true;
           final known = {for (final i in state.items) i.id};
           state = state.copyWith(
-            items: [...state.items, ...replay.where((i) => !known.contains(i.id))],
+            items: [...state.items, ...replay.items.where((i) => !known.contains(i.id))],
           );
+          if (replay.items.isEmpty && replay.bonusOffer) {
+            state = state.copyWith(phase: Phase.bonusOffer);
+            return;
+          }
           continue;
         }
         if (!activityRegistry.containsKey(next.type)) {
@@ -184,6 +217,25 @@ class SessionController extends Notifier<SessionState> {
       }
       _fail(error);
     }
+  }
+
+  /// « Encore 3 défis ? » : oui.
+  Future<void> acceptBonus() async {
+    if (state.phase != Phase.bonusOffer) return;
+    state = state.copyWith(phase: Phase.loading);
+    try {
+      final bonus = await ref.read(apiProvider).extend(sessionId);
+      final known = {for (final i in state.items) i.id};
+      state = state.copyWith(items: [...state.items, ...bonus.where((i) => !known.contains(i.id))]);
+      await _advance();
+    } on ApiException catch (error) {
+      _fail(error);
+    }
+  }
+
+  /// « Encore 3 défis ? » : non, on passe au bilan.
+  Future<void> declineBonus() async {
+    if (state.phase == Phase.bonusOffer) await _complete();
   }
 
   /// « Revoir mes erreurs » : identifiant de la nouvelle séance.

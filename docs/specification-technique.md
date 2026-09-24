@@ -33,10 +33,10 @@ ont été mises à jour depuis.
 | §27-§28 | « Je n'ai pas compris » (5 niveaux), langage adapté à l'âge | ✅ étape 14 : indice, rappel, exemple, étapes, réponse | `domain/help.py`, `features/session/help_sheet.dart` |
 | §29 | Mode devoirs | 🔮 V3 | |
 | §31 | Durée de séance choisie par le parent | ✅ étape 16 : 5 à 30 min par jour, séances ajustées | `domain/planning.py` |
-| §32 | Fatigue / désengagement | ⏳ | étape 17 |
+| §32 | Fatigue / désengagement | ✅ étape 17 : pause proposée (réponses au hasard, échecs d'affilée) | `domain/engagement.py` |
 | §33 | Plan de révision avant un contrôle | ✅ étape 16 : plan jour par jour, recalculé chaque jour | `domain/planning.py`, `services/goals.py` |
 | §34 | Répétition espacée | ✅ J+1, 2, 4, 7, 14 selon la réussite ; mission du jour | `domain/mastery.py` |
-| §35-§36 | Adaptation en temps réel, difficulté dynamique | 🟡 reprise des erreurs en fin de séance ; difficulté 1-3 selon la maîtrise | étape 17 |
+| §35-§36 | Adaptation en temps réel, difficulté dynamique | ✅ étape 17 : remédiation insérée après deux échecs, défis bonus pour l'enfant rapide ; 🟡 difficulté propre à chaque notion : V3 | `domain/composer.py`, `domain/engagement.py` |
 | §37-§39, §85 | Missions, XP, badges, séries | 🟡 « mission du jour » ; pas d'XP ni de badges | V2 |
 | §40-§42 | Tableaux de bord enfant et parent, statuts 🟢🟠🔴 | ✅ | `features/home`, `features/parent/child_dashboard_screen.dart` |
 | §43, §62-§63 | Historique des erreurs, types d'erreurs | ✅ étape 14 : type d'erreur par notion ratée, erreurs récurrentes au tableau de bord | `domain/errors.py` |
@@ -83,8 +83,7 @@ backend/app/
 │   ├── understanding.py        # niveaux de compréhension, niveau affiché 0-5 (étape 13 ✅)
 │   ├── help.py                 # aide progressive (§27) (étape 14 ✅)
 │   ├── errors.py               # types d'erreurs, erreurs récurrentes (§43, §63) (étape 14 ✅)
-│   ├── remediation.py          # NOUVEAU : adaptation en temps réel (§35)
-│   ├── engagement.py           # NOUVEAU : signaux de fatigue (§32)
+│   ├── engagement.py           # remédiation, pause, défis bonus (§32, §35) (étape 17 ✅)
 │   ├── planning.py             # séance à durée cible, plan avant contrôle (§31, §33) (étape 16 ✅)
 │   ├── composer.py             # + durée cible, niveaux de compréhension
 │   └── activities/             # + open_question.py (étape 14 ✅), order.py, memory.py
@@ -200,13 +199,17 @@ réglages de l'enfant, et le **plan n'est pas stocké** — il se recalcule chaq
 date du contrôle et des jours où l'enfant a révisé (§5.9), ce qui redistribue d'office une
 journée manquée.
 
-### 4.5 Prévu (étape 17)
+### 4.5 Migration `0007` (étape 17, faite)
 
 ```sql
--- Étape 17 — difficulté intrinsèque d'une notion (CDC §36, §56).
-ALTER TABLE knowledge_items ADD COLUMN difficulty SMALLINT NOT NULL DEFAULT 2
-    CHECK (difficulty BETWEEN 1 AND 3);
+-- + blocs 'remediation' et 'bonus' dans session_items.block (hors note sur 10)
+ALTER TABLE session_items ADD COLUMN intro TEXT;          -- « 📖 Rappel : … » avant l'activité
+ALTER TABLE sessions ADD COLUMN hint_at_answer SMALLINT;   -- réponse où la pause a été proposée
+ALTER TABLE sessions ADD COLUMN extended BOOLEAN NOT NULL DEFAULT false;  -- défis bonus ajoutés
 ```
+
+La difficulté propre à chaque notion (CDC §36, §56) est reportée à la V3 : la difficulté des
+activités suit déjà la maîtrise de l'enfant et ses niveaux de compréhension.
 
 V2 (gamification, CDC §37-§39) : `xp_events(child_id, reason, points, session_id, created_at)`,
 `badges(child_id, code, earned_at)`, série calculée depuis `sessions`. Aucune
@@ -306,24 +309,32 @@ l'écran (la note de la séance ne change pas) ; pour la maîtrise, le résultat
 
 ### 5.6 Adaptation en temps réel (CDC §35)
 
-Deux échecs sur la même notion dans une séance → le serveur **insère** après l'activité en
-cours une mini-séquence de remédiation : carte « rappel de la règle » (sans note) → activité
-facile de niveau 1 → activité normale ; la suite de la séance reprend ensuite. Réponse de
-`POST /sessions/{id}/attempts` : champ `inserted_items` (le client les intercale).
+Deux échecs sur la même notion dans les activités principales d'une séance (hors « Revoir mes
+erreurs ») → le serveur **insère** juste après l'activité en cours : une activité facile
+(reconnaître) précédée du **rappel de la règle** (« 📖 Rappel : … », champ `intro`), puis une
+activité dans un format pas encore raté ; la suite de la séance est décalée d'autant. Une fois
+par notion, deux notions au plus par séance ; hors note sur 10, comptées pour la maîtrise.
+Réponse de `POST /sessions/{id}/attempts` : `inserted_items` (le client les intercale). La
+reprise des erreurs, si tous les formats ont été ratés, en réutilise un.
 
 ### 5.7 Engagement (CDC §32, sans diagnostic)
 
-Signaux sur les 5 dernières réponses : 3 réponses fausses en moins de 1,5 s ; temps de réponse
-×2 par rapport à la médiane de l'enfant ; 3 échecs consécutifs ; 2 activités « passées ».
-→ `engagement_hint` dans la réponse : `pause` (« On fait une petite pause ? ») ou `switch`
-(changer de type d'activité pour les éléments suivants). Seuils en constantes, testés.
+Réalisé (étape 17) : sur les 5 dernières réponses, 3 réponses fausses en moins de 1,5 s
+(`fast_guessing`), ou 4 échecs d'affilée (`struggling`) → `engagement_hint` dans la réponse,
+avec un message ; l'application propose « Faire une pause » (séance reprenable) ou
+« Continuer ». Jamais deux propositions à moins de 5 réponses d'écart. Le changement de format
+(`switch`) et l'écart à la médiane de l'enfant sont écartés : trop incertains sans données
+réelles (à revoir à l'étape 18).
 
 ### 5.8 Séance à durée cible (CDC §31)
 
 Étape 16 : le temps quotidien choisi par le parent règle l'approfondissement (l'échauffement et le
 défi rapide restent) : 5 min → révision express, 10 min → 3 activités (comme avant), 15 → 6,
 20 → 9, 30 → 12, par tours de 3 notions, une notion déjà vue revenant dans un autre format.
-Plus tard (étape 17) : si l'enfant va plus vite que prévu, `POST /sessions/{id}/extend`.
+Étape 17 : séance réussie (80 % en moyenne) en moins de 60 % du temps prévu, sans reprise des
+erreurs → `POST /sessions/{id}/replay` renvoie `bonus_offer` ; « Encore 3 défis ? » →
+`POST /sessions/{id}/extend` : 3 activités plus difficiles, dans des formats nouveaux pour les
+notions de la séance, une fois par séance, hors note.
 
 ### 5.9 Plan avant un contrôle (CDC §33)
 
@@ -444,7 +455,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | POST | `/v1/lessons/text` `{text}` | ✅ étape 15 : leçon depuis un texte (CDC §8.5) ; 40 à 20 000 caractères |
 | POST | `/v1/lessons/{id}/review` `{answers}` | ✅ étape 15 : réponses de l'enfant ; les passages sont dans `GET /v1/lessons/{id}` (`review`) |
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | ✅ étape 14 : aide suivante (niveau 1 → 5) |
-| POST | `/v1/sessions/{id}/extend` | activités supplémentaires (enfant rapide) |
+| POST | `/v1/sessions/{id}/extend` | ✅ étape 17 : défis bonus (enfant rapide), après `bonus_offer` |
 | POST | `/v1/lessons/{id}/sessions` `{target_minutes?}` | séance à durée cible |
 | GET | `/v1/children/{id}/skills` | ✅ étape 13 : compétences et notions de chaque leçon, niveau 0-5, couleur et explication |
 | GET | `/v1/children/{id}/dashboard` | ✅ étape 14 : `error_types` et `recurring_errors` ajoutés (pas de route séparée) |
@@ -467,7 +478,7 @@ et ont leurs tests de séparation.
 | 6 Dashboard enfant | ✅ mission du jour, étape du plan avant un contrôle (étape 16) | XP et série en V2 |
 | 7-9 Ajouter une leçon, caméra, pages | ✅ ; « J'ai le texte de la leçon » (étape 15) | PDF (V1.5) |
 | 10-11 Analyse, leçon comprise | ✅ ; « Tu vas savoir : » et étoiles (étape 13) ; « Peux-tu vérifier ? » (étape 15) | — |
-| 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) | remédiation (étape 17) |
+| 12-16 Activité, réponse, correction, aide, suivante | ✅ ; « ❓ Je n'ai pas compris » et question ouverte (étape 14) ; rappel et remédiation, pause, défis bonus (étape 17) | — |
 | 17 Résultat de séance | ✅ ; « ⬆️ Tu as progressé » : notions qui ont gagné un niveau (étape 13) | — |
 | 18-19 Progression, historique | ✅ | compétences et erreurs (étapes 13, 14) |
 
@@ -484,7 +495,7 @@ documentation, intégration continue verte.
 | 14 ✅ | **Aide, questions ouvertes, types d'erreurs** | matériel v2 (aides, distracteurs typés, questions ouvertes), évaluateur IA, bouton « Je n'ai pas compris », type d'erreur par réponse, erreurs récurrentes côté parent | parcours testé : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte corrigée ; erreur récurrente signalée |
 | 15 ✅ | **Import de texte et lecture vérifiée** | leçon depuis un texte collé, OCR v2 (passages incertains), écran « Peux-tu vérifier ? » | une photo avec un mot illisible demande une vérification avant l'analyse |
 | 16 ✅ | **Objectifs du parent** | temps quotidien (séance à durée cible), contrôle à venir et plan jour par jour, matière prioritaire | un contrôle saisi vendredi donne un plan suivi par l'enfant et recalculé après chaque séance |
-| 17 | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
+| 17 ✅ | **Adaptation en temps réel et engagement** | remédiation insérée après deux échecs, signaux de fatigue, extension de séance | séance simulée : deux échecs déclenchent la remédiation ; réponses au hasard proposent une pause |
 | 18 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1 | critères de passage atteints |
 | 19 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé | 20 familles testeuses |
 

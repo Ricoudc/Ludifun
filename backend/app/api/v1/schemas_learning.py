@@ -128,6 +128,7 @@ class SessionItemOut(BaseModel):
     attempt: AttemptSummary | None = Field(None, description="Réponse déjà donnée (reprise d'une séance).")
     help_available: bool = Field(True, description="Bouton « Je n'ai pas compris » proposé.")
     help_level: int = Field(0, description="Aide déjà demandée pour cette activité (0 à 5).")
+    intro: str | None = Field(None, description="À afficher avant l'activité (rappel de la règle).")
 
 
 class SessionOut(BaseModel):
@@ -160,6 +161,11 @@ class AttemptIn(BaseModel):
         return value
 
 
+class EngagementHintOut(BaseModel):
+    kind: Literal["fast_guessing", "struggling"]
+    message: str
+
+
 class AttemptOut(BaseModel):
     """Écran 6 : correction immédiate."""
 
@@ -170,6 +176,10 @@ class AttemptOut(BaseModel):
     tip: str | None
     explanation: str | None
     details: list[dict[str, Any]] = []
+    inserted_items: list[SessionItemOut] = Field(
+        [], description="Remédiation : activités à jouer juste après celle-ci (déjà en place dans la séance)."
+    )
+    engagement_hint: EngagementHintOut | None = Field(None, description="Proposition de pause.")
 
 
 class HelpOut(BaseModel):
@@ -185,6 +195,7 @@ class HelpOut(BaseModel):
 
 class ReplayOut(BaseModel):
     items: list[SessionItemOut]
+    bonus_offer: bool = Field(False, description="Proposer « encore 3 défis ? » (séance réussie et rapide).")
 
 
 class KnowledgeResultOut(BaseModel):

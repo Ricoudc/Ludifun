@@ -210,11 +210,13 @@ async def _revise(
         keys = {row.id: row.key for row in await db.scalars(select(KnowledgeItem))}
 
         async def play(items: list[dict[str, Any]]) -> None:
-            for item in items:
+            queue = list(items)  # + la remédiation insérée en cours de route
+            while queue:
+                item = queue.pop(0)
                 row = await db.get(SessionItem, uuid.UUID(item["id"]))
                 assert row is not None
                 now[0] += timedelta(milliseconds=ANSWER_MS + 8_000)
-                await call(
+                feedback = await call(
                     "POST",
                     f"/v1/sessions/{session['id']}/attempts",
                     tablet,
@@ -224,6 +226,7 @@ async def _revise(
                         "duration_ms": ANSWER_MS,
                     },
                 )
+                queue = feedback["inserted_items"] + queue
 
         await play(session["items"])
         await play((await call("POST", f"/v1/sessions/{session['id']}/replay", tablet))["items"])

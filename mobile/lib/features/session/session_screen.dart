@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/router.dart';
+import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../home/home_providers.dart';
 import '../report/report_view.dart';
@@ -78,10 +79,12 @@ class SessionScreen extends ConsumerWidget {
               ? Text(
                   state.inReplay
                       ? '🔄 Reprise des erreurs $index / $total'
+                      : state.inBonus
+                      ? '🚀 Défi bonus $index / $total'
                       : 'Question $index / $total',
                 )
               : null,
-          bottom: _playing(state) && !state.inReplay
+          bottom: _playing(state) && !state.inReplay && !state.inBonus
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(8),
                   child: Padding(
@@ -104,6 +107,16 @@ class SessionScreen extends ConsumerWidget {
               Phase.question || Phase.submitting when item != null => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (item.intro case final intro?) ...[
+                    Card(
+                      color: LudiColors.primary.withValues(alpha: 0.08),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(intro, style: const TextStyle(fontSize: 18, height: 1.35)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   AbsorbPointer(
                     absorbing: state.phase == Phase.submitting,
                     child: KeyedSubtree(
@@ -124,6 +137,39 @@ class SessionScreen extends ConsumerWidget {
                 item: item,
                 correction: state.correction!,
                 onContinue: controller.next,
+                onPause: () {
+                  refreshHome(ref);
+                  context.go(Routes.childHome);
+                },
+              ),
+              Phase.bonusOffer => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('🚀', textAlign: TextAlign.center, style: TextStyle(fontSize: 56)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tu as été rapide et tu as tout réussi !',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Encore 3 défis bonus, un peu plus difficiles ? Ils ne comptent pas dans ta note.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: LudiColors.accent),
+                    onPressed: controller.acceptBonus,
+                    child: const Text('Oui, j\'y vais !'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: controller.declineBonus,
+                    child: const Text('Non, j\'ai fini'),
+                  ),
+                ],
               ),
               Phase.report when state.report != null => ReportView(
                 report: state.report!,

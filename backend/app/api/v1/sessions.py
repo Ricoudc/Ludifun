@@ -15,6 +15,7 @@ from app.api.v1.schemas_learning import (
     AttemptIn,
     AttemptOut,
     AttemptSummary,
+    EngagementHintOut,
     HelpOut,
     KnowledgeResultOut,
     ReplayOut,
@@ -26,6 +27,7 @@ from app.api.v1.schemas_learning import (
 from app.db.models import Attempt, Child, RevisionSession, SessionItem
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.composer import Block, NothingToReview
+from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
 from app.services import ai_budget, goals, learning
 from app.services.answer_evaluation import AnswerEvaluator
@@ -52,6 +54,7 @@ def item_out(item: SessionItem, attempt: Attempt | None = None) -> SessionItemOu
     return SessionItemOut(
         help_available=item.activity_type not in MULTI_KNOWLEDGE,
         help_level=item.help_level,
+        intro=item.intro,
         id=item.id,
         position=item.position,
         block=item.block,
@@ -164,13 +167,25 @@ async def submit_attempt(
     except InvalidResponse as exc:
         raise ApiError(422, "invalid_response", f"Réponse invalide : {exc}") from exc
     try:
+        adaptation = await learning.adapt(db, revision, item, grade, registry)
         await db.commit()
     except IntegrityError as exc:  # double envoi simultané de la même réponse
         await db.rollback()
         raise ApiError(409, "already_answered", "Cette activité a déjà une réponse.") from exc
+    hint = (
+        EngagementHintOut(kind=adaptation.hint.value, message=HINT_MESSAGES[adaptation.hint])
+        if adaptation.hint
+        else None
+    )
     if grade is None:
         return AttemptOut(
-            item_id=item.id, result="skipped", score=0, correct_answer=None, tip=None, explanation=None
+            item_id=item.id,
+            result="skipped",
+            score=0,
+            correct_answer=None,
+            tip=None,
+            explanation=None,
+            engagement_hint=hint,
         )
     return AttemptOut(
         item_id=item.id,
@@ -180,6 +195,8 @@ async def submit_attempt(
         tip=grade.tip,
         explanation=grade.explanation,
         details=grade.details,
+        inserted_items=[item_out(i) for i in adaptation.inserted],
+        engagement_hint=hint,
     )
 
 
@@ -218,6 +235,22 @@ async def replay(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
     revision = await session_of_child(db, child, session_id)
     try:
         items = await learning.add_replay(db, revision, registry)
+    except learning.SessionClosed as exc:
+        raise SESSION_CLOSED from exc
+    except learning.MainNotFinished as exc:
+        raise ApiError(409, "session_not_finished", "Termine d'abord les activités de la séance.") from exc
+    offer = not items and await learning.bonus_offer(db, revision)
+    await db.commit()
+    attempts = await learning.attempts_by_item(db, revision)
+    return ReplayOut(items=[item_out(i, attempts.get(i.id)) for i in items], bonus_offer=offer)
+
+
+@router.post("/sessions/{session_id}/extend")
+async def extend(session_id: uuid.UUID, child: ChildInScope, db: DbSession, registry: Registry) -> ReplayOut:
+    """🚀 « Encore 3 défis ? » : activités plus difficiles, une fois par séance, hors note."""
+    revision = await session_of_child(db, child, session_id)
+    try:
+        items = await learning.extend(db, revision, registry)
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc
     except learning.MainNotFinished as exc:

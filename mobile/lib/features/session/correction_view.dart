@@ -11,12 +11,16 @@ class CorrectionView extends StatelessWidget {
     required this.item,
     required this.correction,
     required this.onContinue,
+    this.onPause,
     super.key,
   });
 
   final SessionItem item;
   final Correction correction;
   final VoidCallback onContinue;
+
+  /// « Faire une pause » : la séance reste reprenable depuis l'accueil.
+  final VoidCallback? onPause;
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +89,22 @@ class CorrectionView extends StatelessWidget {
           const SizedBox(height: 12),
           Text(correction.explanation!, style: const TextStyle(fontSize: 17, height: 1.35)),
         ],
+        if (correction.pauseMessage case final message?) ...[
+          const SizedBox(height: 20),
+          Card(
+            color: LudiColors.accent.withValues(alpha: 0.15),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('☕ $message', style: const TextStyle(fontSize: 17)),
+            ),
+          ),
+        ],
         const SizedBox(height: 28),
         FilledButton(autofocus: true, onPressed: onContinue, child: const Text('Continuer')),
+        if (correction.pauseMessage != null && onPause != null) ...[
+          const SizedBox(height: 12),
+          OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
+        ],
       ],
     );
   }

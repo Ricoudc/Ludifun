@@ -14,6 +14,7 @@ from sqlalchemy import (
     ARRAY,
     REAL,
     BigInteger,
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -41,7 +42,7 @@ FAILURE_REASONS = ("unreadable", "not_a_lesson", "too_long", "ai_error")
 PAGE_QUALITIES = ("good", "partial", "unreadable")
 SESSION_KINDS = ("first", "review", "errors")
 SESSION_STATUSES = ("active", "completed", "abandoned")
-SESSION_BLOCKS = ("warmup", "core", "match", "speed", "replay")
+SESSION_BLOCKS = ("warmup", "core", "match", "speed", "replay", "remediation", "bonus")
 ERROR_TYPES = (
     "knowledge",
     "calculation",
@@ -365,6 +366,9 @@ class RevisionSession(Base):
     score_on_10: Mapped[Decimal | None] = mapped_column(Numeric(3, 1))
     started_at: Mapped[datetime] = _created_at()
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Étape 17 : réponses données quand la dernière pause a été proposée ; défis bonus ajoutés.
+    hint_at_answer: Mapped[int | None] = mapped_column(SmallInteger)
+    extended: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     __table_args__ = (
         CheckConstraint(_in("kind", SESSION_KINDS), name="kind"),
@@ -387,6 +391,7 @@ class SessionItem(Base):
     cognitive_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="1")
     # Aide la plus forte demandée (« Je n'ai pas compris ») avant la réponse : 0 à 5.
     help_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    intro: Mapped[str | None] = mapped_column(Text)  # « Rappel » affiché avant l'activité (remédiation)
     knowledge_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # envoyé au téléphone
     solution: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # jamais avant la réponse

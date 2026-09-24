@@ -2,7 +2,22 @@ import 'account.dart';
 
 /// Formats de l'API des séances (§7.3 et §11) : écrans 4 à 7.
 
-enum Block { warmup, core, match, speed, replay }
+enum Block {
+  warmup,
+  core,
+  match,
+  speed,
+  replay,
+
+  /// Insérée après deux échecs sur une notion (rappel, puis activités faciles).
+  remediation,
+
+  /// Défis en plus, proposés à un enfant rapide.
+  bonus;
+
+  /// Un bloc inconnu (serveur plus récent) se joue comme une activité ordinaire.
+  static Block parse(String value) => values.asNameMap()[value] ?? core;
+}
 
 enum AttemptResult {
   correct,
@@ -23,13 +38,15 @@ class SessionItem {
     required this.payload,
     this.result,
     this.helpAvailable = false,
+    this.intro,
   });
 
   factory SessionItem.fromJson(Json json) => SessionItem(
     helpAvailable: json['help_available'] as bool? ?? false,
     id: json['id'] as String,
     position: json['position'] as int,
-    block: Block.values.byName(json['block'] as String),
+    block: Block.parse(json['block'] as String),
+    intro: json['intro'] as String?,
     type: json['type'] as String,
     difficulty: json['difficulty'] as int? ?? 1,
     payload: json['payload'] as Json,
@@ -54,6 +71,9 @@ class SessionItem {
   /// Bouton « Je n'ai pas compris » proposé (activités sur une seule notion).
   final bool helpAvailable;
 
+  /// Rappel de la règle, affiché avant l'activité (remédiation).
+  final String? intro;
+
   bool get answered => result != null;
 
   SessionItem answeredWith(AttemptResult value) => SessionItem(
@@ -65,6 +85,7 @@ class SessionItem {
     payload: payload,
     result: value,
     helpAvailable: helpAvailable,
+    intro: intro,
   );
 }
 
@@ -117,9 +138,16 @@ class Correction {
     this.tip,
     this.explanation,
     this.details = const [],
+    this.insertedItems = const [],
+    this.pauseMessage,
   });
 
   factory Correction.fromJson(Json json) => Correction(
+    insertedItems: [
+      for (final i in json['inserted_items'] as List<dynamic>? ?? const [])
+        SessionItem.fromJson(i as Json),
+    ],
+    pauseMessage: (json['engagement_hint'] as Json?)?['message'] as String?,
     result: AttemptResult.parse(json['result'] as String),
     score: (json['score'] as num).toDouble(),
     correctAnswer: json['correct_answer'] as String?,
@@ -136,6 +164,12 @@ class Correction {
 
   /// Association et défi rapide : `[{id, correct, expected, correction?}]`.
   final List<Json> details;
+
+  /// Remédiation : activités à jouer juste après celle-ci.
+  final List<SessionItem> insertedItems;
+
+  /// Proposition de pause (réponses au hasard, ou trop d'échecs d'affilée).
+  final String? pauseMessage;
 }
 
 enum KnowledgeStatus { mastered, toReview, notMastered }

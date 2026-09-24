@@ -264,6 +264,12 @@ async def test_recurring_error_reaches_the_parent(
     ).json()
     assert board["error_types"] and board["error_types"][0]["count"] >= 3
     assert all(e["label"] for e in board["error_types"])
-    (recurring,) = [r for r in board["recurring_errors"] if r["label"] == "États généraux"]
-    assert recurring["sessions"] == 3 and recurring["lesson_title"] == "La Révolution française"
-    assert recurring["error_label"] in {"Ne connaît pas encore", "Ne s'en souvient pas"}
+    recurring = [r for r in board["recurring_errors"] if r["label"] == "États généraux"]
+    assert recurring and all(r["sessions"] == 3 for r in recurring)
+    assert all(r["lesson_title"] == "La Révolution française" for r in recurring)
+    assert {r["error_label"] for r in recurring} <= {
+        "Ne connaît pas encore",
+        "Ne s'en souvient pas",
+        "Confond avec une autre notion",
+        "Presque : une faute ou un détail",
+    }

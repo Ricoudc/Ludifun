@@ -237,6 +237,108 @@ void main() {
     );
   });
 
+  testWidgets('deux échecs : rappel de la règle, puis activité facile insérée', (tester) async {
+    final backend = FakeSessionBackend(server, 's1', [mcq('i1'), mcq('i2'), trueFalse('i3')]);
+    final remediation = FakeItem(
+      'r1',
+      'TRUE_FALSE',
+      {'statement': 'La Révolution française commence en 1789.'},
+      {'value': true},
+      block: 'remediation',
+    );
+    final original = server.handlers['POST /v1/sessions/s1/attempts']!;
+    server.on('POST /v1/sessions/s1/attempts', (r) async {
+      final (status, body) = await original(r);
+      final id = (r.data as Map<String, dynamic>)['item_id'];
+      if (id != 'i2') return (status, body);
+      backend.items.insert(2, remediation);
+      return (
+        status,
+        {
+          ...body! as Map<String, Object?>,
+          'inserted_items': [
+            {
+              ...backend.itemJson(remediation),
+              'intro': '📖 Rappel : la Révolution commence en 1789.',
+            },
+          ],
+        },
+      );
+    });
+    await open(tester, 's1');
+    await tapAndSettle(tester, '1492');
+    await tapAndSettle(tester, 'Continuer');
+    await tapAndSettle(tester, '1492'); // deuxième échec
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('📖 Rappel : la Révolution commence en 1789.'), findsOneWidget);
+    expect(find.text('Question 3 / 4'), findsOneWidget);
+    await tapAndSettle(tester, '✅ Vrai');
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('Question 4 / 4'), findsOneWidget);
+    expect(find.textContaining('Rappel'), findsNothing);
+  });
+
+  testWidgets('réponses au hasard : une pause est proposée', (tester) async {
+    FakeSessionBackend(server, 's1', [mcq('i1'), mcq('i2')]);
+    final original = server.handlers['POST /v1/sessions/s1/attempts']!;
+    server.on('POST /v1/sessions/s1/attempts', (r) async {
+      final (status, body) = await original(r);
+      return (
+        status,
+        {
+          ...body! as Map<String, Object?>,
+          'engagement_hint': {
+            'kind': 'fast_guessing',
+            'message': 'Tu vas très vite ! On fait une petite pause ?',
+          },
+        },
+      );
+    });
+    await open(tester, 's1');
+    await tapAndSettle(tester, '1492');
+    expect(find.text('☕ Tu vas très vite ! On fait une petite pause ?'), findsOneWidget);
+    await tapAndSettle(tester, 'Faire une pause');
+    expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
+  });
+
+  for (final accept in [true, false]) {
+    testWidgets('séance rapide et réussie : défis bonus ${accept ? 'acceptés' : 'refusés'}', (
+      tester,
+    ) async {
+      final backend = FakeSessionBackend(server, 's1', [mcq('i1')]);
+      final bonus = mcq('b1', block: 'bonus');
+      server
+        ..on(
+          'POST /v1/sessions/s1/replay',
+          (_) => (200, {'items': <Object>[], 'bonus_offer': true}),
+        )
+        ..on('POST /v1/sessions/s1/extend', (_) {
+          backend.items.add(bonus);
+          return (
+            200,
+            {
+              'items': [backend.itemJson(bonus)],
+            },
+          );
+        });
+      await open(tester, 's1');
+      await tapAndSettle(tester, '1789');
+      await tapAndSettle(tester, 'Continuer');
+      expect(find.text('Tu as été rapide et tu as tout réussi !'), findsOneWidget);
+      if (accept) {
+        await tapAndSettle(tester, 'Oui, j\'y vais !');
+        expect(find.text('🚀 Défi bonus 1 / 1'), findsOneWidget);
+        await tapAndSettle(tester, '1789');
+        await tapAndSettle(tester, 'Continuer');
+      } else {
+        await tapAndSettle(tester, 'Non, j\'ai fini');
+        expect(server.routes, isNot(contains('POST /v1/sessions/s1/extend')));
+      }
+      expect(backend.completed, 1);
+      expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    });
+  }
+
   testWidgets('séance déjà terminée', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1')]).completed = 1;
     await open(tester, 's1');

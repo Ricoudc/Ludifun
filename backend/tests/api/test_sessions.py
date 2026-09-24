@@ -35,10 +35,13 @@ async def play(
     items: list[dict[str, Any]],
     knows: Knows,
 ) -> list[dict[str, Any]]:
-    """Répond à chaque activité comme un élève qui connaît certaines notions."""
+    """Répond à chaque activité comme un élève qui connaît certaines notions, y compris aux
+    activités de remédiation insérées en cours de route (étape 17)."""
     keys = await knowledge_keys(db)
     feedback = []
-    for item in items:
+    queue = list(items)
+    while queue:
+        item = queue.pop(0)
         row = await db.get(SessionItem, uuid.UUID(item["id"]))
         assert row is not None
         response = respond(activity_of(row, keys), knows)
@@ -49,6 +52,8 @@ async def play(
         )
         assert r.status_code == 200, r.text
         feedback.append(r.json())
+        queue = r.json()["inserted_items"] + queue
+        keys = await knowledge_keys(db)
     return feedback
 
 
