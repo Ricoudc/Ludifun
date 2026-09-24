@@ -111,4 +111,4 @@ puis relancez `docker compose up -d`. Les photos sont alors lues et analysées p
 
 Limites de cette version de test : APK de débogage (plus lent qu'une version publiée), serveur
 en HTTP sur le réseau local uniquement. Sur iPhone, il faut un Mac avec Xcode (`flutter run`).
-La publication sur le Play Store en test fermé est l'étape 14.
+La publication sur le Play Store en test fermé est l'étape 19.

@@ -3,20 +3,21 @@
 L'enfant photographie sa leçon ; l'IA en extrait ce qu'il faut retenir, construit une
 séance de révision adaptée, analyse les erreurs et programme la prochaine révision.
 
-📄 Cahier des charges technique V1 : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
+📄 Cahier des charges complet (document de référence) : [`docs/cahier-des-charges-complet.md`](docs/cahier-des-charges-complet.md)
+🛠️ Spécification technique (écarts, schéma, API, contrats IA, plan) : [`docs/specification-technique.md`](docs/specification-technique.md)
+📄 Cahier des charges technique V1 (étapes 1 à 12) : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
 
 ```
 backend/            API FastAPI + PostgreSQL          → voir backend/README.md
 mobile/             Application Flutter (prototype, réécrite à l'étape 7)
-docs/               Vision produit et cahier des charges V1
+docs/               Cahier des charges, spécification technique, guides
 eval/               Évaluation sur de vraies leçons (protocole, exemples, grille)
 docker-compose.yml  PostgreSQL + API pour le développement
 ```
 
 ## Avancement
 
-Vision à long terme : [`docs/vision.md`](docs/vision.md) (espaces parent et enfant, bibliothèque d'activités, versions V0 à V6).
-Plan de la V1 : cahier des charges §18.
+Étapes 1 à 12 : cahier des charges V1 §18. Étapes 13 et suivantes : spécification technique §9.
 
 | # | Étape | État |
 |---|---|---|
@@ -32,8 +33,13 @@ Plan de la V1 : cahier des charges §18.
 | 10 | Espace enfant : liaison (code, QR), accueil, photo, analyse, résumé | ✅ (essai sur téléphone à faire) |
 | 11 | Espace enfant : jeux, correction, reprise des erreurs, bilan | ✅ (essai sur téléphone à faire) |
 | 12 | Espace parent : compte, enfants, code et QR, tableau de bord, historique | ✅ (essai sur téléphone à faire) |
-| 13 | Tests avec de vraies familles (30 leçons, 5 enfants) | ⏭️ prochaine |
-| 14 | Bêta Android (Play Store, test fermé) | |
+| 13 | Compétences et niveaux de compréhension | ⏭️ prochaine |
+| 14 | Aide « Je n'ai pas compris », questions ouvertes, types d'erreurs | |
+| 15 | Import de texte et lecture vérifiée | |
+| 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | |
+| 17 | Adaptation en temps réel et engagement | |
+| 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | |
+| 19 | Bêta Android (Play Store, test fermé) | |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).

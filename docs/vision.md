@@ -1,5 +1,8 @@
 # Ludifun — Vision produit
 
+> ⚠️ **Remplacé** par le [cahier des charges complet](cahier-des-charges-complet.md) et sa
+> [spécification technique](specification-technique.md). Conservé pour l'historique.
+
 > **Une plateforme de soutien scolaire personnalisée par IA.**
 > L'enfant photographie sa leçon, l'IA comprend ce qu'il doit apprendre, choisit la
 > meilleure façon de le lui faire apprendre, observe ses erreurs, change de méthode
