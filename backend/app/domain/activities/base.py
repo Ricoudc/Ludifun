@@ -32,6 +32,9 @@ class ActivityCode(StrEnum):
     TIMELINE = "TIMELINE"  # frise chronologique
     CLASSIFY = "CLASSIFY"  # ranger dans les bonnes cases
     MEMORY = "MEMORY"  # retrouver les paires
+    # Activités sur une figure (étape 22).
+    MAP = "MAP"  # situer sur une carte ou un schéma
+    COLORING = "COLORING"  # colorier selon une légende
 
 
 Result = Literal["correct", "partial", "incorrect"]

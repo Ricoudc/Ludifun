@@ -69,4 +69,25 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                     moves += [[first, other], [second, other]]
                 moves.append([first, second])
             return {"moves": moves}
+        case ActivityCode.MAP:
+            zones = list(s["zones"].values())
+            return {
+                "answers": [
+                    [
+                        question,
+                        zone
+                        if knows(s["knowledge_by_item"][question])
+                        else next(z for z in zones if z != zone),
+                    ]
+                    for question, zone in s["zones"].items()
+                ]
+            }
+        case ActivityCode.COLORING:
+            palette = sorted(set(s["expected"].values()))
+            return {
+                "colors": [
+                    [zone, colour if single_ok else palette[(palette.index(colour) + 1) % len(palette)]]
+                    for zone, colour in s["expected"].items()
+                ]
+            }
     raise ValueError(f"type d'activité inconnu : {activity.type}")

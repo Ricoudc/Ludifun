@@ -51,11 +51,19 @@ INTERMEDIATE = frozenset(
         ActivityCode.FLASHCARD,
         ActivityCode.ORDER,
         ActivityCode.CLASSIFY,
+        ActivityCode.COLORING,
     }
 )
-# 🧩 Jeu à plusieurs notions de fin de séance : l'association à la première séance, puis au choix
-# association, frise chronologique ou memory (étape 21), pour varier.
-PUZZLES = ((ActivityCode.MATCH, 2), (ActivityCode.TIMELINE, 2), (ActivityCode.MEMORY, 1))
+# 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les
+# notions sont sur une même figure, sinon l'association ; ensuite au choix carte, association,
+# frise chronologique ou memory (étape 21), pour varier.
+PUZZLES = (
+    (ActivityCode.MAP, 2),
+    (ActivityCode.MATCH, 2),
+    (ActivityCode.TIMELINE, 2),
+    (ActivityCode.MEMORY, 1),
+)
+FIRST_PUZZLES = frozenset({ActivityCode.MAP, ActivityCode.MATCH})
 
 
 # Pour une notion : difficultés préférées (dans l'ordre) et formats autorisés (None = tous).
@@ -463,7 +471,7 @@ class SessionComposer:
         ]
         if not options:
             return None
-        if first and options[0][0] is ActivityCode.MATCH:
+        if first and options[0][0] in FIRST_PUZZLES:
             code, difficulty, units = options[0]
         else:
             code, difficulty, units = rng.choice(options)

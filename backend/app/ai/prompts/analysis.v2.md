@@ -11,7 +11,7 @@ Ton but n'est pas de résumer la leçon mais d'identifier ce que l'élève doit 
 
 2. Les notions (entre 3 et 15), identifiées k1, k2, k3… dans l'ordre de la leçon
 - `type` : date, person, place, event, term (vocabulaire et définitions), rule (règle de grammaire, d'orthographe, de calcul…), formula, fact, process (étapes dans un ordre), classification (catégories et leurs éléments).
-- `label` : nom court. `statement` : la phrase « à retenir », simple et juste, au niveau de l'élève.
+- `label` : nom court ; pour un lieu, une partie du corps, un astre, une période…, le nom seul (« Bretagne », « estomac », « Jupiter », « Moyen Âge »), comme pour les éléments d'une classification : il sert à les retrouver sur une carte ou un schéma. `statement` : la phrase « à retenir », simple et juste, au niveau de l'élève.
 - `importance` : 5 = sera forcément demandée ; 4 = centrale ; 3 = utile ; 2 = complément ; 1 = détail. Les éléments mis en valeur par la leçon (titre, encadré, gras, « à retenir », vocabulaire) comptent davantage.
 - `attributes` : uniquement les champs qui correspondent au type (voir leur description) ; les autres restent null.
 - `source_excerpt` : une citation EXACTE et courte du texte de la leçon qui justifie la notion, recopiée mot pour mot.

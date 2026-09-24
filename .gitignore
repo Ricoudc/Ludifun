@@ -30,3 +30,5 @@ deploy/backups/
 
 # Démarrage Windows : famille de démonstration déjà proposée
 .ludifun-demo
+tools/figures/sources/
+tools/figures/preview/

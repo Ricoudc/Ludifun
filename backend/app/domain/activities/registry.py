@@ -6,6 +6,7 @@ Le composeur, la notation et la mémorisation n'ont pas à changer.
 
 from app.domain.activities.base import ActivityCode, ActivityType, BuiltActivity
 from app.domain.activities.classify import Classify
+from app.domain.activities.figures import Coloring, MapLocate
 from app.domain.activities.fill_blank import FillBlank
 from app.domain.activities.flashcard import Flashcard
 from app.domain.activities.match import Match
@@ -76,5 +77,8 @@ def default_registry() -> ActivityRegistry:
             Classify(),
             Timeline(),
             Memory(),
+            # Activités sur une figure (étape 22)
+            MapLocate(),
+            Coloring(),
         ]
     )

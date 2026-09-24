@@ -21,14 +21,15 @@ GRAPHIC_CODES = {
     ActivityCode.CLASSIFY,
     ActivityCode.MEMORY,
 }  # étape 21
+FIGURE_CODES = {ActivityCode.MAP, ActivityCode.COLORING}  # étape 22
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
-    assert set(registry.codes) == V1_CODES | GRAPHIC_CODES == set(ActivityCode)
+    assert set(registry.codes) == V1_CODES | GRAPHIC_CODES | FIGURE_CODES == set(ActivityCode)
     assert all(registry.get(code).code == code for code in registry.codes)
 
 
-@pytest.mark.parametrize("code", ["PUZZLE", "COLORING", ""])
+@pytest.mark.parametrize("code", ["PUZZLE", "DRAWING", ""])
 def test_unimplemented_or_unknown_activity(registry: ActivityRegistry, code: str) -> None:
     with pytest.raises(UnknownActivity):
         registry.get(code)

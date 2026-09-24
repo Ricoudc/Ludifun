@@ -2,8 +2,10 @@ import 'package:flutter/widgets.dart';
 
 import '../../../models/account.dart';
 import 'classify_view.dart';
+import 'coloring_view.dart';
 import 'fill_blank_view.dart';
 import 'flashcard_view.dart';
+import 'map_view.dart';
 import 'match_view.dart';
 import 'mcq_view.dart';
 import 'memory_view.dart';
@@ -32,6 +34,9 @@ final activityRegistry = <String, ActivityBuilder>{
       OrderView(payload: payload, onSubmit: onSubmit, timeline: true),
   'CLASSIFY': (payload, onSubmit) => ClassifyView(payload: payload, onSubmit: onSubmit),
   'MEMORY': (payload, onSubmit) => MemoryView(payload: payload, onSubmit: onSubmit),
+  // Activités sur une figure (étape 22)
+  'MAP': (payload, onSubmit) => MapView(payload: payload, onSubmit: onSubmit),
+  'COLORING': (payload, onSubmit) => ColoringView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

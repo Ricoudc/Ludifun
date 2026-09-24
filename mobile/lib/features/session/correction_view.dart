@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
 import '../../models/account.dart';
+import '../../models/figure.dart';
 import '../../models/session.dart';
 import 'activities/activity_registry.dart';
+import 'activities/figure_canvas.dart';
 
 /// Écran 6 : correction immédiate, jamais culpabilisante.
 class CorrectionView extends StatelessWidget {
@@ -80,6 +82,19 @@ class CorrectionView extends StatelessWidget {
             ],
           ),
         ),
+        // Carte et coloriage : les bonnes zones sur le dessin (vert trouvé, orange manqué, rouge touché
+        // à tort ; coloriage : les couleurs attendues).
+        if (item.payload['figure'] case {'id': final String figureId}) ...[
+          const SizedBox(height: 16),
+          FigureLoader(
+            id: figureId,
+            builder: (figure) => FigureCanvas(
+              figure: figure,
+              plain: item.type == 'COLORING',
+              colors: _figureColors(),
+            ),
+          ),
+        ],
         if (details.isNotEmpty) ...[const SizedBox(height: 16), ...details],
         if (correction.result != AttemptResult.correct && correction.tip != null) ...[
           const SizedBox(height: 16),
@@ -168,11 +183,26 @@ class CorrectionView extends StatelessWidget {
     ];
   }
 
+  Map<String, Color> _figureColors() => {
+    for (final Json d in correction.details)
+      if (d['touched'] case final String touched when d['correct'] != true)
+        touched: LudiColors.notMastered,
+    for (final Json d in correction.details)
+      if (d['zone'] case final String zone)
+        zone:
+            parseColor(d['color']) ??
+            (d['correct'] == true ? LudiColors.mastered : LudiColors.toReview),
+  };
+
   String _detailText(Json d, Map<String, String> texts) {
     // Ordre et frise : la bonne place de chaque étiquette. Memory : la paire.
     if (d['position'] case final int position) return '$position. ${d['expected']}';
     if (d['pair'] case final String pair) return pair;
-    final text = texts[d['id']] ?? '';
+    final text = texts[d['id']] ?? d['text'] as String? ?? '';
+    // Carte : la zone touchée à la place de la bonne.
+    if (d['touched_name'] case final String touched when d['correct'] != true) {
+      return '$text (tu as touché : $touched)';
+    }
     return switch (d['expected']) {
       final String right => '$text → $right',
       final bool value when d['correct'] == true => '$text (${value ? 'vrai' : 'faux'})',

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../models/account.dart';
 import '../../models/ai.dart';
+import '../../models/figure.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
 import '../../models/rewards.dart';
@@ -460,5 +461,11 @@ class LudifunApi {
   Future<RevisionSession> errorsSession(String sessionId) => _call(() async {
     final r = await _dio.post<Json>('/v1/sessions/$sessionId/errors-session');
     return RevisionSession.fromJson(r.data!);
+  });
+
+  /// Carte ou schéma des activités « carte » et « coloriage » (étape 22) : données publiques.
+  Future<Figure> figure(String id) => _call(() async {
+    final r = await _dio.get<Json>('/v1/figures/$id', options: _anonymous);
+    return Figure.fromJson(r.data!);
   });
 }

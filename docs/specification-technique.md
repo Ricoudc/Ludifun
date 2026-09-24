@@ -469,8 +469,35 @@ Quatre jeux s'ajoutent au registre, sans changer la notation ni la mémorisation
   suite si les deux cartes vont ensemble ; il ne dit rien de la notion.
 - Application : un geste simple pour chaque jeu (toucher dans l'ordre ; toucher l'étiquette puis
   la case ; retourner les cartes deux par deux), sans glisser-déposer, plus facile pour les petits.
-- **Reportés** : coloriage et carte, qui demandent une bibliothèque de gabarits d'images libres
-  de droits (planètes, carte de France, squelette…).
+- Coloriage et carte : étape 22 (§5.12).
+
+### 5.12 Carte et coloriage (étape 22)
+
+Une bibliothèque de 12 figures à zones nommées (`backend/app/figures/`, construite par
+`tools/figures/build_figures.py`, sources et licences dans `tools/figures/README.md`) :
+régions, départements, fleuves-montagnes-mers-villes de France, pays d'Europe, continents et
+océans (IGN en Licence Ouverte, Natural Earth dans le domaine public), système solaire,
+squelette, appareil digestif, plante, cycle de l'eau, volcan, grandes périodes de l'histoire
+(dessins Ludifun).
+
+- Rapprochement sans IA : le nom d'une notion (sans article, sans accents) est comparé aux noms
+  et synonymes des zones ; la consigne d'analyse demande le nom seul pour un lieu, un organe,
+  un astre, une période. Plusieurs figures conviennent : la première dans l'ordre de
+  `figures.ORDER`.
+
+| Jeu | Notions | Charge utile → réponse | Notation |
+| --- | --- | --- | --- |
+| `MAP` carte | 2 à 5 notions, zones distinctes d'une même figure | `{prompt, figure:{id, version}, items}` → `{answers:[[item, zone]]}` | chaque nom touché à la bonne zone est une preuve pour sa notion ; erreur de confusion ; niveau reconnaître |
+| `COLORING` coloriage | une classification (2 à 4 catégories, 3 à 12 éléments) dont tous les éléments sont des zones d'une figure | `{prompt, figure, palette:[{id, name, color, color_name}], count}` → `{colors:[[zone, couleur]]}` | part des zones attendues à la bonne couleur ; les zones à colorier ne sont pas montrées ; une zone de plus ne compte pas ; niveau se rappeler |
+
+- Composeur : la carte rejoint le jeu à plusieurs notions (à la première séance, la carte si
+  elle est possible, sinon l'association) ; le coloriage rejoint l'entraînement intermédiaire.
+- `GET /v1/figures/{id}` : publique, mise en cache une semaine ; l'application la garde en
+  mémoire le temps d'un lancement. Toucher : points et fleuves d'abord (tolérance de quelques
+  pixels), puis la surface dessinée au-dessus ; pincer pour zoomer ; la source est affichée
+  sous le dessin.
+- Correction : le dessin avec les bonnes zones (vert trouvé, orange manqué, rouge touché à tort ;
+  coloriage : les couleurs attendues).
 
 ---
 
@@ -618,13 +645,13 @@ documentation, intégration continue verte.
 | 18 🟡 | **Tests avec de vraies familles** (ancienne étape 13) | 30 leçons réelles, 5 enfants et parents, évaluation §17 V1. Outillage fait : migration 0008 (avis), `POST /v1/feedback`, note rapide en fin de séance et « Donner mon avis » côté parent, rapport `app.tools.pilot_report`, protocole [`tests-familles.md`](tests-familles.md) | critères de passage atteints (en attente des familles, des leçons et d'une clé API) |
 | 19 🟡 | **Bêta Android** (ancienne étape 14) | hébergement UE, e-mails, documents RGPD, Play Store test fermé. Fait : migration 0009, e-mails SMTP, confirmation de l'e-mail du parent, suppression des comptes inactifs (`app.tools.retention`), pages `/confidentialite`, `/suppression-compte`, `/verifier-email`, `deploy/` (Caddy HTTPS et HSTS, sauvegardes chiffrées), bundle signé (workflow « Android (Play Store) »), [`deploiement.md`](deploiement.md), [`play-store.md`](play-store.md), [registre](rgpd/registre-des-traitements.md) et [AIPD](rgpd/aipd.md) en brouillon | 20 familles testeuses (en attente des comptes Play et fournisseurs, de la relecture juridique et des familles) |
 | 20 ✅ | **Missions et gamification** (V2, CDC §110 n° 16) | migration 0011, XP selon l'effort, niveau, série, 13 badges, message du bilan, étapes de mission (§5.10) ; `GET /v1/me/progress`, `rewards` dans le bilan ; accueil de l'enfant, écran « Mes badges », tableau de bord du parent | séance simulée : l'XP ne dépend pas de la note, une notion ratée la veille puis réussie donne « Revanche », la série suit les jours (test) |
-| 21 ✅ | **Activités graphiques** (V2, CDC §110 n° 17) | remettre dans l'ordre, frise chronologique, ranger dans les cases, memory (§5.11) : types d'activités, composeur, élève simulé, écrans de l'application, correction élément par élément | chaque jeu se construit sur la leçon de référence qui s'y prête et se note juste (tests) ; coloriage et carte reportés |
+| 21 ✅ | **Activités graphiques** (V2, CDC §110 n° 17) | remettre dans l'ordre, frise chronologique, ranger dans les cases, memory (§5.11) : types d'activités, composeur, élève simulé, écrans de l'application, correction élément par élément | chaque jeu se construit sur la leçon de référence qui s'y prête et se note juste (tests)  |
+| 22 ✅ | **Carte et coloriage** (V2, CDC §110 n° 17) | bibliothèque de 12 figures (IGN, Natural Earth, dessins Ludifun), `GET /v1/figures/{id}`, activités `MAP` et `COLORING` (§5.12), écrans de l'application, correction sur le dessin | une leçon sur les régions donne une carte à la première séance, une classification des planètes un coloriage, chaque figure se lit et se touche dans l'application (tests) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
 - **V2 — ludique** : ~~XP et série liés à l'effort, badges, missions narratives (§37)~~ (étape 20), ~~activités
-  memory, classement, frise, remise en ordre~~ (étape 21), coloriage et carte (bibliothèque de
-  gabarits d'images libres de droits : planètes, carte de France, squelette…) ;
+  memory, classement, frise, remise en ordre~~ (étape 21), ~~coloriage et carte~~ (étape 22) ;
 - **V3 — moteur avancé** : difficulté dynamique fine, transfert, mode devoirs, référentiel des
   programmes (§105), profil d'apprentissage non figé (§82) ;
 - **V4 — professeur IA** : oral (reconnaissance vocale, lecture audio), « Enseigne-moi », jeu de rôle ;

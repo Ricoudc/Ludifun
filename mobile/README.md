@@ -58,7 +58,8 @@ navigateur (inscription et menu *Mon compte*). Le parent peut aussi photographie
 
 Séance (écrans 5 à 7, une seule route) : les activités (QCM, vrai ou faux, texte à trou,
 association, défi rapide chronométré, carte mémoire, question rédigée, et depuis l'étape 21
-remettre dans l'ordre, frise chronologique, ranger dans les cases, memory) viennent d'un registre de widgets ; un type
+remettre dans l'ordre, frise chronologique, ranger dans les cases, memory, et depuis l'étape 22
+carte et coloriage sur un dessin chargé une fois par `GET /v1/figures/{id}`) viennent d'un registre de widgets ; un type
 inconnu est sauté sans être noté. Correction immédiate, reprise des erreurs, bilan (avec l'XP gagnée,
 le progrès du jour, les nouveaux badges et « Tu as aimé cette séance ? » 😕 🙂 😍, facultatif) et
 « Revoir mes erreurs ». Chaque bloc de la séance est une étape de la mission (« 🚀 Étape 2 / 4 »).

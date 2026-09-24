@@ -23,6 +23,8 @@ PAYLOAD_KEYS = {
     ActivityCode.CLASSIFY: {"prompt", "categories", "items"},
     ActivityCode.TIMELINE: {"prompt", "items"},
     ActivityCode.MEMORY: {"prompt", "cards"},
+    ActivityCode.MAP: {"prompt", "figure", "items"},
+    ActivityCode.COLORING: {"prompt", "figure", "palette", "count"},
 }
 
 
