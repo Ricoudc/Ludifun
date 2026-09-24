@@ -62,16 +62,16 @@ Ce sont les étapes 13 et 14, avant les tests avec de vraies familles.
 
 | # | Sujet | CDC | Proposition | Statut |
 |---|---|---|---|---|
-| A1 | Âge de l'enfant | §54 : `birth_year` | **Garder la classe seule** : elle suffit pour adapter le langage (§28) et évite une donnée personnelle (minimisation, V1 §16.2). | à valider |
-| A2 | Nom du parent | §6.1 : « éventuellement nom » | E-mail seul ; un prénom facultatif pour les messages. | à valider |
-| A3 | Photos | §71 : mode historique au choix du parent | Garder le **mode temporaire** par défaut. Le mode historique (stockage chiffré, suppression avec la leçon, opt-in explicite) viendra avec l'hébergement UE, pas avant. | à valider |
+| A1 | Âge de l'enfant | §54 : `birth_year` | **Garder la classe seule** : elle suffit pour adapter le langage (§28) et évite une donnée personnelle (minimisation, V1 §16.2). | ✅ validé (24/09/2026) |
+| A2 | Nom du parent | §6.1 : « éventuellement nom » | E-mail seul ; un prénom facultatif pour les messages (fait : migration `0010`, `PATCH /v1/parent`). | ✅ validé (24/09/2026) |
+| A3 | Photos | §71 : mode historique au choix du parent | Garder le **mode temporaire** par défaut. Le mode historique (stockage chiffré, suppression avec la leçon, opt-in explicite) viendra avec l'hébergement UE, pas avant. | ✅ validé (24/09/2026) |
 | A4 | Maîtrise 0-5 | §14 | Conserver le score interne 0-100 (plus fin) et **afficher** le niveau 0-5 calculé (§5.3). | proposé |
 | A5 | Intervalles | §34 : J1, J3, J7, J14 | Déjà J+1, 2, 4, 7, 14 selon la réussite : conforme à l'esprit, pas de changement. | proposé |
 | A6 | Adaptation | §31, §109 : réussite → plus difficile, difficulté → aide | Conforme à ce qui est codé (question ouverte depuis l'étape 5 : **tranchée par le CDC**). | ✅ |
 | A7 | Routes de l'API | §58 : `/families`, `/activities/generate`, `/answers`… | Garder les routes existantes (même rôle, déjà testées) : `/children`, `/lessons/{id}/sessions`, `/sessions/{id}/attempts`… Nouvelles routes au §7. | proposé |
 | A8 | Orchestrateur IA | §59 : 12 « agents » | Des **étapes** au contrat strict, pas des agents autonomes : lecture, analyse, matériel (existants), puis évaluation des réponses ouvertes, aides, assistant parent. La planification, l'adaptation et la révision restent **déterministes** (moteur pédagogique, §92). | proposé |
 | A9 | Modèles de repli | — | Garder le basculement automatique vers un autre modèle en cas de refus. | question ouverte |
-| A10 | Confirmation de l'e-mail du parent | V1 §16.2 | **Rappeler sans bloquer** : un bandeau jusqu'à la confirmation ; l'adresse sert au mot de passe oublié et à la prévenance avant suppression (§4.7). | à valider |
+| A10 | Confirmation de l'e-mail du parent | V1 §16.2 | **Rappeler sans bloquer** : un bandeau jusqu'à la confirmation ; l'adresse sert au mot de passe oublié et à la prévenance avant suppression (§4.7). | ✅ validé (24/09/2026) |
 
 ---
 
@@ -244,7 +244,11 @@ CREATE TABLE email_verification_tokens (   -- « Confirmez votre adresse » : ha
 ALTER TABLE parents ADD COLUMN inactivity_warned_at TIMESTAMPTZ;  -- prévenance avant suppression
 ```
 
-La confirmation de l'e-mail ne bloque rien (arbitrage A10 proposé) : un bandeau la rappelle au
+Migration `0010` (arbitrage A2) : `ALTER TABLE parents ADD COLUMN first_name TEXT` — prénom
+facultatif (40 caractères au plus), saisi à l'inscription ou par `PATCH /v1/parent`, pour
+« Bonjour Claire » dans les e-mails.
+
+La confirmation de l'e-mail ne bloque rien (arbitrage A10, validé) : un bandeau la rappelle au
 parent, et l'adresse sert au mot de passe oublié et à la prévenance avant suppression. La
 bloquer gênerait l'inscription des familles de la bêta si les e-mails arrivent en retard.
 

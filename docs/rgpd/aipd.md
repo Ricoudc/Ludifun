@@ -22,7 +22,7 @@ Flux de données :
 
 | Principe | Mise en œuvre |
 |---|---|
-| Minimisation | enfant : prénom ou pseudo, classe, avatar ; ni nom, ni date de naissance, ni e-mail. Parent : e-mail seulement (arbitrages A1 et A2 de la spécification technique). |
+| Minimisation | enfant : prénom ou pseudo, classe, avatar ; ni nom, ni date de naissance, ni e-mail. Parent : e-mail, et prénom s'il le souhaite (arbitrages A1 et A2 de la spécification technique, validés). |
 | Limitation des finalités | révision et suivi par le parent ; aucune publicité, aucun profilage commercial, aucun classement entre enfants |
 | Conservation | photos non stockées ; comptes inactifs supprimés au bout de 12 mois (outil `app.tools.retention`) ; sauvegardes 30 jours |
 | Consentement | case à cocher horodatée pour chaque profil d'enfant, en plus de la politique de confidentialité |

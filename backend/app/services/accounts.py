@@ -49,11 +49,19 @@ def normalize_email(email: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-async def register_parent(db: AsyncSession, email: str, password: str, now: datetime) -> Parent:
+def greeting(parent: Parent) -> str:
+    return f"Bonjour {parent.first_name}," if parent.first_name else "Bonjour,"
+
+
+async def register_parent(
+    db: AsyncSession, email: str, password: str, now: datetime, first_name: str | None = None
+) -> Parent:
     email = normalize_email(email)
     if await db.scalar(select(Parent.id).where(Parent.email == email)):
         raise EmailTaken
-    parent = Parent(email=email, password_hash=hash_password(password), privacy_accepted_at=now)
+    parent = Parent(
+        email=email, password_hash=hash_password(password), privacy_accepted_at=now, first_name=first_name
+    )
     family = Family()
     db.add_all([parent, family])
     try:
@@ -154,6 +162,7 @@ async def request_password_reset(
             to=parent.email,
             subject="Ludifun : réinitialisation du mot de passe",
             body=(
+                f"{greeting(parent)}\n\n"
                 "Pour choisir un nouveau mot de passe, ouvrez ce lien dans l'application "
                 f"(valable {settings.password_reset_minutes} minutes) :\n"
                 f"{settings.password_reset_url}{reset.value}\n\n"
@@ -183,7 +192,7 @@ async def send_email_verification(
                 to=parent.email,
                 subject="Ludifun : confirmez votre adresse e-mail",
                 body=(
-                    "Bienvenue sur Ludifun !\n\n"
+                    f"{greeting(parent)}\n\nBienvenue sur Ludifun !\n\n"
                     "Pour confirmer que cette adresse est bien la vôtre, ouvrez ce lien "
                     f"(valable {settings.email_verification_days} jours) :\n"
                     f"{settings.email_verification_url}{link.value}\n\n"

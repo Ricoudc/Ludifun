@@ -64,7 +64,7 @@ de suppression du compte, bundle signé pour le Play Store. Restent des décisio
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0009"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0010"}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)

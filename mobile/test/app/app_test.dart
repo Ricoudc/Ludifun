@@ -98,7 +98,9 @@ void main() {
     final store = MemoryCredentialStore();
     server
       ..on('POST /v1/auth/register', (r) {
-        expect((r.data as Map<String, dynamic>)['accepted_privacy_policy'], isTrue);
+        final body = r.data as Map<String, dynamic>;
+        expect(body['accepted_privacy_policy'], isTrue);
+        expect(body['first_name'], 'Claire'); // facultatif (arbitrage A2)
         return (201, tokens('a1', 'r1'));
       })
       ..on('GET /v1/children', (_) => (200, <Object>[]));
@@ -112,7 +114,12 @@ void main() {
       find.widgetWithText(TextFormField, 'Adresse e-mail'),
       'parent@example.fr',
     );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Votre prénom (facultatif)'),
+      ' Claire ',
+    );
     await tester.enterText(find.widgetWithText(TextFormField, 'Mot de passe'), 'trop court');
+    await tester.ensureVisible(find.text('Créer mon compte'));
     await tester.tap(find.text('Créer mon compte'));
     await tester.pumpAndSettle();
     expect(find.text('Au moins 12 caractères.'), findsOneWidget); // l'erreur remplace l'aide
@@ -121,6 +128,7 @@ void main() {
       find.widgetWithText(TextFormField, 'Mot de passe'),
       'un mot de passe solide',
     );
+    await tester.ensureVisible(find.text('Créer mon compte'));
     await tester.tap(find.text('Créer mon compte'));
     await tester.pumpAndSettle();
     expect(

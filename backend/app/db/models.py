@@ -87,6 +87,7 @@ class Parent(Base):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)  # en minuscules
+    first_name: Mapped[str | None] = mapped_column(Text)  # facultatif, pour les messages (A2)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)  # argon2id
     privacy_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

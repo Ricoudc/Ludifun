@@ -133,3 +133,30 @@ def test_production_requires_a_real_secret() -> None:
     with pytest.raises(ValueError, match="LUDIFUN_JWT_SECRET"):
         Settings(environment="prod")
     Settings(environment="prod", jwt_secret="un-vrai-secret-de-production-tres-long-0123456789")
+
+
+async def test_optional_first_name(client: AsyncClient, mailer: MemoryEmailSender) -> None:
+    """Arbitrage A2 : e-mail seul, et un prénom facultatif pour les messages."""
+    r = await client.post(
+        "/v1/auth/register",
+        json={
+            "email": "claire@example.fr",
+            "password": "un mot de passe solide",
+            "accepted_privacy_policy": True,
+            "first_name": "  Claire ",
+        },
+    )
+    assert r.status_code == 201 and r.json()["parent"]["first_name"] == "Claire"
+    assert mailer.sent[-1].body.startswith("Bonjour Claire,\n\n")
+    token = r.json()["access_token"]
+
+    r = await client.patch("/v1/parent", json={"first_name": None}, headers=auth(token))
+    assert r.status_code == 200 and r.json()["first_name"] is None
+    await client.post("/v1/auth/password-reset", json={"email": "claire@example.fr"})
+    assert mailer.sent[-1].body.startswith("Bonjour,\n\n")
+
+    for bad in ({"first_name": "x" * 41}, {"first_name": "  "}, {}):
+        assert (await client.patch("/v1/parent", json=bad, headers=auth(token))).status_code == 422
+    r = await client.patch("/v1/parent", json={"first_name": "Clara"}, headers=auth(token))
+    assert (await client.get("/v1/parent", headers=auth(token))).json()["first_name"] == "Clara"
+    assert (await register(client))["parent"]["first_name"] is None

@@ -23,9 +23,15 @@ class _In(BaseModel):
 # --------------------------------------------------------------------------- #
 
 
+FirstName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=40)]
+
+
 class RegisterIn(_In):
     email: EmailStr
     password: Password
+    first_name: FirstName | None = Field(
+        None, description="Facultatif : « Bonjour Claire » dans les e-mails."
+    )
     accepted_privacy_policy: Literal[True] = Field(description="Doit valoir true.")
 
 
@@ -50,7 +56,12 @@ class PasswordResetConfirmIn(_In):
 class ParentOut(BaseModel):
     id: uuid.UUID
     email: str
+    first_name: str | None = None
     email_verified: bool = Field(description="Adresse confirmée par le lien envoyé à l'inscription.")
+
+
+class ParentPatch(_In):
+    first_name: FirstName | None = Field(description="null efface le prénom.")
 
 
 class EmailVerificationIn(_In):

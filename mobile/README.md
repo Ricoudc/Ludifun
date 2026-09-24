@@ -43,7 +43,7 @@ Les photos restent sur le téléphone jusqu'à la fin de l'analyse, puis sont ef
 peut aussi être collée en texte ; si un mot de la photo est mal lu, l'écran « Peux-tu vérifier ? »
 le fait confirmer ou corriger avant l'analyse.
 
-Espace parent (écrans P1 à P4) : connexion, mot de passe oublié (le lien de l'e-mail
+Espace parent (écrans P1 à P4) : inscription (prénom facultatif), connexion, mot de passe oublié (le lien de l'e-mail
 `ludifun://app/parent/nouveau-mot-de-passe?jeton=…` ouvre l'application), profils des enfants avec
 consentement parental, code à 6 chiffres et QR code de liaison, tableau de bord de la semaine,
 objectifs (temps par jour, matière à privilégier, contrôles à venir et leur plan de révision),

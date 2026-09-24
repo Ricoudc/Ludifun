@@ -23,6 +23,7 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _firstName = TextEditingController();
   bool _acceptedPolicy = false;
   bool _busy = false;
   String? _error;
@@ -31,6 +32,7 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _firstName.dispose();
     super.dispose();
   }
 
@@ -48,7 +50,11 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
     try {
       final email = _email.text.trim();
       final tokens = widget.register
-          ? await api.register(email: email, password: _password.text)
+          ? await api.register(
+              email: email,
+              password: _password.text,
+              firstName: _firstName.text.trim().isEmpty ? null : _firstName.text.trim(),
+            )
           : await api.login(email: email, password: _password.text);
       await ref.read(sessionProvider.notifier).signedIn(tokens); // le routeur ouvre l'espace parent
     } on ApiException catch (error) {
@@ -100,6 +106,17 @@ class _ParentSignInScreenState extends ConsumerState<ParentSignInScreen> {
               },
             ),
             if (register) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _firstName,
+                decoration: const InputDecoration(
+                  labelText: 'Votre prénom (facultatif)',
+                  helperText: 'Pour vous saluer dans nos e-mails.',
+                ),
+                maxLength: 40,
+                textCapitalization: TextCapitalization.words,
+                autofillHints: const [AutofillHints.givenName],
+              ),
               const SizedBox(height: 8),
               CheckboxListTile(
                 value: _acceptedPolicy,

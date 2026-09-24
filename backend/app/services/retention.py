@@ -46,7 +46,7 @@ def _warning(parent: Parent, deletion: datetime) -> Email:
         to=parent.email,
         subject="Ludifun : votre compte sera supprimé faute d'utilisation",
         body=(
-            "Bonjour,\n\n"
+            f"{accounts.greeting(parent)}\n\n"
             "Votre compte Ludifun n'a pas été utilisé depuis près d'un an. Pour ne pas garder les "
             "données de vos enfants inutilement, il sera supprimé avec toutes ses données (profils, "
             f"leçons, résultats) à partir du {deletion:%d/%m/%Y}.\n\n"

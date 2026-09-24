@@ -57,15 +57,24 @@ class LudifunApi {
 
   // Espace parent ------------------------------------------------------------
 
-  Future<ParentTokens> register({required String email, required String password}) =>
-      _call(() async {
-        final r = await _dio.post<Json>(
-          '/v1/auth/register',
-          data: {'email': email, 'password': password, 'accepted_privacy_policy': true},
-          options: _anonymous,
-        );
-        return ParentTokens.fromJson(r.data!);
-      });
+  /// `firstName` : facultatif, pour « Bonjour Claire » dans les e-mails (arbitrage A2).
+  Future<ParentTokens> register({
+    required String email,
+    required String password,
+    String? firstName,
+  }) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/auth/register',
+      data: {
+        'email': email,
+        'password': password,
+        'accepted_privacy_policy': true,
+        'first_name': ?firstName,
+      },
+      options: _anonymous,
+    );
+    return ParentTokens.fromJson(r.data!);
+  });
 
   Future<ParentTokens> login({required String email, required String password}) => _call(() async {
     final r = await _dio.post<Json>(

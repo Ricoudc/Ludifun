@@ -9,6 +9,7 @@ from app.api.v1.schemas import (
     EmailVerificationIn,
     LoginIn,
     ParentOut,
+    ParentPatch,
     PasswordResetConfirmIn,
     PasswordResetIn,
     RefreshIn,
@@ -35,7 +36,12 @@ def tokens_out(pair: accounts.TokenPair, parent: Parent) -> TokensOut:
 
 
 def parent_out(parent: Parent) -> ParentOut:
-    return ParentOut(id=parent.id, email=parent.email, email_verified=parent.email_verified_at is not None)
+    return ParentOut(
+        id=parent.id,
+        email=parent.email,
+        first_name=parent.first_name,
+        email_verified=parent.email_verified_at is not None,
+    )
 
 
 INVALID_VERIFICATION = ApiError(
@@ -57,7 +63,7 @@ async def register(
     rate_limit(request, f"register:{client_ip(request)}", limit=10, window_s=3600)
     now = clock.now()
     try:
-        parent = await accounts.register_parent(db, body.email, body.password, now)
+        parent = await accounts.register_parent(db, body.email, body.password, now, body.first_name)
     except accounts.EmailTaken as exc:
         raise ApiError(409, "email_taken", "Un compte existe déjà avec cet e-mail.") from exc
     pair = await accounts.issue_tokens(db, parent.id, settings, now)
@@ -163,6 +169,15 @@ async def resend_verification(
 async def me_parent(parent: CurrentParent, db: DbSession) -> ParentOut:
     found = await db.get(Parent, parent.parent_id)
     assert found is not None
+    return parent_out(found)
+
+
+@router.patch("/parent")
+async def update_parent(body: ParentPatch, parent: CurrentParent, db: DbSession) -> ParentOut:
+    found = await db.get(Parent, parent.parent_id)
+    assert found is not None
+    found.first_name = body.first_name
+    await db.commit()
     return parent_out(found)
 
 
