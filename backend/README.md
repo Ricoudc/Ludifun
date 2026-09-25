@@ -130,7 +130,7 @@ techniques seulement) et `/suivi/rapport.txt` ; ouverte hors production, réglag
 | `openai` | ChatGPT, OpenAI | `OPENAI_API_KEY` | `gpt-5` / `gpt-5-mini` |
 | `gemini` | Gemini, Google | `GEMINI_API_KEY` | `gemini-2.5-pro` / `gemini-2.5-flash` |
 | `mistral` | Mistral AI (France) | `MISTRAL_API_KEY` | `mistral-medium-latest` / `mistral-small-latest` |
-| `groq` | Groq | `GROQ_API_KEY` | `meta-llama/llama-4-maverick-17b-128e-instruct` / `openai/gpt-oss-120b` |
+| `groq` | Groq | `GROQ_API_KEY` | `qwen/qwen3.8-27b` / `openai/gpt-oss-120b` |
 | `xai` | Grok, xAI | `XAI_API_KEY` | `grok-4` |
 | `compatible` | tout service compatible OpenAI : Azure OpenAI (l'IA de Copilot, qui n'a pas d'API à elle), OpenRouter, Ollama… | `LUDIFUN_AI_API_KEY`, avec `LUDIFUN_AI_BASE_URL` | `LUDIFUN_AI_MODEL` (obligatoire) |
 | `fake` | IA factice, réponses rejouées | — | — |

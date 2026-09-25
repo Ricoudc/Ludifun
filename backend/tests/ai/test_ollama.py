@@ -281,11 +281,53 @@ async def test_crash_twice_explains_the_graphics_memory() -> None:
     with pytest.raises(AIError, match="s'est arrêté pendant le calcul") as caught:
         await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page, images=image)
     assert len(calls) == 2 and "llama-server" in str(caught.value)
-    # Sans photo, pas de nouvel essai : il ne changerait rien.
+    # Sans photo aussi, un nouvel essai : le moteur redémarre.
     with pytest.raises(AIError, match="s'est arrêté"):
         await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)
-    assert len(calls) == 3
+    assert len(calls) == 4
 
     from app.services.lesson_diagnostics import explain
 
     assert "LUDIFUN_OLLAMA_NUM_CTX" in explain(str(caught.value))
+
+
+async def test_engine_restarting_is_retried() -> None:
+    """Rapport du 25/09, 15 h 02 : « health resp … connectex » juste après un arrêt du moteur."""
+    restarting = (
+        '{"error":"health resp: Get \\"http://127.0.0.1:55585/health\\": dial tcp 127.0.0.1:55585: '
+        "connectex: Aucune connexion n'a pu être établie\"}"
+    )
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        if len(calls) == 1:
+            return httpx.Response(500, text=restarting)
+        message = {"role": "assistant", "content": '{"text": "ok"}'}
+        return httpx.Response(200, json={"message": message, "done": True, "done_reason": "stop"})
+
+    result = await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)
+    assert result.output.text == "ok" and len(calls) == 2
+
+
+async def test_one_request_at_a_time_per_ollama_server() -> None:
+    """Deux leçons envoyées coup sur coup : Ollama reçoit les lectures l'une après l'autre."""
+    running = 0
+    most = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal running, most
+        running += 1
+        most = max(most, running)
+        await asyncio.sleep(0.05)
+        running -= 1
+        message = {"role": "assistant", "content": '{"text": "ok"}'}
+        return httpx.Response(200, json={"message": message, "done": True, "done_reason": "stop"})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    first = OllamaProvider("http://pc:11434", MODELS, client=client)
+    second = OllamaProvider("http://pc:11434/", MODELS, client=client)  # même serveur
+    await asyncio.gather(
+        *(llm.structured(prompt=PROMPT, input="x", schema=Page) for llm in (first, second, first))
+    )
+    assert most == 1

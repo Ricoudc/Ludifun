@@ -97,7 +97,7 @@ $Fournisseurs = @(
     @{ Num = '4'; Code = 'mistral'; Nom = 'Mistral (français, serveurs en Europe)'; Cle = 'MISTRAL_API_KEY'; Prefixe = ''
        Site = 'https://console.mistral.ai/api-keys'; Conseil = 'mistral-medium-latest' },
     @{ Num = '5'; Code = 'groq'; Nom = 'Groq (très rapide)'; Cle = 'GROQ_API_KEY'; Prefixe = 'gsk_'
-       Site = 'https://console.groq.com/keys'; Conseil = 'meta-llama/llama-4-maverick-17b-128e-instruct' },
+       Site = 'https://console.groq.com/keys'; Conseil = 'qwen/qwen3.8-27b' },
     @{ Num = '6'; Code = 'xai'; Nom = 'Grok (xAI)'; Cle = 'XAI_API_KEY'; Prefixe = 'xai-'
        Site = 'https://console.x.ai'; Conseil = 'grok-4' },
     @{ Num = '7'; Code = 'compatible'; Nom = 'Copilot / Azure OpenAI, OpenRouter, Ollama… (compatible OpenAI)'

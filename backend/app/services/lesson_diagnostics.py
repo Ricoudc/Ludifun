@@ -46,6 +46,8 @@ EXPLANATIONS = (
      "il faut OLLAMA_HOST=0.0.0.0 et le port 11434 ouvert."),
     ("connexion impossible", "Le serveur n'arrive pas à joindre l'IA en ligne : connexion Internet du PC ?"),
     ("absent", "Le modèle choisi n'est pas installé dans Ollama (« ollama pull … » sur le PC)."),
+    ("model_not_found", "Ce modèle n'existe plus chez ce fournisseur (retiré) : choisissez-en un autre "
+     "(Changer-IA-Ludifun.bat, ou « Intelligence artificielle » dans l'espace parent)."),
     ("401", "La clé d'API a été refusée : vérifiez-la dans l'espace parent."),
     ("403", "La clé d'API a été refusée ou n'a pas accès à ce modèle."),
     ("429", "L'IA en ligne limite le nombre de demandes (quota ou offre gratuite épuisée) : "

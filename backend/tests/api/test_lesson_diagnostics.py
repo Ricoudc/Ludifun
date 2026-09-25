@@ -66,4 +66,7 @@ def test_explanations() -> None:
     assert "clé d'API" in explain("API gemini 401 : API key not valid")
     assert "quota" in explain("API groq 429 : rate limit")
     assert "format attendu" in explain("réponse hors schéma : 3 validation errors")
+    # Rapport du 25/09 : modèle retiré par Groq.
+    retired = 'API groq 404 : {"error":{"message":"The model does not exist","code":"model_not_found"}}'
+    assert "n'existe plus" in explain(retired)
     assert explain("inconnu") == "Erreur de l'IA."

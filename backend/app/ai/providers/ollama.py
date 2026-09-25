@@ -6,9 +6,11 @@ fantaisistes. La sortie suit le schéma JSON demandé (`format`) et reste valid�
 passent en base64 (`images`). Gratuit : le modèle est journalisé `ollama/<nom>`, au prix zéro.
 """
 
+import asyncio
 import base64
 import json
 import time
+import weakref
 from collections.abc import Mapping
 from typing import Any
 
@@ -26,7 +28,20 @@ MAX_IMAGE_SIDE = 1344
 # Ollama qui s'arrête pendant la lecture d'une photo (« error reading llama-server response ») :
 # le plus souvent, la carte graphique manque de mémoire. Un seul nouvel essai, photos réduites.
 RETRY_IMAGE_SIDE = 896
-_CRASH_MARKERS = ("llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status")
+# « health resp … connectex » : le moteur venait de s'arrêter et ne répondait pas encore.
+_CRASH_MARKERS = (
+    "llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status", "health resp",
+)  # fmt: skip
+# Une seule demande à la fois par serveur Ollama : sur une carte graphique de 8 Go, deux lectures
+# de photo en même temps (deux leçons envoyées coup sur coup) font s'arrêter le moteur.
+_BUSY: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]]" = (
+    weakref.WeakKeyDictionary()
+)
+
+
+def _lock(base_url: str) -> asyncio.Lock:
+    locks = _BUSY.setdefault(asyncio.get_running_loop(), {})
+    return locks.setdefault(base_url, asyncio.Lock())
 
 
 class _Crashed(Exception):
@@ -55,15 +70,16 @@ class OllamaProvider:
     async def structured[T: BaseModel](
         self, *, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...] = ()
     ) -> LLMResult[T]:
-        try:
-            return await self._chat(prompt, input, schema, images, MAX_IMAGE_SIDE)
-        except _Crashed as crash:
-            if not images:
+        async with _lock(self.base_url):
+            try:
+                return await self._chat(prompt, input, schema, images, MAX_IMAGE_SIDE)
+            except _Crashed:
+                pass
+            # Nouvel essai : le moteur redémarre ; avec photos, elles sont réduites.
+            try:
+                return await self._chat(prompt, input, schema, images, RETRY_IMAGE_SIDE)
+            except _Crashed as crash:
                 raise crash.error from None
-        try:
-            return await self._chat(prompt, input, schema, images, RETRY_IMAGE_SIDE)
-        except _Crashed as crash:
-            raise crash.error from None
 
     async def _chat[T: BaseModel](
         self, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...], side: int

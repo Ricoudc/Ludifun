@@ -81,7 +81,7 @@ PRESETS: dict[str, Preset] = {
         "Groq",
         "GROQ_API_KEY",
         "https://api.groq.com/openai/v1",
-        _same("meta-llama/llama-4-maverick-17b-128e-instruct", "openai/gpt-oss-120b"),
+        _same("qwen/qwen3.8-27b", "openai/gpt-oss-120b"),
         "https://console.groq.com/keys",
         "Très rapide. Payant à l'usage, avec une offre gratuite limitée.",
     ),
