@@ -1,6 +1,7 @@
 """Critère de fin de l'étape 14 : aide 1 → 5 sans voir la réponse avant 5 ; réponse ouverte
 corrigée (par l'IA, ou par mots clés si elle manque) ; erreur récurrente signalée au parent."""
 
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.ports import AIError
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
 from app.db.models import AiRun, AttemptEvidence, KnowledgeItem, KnowledgeMastery, SessionItem
-from app.services import ai_budget
+from app.services import ai_budget, answer_evaluation
 from tests.api.helpers import auth, family_with_device, upload_lesson
 from tests.api.test_sessions import now, play  # noqa: F401  (fixture)
 
@@ -194,7 +195,7 @@ async def test_open_question_graded_by_the_ai(
     assert error == "knowledge"
 
 
-@pytest.mark.parametrize("failure", ["ai_error", "budget"])
+@pytest.mark.parametrize("failure", ["ai_error", "timeout", "budget"])
 async def test_open_question_without_the_ai(
     client: AsyncClient,
     db: AsyncSession,
@@ -206,6 +207,16 @@ async def test_open_question_without_the_ai(
     token, session, item = await open_question_session(client, db, fake_llm, now)
     if failure == "ai_error":
         fake_llm.overrides["evaluation"] = AIError("API 529 : overloaded")
+    elif failure == "timeout":  # IA locale lente : l'application n'attend que 30 s
+        monkeypatch.setattr(answer_evaluation, "TIMEOUT_S", 0.05)
+        scripted = fake_llm.structured
+
+        async def slow(**kwargs: Any) -> Any:
+            if kwargs["prompt"].stage == "evaluation":
+                await asyncio.sleep(1)
+            return await scripted(**kwargs)
+
+        monkeypatch.setattr(fake_llm, "structured", slow)
     else:
 
         async def exhausted(*_: object) -> int:
@@ -221,7 +232,9 @@ async def test_open_question_without_the_ai(
     assert r.status_code == 200, r.text
     assert r.json()["result"] == "correct"  # corrigée par les mots clés
     runs = list(await db.scalars(select(AiRun).where(AiRun.stage == "evaluation")))
-    assert [run.status for run in runs] == (["error"] if failure == "ai_error" else [])
+    if failure == "timeout":
+        assert runs[0].warnings == ["pas de réponse en 0.05 s"]
+    assert [run.status for run in runs] == ([] if failure == "budget" else ["error"])
 
 
 async def test_open_question_answer_is_bounded(

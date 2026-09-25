@@ -364,6 +364,60 @@ void main() {
     expect(server.routes, contains('DELETE /v1/lessons/l1'));
   });
 
+  testWidgets('serveur ralenti : une réponse en retard ne fige pas l\'écran d\'analyse', (
+    tester,
+  ) async {
+    // Audit : la première réponse (« en cours ») arrivait après « prête » ; l'interrogation
+    // étant arrêtée, l'écran tournait sans fin.
+    var calls = 0;
+    server.on('GET /v1/lessons/l1', (_) async {
+      calls++;
+      if (calls == 1) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        return (200, lessonJson('analyzing'));
+      }
+      return (200, lessonJson('ready'));
+    });
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go('/enfant/analyse/l1');
+    await advanceUntil(
+      tester,
+      find.text('La Révolution française'),
+      max: const Duration(seconds: 20),
+    );
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('photo que le téléphone ne sait pas lire : message, rien n\'est envoyé', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ...overridesFor(server, MemoryCredentialStore(child)),
+          imagePickerProvider.overrideWithValue(picker),
+          imageCompressorProvider.overrideWithValue(BrokenCompressor()),
+          nowProvider.overrideWithValue(() => clock),
+        ],
+        retry: noRetry,
+        child: const LudifunApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nouvelle leçon'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ajouter depuis la galerie'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Analyser ma leçon'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Une photo n\'a pas pu être préparée. Retire-la et reprends-la.'),
+      findsOneWidget,
+    );
+    expect(server.routes, isNot(contains('POST /v1/lessons')));
+    expect(find.text('Analyser ma leçon'), findsOneWidget); // le bouton est de nouveau utilisable
+  });
+
   testWidgets('erreur de l\'IA : relance sans nouvelle photo', (tester) async {
     var retried = false;
     server

@@ -6,11 +6,12 @@ douteuse ou de confiance trop faible, `evaluate` renvoie None et la question est
 ses mots clés (`OpenQuestionActivity.grade`) : l'enfant n'est jamais bloqué.
 """
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass
 
-from app.ai.ports import AIError, LLMProvider, Prompt
+from app.ai.ports import AIError, AITimeout, LLMProvider, Prompt
 from app.ai.schemas import EvaluationOutput
 from app.domain.activities.open_question import OpenEvaluation
 from app.services.lesson_pipeline import AiRunRecord
@@ -18,6 +19,9 @@ from app.services.lesson_pipeline import AiRunRecord
 logger = logging.getLogger(__name__)
 MIN_CONFIDENCE = 0.4
 FEEDBACK_MAX_LENGTH = 400
+# L'enfant attend devant l'écran, et l'application abandonne au bout de 30 s : au-delà, on
+# corrige par les mots clés (une IA locale lente peut mettre plusieurs minutes).
+TIMEOUT_S = 20.0
 
 
 @dataclass(frozen=True)
@@ -56,9 +60,10 @@ def to_evaluation(output: EvaluationOutput, key_points: list[str]) -> OpenEvalua
 
 
 class AnswerEvaluator:
-    def __init__(self, llm: LLMProvider) -> None:
+    def __init__(self, llm: LLMProvider, timeout_s: float | None = None) -> None:
         self.llm = llm
         self.prompt = Prompt.load("evaluation")
+        self.timeout_s = TIMEOUT_S if timeout_s is None else timeout_s
 
     async def evaluate(
         self, *, prompt: str, key_points: list[str], model_answer: str, answer: str, grade: str
@@ -66,12 +71,17 @@ class AnswerEvaluator:
         model = self.llm.model_for("evaluation")
         started = time.perf_counter()
         try:
-            result = await self.llm.structured(
-                prompt=self.prompt,
-                input=evaluation_input(prompt, key_points, model_answer, answer, grade),
-                schema=EvaluationOutput,
+            result = await asyncio.wait_for(
+                self.llm.structured(
+                    prompt=self.prompt,
+                    input=evaluation_input(prompt, key_points, model_answer, answer, grade),
+                    schema=EvaluationOutput,
+                ),
+                self.timeout_s,
             )
-        except AIError as exc:
+        except (AIError, TimeoutError) as caught:
+            late = AITimeout(f"pas de réponse en {self.timeout_s:g} s")
+            exc = caught if isinstance(caught, AIError) else late
             latency = round((time.perf_counter() - started) * 1000)
             logger.warning("Correction IA impossible, correction par mots clés : %s", exc.status)
             run = AiRunRecord(

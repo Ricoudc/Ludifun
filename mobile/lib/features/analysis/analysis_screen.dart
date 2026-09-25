@@ -76,7 +76,14 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
     super.dispose();
   }
 
+  /// Une seule interrogation à la fois : sur un serveur ralenti (IA locale), une réponse
+  /// ancienne (« en cours ») arrivée après « prête » figeait l'écran, l'interrogation étant
+  /// déjà arrêtée.
+  bool _fetching = false;
+
   Future<void> _fetch() async {
+    if (_fetching) return;
+    _fetching = true;
     try {
       final lesson = await ref.read(apiProvider).lesson(widget.lessonId, childId: widget.childId);
       if (!mounted) return;
@@ -94,6 +101,8 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         return;
       }
       setState(() => _offline = true); // on continue d'interroger
+    } finally {
+      _fetching = false;
     }
   }
 

@@ -67,6 +67,11 @@ class AIRefused(AIError):
     status = "refused"
 
 
+class AITimeout(AIError):
+    """Pas de réponse dans le délai accordé (l'enfant attend devant l'écran) ; journalisé
+    comme une erreur, avec le délai dans le message."""
+
+
 class AIInvalidOutput(AIError):
     """La réponse ne respecte pas le schéma attendu (ou est tronquée)."""
 

@@ -42,6 +42,12 @@ class FakeImagePicker extends ImagePicker {
   }
 }
 
+/// Photo que le téléphone ne sait pas décoder (fichier abîmé, format inconnu).
+class BrokenCompressor implements ImageCompressor {
+  @override
+  Future<Uint8List> compress(Uint8List original) async => throw Exception('image illisible');
+}
+
 /// Compression simulée : marque les octets pour vérifier qu'elle a bien eu lieu.
 class FakeCompressor implements ImageCompressor {
   @override

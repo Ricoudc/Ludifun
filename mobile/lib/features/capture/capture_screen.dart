@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -39,8 +41,20 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
       _progress = 0;
       _error = null;
     });
+    final List<Uint8List> pages;
     try {
-      final pages = await ref.read(captureProvider.notifier).compressed();
+      pages = await ref.read(captureProvider.notifier).compressed();
+    } on Exception {
+      // Photo illisible par le téléphone (fichier abîmé, format inconnu) : rien n'est envoyé.
+      if (mounted) {
+        setState(() {
+          _progress = null;
+          _error = 'Une photo n\'a pas pu être préparée. Retire-la et reprends-la.';
+        });
+      }
+      return;
+    }
+    try {
       final lesson = await ref
           .read(apiProvider)
           .uploadLesson(
