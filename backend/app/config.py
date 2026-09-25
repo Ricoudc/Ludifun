@@ -107,6 +107,22 @@ class Settings(BaseSettings):
             f"LUDIFUN_{name.upper()}" for name in fields if getattr(self, name).startswith("[À COMPLÉTER")
         ]
 
+    # Docker Compose transmet une chaîne vide pour une variable absente du .env.
+    @field_validator("jwt_secret", mode="before")
+    @classmethod
+    def _default_jwt_secret(cls, value: object) -> object:
+        return DEV_JWT_SECRET if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("secrets_key", mode="before")
+    @classmethod
+    def _no_empty_secrets_key(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @property
+    def uses_dev_secret(self) -> bool:
+        """Secret public du dépôt : n'importe qui sur le réseau pourrait se faire passer pour un parent."""
+        return self.jwt_secret.get_secret_value() == DEV_JWT_SECRET
+
     @field_validator("family_timezone")
     @classmethod
     def _known_timezone(cls, value: str) -> str:
@@ -118,7 +134,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _secret_in_production(self) -> "Settings":
-        if self.environment == "prod" and self.jwt_secret.get_secret_value() == DEV_JWT_SECRET:
+        if self.environment == "prod" and self.uses_dev_secret:
             raise ValueError("LUDIFUN_JWT_SECRET doit être défini en production")
         return self
 

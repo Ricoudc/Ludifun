@@ -86,10 +86,17 @@ async def session_out(db: DbSession, revision: RevisionSession) -> SessionOut:
     )
 
 
-async def session_of_child(db: DbSession, child: Child, session_id: uuid.UUID) -> RevisionSession:
-    revision = await db.scalar(
-        select(RevisionSession).where(RevisionSession.id == session_id, RevisionSession.child_id == child.id)
+async def session_of_child(
+    db: DbSession, child: Child, session_id: uuid.UUID, *, lock: bool = False
+) -> RevisionSession:
+    """`lock` : pour modifier la séance. Deux envois simultanés (double appui, requête rejouée)
+    passent alors l'un après l'autre, et le second voit ce qu'a fait le premier."""
+    query = select(RevisionSession).where(
+        RevisionSession.id == session_id, RevisionSession.child_id == child.id
     )
+    if lock:
+        query = query.with_for_update(key_share=True).execution_options(populate_existing=True)
+    revision = await db.scalar(query)
     if revision is None:
         raise ApiError(404, "session_not_found", "Séance introuvable.")
     return revision
@@ -154,7 +161,7 @@ async def submit_attempt(
 ) -> AttemptOut:
     """Écran 6 : correction immédiate, avec l'astuce et l'explication. Une question ouverte est
     corrigée par l'IA (quelques secondes), ou par ses mots clés si l'IA n'est pas disponible."""
-    revision = await session_of_child(db, child, session_id)
+    revision = await session_of_child(db, child, session_id, lock=True)
     item = await item_of_session(db, revision, body.item_id)
     evaluator = (
         await evaluator_within_budget(db, settings, ai)
@@ -211,7 +218,7 @@ async def get_help(
 ) -> HelpOut:
     """« ❓ Je n'ai pas compris » : chaque appel donne l'aide suivante (indice, rappel, exemple,
     étapes, puis la réponse). L'aide ne change pas la note, seulement la maîtrise (§5.4)."""
-    revision = await session_of_child(db, child, session_id)
+    revision = await session_of_child(db, child, session_id, lock=True)
     item = await item_of_session(db, revision, item_id)
     try:
         step = await learning.request_help(db, revision, item, registry)
@@ -237,7 +244,7 @@ async def get_help(
 @router.post("/sessions/{session_id}/replay")
 async def replay(session_id: uuid.UUID, child: ChildInScope, db: DbSession, registry: Registry) -> ReplayOut:
     """🔄 Reprise des erreurs, après la dernière activité principale (liste vide s'il n'y en a pas)."""
-    revision = await session_of_child(db, child, session_id)
+    revision = await session_of_child(db, child, session_id, lock=True)
     try:
         items = await learning.add_replay(db, revision, registry)
     except learning.SessionClosed as exc:
@@ -253,7 +260,7 @@ async def replay(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
 @router.post("/sessions/{session_id}/extend")
 async def extend(session_id: uuid.UUID, child: ChildInScope, db: DbSession, registry: Registry) -> ReplayOut:
     """🚀 « Encore 3 défis ? » : activités plus difficiles, une fois par séance, hors note."""
-    revision = await session_of_child(db, child, session_id)
+    revision = await session_of_child(db, child, session_id, lock=True)
     try:
         items = await learning.extend(db, revision, registry)
     except learning.SessionClosed as exc:
@@ -270,7 +277,7 @@ async def complete(
     session_id: uuid.UUID, child: ChildInScope, db: DbSession, settings: AppSettings
 ) -> ReportOut:
     """Écran 7 : bilan, nouvelles maîtrises, prochaine révision, et ce que l'effort a rapporté."""
-    revision = await session_of_child(db, child, session_id)
+    revision = await session_of_child(db, child, session_id, lock=True)
     now = clock.now()
     try:
         done = await learning.complete(db, revision, now)
@@ -309,7 +316,7 @@ async def errors_session(
     session_id: uuid.UUID, child: ChildInScope, db: DbSession, registry: Registry
 ) -> SessionOut:
     """« Revoir mes erreurs » depuis le bilan."""
-    origin = await session_of_child(db, child, session_id)
+    origin = await session_of_child(db, child, session_id, lock=True)
     try:
         revision = await learning.start_errors_session(db, origin, registry, clock.now())
     except learning.SessionClosed as exc:

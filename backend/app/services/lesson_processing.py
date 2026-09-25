@@ -50,13 +50,18 @@ async def process_lesson(
         logger.exception("Analyse de la leçon %s interrompue", lesson_id)
         result = PipelineResult(failure_reason=FailureReason.AI_ERROR)
 
-    async with database.sessionmaker() as session:
-        lesson = await session.get(Lesson, lesson_id)
-        if lesson is None:
-            LIVE.forget(lesson_id)
-            return  # supprimée pendant l'analyse
-        await save_pipeline_result(session, lesson, result)
-        await session.commit()
+    try:
+        async with database.sessionmaker() as session:
+            lesson = await session.get(Lesson, lesson_id)
+            if lesson is not None:  # sinon : supprimée pendant l'analyse
+                await save_pipeline_result(session, lesson, result)
+                await session.commit()
+    except Exception:  # sinon l'écran 3 attendrait jusqu'au prochain redémarrage du serveur
+        logger.exception("Leçon %s : enregistrement de l'analyse impossible", lesson_id)
+        async with database.sessionmaker() as session:
+            failed = {"status": "failed", "failure_reason": "ai_error"}
+            await session.execute(update(Lesson).where(Lesson.id == lesson_id).values(**failed))
+            await session.commit()
     LIVE.forget(lesson_id)  # la trace est maintenant dans ai_runs
 
 

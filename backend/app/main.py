@@ -14,6 +14,7 @@ from app.config import Settings, get_settings
 from app.db.base import Database
 from app.domain.activities.registry import default_registry
 from app.security.rate_limit import RateLimiter
+from app.services import ai_settings
 from app.services.ai_settings import AiResolver
 from app.services.email import EmailSender, build_email_sender
 from app.services.lesson_processing import recover_interrupted_lessons
@@ -39,6 +40,17 @@ def create_app(
             await recover_interrupted_lessons(app.state.database)
         except (SQLAlchemyError, OSError):  # base injoignable : /health/ready le signalera
             logging.getLogger("ludifun").exception("Récupération des analyses interrompues impossible")
+        if settings.environment == "dev" and settings.uses_dev_secret:
+            logging.getLogger("ludifun").warning(
+                "LUDIFUN_JWT_SECRET n'est pas défini : secret de développement public. "
+                "Sur un réseau partagé, définissez-le dans .env (Demarrer-Ludifun.bat le fait)."
+            )
+        try:
+            async with app.state.database.sessionmaker() as session:
+                if count := await ai_settings.reencrypt_keys(session, settings):
+                    logging.getLogger("ludifun").info("%d clé(s) d'IA rechiffrée(s)", count)
+        except (SQLAlchemyError, OSError):
+            logging.getLogger("ludifun").exception("Rechiffrement des clés d'IA impossible")
         app.state.email_sender = email_sender or build_email_sender(settings)
         if settings.environment == "prod" and settings.missing_legal_details():
             logging.getLogger("ludifun").warning(

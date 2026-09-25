@@ -81,8 +81,12 @@ async def ensure_ai_budget(db: DbSession, settings: AppSettings) -> None:
         )
 
 
-async def lesson_of_child(db: DbSession, child: Child, lesson_id: uuid.UUID) -> Lesson:
-    lesson = await db.scalar(select(Lesson).where(Lesson.id == lesson_id, Lesson.child_id == child.id))
+async def lesson_of_child(db: DbSession, child: Child, lesson_id: uuid.UUID, *, lock: bool = False) -> Lesson:
+    """`lock` : pour relancer l'analyse. Un double appui ne lance alors qu'une seule analyse."""
+    query = select(Lesson).where(Lesson.id == lesson_id, Lesson.child_id == child.id)
+    if lock:
+        query = query.with_for_update(key_share=True).execution_options(populate_existing=True)
+    lesson = await db.scalar(query)
     if lesson is None:
         raise ApiError(404, "lesson_not_found", "Leçon introuvable.")
     return lesson
@@ -213,7 +217,7 @@ async def review_lesson(
 ) -> LessonAccepted:
     """« Peux-tu vérifier ? » : une réponse par passage douteux, puis l'analyse reprend sur le
     texte corrigé. « Je ne sais pas » garde la lecture telle quelle."""
-    lesson = await lesson_of_child(db, child, lesson_id)
+    lesson = await lesson_of_child(db, child, lesson_id, lock=True)
     if lesson.status != "needs_review":
         raise ApiError(409, "not_awaiting_review", "Cette leçon n'attend pas de vérification.")
     items = {i.id: i for i in await review_items(db, lesson)}
@@ -336,7 +340,7 @@ async def retry_lesson(
     registry: Registry,
     background: BackgroundTasks,
 ) -> LessonAccepted:
-    lesson = await lesson_of_child(db, child, lesson_id)
+    lesson = await lesson_of_child(db, child, lesson_id, lock=True)
     if not await can_retry(db, lesson):
         raise ApiError(409, "cannot_retry", "Cette leçon ne peut pas être relancée : reprends la photo.")
     await ensure_ai_budget(db, settings)

@@ -225,6 +225,8 @@ async def start_session(
     """Séance adaptée à la maîtrise actuelle ; reprend une séance en cours de moins de 24 h."""
     if lesson_row.status != "ready":
         raise LessonNotReady
+    # Deux demandes simultanées (double appui) : la seconde attend la première et reprend sa séance.
+    await session.execute(select(db.Child.id).where(db.Child.id == child_id).with_for_update(key_share=True))
     active = await session.scalar(
         select(db.RevisionSession).where(
             db.RevisionSession.child_id == child_id,
@@ -251,6 +253,13 @@ async def start_errors_session(
     """« Revoir mes erreurs » : les notions non maîtrisées de la séance d'origine (§8.4)."""
     if origin.status != "completed":
         raise SessionClosed
+    already = await session.scalar(
+        select(db.RevisionSession).where(
+            db.RevisionSession.parent_session_id == origin.id, db.RevisionSession.status == "active"
+        )
+    )
+    if already is not None:  # double appui sur « Revoir mes erreurs »
+        return already
     lesson_row = await session.get(db.Lesson, origin.lesson_id)
     assert lesson_row is not None
     lesson = await load_units(session, lesson_row)

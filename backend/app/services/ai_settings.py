@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,7 @@ from app.ai.factory import AiChoice, AiConfigError, build_providers
 from app.ai.fallback import FallbackLLM
 from app.ai.ocr.vision_llm import VisionLLMOcr
 from app.ai.ports import LLMProvider, OcrProvider
-from app.config import AiProviderName, Settings
+from app.config import DEV_JWT_SECRET, AiProviderName, Settings
 from app.db.models import Child, FamilyAiProvider, FamilyAiSettings, FamilyMember
 
 logger = logging.getLogger("ludifun.ai")
@@ -28,14 +28,50 @@ logger = logging.getLogger("ludifun.ai")
 Builder = Callable[[Settings, AiChoice], tuple[OcrProvider, LLMProvider]]
 
 
-def _fernet(settings: Settings) -> Fernet:
-    secret = (settings.secrets_key or settings.jwt_secret).get_secret_value()
+def _secret(settings: Settings) -> str:
+    return (settings.secrets_key or settings.jwt_secret).get_secret_value()
+
+
+def _key(secret: str) -> Fernet:
     digest = hashlib.sha256(b"ludifun/family-ai-keys:" + secret.encode()).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
 
+def _fernet(settings: Settings) -> MultiFernet:
+    """Chiffre avec le secret du serveur. Hors production, relit aussi les clés chiffrées avec
+    le secret de développement par défaut (installations d'avant l'audit de septembre 2026)."""
+    secret = _secret(settings)
+    keys = [_key(secret)]
+    if settings.environment != "prod" and secret != DEV_JWT_SECRET:
+        keys.append(_key(DEV_JWT_SECRET))
+    return MultiFernet(keys)
+
+
 def encrypt(settings: Settings, value: str) -> bytes:
     return _fernet(settings).encrypt(value.encode())
+
+
+async def reencrypt_keys(db: AsyncSession, settings: Settings) -> int:
+    """Au démarrage : les clés encore chiffrées avec l'ancien secret le sont avec le nouveau.
+    Renvoie leur nombre ; une clé illisible reste telle quelle (à saisir de nouveau)."""
+    fernet, current = _fernet(settings), _key(_secret(settings))
+    count = 0
+    rows = await db.scalars(select(FamilyAiProvider).where(FamilyAiProvider.api_key_encrypted.is_not(None)))
+    for row in rows:
+        token = row.api_key_encrypted
+        assert token is not None
+        try:
+            current.decrypt(token)
+            continue
+        except InvalidToken:
+            pass
+        try:
+            row.api_key_encrypted = fernet.rotate(token)
+            count += 1
+        except InvalidToken:
+            continue
+    await db.commit()
+    return count
 
 
 def decrypt(settings: Settings, token: bytes) -> str | None:

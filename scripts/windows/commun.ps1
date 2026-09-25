@@ -235,9 +235,28 @@ function Choisir-IA {
     }
 }
 
+function Secret-Aleatoire {
+    $octets = New-Object byte[] 48
+    $generateur = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $generateur.GetBytes($octets)
+    $generateur.Dispose()
+    return [Convert]::ToBase64String($octets).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
 function Assurer-Env {
     $valeurs = Lire-Env
     if (-not $valeurs['LUDIFUN_AI_PROVIDER']) { Choisir-IA }
+    # Secrets propres à ce PC (connexions des parents, clés d'IA chiffrées) : tirés une fois pour
+    # toutes. Les clés d'IA déjà enregistrées sont rechiffrées au démarrage du serveur.
+    $valeurs = Lire-Env
+    $ajout = $false
+    foreach ($nom in 'LUDIFUN_JWT_SECRET', 'LUDIFUN_SECRETS_KEY') {
+        if (-not $valeurs[$nom]) { $valeurs[$nom] = Secret-Aleatoire; $ajout = $true }
+    }
+    if ($ajout) {
+        Ecrire-Env $valeurs
+        Ok 'Secrets de ce PC créés dans .env (à garder pour soi).'
+    }
 }
 
 # --- Serveur ---------------------------------------------------------------------------
