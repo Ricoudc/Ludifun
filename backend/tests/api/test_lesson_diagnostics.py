@@ -1,5 +1,6 @@
 """« Voir ce qui se passe » : l'écran d'analyse montre l'IA étape par étape, et la raison d'un échec."""
 
+import copy
 import uuid
 
 from httpx import AsyncClient
@@ -7,11 +8,11 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.ports import AIError
-from app.ai.providers.fake import FakeProvider
+from app.ai.providers.fake import FakeProvider, analysis_output
 from app.db.models import Lesson
 from app.services.lesson_diagnostics import explain
 from app.services.live_calls import LIVE
-from tests.api.helpers import family_with_device, upload_lesson
+from tests.api.helpers import auth, family_with_device, upload_lesson
 
 
 async def test_steps_of_a_successful_analysis(client: AsyncClient) -> None:
@@ -70,3 +71,34 @@ def test_explanations() -> None:
     retired = 'API groq 404 : {"error":{"message":"The model does not exist","code":"model_not_found"}}'
     assert "n'existe plus" in explain(retired)
     assert explain("inconnu") == "Erreur de l'IA."
+
+
+async def test_all_notions_rejected_is_explained_and_can_be_retried(
+    client: AsyncClient, fake_llm: FakeProvider
+) -> None:
+    """Rapport du 25/09 (qwen2.5vl:7b) : « pas une leçon » alors que l'IA avait proposé des notions,
+    toutes écartées faute de citer exactement le texte lu."""
+    good = copy.deepcopy(fake_llm.script.analysis)
+    bad = copy.deepcopy(good)
+    for item in bad["knowledge"]:
+        item["source_excerpt"] = "une phrase que la leçon ne contient absolument pas"
+    fake_llm.overrides["analysis"] = lambda attempt, _: analysis_output(bad if attempt == 1 else good)
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    assert (lesson["status"], lesson["failure_reason"], lesson["can_retry"]) == (
+        "failed",
+        "not_a_lesson",
+        True,
+    )
+    assert "aucune ne cite exactement le texte lu" in lesson["diagnostics"]["explanation"]
+    analysis = next(s for s in lesson["diagnostics"]["steps"] if s["stage"] == "identification des notions")
+    assert analysis["message"].startswith("toutes les notions proposées ont été écartées")
+
+    report = (await client.get("/suivi/rapport.txt")).text
+    assert "· toutes les notions proposées ont été écartées" in report
+    assert "source_excerpt introuvable" in report
+    assert "Révolution" not in report  # rien du texte de la leçon
+
+    assert (await client.post(f"/v1/lessons/{lesson['id']}/retry", headers=auth(token))).status_code == 202
+    retried = (await client.get(f"/v1/lessons/{lesson['id']}", headers=auth(token))).json()
+    assert retried["status"] == "ready"

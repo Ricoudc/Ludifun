@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AiRun, Lesson
-from app.services.lesson_pipeline import STAGE_LABELS
+from app.services.lesson_pipeline import ALL_REJECTED_NOTE, NOT_A_LESSON_NOTE, STAGE_LABELS
 from app.services.lesson_processing import IN_PROGRESS
 from app.services.live_calls import LiveCalls
 from app.services.monitoring import clean_message
@@ -106,7 +106,9 @@ async def diagnostics(db: AsyncSession, lesson: Lesson, live: LiveCalls, now: da
     explanation = None
     if lesson.status == "failed":
         failed = next((s for s in reversed(steps) if s.status != "ok"), None)
-        if lesson.failure_reason in FAILURE_EXPLANATIONS:
+        if lesson.failure_reason == "not_a_lesson" and all_rejected(runs):
+            explanation = ALL_REJECTED_EXPLANATION
+        elif lesson.failure_reason in FAILURE_EXPLANATIONS:
             explanation = FAILURE_EXPLANATIONS[lesson.failure_reason]
         elif failed is not None:
             explanation = explain(failed.message or "")
@@ -117,12 +119,25 @@ async def diagnostics(db: AsyncSession, lesson: Lesson, live: LiveCalls, now: da
     return Diagnostics(steps, explanation)
 
 
+ALL_REJECTED_EXPLANATION = (
+    "L'IA a trouvé des notions, mais aucune ne cite exactement le texte lu : Ludifun les a écartées "
+    "pour ne rien inventer. Fréquent avec les petits modèles installés sur le PC. Réessayez, ou "
+    "choisissez un modèle plus grand ou une IA en ligne."
+)
+
+
+def all_rejected(runs: list[AiRun]) -> bool:
+    """Échec « pas une leçon » parce que toutes les notions proposées ont été écartées."""
+    return any(r.stage == "analysis" and r.warnings and str(r.warnings[0]).startswith(ALL_REJECTED_NOTE)
+               for r in runs)  # fmt: skip
+
+
 def _message(run: AiRun) -> str | None:
-    """Erreur de l'appel, ou repli sur une autre IA (appel réussi par une IA de secours)."""
+    """Erreur de l'appel, repli sur une autre IA, ou raison d'un « pas une leçon »."""
     if not run.warnings:
         return None
     first = str(run.warnings[0])
-    if run.status != "ok" or first.startswith("repli"):
+    if run.status != "ok" or first.startswith(("repli", ALL_REJECTED_NOTE, NOT_A_LESSON_NOTE)):
         return clean_message(first)
     return None
 

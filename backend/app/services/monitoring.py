@@ -23,6 +23,7 @@ RECENT_LESSONS = 15
 RECENT_ERRORS = 15
 STATS_DAYS = 7
 MESSAGE_MAX = 200
+NOTES_PER_STEP = 5
 # Une erreur de validation cite la réponse de l'IA (« input_value=… ») : elle peut contenir le
 # texte de la leçon. On l'enlève.
 _INPUT = re.compile(r"input_value=.*?(?=, input_type=|$)", re.DOTALL)
@@ -127,6 +128,8 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                         "seconds": round(run.latency_ms / 1000),
                         "status": run.status,
                         "tokens": [run.input_tokens, run.output_tokens],
+                        # Avertissements techniques (notions écartées et pourquoi, jamais le texte).
+                        "notes": [clean_message(str(w)) for w in run.warnings[:NOTES_PER_STEP]],
                     }
                     for run in runs_by_lesson.get(lesson.id, [])
                 ],
@@ -186,11 +189,12 @@ def as_text(data: dict[str, Any]) -> str:
             f"{lesson['source']}, {lesson['pages']} page(s) · {lesson['subject'] or '?'} · "
             f"IA {lesson['ai_s']} s"
         )
-        lines += [
-            f"    {s['stage']} : {s['seconds']} s, {s['status']} ({s['model']}, "
-            f"jetons {s['tokens'][0]}/{s['tokens'][1]})"
-            for s in lesson["steps"]
-        ]
+        for s in lesson["steps"]:
+            lines.append(
+                f"    {s['stage']} : {s['seconds']} s, {s['status']} ({s['model']}, "
+                f"jetons {s['tokens'][0]}/{s['tokens'][1]})"
+            )
+            lines += [f"      · {note}" for note in s["notes"]]
     lines += ["", f"== Durées par modèle ({STATS_DAYS} derniers jours) =="]
     lines += [
         f"- {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "

@@ -28,7 +28,7 @@ from app.api.v1.schemas_learning import (
     ReviewItemOut,
     SkillOut,
 )
-from app.db.models import Child, Lesson, LessonPage, LessonReviewItem
+from app.db.models import AiRun, Child, Lesson, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
@@ -109,8 +109,15 @@ async def summary_of(db: DbSession, child: Child, lesson: Lesson) -> LessonSumma
 
 
 async def can_retry(db: DbSession, lesson: Lesson) -> bool:
-    """Une analyse ratée par l'IA se relance sans reprendre la photo si le texte a été lu."""
-    if lesson.status != "failed" or lesson.failure_reason != "ai_error":
+    """Une analyse ratée par l'IA se relance sans reprendre la photo si le texte a été lu ; de
+    même quand toutes les notions proposées ont été écartées (un autre essai peut mieux citer)."""
+    if lesson.status != "failed":
+        return False
+    if lesson.failure_reason == "not_a_lesson":
+        runs = list(await db.scalars(select(AiRun).where(AiRun.lesson_id == lesson.id)))
+        if not lesson_diagnostics.all_rejected(runs):
+            return False
+    elif lesson.failure_reason != "ai_error":
         return False
     return (
         await db.scalar(select(LessonPage.page_index).where(LessonPage.lesson_id == lesson.id).limit(1))

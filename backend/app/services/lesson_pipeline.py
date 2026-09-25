@@ -102,6 +102,12 @@ class PipelineResult:
         return self.failure_reason is None and not self.review
 
 
+# Pourquoi « pas une leçon » : noté en tête des avertissements de l'appel d'analyse (/suivi, écran
+# d'analyse). Des notions toutes écartées se relancent : un autre essai de l'IA peut mieux citer.
+NOT_A_LESSON_NOTE = "l'IA juge que ce n'est pas une leçon"
+ALL_REJECTED_NOTE = "toutes les notions proposées ont été écartées par les contrôles"
+
+
 class _Failed(Exception):
     def __init__(self, reason: FailureReason) -> None:
         self.reason = reason
@@ -182,6 +188,14 @@ class LessonPipeline:
         analysis = await self._analyze(result, lesson_text)
         result.analysis = analysis
         if not analysis.is_lesson or not analysis.knowledge:
+            run = next(r for r in reversed(result.runs) if r.stage == "analysis")
+            proposed = sum(1 for r in result.rejected if r.element.startswith("analysis."))
+            note = (
+                NOT_A_LESSON_NOTE
+                if not analysis.is_lesson
+                else f"{ALL_REJECTED_NOTE} ({proposed} écartée(s) : citations introuvables dans le texte lu…)"
+            )
+            run.warnings.insert(0, note)
             raise _Failed(FailureReason.NOT_A_LESSON)
 
         # ③ Enrichissement

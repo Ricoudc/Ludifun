@@ -69,6 +69,7 @@ function afficher(d) {
     for (const s of l.steps) {
       etapes.appendChild(el("div", s.stage + " : " + duree(s.seconds) + " · " + s.model + " · " + s.status,
         s.status === "ok" ? "" : "bad"));
+      for (const note of s.notes || []) etapes.appendChild(el("div", "· " + note, "muted"));
     }
     return ligne([quand(l.created_at), l.lesson, etat, l.source + ", " + l.pages + " p.", duree(l.ai_s), etapes]);
   }), "Aucune leçon.", 6);
