@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.ai.factory import build_providers
-from app.api import health, v1, web
+from app.api import health, monitoring, v1, web
 from app.api.body_limit import BodySizeLimit
 from app.api.deps import AiProviders
 from app.api.errors import install_error_handlers
@@ -64,6 +64,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(v1.router)
     app.include_router(web.router)
+    app.include_router(monitoring.router)
     return app
 
 

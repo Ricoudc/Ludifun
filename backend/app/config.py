@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     # compatible) font appeler une adresse choisie par le parent : refusées en production sauf
     # si ce réglage vaut true (serveur familial).
     allow_custom_ai_url: bool | None = None
+    # Page /suivi (appels à l'IA en direct, sans donnée personnelle) : ouverte hors production,
+    # sauf si ce réglage dit le contraire.
+    monitoring: bool | None = None
     # Chiffrement des clés d'IA des familles ; à défaut, dérivé de LUDIFUN_JWT_SECRET.
     secrets_key: SecretStr | None = None
     ai_ocr_effort: Effort = "low"
@@ -92,6 +95,10 @@ class Settings(BaseSettings):
         if self.allow_custom_ai_url is not None:
             return self.allow_custom_ai_url
         return self.environment != "prod"
+
+    @property
+    def monitoring_enabled(self) -> bool:
+        return self.monitoring if self.monitoring is not None else self.environment != "prod"
 
     def missing_legal_details(self) -> list[str]:
         """Réglages des pages publiques encore à compléter (LUDIFUN_LEGAL_ENTITY…)."""

@@ -25,6 +25,11 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 | `Arreter-Ludifun.bat` | arrêter le serveur (les données sont gardées) |
 | `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
 | `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
+| `Rapport-Ludifun.bat` | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
+
+Pendant une analyse, <http://localhost:8000/suivi> (dans le navigateur du PC) montre en direct
+chaque appel à l'IA : l'étape, le modèle, depuis combien de temps, les durées moyennes par IA et
+les dernières erreurs. Pratique pour comparer Ollama, Gemini et Claude.
 
 La clé d'API est enregistrée dans le fichier `.env` du dossier : il reste sur le PC et n'est
 jamais envoyé sur GitHub. La dépense d'IA est plafonnée à 5 $ par jour

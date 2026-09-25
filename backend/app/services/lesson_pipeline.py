@@ -108,6 +108,8 @@ class _Failed(Exception):
 
 
 StatusCallback = Callable[[LessonStatus], Awaitable[None]]
+# Suivi en direct (page /suivi) : appelé au début d'un appel à l'IA, rend la fonction de fin.
+CallTracker = Callable[[Stage, str], Callable[[], None]]
 
 
 class LessonPipeline:
@@ -119,12 +121,14 @@ class LessonPipeline:
         *,
         max_chars: int = 20000,
         on_status: StatusCallback | None = None,
+        on_call: CallTracker | None = None,
     ) -> None:
         self.ocr = ocr
         self.llm = llm
         self.registry = registry
         self.max_chars = max_chars
         self.on_status = on_status
+        self.on_call = on_call
         self.analysis_prompt = Prompt.load("analysis")
         self.material_prompt = Prompt.load("material")
 
@@ -324,6 +328,7 @@ class LessonPipeline:
         for attempt in range(retries + 1):
             started = time.perf_counter()
             logger.info("IA : %s en cours (%s)…", STAGE_LABELS[stage], model)
+            finish = self.on_call(stage, model) if self.on_call else None
             try:
                 response = await call()
             except AIError as exc:
@@ -337,6 +342,9 @@ class LessonPipeline:
                 if isinstance(exc, AIInvalidOutput) and attempt < retries:
                     continue
                 raise
+            finally:
+                if finish:
+                    finish()
             usage = response.usage
             logger.info("IA : %s terminée en %d s", STAGE_LABELS[stage], (usage.latency_ms or 0) // 1000)
             result.runs.append(

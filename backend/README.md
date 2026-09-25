@@ -116,6 +116,9 @@ IA garde sa clé, son modèle et son adresse : on passe de l'une à l'autre sans
 jamais renvoyée. Ollama et les services compatibles font appeler une adresse choisie par le
 parent : refusés en production, sauf `LUDIFUN_ALLOW_CUSTOM_AI_URL=true` (serveur familial).
 
+Suivi de l'IA : page `/suivi` (appels en cours, durées par modèle, dernières erreurs ; données
+techniques seulement) et `/suivi/rapport.txt` ; ouverte hors production, réglage `LUDIFUN_MONITORING`.
+
 | `LUDIFUN_AI_PROVIDER` | Service | Clé | Modèles conseillés (lecture et analyse / correction) |
 |---|---|---|---|
 | `ollama` (défaut du `docker-compose.yml`) | Ollama, sur le PC (gratuit, rien ne sort) ; adresse `LUDIFUN_OLLAMA_BASE_URL` (`http://host.docker.internal:11434` dans Docker), contexte `LUDIFUN_OLLAMA_NUM_CTX` (16384) | — | `qwen2.5vl:7b` (doit lire les images ; plus léger : `gemma3:4b`) |

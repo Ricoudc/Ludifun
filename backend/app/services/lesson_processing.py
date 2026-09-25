@@ -14,6 +14,7 @@ from app.db.models import Lesson
 from app.domain.activities.registry import ActivityRegistry
 from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
 from app.services.lesson_store import save_pipeline_result
+from app.services.live_calls import LIVE
 
 logger = logging.getLogger("ludifun.lessons")
 
@@ -35,7 +36,14 @@ async def process_lesson(
             await session.execute(update(Lesson).where(Lesson.id == lesson_id).values(status=status.value))
             await session.commit()
 
-    pipeline = LessonPipeline(ocr, llm, registry, max_chars=settings.max_lesson_chars, on_status=on_status)
+    pipeline = LessonPipeline(
+        ocr,
+        llm,
+        registry,
+        max_chars=settings.max_lesson_chars,
+        on_status=on_status,
+        on_call=lambda stage, model: LIVE.track(lesson_id, stage, model),
+    )
     try:
         result = await pipeline.run(pages, text)
     except Exception:  # un bug ne doit pas laisser la leçon « en cours » pour toujours
