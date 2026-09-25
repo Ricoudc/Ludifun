@@ -199,7 +199,8 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_AI_EVALUATION_MODEL`, `…_EVALUATION_EFFORT` | `claude-sonnet-5`, `low` : correction des réponses rédigées, pendant la séance |
 | `LUDIFUN_MAX_LESSON_CHARS` | `20000` |
 | `LUDIFUN_AI_DAILY_BUDGET_USD` | `50` : plafond de dépense IA par jour (UTC), tous comptes confondus ; vide = sans plafond |
-| `LUDIFUN_JWT_SECRET` | secret de développement ; **obligatoire en production** (l'API refuse de démarrer sans) |
+| `LUDIFUN_JWT_SECRET` | secret de développement (public : avertissement au démarrage) ; tiré au hasard dans `.env` par `Demarrer-Ludifun.bat` ; **obligatoire en production** (l'API refuse de démarrer sans) |
+| `LUDIFUN_SECRETS_KEY` | chiffrement des clés d'IA des familles ; tiré au hasard par `Demarrer-Ludifun.bat`. Les clés chiffrées avec l'ancien secret public sont relues puis rechiffrées au démarrage (hors production) |
 | `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
 | `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |
 | `LUDIFUN_PASSWORD_RESET_URL` | `ludifun://app/parent/nouveau-mot-de-passe?jeton=` (le jeton est ajouté à la fin) |
