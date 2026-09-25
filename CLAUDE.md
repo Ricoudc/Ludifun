@@ -32,7 +32,7 @@ de l'application, documentation, commentaires, messages de commit.
 - Contrats d'API : pas de champ retiré ni renommé ; l'application publiée doit continuer de
   fonctionner (un type d'activité inconnu est sauté, un champ nouveau est facultatif).
 - Base de données : toute modification passe par une migration Alembic numérotée
-  (`backend/alembic/versions/00NN_*.py`), avec reprise des données existantes et test dans
+  (`backend/migrations/versions/AAAAMMJJ_00NN_*.py`), avec reprise des données existantes et test dans
   `tests/db/test_schema.py` ; mettre à jour la version attendue par `/health/ready`.
 - Séparation parent / enfant stricte : un jeton d'enfant n'accède qu'à ses données, un parent
   qu'à sa famille (tests dans `tests/api/test_separation.py`).
