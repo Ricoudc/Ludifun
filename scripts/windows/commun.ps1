@@ -134,17 +134,31 @@ function Demander-Cle($f, $valeurs) {
     }
 }
 
-function Verifier-Ollama([string]$modele) {
+# Adresse d'Ollama vue depuis Windows : ce PC, ou un autre ordinateur du logement.
+function Adresse-Ollama($valeurs) {
+    $url = $valeurs['LUDIFUN_OLLAMA_BASE_URL']
+    if ($url) { return $url }
+    return 'http://localhost:11434'
+}
+
+function Verifier-Ollama([string]$modele, [string]$url = 'http://localhost:11434') {
     try {
-        $tags = Invoke-RestMethod -Uri 'http://localhost:11434/api/tags' -TimeoutSec 5
+        $tags = Invoke-RestMethod -Uri "$($url.TrimEnd('/'))/api/tags" -TimeoutSec 5
     } catch {
-        Write-Host 'Ollama ne répond pas sur ce PC : installe-le (https://ollama.com/download) et lance-le.' -ForegroundColor Yellow
+        if ($url -match 'localhost') {
+            Write-Host 'Ollama ne répond pas sur ce PC : installe-le (https://ollama.com/download) et lance-le.' -ForegroundColor Yellow
+        } else {
+            Write-Host "Ollama ne répond pas à $url. Sur l'autre ordinateur : Ollama lancé, variable d'environnement" -ForegroundColor Yellow
+            Write-Host 'OLLAMA_HOST=0.0.0.0 (puis redémarrer Ollama), et le pare-feu qui autorise le port 11434.' -ForegroundColor Yellow
+        }
         return
     }
     $noms = @($tags.models | ForEach-Object { $_.name })
     if ($noms -contains $modele -or $noms -contains "$($modele):latest") { Ok "Ollama répond, « $modele » est installé"; return }
     Write-Host "Le modèle « $modele » n'est pas encore installé dans Ollama (plusieurs Go à télécharger)." -ForegroundColor Yellow
-    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+    if ($url -notmatch 'localhost') {
+        Write-Host "Sur l'ordinateur qui a Ollama, dans un terminal : ollama pull $modele"
+    } elseif (Get-Command ollama -ErrorAction SilentlyContinue) {
         $oui = Read-Host 'Le télécharger maintenant ? (O/N)'
         if ($oui -match '^[oOyY]') { & ollama pull $modele }
     } else {
@@ -172,11 +186,22 @@ function Choisir-IA {
     }
 
     if ($choix.Code -eq 'ollama') {
+        # Pas de clé : Ollama répond à qui peut le joindre, sur ce PC ou sur le réseau du logement.
+        $valeurs.Remove('LUDIFUN_AI_BASE_URL')  # adresse d'un ancien choix « compatible »
+        Write-Host 'Ollama est-il installé sur ce PC ? Entrée = oui.'
+        $ou = (Read-Host 'Sinon, adresse IP de l''ordinateur du logement qui l''a (par exemple 192.168.1.20)').Trim()
+        if ($ou) {
+            if ($ou -notmatch '^https?://') { $ou = "http://$ou" }
+            if ($ou -notmatch ':\d+/?$') { $ou = "$($ou.TrimEnd('/')):11434" }
+            $valeurs['LUDIFUN_OLLAMA_BASE_URL'] = $ou
+        } else {
+            $valeurs.Remove('LUDIFUN_OLLAMA_BASE_URL')  # ce PC : host.docker.internal pour le serveur
+        }
         $modele = (Read-Host "Modèle Ollama (Entrée = conseillé : $($choix.Conseil))").Trim()
         if ($modele) { $valeurs['LUDIFUN_AI_MODEL'] = $modele } else { $valeurs.Remove('LUDIFUN_AI_MODEL'); $modele = $choix.Conseil }
         Ecrire-Env $valeurs
-        Ok 'Ollama choisi (gratuit)'
-        Verifier-Ollama $modele
+        Ok 'Ollama choisi (gratuit, sans clé)'
+        Verifier-Ollama $modele (Adresse-Ollama $valeurs)
         return
     }
 

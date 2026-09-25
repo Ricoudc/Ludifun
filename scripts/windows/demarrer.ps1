@@ -9,7 +9,7 @@ $reglages = Lire-Env
 if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
     $modele = $reglages['LUDIFUN_AI_MODEL']
     if (-not $modele) { $modele = 'qwen2.5vl:7b' }
-    Verifier-Ollama $modele
+    Verifier-Ollama $modele (Adresse-Ollama $reglages)
 }
 
 Etape 'Démarrage du serveur (la première fois, ou après une mise à jour : plusieurs minutes)…'
