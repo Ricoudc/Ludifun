@@ -188,6 +188,11 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
             )
           else if (lesson == null || lesson.status.inProgress)
             ..._waiting(),
+          if (lesson?.diagnostics case final Diagnostics d
+              when d.steps.isNotEmpty || d.explanation != null) ...[
+            const SizedBox(height: 16),
+            DiagnosticsPanel(diagnostics: d, failed: failed),
+          ],
           if (_offline)
             const Text(
               'Connexion perdue… je réessaie.',
@@ -270,6 +275,65 @@ class _StepRow extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  );
+}
+
+/// « Voir ce qui se passe » : chaque étape de l'IA (modèle, durée, résultat) et, en cas d'échec,
+/// la raison en clair puis le message de l'IA. Ouvert d'emblée quand l'analyse a échoué.
+class DiagnosticsPanel extends StatelessWidget {
+  const DiagnosticsPanel({required this.diagnostics, required this.failed, super.key});
+
+  final Diagnostics diagnostics;
+  final bool failed;
+
+  static String duration(int seconds) => seconds < 60
+      ? '$seconds s'
+      : '${seconds ~/ 60} min ${(seconds % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: ExpansionTile(
+      key: ValueKey('diagnostics-$failed'),
+      initiallyExpanded: failed,
+      leading: const Icon(Icons.manage_search),
+      title: const Text('Voir ce qui se passe'),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (diagnostics.explanation case final explanation?)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: LudiColors.notMastered.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('Pourquoi ? $explanation', style: const TextStyle(fontSize: 15)),
+          ),
+        for (final step in diagnostics.steps)
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: step.running
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    step.ok ? Icons.check_circle : Icons.error,
+                    color: step.ok ? LudiColors.mastered : LudiColors.notMastered,
+                  ),
+            title: Text('${step.stage} · ${step.model}'),
+            subtitle: step.message == null
+                ? null
+                : Text(step.message!, style: const TextStyle(fontSize: 12)),
+            trailing: Text(
+              step.running ? 'depuis ${duration(step.seconds)}' : duration(step.seconds),
+            ),
+          ),
+      ],
     ),
   );
 }

@@ -108,8 +108,9 @@ class _Failed(Exception):
 
 
 StatusCallback = Callable[[LessonStatus], Awaitable[None]]
-# Suivi en direct (page /suivi) : appelé au début d'un appel à l'IA, rend la fonction de fin.
-CallTracker = Callable[[Stage, str], Callable[[], None]]
+# Suivi en direct (page /suivi, écran d'analyse) : appelé au début d'un appel à l'IA ; rend la
+# fonction de fin (statut, message d'erreur).
+CallTracker = Callable[[Stage, str], Callable[[str, str | None], None]]
 
 
 class LessonPipeline:
@@ -332,6 +333,8 @@ class LessonPipeline:
             try:
                 response = await call()
             except AIError as exc:
+                if finish:
+                    finish(exc.status, str(exc))
                 latency = round((time.perf_counter() - started) * 1000)
                 logger.warning("IA : %s en échec après %d s : %s", STAGE_LABELS[stage], latency // 1000, exc)
                 result.runs.append(
@@ -342,9 +345,12 @@ class LessonPipeline:
                 if isinstance(exc, AIInvalidOutput) and attempt < retries:
                     continue
                 raise
-            finally:
+            except BaseException:
                 if finish:
-                    finish()
+                    finish("error", "erreur interne du serveur")
+                raise
+            if finish:
+                finish("ok", None)
             usage = response.usage
             logger.info("IA : %s terminée en %d s", STAGE_LABELS[stage], (usage.latency_ms or 0) // 1000)
             result.runs.append(

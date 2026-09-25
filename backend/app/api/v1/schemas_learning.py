@@ -86,6 +86,21 @@ class ReviewIn(BaseModel):
     answers: list[ReviewAnswerIn] = Field(max_length=10)
 
 
+class AiStepOut(BaseModel):
+    stage: str = Field(description="Étape, en clair (« lecture de la leçon »).")
+    model: str
+    seconds: int = Field(description="Durée ; pour l'étape en cours, depuis quand elle tourne.")
+    status: Literal["ok", "running", "error", "invalid_output", "refused"]
+    message: str | None = Field(None, description="Message de l'IA en cas d'erreur (sans texte de leçon).")
+
+
+class DiagnosticsOut(BaseModel):
+    """« Voir ce qui se passe » : l'IA au travail, étape par étape."""
+
+    steps: list[AiStepOut]
+    explanation: str | None = Field(None, description="Raison de l'échec, en clair (pour le parent).")
+
+
 class LessonOut(LessonSummaryOut):
     """Écrans 3 (statut et étapes) et 4 (leçon et notions)."""
 
@@ -99,6 +114,7 @@ class LessonOut(LessonSummaryOut):
     source: Literal["photo", "text"] = "photo"
     review: list[ReviewItemOut] = Field([], description="Passages à vérifier (statut `needs_review`).")
     can_retry: bool = False
+    diagnostics: DiagnosticsOut | None = None
 
 
 class LessonPatch(BaseModel):

@@ -85,6 +85,8 @@ class OpenAICompatibleProvider:
             response = await self._client.post(
                 f"{self.base_url}/chat/completions", json=body, headers=self._headers
             )
+        except httpx.TimeoutException as exc:
+            raise AIError(f"{self.name} n'a pas répondu à temps ({type(exc).__name__})") from exc
         except httpx.HTTPError as exc:
             raise AIError(f"connexion impossible à {self.name} : {type(exc).__name__}") from exc
         if response.status_code >= 400:

@@ -53,9 +53,11 @@ async def process_lesson(
     async with database.sessionmaker() as session:
         lesson = await session.get(Lesson, lesson_id)
         if lesson is None:
+            LIVE.forget(lesson_id)
             return  # supprimée pendant l'analyse
         await save_pipeline_result(session, lesson, result)
         await session.commit()
+    LIVE.forget(lesson_id)  # la trace est maintenant dans ai_runs
 
 
 IN_PROGRESS = ("uploaded", "reading", "analyzing", "generating")

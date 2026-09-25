@@ -27,6 +27,9 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 | `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
 | `Rapport-Ludifun.bat` | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
 
+Sur le téléphone, l'écran d'analyse a un bloc « Voir ce qui se passe » : chaque étape de l'IA
+(modèle, durée, résultat) et, si l'analyse échoue, la raison en clair puis le message de l'IA.
+
 Pendant une analyse, <http://localhost:8000/suivi> (dans le navigateur du PC) montre en direct
 chaque appel à l'IA : l'étape, le modèle, depuis combien de temps, les durées moyennes par IA et
 les dernières erreurs. Pratique pour comparer Ollama, Gemini et Claude.

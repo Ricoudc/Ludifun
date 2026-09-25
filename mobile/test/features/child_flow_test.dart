@@ -378,6 +378,64 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
   });
 
+  testWidgets('« Voir ce qui se passe » : l\'IA étape par étape, puis la raison de l\'échec', (
+    tester,
+  ) async {
+    var failed = false;
+    server.on(
+      'GET /v1/lessons/l1',
+      (_) => (
+        200,
+        failed
+            ? {
+                ...lessonJson('failed', failure: 'ai_error', canRetry: true),
+                'diagnostics': {
+                  'steps': [
+                    {
+                      'stage': 'lecture de la leçon',
+                      'model': 'ollama/qwen2.5vl:7b',
+                      'seconds': 900,
+                      'status': 'error',
+                      'message': 'Ollama n\'a pas répondu en 15 min (ReadTimeout)',
+                    },
+                  ],
+                  'explanation': 'L\'IA a mis trop de temps à répondre.',
+                },
+              }
+            : {
+                ...lessonJson('reading'),
+                'diagnostics': {
+                  'steps': [
+                    {
+                      'stage': 'lecture de la leçon',
+                      'model': 'ollama/qwen2.5vl:7b',
+                      'seconds': 75,
+                      'status': 'running',
+                    },
+                  ],
+                  'explanation': null,
+                },
+              },
+      ),
+    );
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go('/enfant/analyse/l1');
+    await advance(tester, const Duration(seconds: 2));
+    expect(find.text('Voir ce qui se passe'), findsOneWidget);
+    expect(find.text('lecture de la leçon · ollama/qwen2.5vl:7b'), findsNothing); // replié
+    await tester.tap(find.text('Voir ce qui se passe'));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.text('lecture de la leçon · ollama/qwen2.5vl:7b'), findsOneWidget);
+    expect(find.text('depuis 1 min 15'), findsOneWidget);
+
+    failed = true;
+    await advance(tester, const Duration(seconds: 3));
+    expect(find.text('Petit souci de mon côté, réessaie.'), findsOneWidget);
+    expect(find.text('Pourquoi ? L\'IA a mis trop de temps à répondre.'), findsOneWidget);
+    expect(find.text('Ollama n\'a pas répondu en 15 min (ReadTimeout)'), findsOneWidget);
+    expect(find.text('15 min 00'), findsOneWidget);
+  });
+
   testWidgets('analyse longue (IA de l\'ordinateur) : le temps écoulé et qu\'on peut fermer', (
     tester,
   ) async {

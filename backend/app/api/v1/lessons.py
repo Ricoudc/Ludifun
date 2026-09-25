@@ -13,6 +13,8 @@ from app.ai.ports import PageImage
 from app.api.deps import AppSettings, ChildAi, ChildInScope, DbSession, Registry, get_database, rate_limit
 from app.api.errors import ApiError
 from app.api.v1.schemas_learning import (
+    AiStepOut,
+    DiagnosticsOut,
     KnowledgeOut,
     LessonAccepted,
     LessonOut,
@@ -30,9 +32,10 @@ from app.db.models import Child, Lesson, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
-from app.services import ai_budget, goals, learning
+from app.services import ai_budget, goals, learning, lesson_diagnostics
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
+from app.services.live_calls import LIVE
 
 router = APIRouter(tags=["leçons"])
 
@@ -249,6 +252,10 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
         failure_message=FAILURE_MESSAGES.get(lesson.failure_reason or ""),
         can_retry=await can_retry(db, lesson),
         source=lesson.source,
+    )
+    report = await lesson_diagnostics.diagnostics(db, lesson, LIVE, clock.now())
+    out.diagnostics = DiagnosticsOut(
+        steps=[AiStepOut(**vars(step)) for step in report.steps], explanation=report.explanation
     )
     if lesson.status == "needs_review":
         out.review = [

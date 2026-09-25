@@ -63,6 +63,11 @@ class OllamaProvider:
         started = time.perf_counter()
         try:
             response = await self._client.post(f"{self.base_url}/api/chat", json=body)
+        except httpx.TimeoutException as exc:
+            raise AIError(
+                f"Ollama n'a pas répondu en {TIMEOUT_S / 60:.0f} min ({type(exc).__name__}) : "
+                "modèle trop lourd ou carte graphique non utilisée"
+            ) from exc
         except httpx.HTTPError as exc:
             raise AIError(
                 f"Ollama injoignable à {self.base_url} ({type(exc).__name__}) : est-il lancé sur le PC ?"

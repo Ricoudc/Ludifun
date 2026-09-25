@@ -133,6 +133,7 @@ class Lesson extends LessonSummary {
     this.skills = const [],
     this.review = const [],
     this.canRetry = false,
+    this.diagnostics,
   });
 
   factory Lesson.fromJson(Json json) {
@@ -168,6 +169,10 @@ class Lesson extends LessonSummary {
           ReviewItem.fromJson(r as Json),
       ],
       canRetry: json['can_retry'] as bool? ?? false,
+      diagnostics: switch (json['diagnostics']) {
+        final Json d => Diagnostics.fromJson(d),
+        _ => null,
+      },
     );
   }
 
@@ -184,6 +189,9 @@ class Lesson extends LessonSummary {
   /// Passages à vérifier (statut « à vérifier »).
   final List<ReviewItem> review;
   final bool canRetry;
+
+  /// « Voir ce qui se passe » : l'IA étape par étape, et la raison d'un échec.
+  final Diagnostics? diagnostics;
 
   /// Étapes terminées côté serveur (0 à 3).
   int get stepsDone => status == LessonStatus.ready
@@ -237,4 +245,46 @@ class Mission {
   final String? subject;
   final String? reason;
   final int? estimatedMinutes;
+}
+
+/// Une étape de l'IA pendant l'analyse (`running` : en cours depuis [seconds]).
+class AiStep {
+  const AiStep({
+    required this.stage,
+    required this.model,
+    required this.seconds,
+    required this.status,
+    this.message,
+  });
+
+  factory AiStep.fromJson(Json json) => AiStep(
+    stage: json['stage'] as String,
+    model: json['model'] as String,
+    seconds: json['seconds'] as int,
+    status: json['status'] as String,
+    message: json['message'] as String?,
+  );
+
+  final String stage;
+  final String model;
+  final int seconds;
+  final String status;
+  final String? message;
+
+  bool get running => status == 'running';
+  bool get ok => status == 'ok';
+}
+
+class Diagnostics {
+  const Diagnostics({required this.steps, this.explanation});
+
+  factory Diagnostics.fromJson(Json json) => Diagnostics(
+    steps: [for (final s in json['steps'] as List<dynamic>) AiStep.fromJson(s as Json)],
+    explanation: json['explanation'] as String?,
+  );
+
+  final List<AiStep> steps;
+
+  /// Raison de l'échec, en clair.
+  final String? explanation;
 }

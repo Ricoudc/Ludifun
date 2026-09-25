@@ -38,7 +38,8 @@ async def test_page_and_live_calls(client: AsyncClient, db: AsyncSession) -> Non
     try:
         running = (await client.get("/suivi/donnees")).json()["running"]
     finally:
-        finish()
+        finish("ok", None)
+        LIVE.forget(lesson_id)
     assert running[0]["lesson"] == lesson["id"][:8]
     assert running[0]["calls"][0] | {"elapsed_s": 0} == {
         "stage": "lecture de la leçon",
