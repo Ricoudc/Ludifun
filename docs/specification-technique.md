@@ -520,6 +520,34 @@ squelette, appareil digestif, plante, cycle de l'eau, volcan, grandes périodes 
 - **Source des notions** (§116) : `source_excerpt` et `source_page` dans `GET /v1/lessons/{id}`.
 - **Leçons de référence** (§139) : 6 leçons, CP à 3e, et leur comportement attendu.
 
+### 5.14 Sources externes : Ludifun cherche, l'IA lit (étape 24, CDC §116-117)
+
+L'IA (même un petit modèle local) ne va pas elle-même sur Internet : c'est le serveur qui
+cherche, choisit les extraits, puis vérifie ce que l'IA en tire.
+
+```
+question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « recherche »)
+  → résultats des sites autorisés seulement (https, liste LUDIFUN_WEB_SOURCES)
+  → pages lues (html, 2 Mo au plus, pas de redirection vers un autre site)
+  → 3 extraits de 800 signes au plus, les plus proches de la question (2 par page au plus)
+  → IA : prompt `sources.v1`, extraits entre balises <source> (données, jamais consignes)
+  → code : chaque citation doit figurer dans l'extrait cité, sinon rien n'est montré
+  → réponse marquée SOURCE_EXTERNAL_KNOWLEDGE, avec ses sources (site, adresse)
+```
+
+- **Code pur** : `app/domain/sources.py` (sites autorisés, découpe, choix des extraits,
+  contrôle des citations) ; **recherche** : `app/services/web_sources.py` ; **lecture par l'IA** :
+  `app/services/sourced_answer.py` (étape IA `sources`, journalisée dans `ai_runs`, migration
+  `0015`) ; **essai** : `python -m app.tools.sources "question" [--classe CE2] [--sans-ia]`.
+- **Sites par défaut** : Vikidia, Lumni, Éduscol, education.gouv.fr, Sésamath, Wikipédia (fr).
+- **Activation** : dans `.env`, `COMPOSE_PROFILES=recherche` et
+  `LUDIFUN_WEB_SEARCH_URL=http://recherche:8080`. Sans ces réglages, rien ne change.
+- **Étape 24a (faite)** : fondations et outil d'essai. **24b** : usage dans « ❓ Je n'ai pas
+  compris » (un exemple sourcé quand la leçon n'en donne pas) et interrupteur du parent.
+  **24c** : vérification de la lecture d'une photo (une date lue différemment de toutes les
+  sources → « Peux-tu vérifier ? »). **24d** : bibliothèque locale (Vikidia, programmes), sans
+  Internet.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -671,6 +699,8 @@ documentation, intégration continue verte.
 | 22 ✅ | **Carte et coloriage** (V2, CDC §110 n° 17) | bibliothèque de 12 figures (IGN, Natural Earth, dessins Ludifun), `GET /v1/figures/{id}`, activités `MAP` et `COLORING` (§5.12), écrans de l'application, correction sur le dessin | une leçon sur les régions donne une carte à la première séance, une classification des planètes un coloriage, chaque figure se lit et se touche dans l'application (tests) |
 | 23 ✅ | **Décisions expliquées** (CDC §112-149) | règles du moteur dans `engine_rules.toml` et leur version ; raison de chaque activité et décision (migration 0014), « Pourquoi ces activités ? » pour le parent ; réussite par niveau, autonomie et faits chiffrés ; repli sur une autre IA de la famille (au choix du parent) ; « Pourquoi cette notion ? » ; 6 leçons de référence (§5.13) | chaque activité d'une séance simulée a sa raison ; une remédiation et une pause apparaissent avec leurs faits ; Ollama en panne → Gemini lit la leçon si le parent l'a permis, sinon l'échec est expliqué (tests) |
 
+| 24 🟡 | **Sources externes** (CDC §116-117) | 24a ✅ recherche sur des sites autorisés (SearXNG), extraits, lecture par l'IA, citations vérifiées, outil d'essai (§5.14) ; 24b aide sourcée et réglage du parent ; 24c vérification de la lecture ; 24d bibliothèque locale | une citation inventée fait écarter la réponse ; une page d'un site non autorisé ou une redirection n'est jamais lue ; une page ne peut pas fermer sa balise (tests) |
+
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
 - **V2 — ludique** : ~~XP et série liés à l'effort, badges, missions narratives (§37)~~ (étape 20), ~~activités
@@ -708,7 +738,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 114 | État structuré de l'enfant (reconnaître, se rappeler, appliquer, expliquer, transférer, autonomie) | ✅ | Par notion : score 0-100, boîte, prochaine révision, niveaux validés, et depuis l'étape 23 un taux de réussite par niveau de compréhension (10 dernières réponses) et l'autonomie (part des réussites sans aide), calculés depuis les réponses enregistrées (`app/domain/state.py`) ; visibles par le parent. Reste : l'état par compétence (les compétences sont rattachées aux notions). |
 | 115 | Niveau de confiance et confirmation | 🟡 | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire. Manque une confiance par notion extraite et par correction de question rédigée. |
 | 116 | Chaque connaissance reliée à sa source | ✅ | `source_excerpt` obligatoire, vérifié dans le texte lu ; la page est retrouvée et affichée : « Pourquoi cette notion ? C'est écrit dans ta leçon, page 2 : « … » » (étape 23). |
-| 117 | Sources de vérité distinguées | 🟡 | Seule la leçon est source (pas d'apport externe, pas de référentiel des programmes). À typer quand le référentiel (§105) ou l'historique entreront dans les décisions. |
+| 117 | Sources de vérité distinguées | 🟡 | La leçon est la source des notions ; un apport externe (étape 24) est marqué `SOURCE_EXTERNAL_KNOWLEDGE`, avec ses sources et des citations vérifiées, jamais présenté comme venant de la leçon. Pas encore de référentiel des programmes (§105). |
 | 118 | Génération à partir d'une spécification (objectif, difficulté…) | 🟡 | Choix différent : l'IA produit une fois, à l'analyse, un matériel validé par notion (questions de 3 difficultés, vrai/faux, textes à trous, paires, aides, questions ouvertes par niveau) ; le moteur construit ensuite chaque activité selon l'objectif et la difficulté. Avantage : aucune séance ne dépend de l'IA. Limite : pas de nouvelle génération ciblée pendant la vie de la leçon. |
 | 119 | Validation structurelle puis pédagogique, régénération, secours | ✅ | Schéma JSON, puis contrôles (§6.4) : réponse dans la leçon, distracteurs plausibles et distincts, pas de double réponse, citation exacte… ; une relance avec les motifs de refus ; les éléments refusés sont écartés, la notion garde les activités qui restent. |
 | 120, 147 | Activités de secours ; repli en cas de panne | ✅ | Les séances n'appellent jamais l'IA. Correction des questions rédigées : repli par mots-clés. Claude : modèle de repli (A9). Étape 23 : si l'IA de la famille ne répond pas (injoignable, trop lente, quota, clé refusée), ses autres IA enregistrées prennent le relais — seulement si le parent l'a permis (les photos partent là où il l'a choisi) ; le repli est noté dans `ai_runs` et visible dans « Voir ce qui se passe ». |

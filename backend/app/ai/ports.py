@@ -10,10 +10,16 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
-Stage = Literal["ocr", "analysis", "material", "evaluation"]
+Stage = Literal["ocr", "analysis", "material", "evaluation", "sources"]
 MediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif"]
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
-PROMPT_VERSIONS: dict[Stage, str] = {"ocr": "v2", "analysis": "v2", "material": "v2", "evaluation": "v1"}
+PROMPT_VERSIONS: dict[Stage, str] = {
+    "ocr": "v2",
+    "analysis": "v2",
+    "material": "v2",
+    "evaluation": "v1",
+    "sources": "v1",
+}
 
 
 @dataclass(frozen=True)

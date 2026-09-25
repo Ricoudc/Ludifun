@@ -307,3 +307,19 @@ async def test_migration_0014_keeps_ai_settings_without_fallback(
     async with engine.connect() as conn:
         rows = (await conn.execute(text("SELECT provider, fallback FROM family_ai_settings"))).all()
     assert [tuple(row) for row in rows] == [("ollama", False)]
+
+
+async def test_migration_0015_accepts_source_searches(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Étape 24 : les appels « recherche de sources » sont journalisés ; retour arrière propre."""
+    await db.commit()
+    insert = text(
+        "INSERT INTO ai_runs (id, stage, provider, model, prompt_version, latency_ms, status, warnings, "
+        "created_at) VALUES (:id, 'sources', 'fake', 'fake', 'v1', 10, 'ok', '[]', now())"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4()})
+    await run_alembic("downgrade", "0014")
+    async with engine.connect() as conn:
+        left = (await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'sources'"))).scalar()
+    assert left == 0
+    await run_alembic("upgrade", "head")

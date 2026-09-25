@@ -200,6 +200,8 @@ Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
 | `LUDIFUN_MAX_LESSON_CHARS` | `20000` |
 | `LUDIFUN_AI_DAILY_BUDGET_USD` | `50` : plafond de dépense IA par jour (UTC), tous comptes confondus ; vide = sans plafond |
 | `LUDIFUN_JWT_SECRET` | secret de développement (public : avertissement au démarrage) ; tiré au hasard dans `.env` par `Demarrer-Ludifun.bat` ; **obligatoire en production** (l'API refuse de démarrer sans) |
+| `LUDIFUN_WEB_SEARCH_URL` | recherche de sources (étape 24) : moteur SearXNG, `http://recherche:8080` avec `COMPOSE_PROFILES=recherche` ; vide = désactivée. Essai : `python -m app.tools.sources "question"` |
+| `LUDIFUN_WEB_SOURCES` | sites autorisés, séparés par des virgules (défaut : Vikidia, Lumni, Éduscol, education.gouv.fr, Sésamath, Wikipédia) |
 | `LUDIFUN_SECRETS_KEY` | chiffrement des clés d'IA des familles ; tiré au hasard par `Demarrer-Ludifun.bat`. Les clés chiffrées avec l'ancien secret public sont relues puis rechiffrées au démarrage (hors production) |
 | `LUDIFUN_ACCESS_TOKEN_MINUTES`, `…_REFRESH_TOKEN_DAYS` | `15`, `30` |
 | `LUDIFUN_LINK_CODE_MINUTES`, `…_PASSWORD_RESET_MINUTES` | `10`, `60` |

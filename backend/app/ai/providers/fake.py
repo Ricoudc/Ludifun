@@ -16,7 +16,15 @@ from typing import Any
 from pydantic import BaseModel
 
 from app.ai.ports import LLMResult, PageImage, Prompt, Stage, Usage
-from app.ai.schemas import AnalysisOutput, EvaluationOutput, MaterialBatchOutput, OcrPage, OcrResult
+from app.ai.schemas import (
+    AnalysisOutput,
+    EvaluationOutput,
+    MaterialBatchOutput,
+    OcrPage,
+    OcrResult,
+    SourcedAnswerOutput,
+    SourceQuote,
+)
 from app.domain.activities.open_question import point_found
 
 REFERENCE_LESSONS = Path(__file__).resolve().parents[3] / "reference_lessons"
@@ -94,6 +102,22 @@ _POINTS = re.compile(r"<points_cles>\n(.*?)\n</points_cles>", re.DOTALL)
 _ANSWER = re.compile(r"<reponse_eleve>\n(.*?)\n</reponse_eleve>", re.DOTALL)
 
 
+_SOURCE = re.compile(r'<source numero="(\d+)"[^>]*>\n(.*?)\n</source>', re.DOTALL)
+
+
+def sources_output(input: str) -> SourcedAnswerOutput:
+    """Réponse sourcée factice : la première phrase du premier extrait, citée mot pour mot."""
+    match = _SOURCE.search(input)
+    if match is None:
+        return SourcedAnswerOutput(found=False, answer="", quotes=[])
+    sentence = match.group(2).split(". ")[0].strip().rstrip(".") + "."
+    return SourcedAnswerOutput(
+        found=True,
+        answer=f"D'après cette source : {sentence}",
+        quotes=[SourceQuote(source=int(match.group(1)), text=sentence)],
+    )
+
+
 def evaluation_output(input: str) -> EvaluationOutput:
     """Correction factice, déterministe : les points clés dont les mots sont dans la réponse."""
     points_match, answer_match = _POINTS.search(input), _ANSWER.search(input)
@@ -163,6 +187,8 @@ class FakeProvider:
             return OcrResult(pages=pages, language="fr", warnings=[])
         if stage == "evaluation":
             return evaluation_output(input)
+        if stage == "sources":
+            return sources_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

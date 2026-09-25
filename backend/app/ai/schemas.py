@@ -243,3 +243,16 @@ class EvaluationOutput(BaseModel):
     error_type: ErrorType | None = Field(description="Principale erreur si la réponse n'est pas complète.")
     confidence: float = Field(description="Confiance dans la correction, entre 0 et 1.")
     feedback: str = Field(description="Un retour bienveillant de 1 à 2 phrases, en tutoyant l'enfant.")
+
+
+class SourceQuote(BaseModel):
+    source: int = Field(description="Numéro de l'extrait cité (attribut numero de la balise <source>).")
+    text: str = Field(description="Phrase recopiée mot pour mot depuis cet extrait.")
+
+
+class SourcedAnswerOutput(BaseModel):
+    """Étape 24 : réponse expliquée à partir des extraits fournis, avec ses citations."""
+
+    found: bool = Field(description="true si les extraits contiennent la réponse, sinon false.")
+    answer: str = Field(description="Réponse de 1 à 4 phrases, adaptée à la classe, en tutoyant l'enfant.")
+    quotes: list[SourceQuote] = Field(description="1 à 3 citations exactes qui justifient la réponse.")

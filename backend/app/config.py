@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.domain.sources import DEFAULT_SITES
+
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
 AiProviderName = Literal[
     "ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake"
@@ -43,6 +45,11 @@ class Settings(BaseSettings):
     # Page /suivi (appels à l'IA en direct, sans donnée personnelle) : ouverte hors production,
     # sauf si ce réglage dit le contraire.
     monitoring: bool | None = None
+    # Recherche de sources (étape 24) : adresse du moteur SearXNG (docker compose, profil
+    # « recherche » : http://recherche:8080) ; vide = désactivée. Sites autorisés, séparés par des
+    # virgules (vide = liste par défaut : Vikidia, Lumni, Éduscol, Sésamath, Wikipédia…).
+    web_search_url: str | None = None
+    web_sources: str = ""
     # Chiffrement des clés d'IA des familles ; à défaut, dérivé de LUDIFUN_JWT_SECRET.
     secrets_key: SecretStr | None = None
     ai_ocr_effort: Effort = "low"
@@ -97,6 +104,11 @@ class Settings(BaseSettings):
         return self.environment != "prod"
 
     @property
+    def web_sites(self) -> tuple[str, ...]:
+        sites = tuple(s.strip().lower() for s in self.web_sources.split(",") if s.strip())
+        return sites or DEFAULT_SITES
+
+    @property
     def monitoring_enabled(self) -> bool:
         return self.monitoring if self.monitoring is not None else self.environment != "prod"
 
@@ -113,7 +125,7 @@ class Settings(BaseSettings):
     def _default_jwt_secret(cls, value: object) -> object:
         return DEV_JWT_SECRET if isinstance(value, str) and not value.strip() else value
 
-    @field_validator("secrets_key", mode="before")
+    @field_validator("secrets_key", "web_search_url", mode="before")
     @classmethod
     def _no_empty_secrets_key(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value

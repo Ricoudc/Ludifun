@@ -59,6 +59,10 @@ services:
       LUDIFUN_AI_API_KEY: ${LUDIFUN_AI_API_KEY:-}
       # Plafond de dépense IA par jour, en dollars : au-delà, les analyses attendent le lendemain.
       LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-5}
+      # Recherche de sources (étape 24), facultative : dans .env, COMPOSE_PROFILES=recherche et
+      # LUDIFUN_WEB_SEARCH_URL=http://recherche:8080 (moteur « recherche » ci-dessous).
+      LUDIFUN_WEB_SEARCH_URL: ${LUDIFUN_WEB_SEARCH_URL:-}
+      LUDIFUN_WEB_SOURCES: ${LUDIFUN_WEB_SOURCES:-}
     ports:
       - "8000:8000"
     extra_hosts:
@@ -71,6 +75,19 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+
+  # Moteur de recherche SearXNG (étape 24), lancé seulement avec le profil « recherche ».
+  # Pour l'ouvrir dans le navigateur du PC : http://localhost:8888
+  recherche:
+    image: searxng/searxng:latest
+    profiles: ["recherche"]
+    environment:
+      SEARXNG_SECRET: ${LUDIFUN_SEARXNG_SECRET:-ludifun-recherche-locale}  # cookies du moteur seulement
+    volumes:
+      - ./backend/docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    ports:
+      - "127.0.0.1:8888:8080"
+    restart: unless-stopped
 
 volumes:
   pgdata:

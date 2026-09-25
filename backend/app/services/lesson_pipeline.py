@@ -49,6 +49,7 @@ STAGE_LABELS: dict[Stage, str] = {
     "analysis": "identification des notions",
     "material": "préparation des exercices",
     "evaluation": "correction d'une réponse rédigée",
+    "sources": "recherche de sources",
 }
 MATERIAL_BATCH = 5  # notions par appel d'enrichissement (appels en parallèle)
 MIN_OPTIONS_IMPORTANT = 2  # activités minimales pour une notion d'importance ≥ 4 (§5.3)

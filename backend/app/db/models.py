@@ -55,7 +55,7 @@ ERROR_TYPES = (
     "statement",
 )
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
-AI_STAGES = ("ocr", "analysis", "material", "evaluation")
+AI_STAGES = ("ocr", "analysis", "material", "evaluation", "sources")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
 BADGE_CODES = (  # app.domain.rewards.BadgeCode

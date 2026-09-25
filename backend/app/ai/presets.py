@@ -26,7 +26,7 @@ class Preset:
 
 def _same(main: str, fast: str) -> dict[Stage, str]:
     """Le modèle principal lit et analyse ; le rapide corrige les réponses pendant la séance."""
-    return {"ocr": main, "analysis": main, "material": main, "evaluation": fast}
+    return {"ocr": main, "analysis": main, "material": main, "evaluation": fast, "sources": main}
 
 
 # Modèle local conseillé : lit bien les photos de cahier (vision) et tient sur un PC récent.
