@@ -349,9 +349,12 @@ class LessonPipeline:
                 if finish:
                     finish("error", "erreur interne du serveur")
                 raise
-            if finish:
-                finish("ok", None)
             usage = response.usage
+            fallback = f"repli : {usage.fallback_from}" if usage.fallback_from else None
+            if finish:
+                finish("ok", fallback)
+            if fallback:
+                logger.warning("IA : %s faite par %s (%s)", STAGE_LABELS[stage], usage.model, fallback)
             logger.info("IA : %s terminée en %d s", STAGE_LABELS[stage], (usage.latency_ms or 0) // 1000)
             result.runs.append(
                 AiRunRecord(
@@ -363,6 +366,7 @@ class LessonPipeline:
                     usage.output_tokens,
                     usage.latency_ms,
                     "ok",
+                    [fallback] if fallback else [],
                 )
             )
             return response

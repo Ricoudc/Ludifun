@@ -27,11 +27,15 @@ from app.domain.composer import (
     SessionComposer,
     SessionPlan,
 )
+from app.domain.decisions import Reason, Rule, reason
 from app.domain.engagement import (
     BONUS_ACTIVITIES,
     FAILURE_BELOW,
+    FAST_WRONG,
     MAX_REMEDIATIONS,
     REMEDIATION_AFTER_FAILURES,
+    STRUGGLING,
+    WINDOW,
     HintKind,
     bonus_offered,
     engagement_hint,
@@ -41,6 +45,7 @@ from app.domain.errors import with_speed
 from app.domain.help import HelpStep, next_help, result_with_help
 from app.domain.mastery import Mastery
 from app.domain.planning import Focus
+from app.domain.rules import ENGINE_VERSION
 from app.domain.scoring import (
     Evidence,
     KnowledgeStatus,
@@ -128,8 +133,14 @@ def _persist_plan(
                 payload=item.activity.payload,
                 solution=item.activity.solution,
                 intro=intro if index == 0 else None,
+                reason=item.reason or None,
             )
         )
+
+
+def log_decision(revision: db.RevisionSession, decision: Reason, **context: object) -> None:
+    """Décision prise pendant la séance (remédiation, pause, défis bonus), avec sa raison (§126)."""
+    revision.decisions = [*revision.decisions, {**decision, **context}]  # nouvelle liste : JSONB modifié
 
 
 async def _new_session(
@@ -151,6 +162,7 @@ async def _new_session(
         objective=lesson.lesson.objective or lesson.lesson.title or "Réviser la leçon",
         estimated_duration_s=plan.estimated_duration_s,
         seed=seed,
+        engine_version=ENGINE_VERSION,
     )
     session.add(revision)
     await session.flush()
@@ -612,6 +624,11 @@ async def adapt(
     hint = engagement_hint(answers, since)
     if hint is not None:
         revision.hint_at_answer = len(answers)
+        if hint is HintKind.FAST_GUESSING:
+            why = reason(Rule.PAUSE_FAST_GUESSING, fast_wrong=FAST_WRONG, window=WINDOW)
+        else:
+            why = reason(Rule.PAUSE_STRUGGLING, failures=STRUGGLING)
+        log_decision(revision, why, after_answers=len(answers), position=item.position)
     return Adaptation(inserted, hint)
 
 
@@ -656,6 +673,7 @@ async def _remediate(
             return []
         await _shift_after(session, revision, item.position, len(planned))
         _persist_plan(session, revision, planned, lesson, intro=f"📖 Rappel : {unit.item.statement}")
+        log_decision(revision, planned[0].reason, position=item.position, notion=unit.item.label)
         await session.flush()
         positions = {p.position for p in planned}
         return [i for i in await session_items(session, revision) if i.position in positions]
@@ -713,10 +731,14 @@ async def extend(
     masteries = await load_masteries(session, revision.child_id, lesson)
     previous = [activity_of(i, lesson.id_to_key) for i in items]
     start = max((i.position for i in items), default=0) + 1
+    main = [float(attempts[i.id].score) for i in items if i.block in MAIN_BLOCKS]
+    average = sum(main) / len(main) if main else None
     planned = SessionComposer(registry).bonus(
-        lesson.units, masteries, previous, start, revision.seed, count=BONUS_ACTIVITIES
+        lesson.units, masteries, previous, start, revision.seed, count=BONUS_ACTIVITIES, average=average
     )
     _persist_plan(session, revision, planned, lesson)
+    if planned:
+        log_decision(revision, planned[0].reason, position=start)
     revision.extended = True
     await session.flush()
     return [i for i in await session_items(session, revision) if i.block == Block.BONUS]

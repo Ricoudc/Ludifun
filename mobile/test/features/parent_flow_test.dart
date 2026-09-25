@@ -272,6 +272,63 @@ void main() {
     expect(find.textContaining('Les fractions'), findsOneWidget);
     expect(find.text('Voir les séances plus anciennes'), findsNothing);
 
+    // « Pourquoi ces activités ? » : la raison de chaque choix du moteur (§126).
+    server.on(
+      'GET /v1/children/c1/sessions/s3',
+      (_) => (
+        200,
+        {
+          'session_id': 's3',
+          'kind': 'review',
+          'started_at': '2026-09-23T15:05:00Z',
+          'engine_version': '1.0.0',
+          'activities': [
+            {
+              'position': 1,
+              'block': 'warmup',
+              'activity': 'QCM',
+              'difficulty': 2,
+              'notions': ['États généraux'],
+              'result': 'incorrect',
+              'help_level': 0,
+              'reason': 'Révision prévue aujourd\'hui (score 40) : difficulté 1.',
+            },
+            {
+              'position': 2,
+              'block': 'remediation',
+              'activity': 'Vrai ou faux',
+              'difficulty': 1,
+              'notions': ['États généraux'],
+              'result': 'correct',
+              'help_level': 2,
+              'reason':
+                  '2 échecs sur cette notion dans la séance : rappel puis activité plus facile.',
+            },
+          ],
+          'decisions': [
+            {
+              'rule': 'remediation',
+              'text':
+                  '2 échecs sur cette notion dans la séance : rappel puis activité plus facile.',
+              'position': 1,
+            },
+          ],
+        },
+      ),
+    );
+    await tap(tester, find.text('8,5 / 10'));
+    expect(find.text('Pourquoi ces activités ?'), findsOneWidget);
+    expect(find.text('Règles du moteur, version 1.0.0.'), findsOneWidget);
+    expect(find.text('1. QCM · États généraux'), findsOneWidget);
+    expect(find.text('Révision prévue aujourd\'hui (score 40) : difficulté 1.'), findsOneWidget);
+    expect(find.text('✓ avec aide'), findsOneWidget);
+    expect(
+      find.text('• 2 échecs sur cette notion dans la séance : rappel puis activité plus facile.'),
+      findsOneWidget,
+    );
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+
     // Appareil lié : délier après confirmation.
     expect(find.text('Appareil Android'), findsOneWidget);
     server.on('DELETE /v1/children/c1/devices/d1', (_) => (204, null));
@@ -507,9 +564,11 @@ void main() {
       'available': true,
     };
     Object? family;
+    var fallback = false;
     final configs = <String, Map<String, Object?>>{};
     Map<String, Object?> settings() => {
       'family': family,
+      'fallback': fallback,
       'saved': configs.values.toList(),
       'server_provider': 'fake',
       'providers': [
@@ -544,6 +603,7 @@ void main() {
         final body = r.data as Map<String, dynamic>;
         final code = body['provider'] as String;
         final key = body['api_key'] as String?;
+        fallback = body['fallback'] as bool? ?? fallback;
         final previousHint = configs[code]?['key_hint'];
         family = configs[code] = {
           'provider': code,
@@ -616,6 +676,19 @@ void main() {
     expect(find.text('Clé enregistrée …1234 : laissez vide pour la garder.'), findsOneWidget);
     await tap(tester, find.text('Enregistrer'));
     expect(saved.last, {'provider': 'claude'}); // la clé enregistrée sert, sans la ressaisir
+
+    // Repli (§147) : si Claude ne répond pas, Ollama prend le relais — seulement si le parent le veut.
+    final fallbackSwitch = find.widgetWithText(
+      SwitchListTile,
+      'Si cette IA ne répond pas, essayer mes autres IA enregistrées',
+    );
+    await tester.ensureVisible(fallbackSwitch);
+    expect(tester.widget<SwitchListTile>(fallbackSwitch).value, isFalse);
+    expect(find.textContaining('Ollama (sur ce PC) prend le relais'), findsOneWidget);
+    await tester.tap(fallbackSwitch);
+    await tester.pumpAndSettle();
+    expect(saved.last, {'provider': 'claude', 'fallback': true}); // modèle et clé inchangés
+    expect(tester.widget<SwitchListTile>(fallbackSwitch).value, isTrue);
 
     // Oublier la clé de Claude.
     await tap(tester, find.text('Oublier la clé de Claude (Anthropic)'));
@@ -757,6 +830,14 @@ void main() {
                   'importance': 4,
                   'level': level(3, 'En cours d\'acquisition', 'orange'),
                   'explanation': 'Connaît la règle, doit encore s\'entraîner à l\'appliquer.',
+                  'facts':
+                      'Sur les 6 dernières activités : 3 réussies seul, 1 avec une aide, 2 ratées.',
+                  'level_rates': [
+                    {'level': 1, 'name': 'reconnaître', 'rate': 0.9},
+                    {'level': 2, 'name': 'se rappeler', 'rate': 0.6},
+                    {'level': 3, 'name': 'appliquer', 'rate': null},
+                  ],
+                  'independence': 0.75,
                 },
               ],
             },
@@ -777,7 +858,19 @@ void main() {
 
     await tap(tester, find.text('Comparer deux fractions de même dénominateur'));
     expect(find.text('Numérateur'), findsOneWidget);
-    expect(find.text('Connaît la règle, doit encore s\'entraîner à l\'appliquer.'), findsOneWidget);
+    // Le fait observé, puis l'interprétation du moteur, à part (§131).
+    expect(
+      find.text('📊 Sur les 6 dernières activités : 3 réussies seul, 1 avec une aide, 2 ratées.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Réussite par niveau : reconnaître 90 % · se rappeler 60 % · seul 75 %'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('💬 Connaît la règle, doit encore s\'entraîner à l\'appliquer.'),
+      findsOneWidget,
+    );
     expect(find.text('Fraction'), findsNothing); // dans « Autres notions », encore fermé
 
     await tap(tester, find.byTooltip('Comment lire les niveaux'));

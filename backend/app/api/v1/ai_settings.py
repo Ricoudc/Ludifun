@@ -54,6 +54,10 @@ class AiSettingsOut(BaseModel):
         description="Toutes les IA déjà réglées (chacune garde sa clé), pour passer de l'une à l'autre."
     )
     server_provider: str = Field(description="IA du serveur, utilisée sans choix de la famille.")
+    fallback: bool = Field(
+        False,
+        description="Si l'IA active ne répond pas, essayer les autres IA enregistrées par la famille (§147).",
+    )
     providers: list[ProviderOut]
 
 
@@ -65,6 +69,9 @@ class AiSettingsIn(BaseModel):
     base_url: Url | None = None
     api_key: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] | None = Field(
         None, description="null : garder la clé déjà enregistrée pour cette IA."
+    )
+    fallback: bool | None = Field(
+        None, description="Repli sur les autres IA de la famille ; null : inchangé."
     )
 
 
@@ -142,6 +149,7 @@ async def settings_out(
         family=family,
         saved=[saved[code] for code in ORDER if code in saved],
         server_provider=resolver.default[1].name,
+        fallback=active.fallback if active is not None else False,
         providers=providers_out(settings),
     )
 
@@ -188,7 +196,9 @@ async def put_ai_settings(
         resolver.for_choice(choice)
     except AiConfigError as exc:
         raise ApiError(422, "ai_not_configured", str(exc).capitalize() + ".") from exc
-    await ai_settings.save(db, family_id, settings, choice, clock.now(), keep_key=keep)
+    await ai_settings.save(
+        db, family_id, settings, choice, clock.now(), keep_key=keep, fallback=body.fallback
+    )
     await db.commit()
     return await settings_out(db, family_id, settings, resolver)
 

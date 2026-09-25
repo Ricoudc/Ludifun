@@ -128,11 +128,18 @@ class LudifunApi {
     return AiSettings.fromJson(r.data!);
   });
 
-  static Json _aiBody(String provider, String? model, String? baseUrl, String? apiKey) => {
+  static Json _aiBody(
+    String provider,
+    String? model,
+    String? baseUrl,
+    String? apiKey, {
+    bool? fallback,
+  }) => {
     'provider': provider,
     'model': ?model,
     'base_url': ?baseUrl,
     'api_key': ?apiKey,
+    'fallback': ?fallback,
   };
 
   /// `apiKey` null : garder la clé enregistrée (même fournisseur).
@@ -141,10 +148,11 @@ class LudifunApi {
     String? model,
     String? baseUrl,
     String? apiKey,
+    bool? fallback,
   }) => _call(() async {
     final r = await _dio.put<Json>(
       '/v1/parent/ai',
-      data: _aiBody(provider, model, baseUrl, apiKey),
+      data: _aiBody(provider, model, baseUrl, apiKey, fallback: fallback),
     );
     return AiSettings.fromJson(r.data!);
   });
@@ -467,5 +475,11 @@ class LudifunApi {
   Future<Figure> figure(String id) => _call(() async {
     final r = await _dio.get<Json>('/v1/figures/$id', options: _anonymous);
     return Figure.fromJson(r.data!);
+  });
+
+  /// Détail d'une séance pour le parent : chaque activité, son résultat et sa raison (§126).
+  Future<SessionDetail> sessionDetail(String childId, String sessionId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/sessions/$sessionId');
+    return SessionDetail.fromJson(r.data!);
   });
 }

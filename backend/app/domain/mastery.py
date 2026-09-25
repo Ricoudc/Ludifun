@@ -10,12 +10,17 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-REVIEW_INTERVAL_DAYS = {1: 1, 2: 2, 3: 4, 4: 7, 5: 14}
+from app.domain.rules import RULES
+
+# Seuils réglés dans engine_rules.toml.
+REVIEW_INTERVAL_DAYS = RULES.mastery.review_interval_days
 MIN_BOX, MAX_BOX = 1, 5
-MASTERED_RATE = 0.8  # taux de séance au-dessus duquel la notion est maîtrisée
-FRAGILE_RATE = 0.5  # en dessous : non maîtrisée
-KNOWN_SCORE = 90  # au-delà (et révision non due), la notion n'est plus proposée
-IMPORTANT = 3  # importance à partir de laquelle une notion compte pour la date de révision
+MASTERED_RATE = RULES.mastery.mastered_rate  # taux de séance au-dessus duquel la notion est maîtrisée
+FRAGILE_RATE = RULES.mastery.fragile_rate  # en dessous : non maîtrisée
+KNOWN_SCORE = RULES.mastery.known_score  # au-delà (et révision non due), la notion n'est plus proposée
+IMPORTANT = (
+    RULES.mastery.important
+)  # importance à partir de laquelle une notion compte pour la date de révision
 
 
 @dataclass(frozen=True)

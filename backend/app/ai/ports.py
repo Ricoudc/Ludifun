@@ -45,6 +45,8 @@ class Usage:
     input_tokens: int | None
     output_tokens: int | None
     latency_ms: int
+    # Repli (CDC §147) : l'IA choisie n'a pas répondu, celle-ci l'a remplacée ; pourquoi.
+    fallback_from: str | None = None
 
 
 @dataclass(frozen=True)

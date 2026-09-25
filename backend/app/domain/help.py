@@ -12,13 +12,15 @@ from enum import StrEnum
 
 from app.domain.activities.base import BuiltActivity
 from app.domain.knowledge import KnowledgeUnit
+from app.domain.rules import RULES
 from app.domain.text import contains_words, matches_with_typos, normalize
 from app.domain.understanding import APPLICABLE
 
 MAX_HELP = 5
-# Part du résultat retenue pour la maîtrise, selon l'aide la plus forte utilisée avant la réponse.
-HELP_RESULT_FACTOR = {0: 1.0, 1: 1.0, 2: 1.0, 3: 0.75, 4: 0.5, 5: 0.0}
-LEVEL_PROOF_MAX_HELP = 2  # au-delà, la réponse ne valide pas un niveau de compréhension
+# Part du résultat retenue pour la maîtrise, selon l'aide la plus forte utilisée avant la réponse
+# (engine_rules.toml).
+HELP_RESULT_FACTOR = RULES.help.result_factor
+LEVEL_PROOF_MAX_HELP = RULES.help.level_proof_max_help  # au-delà, pas de niveau validé
 
 
 class HelpKind(StrEnum):

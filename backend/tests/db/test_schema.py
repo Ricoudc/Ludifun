@@ -283,3 +283,27 @@ async def test_migration_0013_keeps_the_family_ai_setting(engine: AsyncEngine, d
         ).all()
     assert [tuple(row) for row in active] == [("claude",)]
     assert [tuple(row) for row in saved] == [("claude", "claude-sonnet-5", b"chiffree", "…1234")]
+
+
+async def test_migration_0014_keeps_ai_settings_without_fallback(
+    engine: AsyncEngine, db: AsyncSession
+) -> None:
+    """Réglage d'IA existant : le repli sur les autres IA reste désactivé (choix du parent)."""
+    await db.commit()
+    await run_alembic("downgrade", "0013")
+    async with engine.begin() as conn:
+        family_id = uuid.uuid4()
+        await conn.execute(
+            text("INSERT INTO families (id, created_at) VALUES (:id, now())"), {"id": family_id}
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO family_ai_settings (family_id, provider, updated_at) "
+                "VALUES (:id, 'ollama', now())"
+            ),
+            {"id": family_id},
+        )
+    await run_alembic("upgrade", "head")
+    async with engine.connect() as conn:
+        rows = (await conn.execute(text("SELECT provider, fallback FROM family_ai_settings"))).all()
+    assert [tuple(row) for row in rows] == [("ollama", False)]

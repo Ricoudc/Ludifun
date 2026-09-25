@@ -1,0 +1,49 @@
+# Règles du moteur pédagogique (cahier des charges §125, §138).
+#
+# Tous les seuils de décision sont ici : on les change sans toucher au code. Toute modification
+# qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
+# les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
+
+version = "1.0.0"
+
+[session]
+block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
+strong_notions_needed = 6   # en dessous, les notions d'importance ≤ 2 sont aussi travaillées
+speed_notions = 5           # notions du défi rapide
+replay_max = 3              # activités de la reprise des erreurs
+errors_per_notion = 2       # séance « revoir mes erreurs » : activités par notion ratée
+express_below = 3           # moins de notions à travailler : révision express
+level_up_score = 50         # à partir de ce score, on vise le niveau de compréhension manquant
+deepen_score = 80           # notion maîtrisée et due : expliquer ou transférer
+missing_level_score = 70    # score retenu pour la priorité d'une notion à qui il manque un niveau
+
+[mastery]
+review_interval_days = { "1" = 1, "2" = 2, "3" = 4, "4" = 7, "5" = 14 }  # boîte → jours
+mastered_rate = 0.8         # réussite de la séance au-dessus de laquelle la notion est maîtrisée
+fragile_rate = 0.5          # en dessous : non maîtrisée
+known_score = 90            # au-delà (et révision non due), la notion n'est plus proposée
+important = 3               # importance à partir de laquelle une notion fixe la date de révision
+
+[help]
+# Part du résultat retenue pour la maîtrise selon l'aide la plus forte demandée (0 à 5).
+result_factor = { "0" = 1.0, "1" = 1.0, "2" = 1.0, "3" = 0.75, "4" = 0.5, "5" = 0.0 }
+level_proof_max_help = 2    # au-delà, la réponse ne valide pas un niveau de compréhension
+
+[adaptation]
+remediation_after_failures = 2  # échecs sur la même notion : rappel puis activités plus faciles
+max_remediations = 2            # par séance
+failure_below = 0.5             # résultat en dessous duquel une réponse est un échec
+window = 5                      # réponses regardées pour proposer une pause
+fast_wrong = 3                  # réponses fausses et trop rapides dans la fenêtre : au hasard
+struggling = 4                  # échecs d'affilée : proposer une pause
+hint_spacing = 5                # réponses minimum entre deux propositions de pause
+random_below_ms = 1500          # réponse fausse plus rapide : probablement au hasard
+recurring_sessions = 3          # même erreur dans 3 séances : erreur récurrente
+
+[bonus]
+min_score = 0.8                 # réussite de la séance pour proposer des défis bonus
+max_time_share = 0.6            # réponses données en moins de 60 % du temps prévu
+activities = 3
+
+[rewards]
+daily_xp_cap = 150              # au-delà, l'XP du jour n'augmente plus

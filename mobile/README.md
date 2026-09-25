@@ -76,3 +76,7 @@ l'application revient au premier lancement.
 | `lib/models/` | formats de l'API |
 | `lib/features/` | écrans : premier lancement, espace parent, liaison, accueil, photo, analyse, leçon, séance, bilan |
 | `test/` | faux serveur, tests du client et des jetons, tests de widgets des deux espaces |
+
+Étape 23 : « Pourquoi cette notion ? » sur l'écran de la leçon ; côté parent, « Pourquoi ces
+activités ? » (touche une séance de l'historique), faits chiffrés et réussite par niveau sur les
+compétences, et le choix du repli sur une autre IA dans « Intelligence artificielle ».

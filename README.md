@@ -43,6 +43,7 @@ docker-compose.yml  PostgreSQL + API pour le développement
 | 20 | Missions et gamification : XP selon l'effort, niveau, série, badges (V2) | ✅ |
 | 21 | Activités graphiques : remettre dans l'ordre, frise, ranger dans les cases, memory (V2) | ✅ |
 | 22 | Carte et coloriage : 12 cartes et schémas libres de droits ([sources](tools/figures/README.md)) (V2) | ✅ |
+| 23 | Décisions expliquées (CDC §112-149) : règles du moteur configurables et versionnées, raison de chaque choix, réussite par niveau et autonomie, repli sur une autre IA | ✅ |
 
 Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
 git (commit `3362b04`).

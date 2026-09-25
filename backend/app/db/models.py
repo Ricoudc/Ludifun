@@ -132,6 +132,8 @@ class FamilyAiSettings(Base):
     )
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Repli (§147) : si l'IA active ne répond pas, essayer les autres IA réglées par la famille.
+    fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     __table_args__ = (CheckConstraint(_in("provider", AI_PROVIDERS), name="provider"),)
 
@@ -439,6 +441,9 @@ class RevisionSession(Base):
     extended: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     # Étape 20 : XP gagnée à la clôture (effort, progrès ; jamais la note).
     xp_earned: Mapped[int | None] = mapped_column(SmallInteger)
+    # Version des règles du moteur (engine_rules.toml) et décisions prises pendant la séance (§126, §138).
+    engine_version: Mapped[str | None] = mapped_column(Text)
+    decisions: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
 
     __table_args__ = (
         CheckConstraint(_in("kind", SESSION_KINDS), name="kind"),
@@ -462,6 +467,8 @@ class SessionItem(Base):
     # Aide la plus forte demandée (« Je n'ai pas compris ») avant la réponse : 0 à 5.
     help_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
     intro: Mapped[str | None] = mapped_column(Text)  # « Rappel » affiché avant l'activité (remédiation)
+    # Pourquoi cette activité : règle du moteur et faits (CDC §126) ; null avant l'étape 23.
+    reason: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     knowledge_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # envoyé au téléphone
     solution: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # jamais avant la réponse

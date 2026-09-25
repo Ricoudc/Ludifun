@@ -262,6 +262,9 @@ class NotionProgress {
     required this.importance,
     required this.level,
     required this.explanation,
+    this.facts,
+    this.levelRates = const [],
+    this.independence,
   });
 
   factory NotionProgress.fromJson(Json json) => NotionProgress(
@@ -270,13 +273,30 @@ class NotionProgress {
     importance: json['importance'] as int,
     level: (json['level'] as Json)['value'] as int,
     explanation: json['explanation'] as String,
+    facts: json['facts'] as String?,
+    levelRates: [
+      for (final r in json['level_rates'] as List<dynamic>? ?? const [])
+        (name: (r as Json)['name'] as String, rate: (r['rate'] as num?)?.toDouble()),
+    ],
+    independence: (json['independence'] as num?)?.toDouble(),
   );
 
   final String id;
   final String label;
   final int importance;
   final int level;
+
+  /// Interprétation du moteur (d'après le score et les niveaux validés).
   final String explanation;
+
+  /// Fait observé, chiffré : « Sur les 8 dernières activités : 4 réussies seul… ».
+  final String? facts;
+
+  /// Réussite par niveau de compréhension (null : jamais travaillé à ce niveau).
+  final List<({String name, double? rate})> levelRates;
+
+  /// Part des réussites obtenues sans aide.
+  final double? independence;
 }
 
 /// Compétences et notions d'une leçon, avec leur niveau.
@@ -361,4 +381,53 @@ class Exam {
   final DateTime examDate;
   final List<String> lessonIds;
   final List<PlanStep> plan;
+}
+
+/// Une activité d'une séance, et pourquoi le moteur l'a choisie (CDC §126).
+class SessionActivity {
+  const SessionActivity({
+    required this.position,
+    required this.block,
+    required this.activity,
+    required this.notions,
+    required this.helpLevel,
+    this.result,
+    this.reason,
+  });
+
+  factory SessionActivity.fromJson(Json json) => SessionActivity(
+    position: json['position'] as int,
+    block: json['block'] as String,
+    activity: json['activity'] as String,
+    notions: [for (final n in json['notions'] as List<dynamic>) n as String],
+    helpLevel: json['help_level'] as int? ?? 0,
+    result: json['result'] as String?,
+    reason: json['reason'] as String?,
+  );
+
+  final int position;
+  final String block;
+  final String activity;
+  final List<String> notions;
+  final int helpLevel;
+  final String? result;
+  final String? reason;
+}
+
+class SessionDetail {
+  const SessionDetail({required this.activities, required this.decisions, this.engineVersion});
+
+  factory SessionDetail.fromJson(Json json) => SessionDetail(
+    engineVersion: json['engine_version'] as String?,
+    activities: [
+      for (final a in json['activities'] as List<dynamic>) SessionActivity.fromJson(a as Json),
+    ],
+    decisions: [for (final d in json['decisions'] as List<dynamic>) (d as Json)['text'] as String],
+  );
+
+  final String? engineVersion;
+  final List<SessionActivity> activities;
+
+  /// Remédiations, pauses proposées, défis bonus : en une phrase chacune.
+  final List<String> decisions;
 }

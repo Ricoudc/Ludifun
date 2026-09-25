@@ -10,19 +10,21 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from app.domain.errors import RANDOM_BELOW_MS
+from app.domain.rules import RULES
 
-REMEDIATION_AFTER_FAILURES = 2  # deux échecs sur la même notion : rappel puis activités faciles
-MAX_REMEDIATIONS = 2  # par séance
-FAILURE_BELOW = 0.5
+# Seuils réglés dans engine_rules.toml.
+REMEDIATION_AFTER_FAILURES = RULES.adaptation.remediation_after_failures
+MAX_REMEDIATIONS = RULES.adaptation.max_remediations
+FAILURE_BELOW = RULES.adaptation.failure_below
 
-WINDOW = 5  # réponses regardées
-FAST_WRONG = 3  # réponses fausses et trop rapides dans la fenêtre : au hasard
-STRUGGLING = 4  # échecs d'affilée
-HINT_SPACING = 5  # au moins 5 réponses entre deux propositions de pause
+WINDOW = RULES.adaptation.window
+FAST_WRONG = RULES.adaptation.fast_wrong
+STRUGGLING = RULES.adaptation.struggling
+HINT_SPACING = RULES.adaptation.hint_spacing
 
-BONUS_MIN_SCORE = 0.8
-BONUS_MAX_TIME_SHARE = 0.6  # réponses données en moins de 60 % du temps prévu
-BONUS_ACTIVITIES = 3
+BONUS_MIN_SCORE = RULES.bonus.min_score
+BONUS_MAX_TIME_SHARE = RULES.bonus.max_time_share
+BONUS_ACTIVITIES = RULES.bonus.activities
 
 
 class HintKind(StrEnum):

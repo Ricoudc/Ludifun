@@ -16,7 +16,9 @@ from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.factory import AiChoice, build_providers
+from app.ai.factory import AiChoice, AiConfigError, build_providers
+from app.ai.fallback import FallbackLLM
+from app.ai.ocr.vision_llm import VisionLLMOcr
 from app.ai.ports import LLMProvider, OcrProvider
 from app.config import AiProviderName, Settings
 from app.db.models import Child, FamilyAiProvider, FamilyAiSettings, FamilyMember
@@ -81,6 +83,7 @@ async def save(
     choice: AiChoice,
     now: datetime,
     keep_key: bool,
+    fallback: bool | None = None,
 ) -> None:
     """Enregistre le réglage de cette IA et la rend active. `keep_key` : garder sa clé déjà
     enregistrée. Les réglages des autres IA restent, pour y revenir sans tout ressaisir."""
@@ -94,9 +97,14 @@ async def save(
         row.key_hint = hint(choice.api_key) if choice.api_key else None
     active = await load(db, family_id)
     if active is None:
-        db.add(FamilyAiSettings(family_id=family_id, provider=choice.provider, updated_at=now))
+        active = FamilyAiSettings(
+            family_id=family_id, provider=choice.provider, updated_at=now, fallback=False
+        )
+        db.add(active)
     else:
         active.provider, active.updated_at = choice.provider, now
+    if fallback is not None:
+        active.fallback = fallback
     await db.flush()
 
 
@@ -137,10 +145,27 @@ class AiResolver:
         self._cache.clear()
 
     async def for_child(self, db: AsyncSession, child: Child) -> tuple[OcrProvider, LLMProvider]:
+        """L'IA active de la famille ; si le parent l'a permis (§147), ses autres IA déjà réglées
+        prennent le relais quand elle ne répond pas. Jamais l'IA du serveur : la famille a choisi
+        où partent les photos."""
         active = await load(db, child.family_id)
         if active is None:
             return self.default
-        row = await db.get(FamilyAiProvider, (child.family_id, active.provider))
-        if row is None:  # IA active sans réglage : ses valeurs par défaut
-            return self.for_choice(AiChoice(active.provider))  # type: ignore[arg-type]
-        return self.for_choice(choice_of(row, self.settings))
+        rows = await load_providers(db, child.family_id)
+        row = rows.get(active.provider)
+        # IA active sans réglage : ses valeurs par défaut.
+        primary = self.for_choice(choice_of(row, self.settings) if row else AiChoice(active.provider))  # type: ignore[arg-type]
+        if not active.fallback:
+            return primary
+        chain = [primary[1]]
+        for name, other in rows.items():
+            if name == active.provider:
+                continue
+            try:
+                chain.append(self.for_choice(choice_of(other, self.settings))[1])
+            except AiConfigError:
+                continue  # réglage devenu invalide (clé du serveur retirée…) : ignoré
+        if len(chain) == 1:
+            return primary
+        llm = FallbackLLM(chain)
+        return VisionLLMOcr(llm), llm

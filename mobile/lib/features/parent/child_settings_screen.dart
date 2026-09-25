@@ -142,7 +142,7 @@ class _ChildSettingsScreenState extends ConsumerState<ChildSettingsScreen> {
           const SizedBox(height: 8),
           if (_history.isEmpty && !_loading && _error == null)
             Text('$name n\'a pas encore fait de séance.'),
-          for (final entry in _history) _HistoryTile(entry, now),
+          for (final entry in _history) _HistoryTile(entry, now, widget.childId),
           if (_error != null) ErrorMessage(_error!),
           if (_loading)
             const Padding(
@@ -218,10 +218,11 @@ class _ChildSettingsScreenState extends ConsumerState<ChildSettingsScreen> {
 }
 
 class _HistoryTile extends StatelessWidget {
-  const _HistoryTile(this.entry, this.now);
+  const _HistoryTile(this.entry, this.now, this.childId);
 
   final HistoryEntry entry;
   final DateTime now;
+  final String childId;
 
   @override
   Widget build(BuildContext context) {
@@ -237,53 +238,137 @@ class _HistoryTile extends StatelessWidget {
     };
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${Subjects.emoji(entry.subject)} ${entry.lessonTitle ?? 'Leçon'}',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                Text(state, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              ],
-            ),
-            Text(
-              '${when(entry.startedAt, now)} · ${entry.minutes} min$kind',
-              style: const TextStyle(color: Colors.black54),
-            ),
-            if (entry.notions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => SessionDetailSheet(childId: childId, sessionId: entry.sessionId),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  for (final (label, status) in entry.notions)
-                    Text(
-                      '${switch (status) {
-                        'mastered' => '✓',
-                        'to_review' => '⚠',
-                        _ => '✗',
-                      }} $label',
-                      style: TextStyle(
-                        color: switch (status) {
-                          'mastered' => LudiColors.mastered,
-                          'to_review' => const Color(0xFFB86E00),
-                          _ => LudiColors.notMastered,
-                        },
-                      ),
+                  Expanded(
+                    child: Text(
+                      '${Subjects.emoji(entry.subject)} ${entry.lessonTitle ?? 'Leçon'}',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
                     ),
+                  ),
+                  Text(state, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                 ],
               ),
+              Text(
+                '${when(entry.startedAt, now)} · ${entry.minutes} min$kind',
+                style: const TextStyle(color: Colors.black54),
+              ),
+              if (entry.notions.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final (label, status) in entry.notions)
+                      Text(
+                        '${switch (status) {
+                          'mastered' => '✓',
+                          'to_review' => '⚠',
+                          _ => '✗',
+                        }} $label',
+                        style: TextStyle(
+                          color: switch (status) {
+                            'mastered' => LudiColors.mastered,
+                            'to_review' => const Color(0xFFB86E00),
+                            _ => LudiColors.notMastered,
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// « Pourquoi ces activités ? » : chaque activité de la séance, son résultat et la raison du
+/// choix du moteur, puis ses décisions (remédiation, pause, défis bonus) — CDC §126.
+class SessionDetailSheet extends ConsumerStatefulWidget {
+  const SessionDetailSheet({required this.childId, required this.sessionId, super.key});
+
+  final String childId;
+  final String sessionId;
+
+  @override
+  ConsumerState<SessionDetailSheet> createState() => _SessionDetailSheetState();
+}
+
+class _SessionDetailSheetState extends ConsumerState<SessionDetailSheet> {
+  late final Future<SessionDetail> _detail = ref
+      .read(apiProvider)
+      .sessionDetail(widget.childId, widget.sessionId);
+
+  static String _result(SessionActivity a) => switch (a.result) {
+    'correct' => a.helpLevel > 0 ? '✓ avec aide' : '✓ seul',
+    'partial' => '◐ à moitié',
+    'incorrect' => '✗ raté',
+    'skipped' => 'passée',
+    _ => 'pas faite',
+  };
+
+  @override
+  Widget build(BuildContext context) => DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: 0.8,
+    builder: (context, scroll) => FutureBuilder<SessionDetail>(
+      future: _detail,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          final error = snapshot.error;
+          return Center(
+            child: ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
+          );
+        }
+        final detail = snapshot.data;
+        if (detail == null) return const Center(child: CircularProgressIndicator());
+        return ListView(
+          controller: scroll,
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text('Pourquoi ces activités ?', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              detail.engineVersion == null
+                  ? 'Séance d\'avant l\'enregistrement des raisons.'
+                  : 'Règles du moteur, version ${detail.engineVersion}.',
+              style: const TextStyle(color: Colors.black54),
+            ),
+            if (detail.decisions.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Décisions pendant la séance',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              for (final decision in detail.decisions)
+                Padding(padding: const EdgeInsets.only(top: 6), child: Text('• $decision')),
+            ],
+            const SizedBox(height: 16),
+            for (final a in detail.activities)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('${a.position}. ${a.activity} · ${a.notions.join(', ')}'),
+                subtitle: a.reason == null ? null : Text(a.reason!),
+                trailing: Text(_result(a)),
+              ),
+          ],
+        );
+      },
+    ),
+  );
 }

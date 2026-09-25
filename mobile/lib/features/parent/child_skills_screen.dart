@@ -148,9 +148,37 @@ class _Group extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           dense: true,
           title: Text(notion.label, style: const TextStyle(fontSize: 16)),
-          subtitle: Text(notion.explanation),
+          subtitle: NotionFacts(notion),
           trailing: LevelStars(notion.level, size: 14),
         ),
     ],
   );
+}
+
+/// Ce qui a été observé (chiffres), séparé de l'interprétation du moteur (CDC §131).
+class NotionFacts extends StatelessWidget {
+  const NotionFacts(this.notion, {super.key});
+
+  final NotionProgress notion;
+
+  @override
+  Widget build(BuildContext context) {
+    final rates = [
+      for (final r in notion.levelRates)
+        if (r.rate != null) '${r.name} ${(r.rate! * 100).round()} %',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (notion.facts case final facts?) Text('📊 $facts'),
+        if (rates.isNotEmpty)
+          Text(
+            'Réussite par niveau : ${rates.join(' · ')}'
+            '${notion.independence == null ? '' : ' · seul ${(notion.independence! * 100).round()} %'}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        Text('💬 ${notion.explanation}', style: const TextStyle(fontStyle: FontStyle.italic)),
+      ],
+    );
+  }
 }

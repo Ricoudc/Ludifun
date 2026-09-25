@@ -118,12 +118,21 @@ class LevelOut(BaseModel):
     color: Color
 
 
+class LevelRateOut(BaseModel):
+    level: int = Field(description="1 reconnaître, 2 se rappeler, 3 appliquer, 4 expliquer, 5 transférer.")
+    name: str
+    rate: float | None = Field(description="Réussite aux 10 dernières réponses de ce niveau ; null : jamais.")
+
+
 class NotionProgressOut(BaseModel):
     id: uuid.UUID
     label: str
     importance: int
     level: LevelOut
-    explanation: str
+    explanation: str = Field(description="Interprétation du moteur (d'après le score et les niveaux).")
+    facts: str | None = Field(None, description="Fait observé, chiffré (« Sur les 8 dernières activités… »).")
+    level_rates: list[LevelRateOut] = Field([], description="Réussite par niveau de compréhension (§114).")
+    independence: float | None = Field(None, description="Part des réussites obtenues sans aide (§129).")
 
 
 class SkillProgressOut(BaseModel):
@@ -148,3 +157,33 @@ class SkillsOut(BaseModel):
     """Compétences et notions, leçon par leçon."""
 
     lessons: list[LessonProgressOut] = Field(description="Les 20 leçons prêtes les plus récentes.")
+
+
+class SessionActivityOut(BaseModel):
+    position: int
+    block: str
+    activity: str = Field(description="Type d'activité, en clair (« QCM », « Carte »…).")
+    difficulty: int
+    notions: list[str]
+    result: Literal["correct", "partial", "incorrect", "skipped"] | None = Field(
+        description="null : pas encore répondu."
+    )
+    help_level: int = Field(description="Aide la plus forte demandée avant la réponse (0 : seul).")
+    reason: str | None = Field(description="Pourquoi le moteur a choisi cette activité (§126).")
+
+
+class SessionDecisionOut(BaseModel):
+    rule: str
+    text: str
+    position: int | None
+
+
+class SessionDetailOut(BaseModel):
+    """Détail d'une séance pour le parent : chaque activité, son résultat et sa raison."""
+
+    session_id: uuid.UUID
+    kind: str
+    started_at: datetime
+    engine_version: str | None = Field(description="Version des règles du moteur ; null : avant l'étape 23.")
+    activities: list[SessionActivityOut]
+    decisions: list[SessionDecisionOut] = Field(description="Remédiations, pauses, défis bonus.")

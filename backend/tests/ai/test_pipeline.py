@@ -58,7 +58,8 @@ async def test_reference_lessons_go_through_the_pipeline(lesson: Path) -> None:
     assert [r.prompt_version for r in result.runs[:2]] == ["v2", "v2"]
     assert result.prompt_versions == {"ocr": "v2", "analysis": "v2", "material": "v2"}
     # Compétences reliées aux notions, et niveaux de compréhension exigés pour chaque notion.
-    assert len(result.analysis.skills) == 3
+    expected_skills = LessonScript.from_file(lesson).analysis["skills"]
+    assert len(result.analysis.skills) == len(expected_skills) >= 2
     assert all(set(s.knowledge_ids) <= {u.id for u in result.units} for s in result.analysis.skills)
     assert set(result.required_levels) == {u.id for u in result.units}
     assert all(1 in levels for levels in result.required_levels.values())

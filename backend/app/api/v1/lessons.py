@@ -32,6 +32,7 @@ from app.db.models import Child, Lesson, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
+from app.domain.text import fuzzy_contains
 from app.services import ai_budget, goals, learning, lesson_diagnostics
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
@@ -47,6 +48,11 @@ FAILURE_MESSAGES = {
 }
 STEPS = ("reading", "analyzing", "generating")
 MIN_TEXT_CHARS = 40
+
+
+def source_page(pages: list[LessonPage], excerpt: str) -> int | None:
+    """Page (à partir de 1) où figure la citation qui justifie la notion (§116)."""
+    return next((p.page_index + 1 for p in pages if fuzzy_contains(p.ocr_text, excerpt)), None)
 
 
 def steps_of(lesson_status: str) -> dict[str, str] | None:
@@ -264,6 +270,11 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
         ]
     if lesson.status == "ready":
         units = await load_units(db, lesson)
+        pages = list(
+            await db.scalars(
+                select(LessonPage).where(LessonPage.lesson_id == lesson.id).order_by(LessonPage.page_index)
+            )
+        )
         levels = notion_levels(units, await load_masteries(db, child.id, units))
         out.grade, out.objective, out.summary = lesson.grade, lesson.objective, lesson.summary
         out.knowledge = sorted(
@@ -275,6 +286,8 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
                     importance=u.item.importance,
                     type=u.item.type,
                     level=levels[units.key_to_id[u.id]].level,
+                    source_excerpt=u.item.source_excerpt,
+                    source_page=source_page(pages, u.item.source_excerpt),
                 )
                 for u in units.units
             ),

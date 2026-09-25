@@ -7,9 +7,11 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 
 from app import clock
 from app.api.deps import AppSettings, CurrentParent, DbSession
+from app.api.errors import ApiError
 from app.api.v1.children import own_child
 from app.api.v1.schemas_dashboard import (
     DashboardOut,
@@ -18,18 +20,25 @@ from app.api.v1.schemas_dashboard import (
     HistoryOut,
     LessonProgressOut,
     LevelOut,
+    LevelRateOut,
     NotionProgressOut,
     NotionResultOut,
     RecurringErrorOut,
+    SessionActivityOut,
+    SessionDecisionOut,
+    SessionDetailOut,
     SkillProgressOut,
     SkillsOut,
     SubjectOut,
     WeakNotionOut,
     WeekOut,
 )
+from app.db import models as db_models
+from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
 from app.domain.knowledge import SkillVerb
-from app.domain.understanding import LEVEL_LABELS, MasteryLevel, level_color
+from app.domain.state import facts_sentence
+from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
 from app.services import dashboard, export
 from app.services.dashboard import WeekStats
 
@@ -173,6 +182,12 @@ async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) 
                         importance=notion.importance,
                         level=level_out(notion.level.level),
                         explanation=notion.level.explanation,
+                        facts=facts_sentence(notion.state),
+                        level_rates=[
+                            LevelRateOut(level=level, name=LEVEL_NAMES[CognitiveLevel(level)], rate=rate)
+                            for level, rate in notion.state.level_rates.items()
+                        ],
+                        independence=notion.state.independence,
                     )
                     for notion in lesson.notions
                 ],
@@ -190,3 +205,86 @@ async def export_child(child_id: uuid.UUID, parent: CurrentParent, db: DbSession
     data = await export.export_child(db, child, now)
     filename = f"ludifun-{child.id}-{now.date().isoformat()}.json"
     return JSONResponse(data, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+ACTIVITY_NAMES = {
+    "MCQ": "QCM",
+    "TRUE_FALSE": "Vrai ou faux",
+    "FILL_BLANK": "Texte à trou",
+    "MATCH": "Association",
+    "SPEED_CHALLENGE": "Défi rapide",
+    "FLASHCARD": "Carte mémoire",
+    "OPEN_QUESTION": "Question rédigée",
+    "ORDER": "Remettre dans l'ordre",
+    "TIMELINE": "Frise chronologique",
+    "CLASSIFY": "Ranger dans les cases",
+    "MEMORY": "Memory",
+    "MAP": "Carte",
+    "COLORING": "Coloriage",
+}
+
+
+def _result(score: float, response: dict[str, object]) -> str:
+    if response == {"skipped": True}:
+        return "skipped"
+    return "correct" if score >= 1 else "partial" if score >= 0.5 else "incorrect"
+
+
+@router.get("/children/{child_id}/sessions/{session_id}")
+async def get_session_detail(
+    child_id: uuid.UUID, session_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> SessionDetailOut:
+    """Pourquoi ces activités (CDC §126) : la raison de chaque choix du moteur, les résultats et les
+    décisions prises pendant la séance (remédiation, pause, défis bonus)."""
+    child = await own_child(db, parent, child_id)
+    revision = await db.get(db_models.RevisionSession, session_id)
+    if revision is None or revision.child_id != child.id:
+        raise ApiError(404, "session_not_found", "Séance introuvable.")
+    items = (
+        await db.scalars(
+            select(db_models.SessionItem)
+            .where(db_models.SessionItem.session_id == revision.id)
+            .order_by(db_models.SessionItem.position)
+        )
+    ).all()
+    attempts = {
+        a.session_item_id: a
+        for a in await db.scalars(
+            select(db_models.Attempt).where(db_models.Attempt.session_item_id.in_([i.id for i in items]))
+        )
+    }
+    rows = await db.execute(
+        select(db_models.KnowledgeItem.id, db_models.KnowledgeItem.label).where(
+            db_models.KnowledgeItem.lesson_id == revision.lesson_id
+        )
+    )
+    labels: dict[uuid.UUID, str] = {knowledge_id: label for knowledge_id, label in rows}
+    return SessionDetailOut(
+        session_id=revision.id,
+        kind=revision.kind,
+        started_at=revision.started_at,
+        engine_version=revision.engine_version,
+        activities=[
+            SessionActivityOut(
+                position=item.position,
+                block=item.block,
+                activity=ACTIVITY_NAMES.get(item.activity_type, item.activity_type),
+                difficulty=item.difficulty,
+                notions=[labels.get(k, "?") for k in item.knowledge_ids],
+                result=(
+                    _result(float(attempts[item.id].score), attempts[item.id].response)
+                    if item.id in attempts
+                    else None
+                ),
+                help_level=item.help_level,
+                reason=describe(item.reason),
+            )
+            for item in items
+        ],
+        decisions=[
+            SessionDecisionOut(
+                rule=str(d.get("rule")), text=describe(d) or str(d.get("rule")), position=d.get("position")
+            )
+            for d in revision.decisions
+        ],
+    )

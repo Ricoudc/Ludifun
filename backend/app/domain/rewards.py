@@ -15,7 +15,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
 
-DAILY_XP_CAP = 150  # au-delà, l'XP du jour n'augmente plus : réviser plus n'est pas mieux
+from app.domain.rules import RULES
+
+DAILY_XP_CAP = RULES.rewards.daily_xp_cap  # au-delà, l'XP du jour n'augmente plus (engine_rules.toml)
 MAX_ACTIVITY_XP = 20
 MAX_COMEBACKS = 3
 SUCCESS = 0.8  # taux de réussite d'une notion pendant la séance pour parler de « réussite »

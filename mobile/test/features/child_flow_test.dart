@@ -68,6 +68,8 @@ Map<String, Object?> lessonJson(
               'statement': 'Louis XVI réunit les États généraux en mai 1789.',
               'importance': 4,
               'type': 'event',
+              'source_excerpt': 'En mai 1789, Louis XVI réunit les États généraux à Versailles.',
+              'source_page': 2,
             },
           ]
         : <Object>[],
@@ -246,6 +248,15 @@ void main() {
     await tester.tap(find.text('États généraux'));
     await tester.pumpAndSettle();
     expect(find.text('Louis XVI réunit les États généraux en mai 1789.'), findsOneWidget);
+    // « Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient (§116).
+    expect(
+      find.text('Pourquoi cette notion ? C\'est écrit dans ta leçon, page 2 :'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('« En mai 1789, Louis XVI réunit les États généraux à Versailles. »'),
+      findsOneWidget,
+    );
     await tester.tapAt(const Offset(10, 10)); // ferme la fiche
     await tester.pumpAndSettle();
 

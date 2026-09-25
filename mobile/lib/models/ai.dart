@@ -73,6 +73,7 @@ class AiSettings {
     required this.serverProvider,
     required this.providers,
     this.saved = const [],
+    this.fallback = false,
   });
 
   factory AiSettings.fromJson(Json json) => AiSettings(
@@ -85,7 +86,11 @@ class AiSettings {
       for (final s in json['saved'] as List<dynamic>? ?? const []) FamilyAi.fromJson(s as Json),
     ],
     providers: [for (final p in json['providers'] as List<dynamic>) AiProvider.fromJson(p as Json)],
+    fallback: json['fallback'] as bool? ?? false,
   );
+
+  /// Si l'IA active ne répond pas, essayer les autres IA enregistrées par la famille.
+  final bool fallback;
 
   /// IA active ; `null` : la famille utilise celle du serveur.
   final FamilyAi? family;

@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from app.domain.rules import RULES
 from app.domain.text import damerau_levenshtein, normalize
 
 
@@ -40,8 +41,8 @@ ERROR_LABELS = {
     ErrorType.STATEMENT: "Comprend mal la consigne",
 }
 
-RANDOM_BELOW_MS = 1500  # réponse fausse plus rapide que ça : probablement au hasard
-RECURRING_SESSIONS = 3  # même erreur sur la même notion dans 3 séances : erreur récurrente
+RANDOM_BELOW_MS = RULES.adaptation.random_below_ms  # réponse fausse plus rapide : au hasard
+RECURRING_SESSIONS = RULES.adaptation.recurring_sessions  # même erreur dans N séances : récurrente
 _EMPTY_ANSWERS = {"", "?", "je ne sais pas", "je sais pas", "sais pas", "aucune idee", "jsp"}
 
 

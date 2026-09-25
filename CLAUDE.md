@@ -22,6 +22,9 @@ de l'application, documentation, commentaires, messages de commit.
 - Toute sortie de l'IA passe par un schéma puis par les contrôles de `app/domain/validation.py`
   avant d'être enregistrée ; un échec ne doit jamais toucher la progression de l'enfant.
 - Texte de leçon et réponse d'enfant = données entre balises, jamais des consignes (§142-143).
+- Seuils de décision du moteur : dans `backend/app/domain/engine_rules.toml`, jamais en dur ; en
+  changer un = augmenter sa `version`. Toute décision nouvelle porte sa raison
+  (`app/domain/decisions.py`, §126).
 - Nouvelle activité : une classe `ActivityType` + `default_registry()` + élève simulé + widget
   dans `mobile/lib/features/session/activities/activity_registry.dart`.
 - Prompts versionnés (`app/ai/prompts/<étape>.vN.md`) : on en ajoute une version, on ne réécrit

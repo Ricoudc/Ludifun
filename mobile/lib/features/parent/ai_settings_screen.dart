@@ -311,6 +311,30 @@ class _AiFormState extends ConsumerState<_AiForm> {
     );
   }
 
+  /// Repli (§147) : garde le réglage de l'IA active tel quel, ne change que la permission.
+  Future<void> _setFallback(bool value) async {
+    final family = _settings.family;
+    if (family == null) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(apiProvider)
+          .saveAiSettings(
+            family.provider,
+            model: family.model,
+            baseUrl: family.baseUrl,
+            fallback: value,
+          );
+      ref.invalidate(aiSettingsProvider);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
@@ -437,6 +461,19 @@ class _AiFormState extends ConsumerState<_AiForm> {
           TextButton(
             onPressed: _busy ? null : _forget,
             child: Text('Oublier la clé de ${_provider.label}'),
+          ),
+        ],
+        if (family != null && _settings.saved.length > 1) ...[
+          const SizedBox(height: 16),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _settings.fallback,
+            onChanged: _busy ? null : _setFallback,
+            title: const Text('Si cette IA ne répond pas, essayer mes autres IA enregistrées'),
+            subtitle: Text(
+              'Par exemple Ollama éteint : ${_settings.saved.where((s) => s.provider != family.provider).map((s) => _settings.labelOf(s.provider)).join(', ')} prend le relais. '
+              'Les photos partent alors vers cette autre IA.',
+            ),
           ),
         ],
         if (family != null) ...[

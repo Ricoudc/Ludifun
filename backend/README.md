@@ -116,6 +116,10 @@ IA garde sa clé, son modèle et son adresse : on passe de l'une à l'autre sans
 jamais renvoyée. Ollama et les services compatibles font appeler une adresse choisie par le
 parent : refusés en production, sauf `LUDIFUN_ALLOW_CUSTOM_AI_URL=true` (serveur familial).
 
+Règles du moteur pédagogique : `app/domain/engine_rules.toml` (seuils de décision, version
+enregistrée avec chaque séance) ; autre fichier possible avec `LUDIFUN_ENGINE_RULES`. Toute
+modification qui change une décision augmente la version et passe les tests.
+
 Suivi de l'IA : page `/suivi` (appels en cours, durées par modèle, dernières erreurs ; données
 techniques seulement) et `/suivi/rapport.txt` ; ouverte hors production, réglage `LUDIFUN_MONITORING`.
 

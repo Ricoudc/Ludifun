@@ -14,26 +14,29 @@ import itertools
 import math
 import random
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.activities.registry import ActivityRegistry
+from app.domain.decisions import Reason, Rule, reason
 from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import IMPORTANT, KNOWN_SCORE, Mastery
+from app.domain.rules import RULES
 from app.domain.scoring import Evidence
 from app.domain.understanding import cognitive_level, required_levels
 
-BLOCK_SIZE = 3  # activités dans l'échauffement et dans l'approfondissement
-STRONG_NOTIONS_NEEDED = 6  # en dessous, les notions d'importance ≤ 2 sont aussi utilisées
-SPEED_NOTIONS = 5
-REPLAY_MAX = 3
-ERRORS_PER_NOTION = 2
-EXPRESS_BELOW = 3  # moins de 3 notions à travailler : révision express
-LEVEL_UP_SCORE = 50  # à partir de ce score, on vise le niveau de compréhension manquant
-DEEPEN_SCORE = 80  # notion maîtrisée et due : question ouverte d'explication ou de transfert
-MISSING_LEVEL_SCORE = 70  # score retenu pour la priorité d'une notion à qui il manque un niveau
+# Seuils réglés dans engine_rules.toml (§125).
+BLOCK_SIZE = RULES.session.block_size
+STRONG_NOTIONS_NEEDED = RULES.session.strong_notions_needed
+SPEED_NOTIONS = RULES.session.speed_notions
+REPLAY_MAX = RULES.session.replay_max
+ERRORS_PER_NOTION = RULES.session.errors_per_notion
+EXPRESS_BELOW = RULES.session.express_below
+LEVEL_UP_SCORE = RULES.session.level_up_score
+DEEPEN_SCORE = RULES.session.deepen_score
+MISSING_LEVEL_SCORE = RULES.session.missing_level_score
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 
 TRANSITION_S = 5
@@ -99,6 +102,7 @@ class PlannedItem:
     position: int
     block: Block
     activity: BuiltActivity
+    reason: Reason = field(default_factory=dict)  # pourquoi cette activité (§126)
 
 
 @dataclass(frozen=True)
@@ -201,11 +205,42 @@ class SessionComposer:
         # ⚡ Défi rapide : les notions à travailler d'abord, complétées par les autres si besoin.
         add(self._speed(ranked, rng), Block.SPEED)
 
+        by_id = {u.id: u for u in units}
         planned = [
-            PlannedItem(i, block, a) for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
+            PlannedItem(i, block, a, self._reason(a, block, first, by_id, masteries, now))
+            for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
         ]
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
         return SessionPlan(kind, planned, self.estimate_duration_s(items, with_replay=True), express)
+
+    def _reason(
+        self,
+        activity: BuiltActivity,
+        block: Block,
+        first: bool,
+        by_id: Mapping[str, KnowledgeUnit],
+        masteries: Mapping[str, Mastery],
+        now: datetime,
+    ) -> Reason:
+        """La règle qui a fait choisir cette activité, et ses faits (§126)."""
+        if block is Block.MATCH:
+            return reason(Rule.GAME, notions=len(activity.knowledge_ids), type=activity.type.value)
+        if block is Block.SPEED:
+            return reason(Rule.SPEED, notions=len(activity.knowledge_ids))
+        unit = by_id[activity.knowledge_ids[0]]
+        mastery = masteries.get(unit.id)
+        if first:
+            return reason(Rule.FIRST_SESSION, importance=unit.item.importance, difficulty=activity.difficulty)
+        if mastery is None:
+            return reason(Rule.NEW_NOTION, difficulty=activity.difficulty)
+        level = int(cognitive_level(activity.type, activity.difficulty))
+        if level in self._missing(unit, mastery) and mastery.score >= LEVEL_UP_SCORE:
+            return reason(Rule.LEVEL_UP, score=mastery.score, threshold=LEVEL_UP_SCORE, level=level)
+        if mastery.score >= DEEPEN_SCORE and level not in required_levels(unit, self.registry):
+            return reason(Rule.DEEPEN, score=mastery.score, level=level)
+        return reason(
+            Rule.BY_SCORE, score=mastery.score, due=mastery.is_due(now), difficulty=activity.difficulty
+        )
 
     def _to_review(
         self,
@@ -302,7 +337,19 @@ class SessionComposer:
         any_format: Prefs = lambda unit: ((1, 2, 3), None)  # noqa: E731
         candidates = [by_id[k] for k in order if self._options(by_id[k], (1, 2, 3), None, used, True, rng)]
         activities = self._sequence(candidates[:REPLAY_MAX], any_format, list(previous), used, rng)
-        return [PlannedItem(start_position + i, Block.REPLAY, a) for i, a in enumerate(activities)]
+        return [
+            PlannedItem(
+                start_position + i,
+                Block.REPLAY,
+                a,
+                reason(
+                    Rule.REPLAY,
+                    result=round(worst[a.knowledge_ids[0]], 2),
+                    failed=sorted(code.value for code in failed.get(a.knowledge_ids[0], set())),
+                ),
+            )
+            for i, a in enumerate(activities)
+        ]
 
     # ------------------------------------------------------------------ #
     # Adaptation en temps réel (étape 17)
@@ -324,8 +371,14 @@ class SessionComposer:
         normal: Prefs = lambda u: ((2, 1), None)  # noqa: E731
         first = self._sequence([unit], easy, previous, used, rng)
         second = self._sequence([unit], normal, [*previous, *first], used, rng)
+        why = reason(
+            Rule.REMEDIATION,
+            failures=RULES.adaptation.remediation_after_failures,
+            failed=sorted(code.value for code in failed),
+        )
         return [
-            PlannedItem(start_position + i, Block.REMEDIATION, a) for i, a in enumerate([*first, *second])
+            PlannedItem(start_position + i, Block.REMEDIATION, a, why)
+            for i, a in enumerate([*first, *second])
         ]
 
     def bonus(
@@ -336,6 +389,7 @@ class SessionComposer:
         start_position: int,
         seed: int,
         count: int = 3,
+        average: float | None = None,
     ) -> list[PlannedItem]:
         """Défis en plus pour un enfant rapide : les notions de la séance les mieux réussies, plus
         difficiles, dans des formats qu'il n'a pas encore eus pour elles."""
@@ -352,7 +406,8 @@ class SessionComposer:
         harder: Prefs = lambda u: ((3, 2), None)  # noqa: E731
         playable = [u for u in candidates if self._options(u, (3, 2), None, used, True, rng)]
         activities = self._sequence(playable[:count], harder, list(previous), used, rng)
-        return [PlannedItem(start_position + i, Block.BONUS, a) for i, a in enumerate(activities)]
+        why = reason(Rule.BONUS, average=round(average, 2) if average is not None else None)
+        return [PlannedItem(start_position + i, Block.BONUS, a, why) for i, a in enumerate(activities)]
 
     # ------------------------------------------------------------------ #
     # Séance « Revoir mes erreurs » (§8.4)
@@ -372,7 +427,7 @@ class SessionComposer:
             items += self._sequence(targets, any_format, items, used, rng)
         if not items:
             raise NothingToReview
-        planned = [PlannedItem(i, Block.CORE, a) for i, a in enumerate(items, 1)]
+        planned = [PlannedItem(i, Block.CORE, a, reason(Rule.ERRORS_SESSION)) for i, a in enumerate(items, 1)]
         return SessionPlan(SessionKind.ERRORS, planned, self.estimate_duration_s(items, with_replay=False))
 
     # ------------------------------------------------------------------ #

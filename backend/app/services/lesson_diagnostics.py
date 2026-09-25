@@ -94,7 +94,7 @@ async def diagnostics(db: AsyncSession, lesson: Lesson, live: LiveCalls, now: da
             r.model,
             round(r.latency_ms / 1000),
             r.status,
-            clean_message(str(r.warnings[0])) if r.status != "ok" and r.warnings else None,
+            _message(r),
         )
         for r in runs
     ]
@@ -110,6 +110,16 @@ async def diagnostics(db: AsyncSession, lesson: Lesson, live: LiveCalls, now: da
                 "L'analyse s'est arrêtée sans message de l'IA (serveur redémarré pendant l'analyse ?)."
             )
     return Diagnostics(steps, explanation)
+
+
+def _message(run: AiRun) -> str | None:
+    """Erreur de l'appel, ou repli sur une autre IA (appel réussi par une IA de secours)."""
+    if not run.warnings:
+        return None
+    first = str(run.warnings[0])
+    if run.status != "ok" or first.startswith("repli"):
+        return clean_message(first)
+    return None
 
 
 async def _last_attempt(db: AsyncSession, lesson_id: uuid.UUID) -> list[AiRun]:

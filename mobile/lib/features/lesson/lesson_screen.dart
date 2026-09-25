@@ -117,6 +117,24 @@ class _Summary extends ConsumerWidget {
             Text(knowledge.label, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             Text(knowledge.statement, style: const TextStyle(fontSize: 18)),
+            if (knowledge.sourceExcerpt case final excerpt?) ...[
+              const SizedBox(height: 20),
+              Text(
+                knowledge.sourcePage == null
+                    ? 'Pourquoi cette notion ? C\'est écrit dans ta leçon :'
+                    : 'Pourquoi cette notion ? C\'est écrit dans ta leçon, page ${knowledge.sourcePage} :',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '« $excerpt »',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
           ],
         ),
       ),

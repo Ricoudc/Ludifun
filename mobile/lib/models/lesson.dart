@@ -94,6 +94,8 @@ class Knowledge {
     required this.statement,
     required this.importance,
     this.level = 0,
+    this.sourceExcerpt,
+    this.sourcePage,
   });
 
   factory Knowledge.fromJson(Json json) => Knowledge(
@@ -102,6 +104,8 @@ class Knowledge {
     statement: json['statement'] as String,
     importance: json['importance'] as int,
     level: json['level'] as int? ?? 0,
+    sourceExcerpt: json['source_excerpt'] as String?,
+    sourcePage: json['source_page'] as int?,
   );
 
   final String id;
@@ -111,6 +115,10 @@ class Knowledge {
 
   /// Niveau de maîtrise de l'enfant, 0 à 5.
   final int level;
+
+  /// « Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient, et sa page.
+  final String? sourceExcerpt;
+  final int? sourcePage;
 }
 
 class Lesson extends LessonSummary {

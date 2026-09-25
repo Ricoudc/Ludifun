@@ -28,6 +28,10 @@ class KnowledgeOut(BaseModel):
     importance: int
     type: str
     level: Level = Field(0, description="Niveau de maîtrise de l'enfant, 0 à 5.")
+    source_excerpt: str | None = Field(
+        None, description="« Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient (§116)."
+    )
+    source_page: int | None = Field(None, description="Page de la leçon (1, 2…) où se trouve la phrase.")
 
 
 class SkillOut(BaseModel):

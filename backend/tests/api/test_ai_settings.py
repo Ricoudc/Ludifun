@@ -1,6 +1,7 @@
 """L'espace parent choisit l'IA de la famille (Ollama conseillé) ; les leçons des enfants de la
 famille passent ensuite par elle. La clé est chiffrée et jamais renvoyée."""
 
+import uuid
 from typing import Any
 
 import httpx
@@ -256,3 +257,40 @@ async def test_connection_test_checks_service_model_and_a_real_answer(
     assert (
         not failed["ok"] and "la demande d'essai a échoué : Ollama 500 : out of memory" in failed["message"]
     )
+
+
+async def test_fallback_on_another_family_ai_when_allowed(
+    app: FastAPI, client: AsyncClient, db: AsyncSession
+) -> None:
+    """§147 : si l'IA active ne répond pas, une autre IA de la famille prend le relais — seulement si
+    le parent l'a permis (les photos partent là où il l'a choisi)."""
+    down = AIError("Ollama injoignable à http://pc:11434 (ConnectError) : est-il lancé sur le PC ?")
+
+    def builder(settings: Settings, choice: AiChoice) -> tuple[OcrProvider, LLMProvider]:
+        llm = NamedFake(choice.provider)
+        if choice.provider == "ollama":
+            llm.overrides.update({"ocr": down, "analysis": down, "material": down})
+        return VisionLLMOcr(llm), llm
+
+    app.state.ai_resolver.builder = builder
+    family = await family_with_device(client)
+    parent = family["parent"]
+    await put(client, parent, {"provider": "gemini", "api_key": "gemini-key-5555"})
+    settings = await put(client, parent, {"provider": "ollama"})
+    assert settings["fallback"] is False
+
+    # Sans permission : pas de repli, l'analyse échoue et dit pourquoi.
+    failed = await upload_lesson(client, family["device"])
+    assert failed["status"] == "failed" and "joindre Ollama" in failed["diagnostics"]["explanation"]
+
+    # Avec permission : Gemini lit la leçon, et on voit que c'était un repli.
+    assert (await put(client, parent, {"provider": "ollama", "fallback": True}))["fallback"] is True
+    lesson = await upload_lesson(client, family["device"])
+    assert lesson["status"] == "ready"
+    first = lesson["diagnostics"]["steps"][0]
+    assert first["status"] == "ok" and first["message"].startswith("repli : ollama : Ollama injoignable")
+    runs = (await db.scalars(select(AiRun).where(AiRun.lesson_id == uuid.UUID(lesson["id"])))).all()
+    assert {r.provider for r in runs} == {"gemini"}
+    assert all(r.warnings and r.warnings[0].startswith("repli") for r in runs)
+    # Le réglage reste tant que le parent ne le change pas.
+    assert (await put(client, parent, {"provider": "ollama"}))["fallback"] is True
