@@ -23,6 +23,15 @@ TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusi
 # Photos réduites avant l'envoi : sur un PC, le temps de lecture suit la taille de l'image (une
 # photo de 2000 px en demande plus du double). 1344 px (48 × 28) restent lisibles pour un cahier.
 MAX_IMAGE_SIDE = 1344
+# Ollama qui s'arrête pendant la lecture d'une photo (« error reading llama-server response ») :
+# le plus souvent, la carte graphique manque de mémoire. Un seul nouvel essai, photos réduites.
+RETRY_IMAGE_SIDE = 896
+_CRASH_MARKERS = ("llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status")
+
+
+class _Crashed(Exception):
+    def __init__(self, error: AIError) -> None:
+        self.error = error
 
 
 class OllamaProvider:
@@ -46,12 +55,24 @@ class OllamaProvider:
     async def structured[T: BaseModel](
         self, *, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...] = ()
     ) -> LLMResult[T]:
+        try:
+            return await self._chat(prompt, input, schema, images, MAX_IMAGE_SIDE)
+        except _Crashed as crash:
+            if not images:
+                raise crash.error from None
+        try:
+            return await self._chat(prompt, input, schema, images, RETRY_IMAGE_SIDE)
+        except _Crashed as crash:
+            raise crash.error from None
+
+    async def _chat[T: BaseModel](
+        self, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...], side: int
+    ) -> LLMResult[T]:
         model = self.models[prompt.stage]
         user: dict[str, Any] = {"role": "user", "content": input}
         if images:
             user["images"] = [
-                base64.standard_b64encode(shrink(image.data, MAX_IMAGE_SIDE)).decode("ascii")
-                for image in images
+                base64.standard_b64encode(shrink(image.data, side)).decode("ascii") for image in images
             ]
         body = {
             "model": model,
@@ -74,6 +95,13 @@ class OllamaProvider:
             ) from exc
         if response.status_code == 404:
             raise AIError(f"modèle Ollama « {model} » absent : lancez « ollama pull {model} » sur le PC")
+        if response.status_code >= 400 and any(m in response.text for m in _CRASH_MARKERS):
+            raise _Crashed(
+                AIError(
+                    f"Ollama s'est arrêté pendant le calcul (mémoire de la carte graphique "
+                    f"insuffisante ?) : Ollama {response.status_code} : {response.text[:300]}"
+                )
+            )
         if response.status_code >= 400:
             raise AIError(f"Ollama {response.status_code} : {response.text[:300]}")
         latency_ms = round((time.perf_counter() - started) * 1000)

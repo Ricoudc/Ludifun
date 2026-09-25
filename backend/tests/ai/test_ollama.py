@@ -234,3 +234,58 @@ async def test_large_photos_are_shrunk_before_sending() -> None:
     Image.new("RGB", (800, 600)).save(small, format="PNG")
     assert shrink(small.getvalue(), MAX_IMAGE_SIDE) == small.getvalue()  # déjà petite : intacte
     assert shrink(b"pas une image", MAX_IMAGE_SIDE) == b"pas une image"
+
+
+CRASH = (
+    '{"error":"error reading llama-server response: read tcp 127.0.0.1:55879->127.0.0.1:53792: '
+    "wsarecv: Une connexion existante a dû être fermée par l'hôte distant.\"}"
+)
+
+
+async def test_crash_while_reading_a_photo_retries_with_a_smaller_photo() -> None:
+    """Rapport du 25/09 (RX 6600, qwen2.5vl:7b) : Ollama s'arrête au milieu de la lecture."""
+    import base64
+    import io
+
+    from PIL import Image
+
+    from app.ai.providers.ollama import RETRY_IMAGE_SIDE
+
+    photo = io.BytesIO()
+    Image.new("RGB", (1500, 2000), "white").save(photo, format="JPEG")
+    sides: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        (image,) = json.loads(request.content)["messages"][1]["images"]
+        with Image.open(io.BytesIO(base64.b64decode(image))) as received:
+            sides.append(max(received.size))
+        if len(sides) == 1:
+            return httpx.Response(500, text=CRASH)
+        message = {"role": "assistant", "content": '{"text": "ok"}'}
+        return httpx.Response(200, json={"message": message, "done": True, "done_reason": "stop"})
+
+    result = await ollama(handler).structured(
+        prompt=PROMPT, input="Page 1", schema=Page, images=(PageImage(photo.getvalue(), "image/jpeg"),)
+    )
+    assert result.output.text == "ok" and sides == [1344, RETRY_IMAGE_SIDE]
+
+
+async def test_crash_twice_explains_the_graphics_memory() -> None:
+    calls: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(500, text=CRASH)
+
+    image = (PageImage(b"\xff\xd8jpeg", "image/jpeg"),)
+    with pytest.raises(AIError, match="s'est arrêté pendant le calcul") as caught:
+        await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page, images=image)
+    assert len(calls) == 2 and "llama-server" in str(caught.value)
+    # Sans photo, pas de nouvel essai : il ne changerait rien.
+    with pytest.raises(AIError, match="s'est arrêté"):
+        await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)
+    assert len(calls) == 3
+
+    from app.services.lesson_diagnostics import explain
+
+    assert "LUDIFUN_OLLAMA_NUM_CTX" in explain(str(caught.value))

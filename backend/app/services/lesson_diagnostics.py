@@ -39,6 +39,9 @@ EXPLANATIONS = (
     ("n'a pas répondu", "L'IA a mis trop de temps à répondre. Avec Ollama : modèle trop lourd pour ce "
      "PC, ou carte graphique non utilisée (voir « ollama ps »). Essayez un modèle plus léger "
      "ou une IA en ligne."),
+    ("s'est arrêté", "Ollama s'est arrêté pendant la lecture, même avec une photo réduite : le modèle "
+     "ne tient sans doute pas dans la mémoire de la carte graphique (« ollama ps » : une part en CPU). "
+     "Essayez LUDIFUN_OLLAMA_NUM_CTX=8192 dans .env, ou un modèle plus léger (qwen2.5vl:3b)."),
     ("injoignable", "Le serveur n'arrive pas à joindre Ollama : est-il lancé ? Sur un autre ordinateur, "
      "il faut OLLAMA_HOST=0.0.0.0 et le port 11434 ouvert."),
     ("connexion impossible", "Le serveur n'arrive pas à joindre l'IA en ligne : connexion Internet du PC ?"),
