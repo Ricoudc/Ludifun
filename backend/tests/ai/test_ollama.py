@@ -353,3 +353,35 @@ async def test_one_request_at_a_time_per_ollama_server() -> None:
         *(llm.structured(prompt=PROMPT, input="x", schema=Page) for llm in (first, second, first))
     )
     assert most == 1
+
+
+async def test_photos_are_read_as_plain_text_one_page_at_a_time() -> None:
+    """Lecture des photos avec Ollama : texte libre (pas de JSON imposé, qui fait tourner qwen en
+    boucle), une page à la fois ; la qualité de chaque page se déduit du texte."""
+    from app.ai.ocr.vision_llm import VisionLLMOcr
+
+    answers = ["La Révolution française\nEn 1789…", "Les [illisible] de 1789", "[illisible]"]
+    sent: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        sent.append(body)
+        text = answers[len(sent) - 1]
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": text},
+                "done_reason": "stop",
+                "prompt_eval_count": 900,
+                "eval_count": 40,
+            },
+        )
+
+    photo = PageImage(b"\xff\xd8jpeg", "image/jpeg")
+    result = await VisionLLMOcr(ollama(handler)).extract((photo, photo, photo))
+    assert len(sent) == 3 and all("format" not in body for body in sent)
+    assert all(len(body["messages"][1]["images"]) == 1 for body in sent)
+    assert "sans JSON" in sent[0]["messages"][0]["content"]
+    assert [p.quality for p in result.output.pages] == ["good", "partial", "unreadable"]
+    assert result.output.text.startswith("La Révolution française")
+    assert (result.usage.input_tokens, result.usage.output_tokens) == (2700, 120)

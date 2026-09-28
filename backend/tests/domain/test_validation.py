@@ -4,7 +4,13 @@ from typing import Any
 import pytest
 
 from app.domain.knowledge import KnowledgeItem
-from app.domain.validation import AnalysisError, validate_analysis, validate_material
+from app.domain.validation import (
+    PICTURE_REASON,
+    AnalysisError,
+    needs_picture,
+    validate_analysis,
+    validate_material,
+)
 from tests.domain.conftest import ReferenceLesson
 
 # --------------------------------------------------------------------------- #
@@ -222,3 +228,37 @@ def test_rejection_rate(history: ReferenceLesson) -> None:
     result = validate_material(item, raw)
     # Conservés : 2 questions, 1 vraie, cloze, paire, carte = 6 ; rejetés : 2.
     assert result.rejection_rate == pytest.approx(2 / 8)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {
+            "questions": [
+                {
+                    "difficulty": 1,
+                    "stem": "Sur le dessin, quel animal vole ?",
+                    "answer": "L'aigle",
+                    "distractors": ["Le chat", "Le chien", "La vache"],
+                }
+            ]
+        },
+        {"true_statements": ["Observe le schéma : l'eau s'évapore."]},
+        {"cloze": {"text": "L'image ci-dessus montre un ___.", "answers": ["volcan"]}},
+        {"flashcard": {"front": "Que montre la photo ?", "back": "Un volcan"}},
+    ],
+)
+def test_elements_that_need_the_lesson_picture_are_rejected(
+    history: ReferenceLesson, change: dict[str, Any]
+) -> None:
+    """Les photos ne sont jamais gardées : une question sur une image serait impossible."""
+    item = history.analysis.knowledge[0]
+    result = validate_material(item, {"explanation": "x", **change})
+    assert any(r.reason == PICTURE_REASON for r in result.rejected)
+    material = result.material
+    assert not (material.questions or material.true_statements or material.cloze or material.flashcard)
+
+
+def test_a_geometric_figure_is_not_a_picture() -> None:
+    assert not needs_picture("Quelle figure a quatre côtés égaux ?")
+    assert needs_picture("Regarde l'illustration.")

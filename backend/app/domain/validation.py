@@ -39,6 +39,18 @@ SORTING_BOXES = (2, 3)  # cases du jeu de tri
 SORTING_MEMBERS = (2, 4)  # éléments par case
 SEQUENCE_ITEMS = (3, 6)  # éléments à remettre dans l'ordre
 BLANK = "___"
+# Les photos des leçons ne sont jamais gardées (§15) : l'enfant ne verra pas l'image dont
+# parlerait une question. Tout élément qui y renvoie est écarté.
+_PICTURE = re.compile(
+    r"\b(image|images|dessin|dessins|illustration|illustrations|photo|photos|schéma|schémas|"
+    r"vignette|vignettes)\b|ci-dessus|ci-dessous|ci-contre|\b(regarde|observe|observez|regardez)\b",
+    re.IGNORECASE,
+)
+PICTURE_REASON = "renvoie à une image de la leçon, que l'enfant ne verra pas"
+
+
+def needs_picture(text: str) -> bool:
+    return bool(_PICTURE.search(text))
 
 
 class AnalysisError(ValueError):
@@ -303,6 +315,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     raw_questions = raw.get("questions")
     for i, raw_question in enumerate(raw_questions if isinstance(raw_questions, list) else []):
         question, reason = _check_question(raw_question)
+        if question is not None and needs_picture(question.stem):
+            question, reason = None, PICTURE_REASON
         if question is None:
             rejected.append(Rejection(f"questions[{i}]", reason))
         else:
@@ -314,6 +328,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         text = str(s).strip()
         if not text or normalize(text) in {normalize(t) for t in true_statements}:
             rejected.append(Rejection(f"true_statements[{i}]", "vide ou en double"))
+        elif needs_picture(text):
+            rejected.append(Rejection(f"true_statements[{i}]", PICTURE_REASON))
         else:
             true_statements.append(text)
 
@@ -324,6 +340,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         text = str(s).strip()
         if not text or normalize(text) in {normalize(f) for f in false_statements}:
             rejected.append(Rejection(f"false_statements[{i}]", "vide ou en double"))
+        elif needs_picture(text):
+            rejected.append(Rejection(f"false_statements[{i}]", PICTURE_REASON))
         elif any(normalize(text) == normalize(t) for t in truths):
             rejected.append(Rejection(f"false_statements[{i}]", "identique à une affirmation vraie"))
         elif any(_without_negation(text) == _without_negation(t) for t in truths):
@@ -334,6 +352,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     cloze: Cloze | None = None
     if raw.get("cloze") is not None:
         cloze, reason = _check_cloze(raw["cloze"])
+        if cloze is not None and needs_picture(cloze.text):
+            cloze, reason = None, PICTURE_REASON
         if cloze is None:
             rejected.append(Rejection("cloze", reason))
 
@@ -341,6 +361,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     if raw.get("pair") is not None:
         try:
             pair = Pair.model_validate(raw["pair"])
+            if needs_picture(f"{pair.left} {pair.right}"):
+                pair = None
+                rejected.append(Rejection("pair", PICTURE_REASON))
         except ValidationError as exc:
             rejected.append(Rejection("pair", _first_error(exc)))
 
@@ -351,6 +374,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
             if normalize(flashcard.front) == normalize(flashcard.back):
                 flashcard = None
                 rejected.append(Rejection("flashcard", "recto et verso identiques"))
+            elif needs_picture(flashcard.front):
+                flashcard = None
+                rejected.append(Rejection("flashcard", PICTURE_REASON))
         except ValidationError as exc:
             rejected.append(Rejection("flashcard", _first_error(exc)))
 
@@ -372,7 +398,11 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     raw_open = raw.get("open_questions")
     for i, raw_question in enumerate(raw_open if isinstance(raw_open, list) else []):
         try:
-            open_questions.append(OpenQuestion.model_validate(raw_question))
+            open_question = OpenQuestion.model_validate(raw_question)
+            if needs_picture(open_question.prompt):
+                rejected.append(Rejection(f"open_questions[{i}]", PICTURE_REASON))
+                continue
+            open_questions.append(open_question)
         except ValidationError as exc:
             rejected.append(Rejection(f"open_questions[{i}]", _first_error(exc)))
 
@@ -406,6 +436,9 @@ def _check_sorting(raw: Any, rejected: list[Rejection]) -> Sorting | None:
     except ValidationError as exc:
         rejected.append(Rejection("sorting", _first_error(exc)))
         return None
+    if needs_picture(sorting.prompt):
+        rejected.append(Rejection("sorting", PICTURE_REASON))
+        return None
     boxes = sorting.categories
     members = [normalize(m) for box in boxes for m in box.members]
     names = {normalize(box.name) for box in boxes}
@@ -434,6 +467,9 @@ def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
         sequence = Sequence.model_validate(raw)
     except ValidationError as exc:
         rejected.append(Rejection("sequence", _first_error(exc)))
+        return None
+    if needs_picture(sequence.prompt):
+        rejected.append(Rejection("sequence", PICTURE_REASON))
         return None
     items = [normalize(i) for i in sequence.items]
     if not SEQUENCE_ITEMS[0] <= len(items) <= SEQUENCE_ITEMS[1] or len(set(items)) != len(items):

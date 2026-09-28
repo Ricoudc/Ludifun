@@ -12,7 +12,7 @@ import json
 import time
 import weakref
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from app.ai.images import shrink
 from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
+from app.ai.schemas import OcrPage, OcrResult
 
 TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusieurs minutes
 # Photos réduites avant l'envoi : sur un PC, le temps de lecture suit la taille de l'image (une
@@ -48,6 +49,11 @@ MAX_OUTPUT: dict[Stage, int] = {
     "evaluation": 800,
     "sources": 1500,
 }
+PLAIN_TRANSCRIPTION = (
+    "\n\n# Format de la réponse\n"
+    "Pour cette image, réponds uniquement par le texte transcrit, sans JSON, sans commentaire ni "
+    "phrase d'introduction. Si l'image ne contient pas de texte de leçon, réponds « [illisible] »."
+)
 # Une seule demande à la fois par serveur Ollama : sur une carte graphique de 8 Go, deux lectures
 # de photo en même temps (deux leçons envoyées coup sur coup) font s'arrêter le moteur.
 _BUSY: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]]" = (
@@ -88,28 +94,93 @@ class OllamaProvider:
     ) -> LLMResult[T]:
         async with _lock(self.base_url):
             try:
-                return await self._chat(prompt, input, schema, images, MAX_IMAGE_SIDE)
+                return await self._run(prompt, input, schema, images, MAX_IMAGE_SIDE)
             except _Crashed:
                 pass
             # Nouvel essai : le moteur redémarre ; avec photos, elles sont réduites.
             try:
-                return await self._chat(prompt, input, schema, images, RETRY_IMAGE_SIDE)
+                return await self._run(prompt, input, schema, images, RETRY_IMAGE_SIDE)
             except _Crashed as crash:
                 raise crash.error from None
+
+    async def _run[T: BaseModel](
+        self, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...], side: int
+    ) -> LLMResult[T]:
+        if schema is OcrResult and images:
+            return cast(LLMResult[T], await self._transcribe(prompt, images, side))
+        return await self._chat(prompt, input, schema, images, side)
+
+    async def _transcribe(
+        self, prompt: Prompt, images: tuple[PageImage, ...], side: int
+    ) -> LLMResult[OcrResult]:
+        """Lecture des photos en texte libre, une page à la fois. Avec une réponse JSON imposée,
+        un petit modèle de vision (qwen2.5vl:7b) se met souvent à répéter le même texte sans fin ;
+        en texte libre, la même page se lit en une demi-minute (PC d'essai). Le code remet
+        ensuite la transcription au format attendu. Les passages douteux (« Peux-tu vérifier ? »)
+        ne sont pas demandés : seuls les « [illisible] » sont signalés, par la qualité de la page."""
+        system = prompt.text + PLAIN_TRANSCRIPTION
+        pages: list[OcrPage] = []
+        tokens_in = tokens_out = latency = 0
+        model = self.models[prompt.stage]
+        for index, image in enumerate(images):
+            content, data, spent = await self._request(
+                prompt, system, "Recopie le texte de cette image.", None, (image,), side
+            )
+            text = content.strip()
+            if not text or text.strip("[] ").lower() == "illisible":
+                quality = "unreadable"
+            elif "[illisible]" in text:
+                quality = "partial"
+            else:
+                quality = "good"
+            pages.append(OcrPage(index=index, quality=quality, text="" if quality == "unreadable" else text))
+            tokens_in += data.get("prompt_eval_count") or 0
+            tokens_out += data.get("eval_count") or 0
+            latency += spent
+        output = OcrResult(pages=pages, language="fr", warnings=[])
+        return LLMResult(output, Usage(self.name, f"ollama/{model}", tokens_in, tokens_out, latency))
 
     async def _chat[T: BaseModel](
         self, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...], side: int
     ) -> LLMResult[T]:
+        model = self.models[prompt.stage]
+        content, data, latency_ms = await self._request(
+            prompt, prompt.text + schema_instructions(schema), input, schema.model_json_schema(), images, side
+        )
+        try:
+            output = schema.model_validate(parse_json(content))
+        except (ValidationError, json.JSONDecodeError) as exc:
+            raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
+        return LLMResult(
+            output,
+            Usage(
+                provider=self.name,
+                model=f"ollama/{model}",
+                input_tokens=data.get("prompt_eval_count"),
+                output_tokens=data.get("eval_count"),
+                latency_ms=latency_ms,
+            ),
+        )
+
+    async def _request(
+        self,
+        prompt: Prompt,
+        system: str,
+        input: str,
+        format: dict[str, Any] | None,
+        images: tuple[PageImage, ...],
+        side: int,
+    ) -> tuple[str, dict[str, Any], int]:
+        """Un appel à /api/chat : (texte de la réponse, réponse brute, durée en ms)."""
         model = self.models[prompt.stage]
         user: dict[str, Any] = {"role": "user", "content": input}
         if images:
             user["images"] = [
                 base64.standard_b64encode(shrink(image.data, side)).decode("ascii") for image in images
             ]
-        body = {
+        body: dict[str, Any] = {
             "model": model,
-            "messages": [{"role": "system", "content": prompt.text + schema_instructions(schema)}, user],
-            "format": schema.model_json_schema(),
+            "messages": [{"role": "system", "content": system}, user],
             "stream": False,
             "keep_alive": KEEP_ALIVE,
             "options": {
@@ -118,6 +189,8 @@ class OllamaProvider:
                 "temperature": 0.2,
             },
         }
+        if format is not None:
+            body["format"] = format
         started = time.perf_counter()
         try:
             response = await self._client.post(f"{self.base_url}/api/chat", json=body)
@@ -153,17 +226,4 @@ class OllamaProvider:
         content = (data.get("message") or {}).get("content")
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
-        try:
-            output = schema.model_validate(parse_json(content))
-        except (ValidationError, json.JSONDecodeError) as exc:
-            raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
-        return LLMResult(
-            output,
-            Usage(
-                provider=self.name,
-                model=f"ollama/{model}",
-                input_tokens=data.get("prompt_eval_count"),
-                output_tokens=data.get("eval_count"),
-                latency_ms=latency_ms,
-            ),
-        )
+        return content, data, latency_ms
