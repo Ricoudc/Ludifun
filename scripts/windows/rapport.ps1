@@ -18,7 +18,7 @@ try {
 
 Section 'Réglages (.env, sans les clés)'
 $reglages = Lire-Env
-foreach ($cle in 'LUDIFUN_AI_PROVIDER', 'LUDIFUN_AI_MODEL', 'LUDIFUN_OLLAMA_BASE_URL', 'LUDIFUN_AI_BASE_URL', 'LUDIFUN_AI_DAILY_BUDGET_USD') {
+foreach ($cle in 'LUDIFUN_AI_PROVIDER', 'LUDIFUN_AI_MODEL', 'LUDIFUN_OLLAMA_BASE_URL', 'LUDIFUN_AI_BASE_URL', 'LUDIFUN_AI_DAILY_BUDGET_USD', 'LUDIFUN_OLLAMA_NUM_CTX', 'COMPOSE_PROFILES', 'LUDIFUN_WEB_SEARCH_URL', 'LUDIFUN_WEB_SOURCES') {
     if ($reglages[$cle]) { Ajouter "$cle=$($reglages[$cle])" }
 }
 
