@@ -42,6 +42,14 @@ if (Get-Command ollama -ErrorAction SilentlyContinue) {
     Ajouter 'Modèles installés :'
     Ajouter (& ollama list 2>&1)
 } else { Ajouter 'Ollama n''est pas installé sur ce PC' }
+$reglages = Lire-Env
+if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
+    $modele = $reglages['LUDIFUN_AI_MODEL']
+    if (-not $modele) { $modele = 'qwen2.5vl:7b' }
+    $conseils = @(Conseils-Ollama $modele (Adresse-Ollama $reglages) $reglages)
+    if ($conseils.Count -eq 0) { Ajouter "Vérification de « $modele » : lit les images, tient dans la carte graphique" }
+    else { Ajouter 'À corriger :'; Ajouter ($conseils | ForEach-Object { "  - $_" }) }
+}
 
 Section 'Journal du serveur (IA et erreurs)'
 if (Docker-Pret) {

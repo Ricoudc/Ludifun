@@ -141,6 +141,30 @@ function Adresse-Ollama($valeurs) {
     return 'http://localhost:11434'
 }
 
+# Ce qui empêche le modèle de bien marcher : il ne lit pas les photos, il est trop gros pour la
+# carte graphique (tout passe par le processeur : un quart d'heure par leçon), contexte absent.
+function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
+    $conseils = @()
+    $base = $url.TrimEnd('/')
+    try { $tags = Invoke-RestMethod -Uri "$base/api/tags" -TimeoutSec 5 } catch { return @("Ollama ne répond pas à $url") }
+    $entree = $tags.models | Where-Object { $_.name -eq $modele -or $_.name -eq "$($modele):latest" } | Select-Object -First 1
+    if (-not $entree) { return @("« $modele » n'est pas installé : ollama pull $modele") }
+    $go = [math]::Round($entree.size / 1GB, 1)
+    if ($go -gt 7) {
+        $conseils += "« $modele » pèse $go Go : trop gros pour une carte graphique de 8 Go, il tournera surtout sur le processeur (très lent). Conseillé : qwen2.5vl:7b."
+    }
+    try {
+        $infos = Invoke-RestMethod -Uri "$base/api/show" -Method Post -ContentType 'application/json' -Body (@{ model = $entree.name } | ConvertTo-Json) -TimeoutSec 10
+        if ($infos.capabilities -and ($infos.capabilities -notcontains 'vision')) {
+            $conseils += "« $modele » ne sait pas lire les images : les photos de leçons échoueront. Conseillé : qwen2.5vl:7b."
+        }
+    } catch { }
+    if (-not $valeurs['LUDIFUN_OLLAMA_NUM_CTX']) {
+        $conseils += 'LUDIFUN_OLLAMA_NUM_CTX absent du .env : avec une carte de 8 Go, ajoute LUDIFUN_OLLAMA_NUM_CTX=8192.'
+    }
+    return $conseils
+}
+
 function Verifier-Ollama([string]$modele, [string]$url = 'http://localhost:11434') {
     try {
         $tags = Invoke-RestMethod -Uri "$($url.TrimEnd('/'))/api/tags" -TimeoutSec 5
@@ -154,7 +178,11 @@ function Verifier-Ollama([string]$modele, [string]$url = 'http://localhost:11434
         return
     }
     $noms = @($tags.models | ForEach-Object { $_.name })
-    if ($noms -contains $modele -or $noms -contains "$($modele):latest") { Ok "Ollama répond, « $modele » est installé"; return }
+    if ($noms -contains $modele -or $noms -contains "$($modele):latest") {
+        Ok "Ollama répond, « $modele » est installé"
+        foreach ($conseil in (Conseils-Ollama $modele $url (Lire-Env))) { Write-Host $conseil -ForegroundColor Yellow }
+        return
+    }
     Write-Host "Le modèle « $modele » n'est pas encore installé dans Ollama (plusieurs Go à télécharger)." -ForegroundColor Yellow
     if ($url -notmatch 'localhost') {
         Write-Host "Sur l'ordinateur qui a Ollama, dans un terminal : ollama pull $modele"
