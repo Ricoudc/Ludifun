@@ -9,6 +9,7 @@ import 'package:ludifun/app/router.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/capture/capture_controller.dart';
 import 'package:ludifun/features/home/home_providers.dart';
+import 'package:ludifun/features/parent/child_mistakes_screen.dart';
 import 'package:ludifun/features/parent/file_sharer.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -934,6 +935,57 @@ void main() {
       find.textContaining('« Maîtrisée » ne veut pas dire « réussit les QCM »'),
       findsOneWidget,
     );
+    Navigator.of(tester.element(find.textContaining('« Maîtrisée »'))).pop();
+    await tester.pumpAndSettle();
+
+    // Supprimer une leçon : dans l'espace parent, après confirmation.
+    server.on('DELETE /v1/lessons/l2', (r) {
+      expect(r.queryParameters['child_id'], 'c1');
+      return (204, null);
+    });
+    await tap(tester, find.byTooltip('Supprimer la leçon'));
+    expect(find.text('Supprimer « Les fractions » ?'), findsOneWidget);
+    server.on('GET /v1/children/c1/skills', (_) => (200, {'lessons': <Object?>[]}));
+    await tap(tester, find.widgetWithText(FilledButton, 'Supprimer'));
+    expect(server.routes, contains('DELETE /v1/lessons/l2'));
+    expect(find.text('📐 Les fractions'), findsNothing);
+  });
+
+  testWidgets('le parent voit les erreurs d\'Emma aux questions', (tester) async {
+    server.on(
+      'GET /v1/children/c1/mistakes',
+      (r) => (
+        200,
+        {
+          'mistakes': [
+            {
+              'answered_at': '2026-09-20T15:00:00Z',
+              'lesson_id': 'l2',
+              'lesson_title': 'Les fractions',
+              'subject': 'math',
+              'activity_type': 'MCQ',
+              'notions': ['Numérateur'],
+              'question': 'Dans 3/4, quel nombre est le numérateur ?',
+              'given': '4',
+              'expected': '3',
+              'partial': false,
+            },
+          ],
+          'next_before': null,
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Voir ses erreurs aux questions'));
+
+    expect(find.text('Erreurs d\'Emma'), findsOneWidget);
+    expect(ofName('Léo'), 'de Léo');
+    expect(find.text('Dans 3/4, quel nombre est le numérateur ?'), findsOneWidget);
+    expect(find.text('❌ Sa réponse'), findsOneWidget);
+    expect(find.text('✅ Bonne réponse'), findsOneWidget);
+    expect(find.text('Notion : Numérateur'), findsOneWidget);
+    expect(find.text('Voir les erreurs plus anciennes'), findsNothing);
   });
 
   testWidgets('objectifs : temps par jour, matière, contrôle et son plan', (tester) async {

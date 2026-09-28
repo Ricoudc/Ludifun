@@ -72,6 +72,8 @@ async def test_not_a_lesson(client: AsyncClient, fake_llm: FakeProvider) -> None
     assert not lesson["can_retry"]
     r = await client.post(f"/v1/lessons/{lesson['id']}/retry", headers=auth(token))
     assert r.status_code == 409
+    # Photo ratée : l'enfant peut la retirer pour la reprendre.
+    assert (await client.delete(f"/v1/lessons/{lesson['id']}", headers=auth(token))).status_code == 204
 
 
 async def test_retry_after_an_ai_error(client: AsyncClient, fake_llm: FakeProvider, db: AsyncSession) -> None:
@@ -97,7 +99,19 @@ async def test_grade_correction_and_deletion(client: AsyncClient) -> None:
     assert (
         await client.patch(f"/v1/lessons/{lesson['id']}", json={"grade": "L3"}, headers=auth(token))
     ).status_code == 422
-    assert (await client.delete(f"/v1/lessons/{lesson['id']}", headers=auth(token))).status_code == 204
+
+
+async def test_only_the_parent_deletes_an_analysed_lesson(client: AsyncClient) -> None:
+    family = await family_with_device(client)
+    token = family["device"]
+    lesson = await upload_lesson(client, token)
+    denied = await client.delete(f"/v1/lessons/{lesson['id']}", headers=auth(token))
+    assert (denied.status_code, denied.json()["error"]["code"]) == (403, "parent_only")
+    child_id = family["child"]["id"]
+    deleted = await client.delete(
+        f"/v1/lessons/{lesson['id']}", params={"child_id": child_id}, headers=auth(family["parent"])
+    )
+    assert deleted.status_code == 204
     assert (await client.get(f"/v1/lessons/{lesson['id']}", headers=auth(token))).status_code == 404
 
 

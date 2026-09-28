@@ -9,6 +9,8 @@ import '../../core/api/api_exception.dart';
 import '../../models/level.dart';
 import '../../models/parent.dart';
 import '../../models/subject.dart';
+import '../../core/session.dart';
+import 'parent_home_screen.dart';
 import 'parent_providers.dart';
 
 const _levels = '''
@@ -60,7 +62,7 @@ class ChildSkillsScreen extends ConsumerWidget {
                 style: TextStyle(fontSize: 17),
               ),
             ],
-            AsyncData(:final value) => [for (final lesson in value) _LessonCard(lesson)],
+            AsyncData(:final value) => [for (final lesson in value) _LessonCard(lesson, childId)],
             AsyncError(:final error) => [
               ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
               TextButton(
@@ -76,13 +78,38 @@ class ChildSkillsScreen extends ConsumerWidget {
   }
 }
 
-class _LessonCard extends StatelessWidget {
-  const _LessonCard(this.lesson);
+class _LessonCard extends ConsumerWidget {
+  const _LessonCard(this.lesson, this.childId);
 
   final LessonProgress lesson;
+  final String childId;
+
+  /// Supprimer une leçon est réservé au parent (l'enfant ne peut pas le faire).
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final title = lesson.title ?? 'cette leçon';
+    final confirmed = await confirmDanger(
+      context,
+      title: 'Supprimer « $title » ?',
+      message:
+          'La leçon, ses jeux et les résultats obtenus dessus seront effacés. '
+          'Cette action est définitive.',
+      action: 'Supprimer',
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ref.read(apiProvider).deleteLesson(lesson.lessonId, childId: childId);
+    } on ApiException catch (error) {
+      if (context.mounted) showError(context, error);
+      return;
+    }
+    ref
+      ..invalidate(childSkillsProvider(childId))
+      ..invalidate(dashboardProvider(childId))
+      ..invalidate(childLessonsProvider(childId));
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context).textTheme;
     final others = lesson.notionsWithoutSkill;
     return Card(
@@ -92,9 +119,20 @@ class _LessonCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              '${Subjects.emoji(lesson.subject)} ${lesson.title ?? 'Leçon'}',
-              style: theme.titleLarge,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${Subjects.emoji(lesson.subject)} ${lesson.title ?? 'Leçon'}',
+                    style: theme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Supprimer la leçon',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _delete(context, ref),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             for (final skill in lesson.skills)

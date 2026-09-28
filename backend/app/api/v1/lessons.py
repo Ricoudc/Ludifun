@@ -4,13 +4,24 @@ import uuid
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, File, Request, Response, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, Response, UploadFile, status
 from sqlalchemy import select
 
 from app import clock
 from app.ai.images import detect_media_type, is_heic
 from app.ai.ports import PageImage
-from app.api.deps import AppSettings, ChildAi, ChildInScope, DbSession, Registry, get_database, rate_limit
+from app.api.deps import (
+    AppSettings,
+    ChildAi,
+    ChildInScope,
+    DbSession,
+    DevicePrincipal,
+    Principal,
+    Registry,
+    current_principal,
+    get_database,
+    rate_limit,
+)
 from app.api.errors import ApiError
 from app.api.v1.schemas_learning import (
     AiStepOut,
@@ -330,8 +341,18 @@ async def update_lesson(
 
 
 @router.delete("/lessons/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -> Response:
-    await db.delete(await lesson_of_child(db, child, lesson_id))
+async def delete_lesson(
+    lesson_id: uuid.UUID,
+    child: ChildInScope,
+    db: DbSession,
+    principal: Annotated[Principal, Depends(current_principal)],
+) -> Response:
+    """Supprimer une leçon est réservé au parent. L'appareil de l'enfant ne peut retirer qu'une
+    leçon ratée (photo illisible, pas une leçon) pour la reprendre en photo."""
+    lesson = await lesson_of_child(db, child, lesson_id)
+    if isinstance(principal, DevicePrincipal) and lesson.status != "failed":
+        raise ApiError(403, "parent_only", "Demande à tes parents de supprimer cette leçon.")
+    await db.delete(lesson)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

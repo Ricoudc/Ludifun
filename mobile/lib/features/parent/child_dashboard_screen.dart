@@ -176,6 +176,12 @@ class ChildDashboardScreen extends ConsumerWidget {
       ],
       const SizedBox(height: 8),
       OutlinedButton.icon(
+        onPressed: () => context.go(Routes.childMistakes(childId)),
+        icon: const Icon(Icons.fact_check_outlined),
+        label: const Text('Voir ses erreurs aux questions'),
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
         onPressed: () => context.go(Routes.childGoals(childId)),
         icon: const Icon(Icons.flag_outlined),
         label: const Text('Objectifs et contrôles'),

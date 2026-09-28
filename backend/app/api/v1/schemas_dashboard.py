@@ -100,6 +100,26 @@ class HistoryEntryOut(BaseModel):
     )
 
 
+class MistakeOut(BaseModel):
+    """Une question ratée : ce qui était demandé, ce que l'enfant a répondu, la bonne réponse."""
+
+    answered_at: datetime
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity_type: str
+    notions: list[str]
+    question: str
+    given: str = Field(description="La réponse de l'enfant (une ligne par élément raté).")
+    expected: str = Field(description="La bonne réponse.")
+    partial: bool = Field(description="Réponse en partie juste.")
+
+
+class MistakesOut(BaseModel):
+    mistakes: list[MistakeOut]
+    next_before: datetime | None
+
+
 class HistoryOut(BaseModel):
     """Écran P4."""
 

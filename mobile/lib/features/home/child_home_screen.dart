@@ -250,7 +250,8 @@ class _LessonRow extends ConsumerWidget {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         trailing: trailing,
         onTap: () => _open(context, ref),
-        onLongPress: () => _delete(context, ref),
+        // Seule une leçon ratée se retire ici ; les autres, c'est le parent qui les supprime.
+        onLongPress: lesson.status == LessonStatus.failed ? () => _delete(context, ref) : null,
       ),
     );
   }

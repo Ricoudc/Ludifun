@@ -19,13 +19,14 @@ import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
-from typing import Literal
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
+from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.errors import ErrorOccurrence, ErrorType, recurring_errors
 from app.domain.knowledge import Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
@@ -481,3 +482,65 @@ async def history(
             )
         )
     return entries
+
+
+@dataclass(frozen=True)
+class MistakeRow:
+    answered_at: datetime
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity: BuiltActivity
+    response: dict[str, Any]
+    score: float
+    notions: list[str]
+
+
+async def mistakes(
+    session: AsyncSession, child_id: uuid.UUID, limit: int, before: datetime | None
+) -> list[MistakeRow]:
+    """Réponses pas entièrement justes, de la plus récente à la plus ancienne (bonus compris)."""
+    query = (
+        select(db.Attempt, db.SessionItem, db.Lesson)
+        .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .join(db.Lesson, db.Lesson.id == db.RevisionSession.lesson_id)
+        .where(db.RevisionSession.child_id == child_id, db.Attempt.score < 1)
+        .order_by(db.Attempt.created_at.desc())
+        .limit(limit)
+    )
+    if before is not None:
+        query = query.where(db.Attempt.created_at < before)
+    found = (await session.execute(query)).all()
+    ids = {k for _, item, _ in found for k in item.knowledge_ids}
+    knowledge = {
+        row.id: (row.key, row.label)
+        for row in await session.execute(
+            select(db.KnowledgeItem.id, db.KnowledgeItem.key, db.KnowledgeItem.label).where(
+                db.KnowledgeItem.id.in_(ids)
+            )
+        )
+    }
+    rows = []
+    for attempt, item, lesson in found:
+        known = [knowledge[k] for k in item.knowledge_ids if k in knowledge]
+        activity = BuiltActivity(
+            type=ActivityCode(item.activity_type),
+            difficulty=item.difficulty,
+            knowledge_ids=[key for key, _ in known],
+            payload=item.payload,
+            solution=item.solution,
+        )
+        rows.append(
+            MistakeRow(
+                answered_at=attempt.created_at,
+                lesson_id=lesson.id,
+                lesson_title=lesson.title,
+                subject=lesson.subject,
+                activity=activity,
+                response=attempt.response,
+                score=float(attempt.score),
+                notions=[label for _, label in known],
+            )
+        )
+    return rows

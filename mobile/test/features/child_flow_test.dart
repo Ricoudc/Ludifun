@@ -324,7 +324,7 @@ void main() {
           ],
         ),
       )
-      ..on('DELETE /v1/lessons/l2', (_) => (204, null));
+      ..on('DELETE /v1/lessons/l4', (_) => (204, null));
     await launch(tester, MemoryCredentialStore(child));
     expect(find.text('📐 Les fractions · ⏱️ 6 min'), findsOneWidget);
     expect(find.text('à revoir aujourd\'hui 🔄'), findsOneWidget);
@@ -332,13 +332,15 @@ void main() {
     expect(find.text('maîtrisée ✓'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
 
-    // Appui long → Supprimer.
-    await tester.ensureVisible(find.text('à revoir vendredi'));
-    await tester.longPress(find.text('à revoir vendredi'));
+    // Une photo ratée se retire par un appui long ; une leçon analysée, seul le parent la supprime.
+    final failed = find.ancestor(of: find.text('Réessayer'), matching: find.byType(ListTile));
+    await tester.ensureVisible(failed);
+    await tester.longPress(failed);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Supprimer cette leçon'));
     await tester.pumpAndSettle();
-    expect(server.routes, contains('DELETE /v1/lessons/l2'));
+    expect(server.routes, contains('DELETE /v1/lessons/l4'));
+    expect(server.routes.where((r) => r.startsWith('DELETE')), ['DELETE /v1/lessons/l4']);
   });
 
   testWidgets('photo illisible : retour à l\'écran 2 avec les photos gardées', (tester) async {

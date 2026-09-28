@@ -292,6 +292,15 @@ class LudifunApi {
     return HistoryPage.fromJson(r.data!);
   });
 
+  Future<MistakesPage> mistakes(String childId, {int limit = 20, String? before}) =>
+      _call(() async {
+        final r = await _dio.get<Json>(
+          '/v1/children/$childId/mistakes',
+          queryParameters: {'limit': limit, 'before': ?before},
+        );
+        return MistakesPage.fromJson(r.data!);
+      });
+
   Future<List<Child>> children() => _call(() async {
     final r = await _dio.get<List<dynamic>>('/v1/children');
     return [for (final child in r.data!) Child.fromJson(child as Json)];

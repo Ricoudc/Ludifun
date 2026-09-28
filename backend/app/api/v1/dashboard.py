@@ -21,6 +21,8 @@ from app.api.v1.schemas_dashboard import (
     LessonProgressOut,
     LevelOut,
     LevelRateOut,
+    MistakeOut,
+    MistakesOut,
     NotionProgressOut,
     NotionResultOut,
     RecurringErrorOut,
@@ -34,6 +36,8 @@ from app.api.v1.schemas_dashboard import (
     WeekOut,
 )
 from app.db import models as db_models
+from app.domain import mistakes as mistakes_domain
+from app.domain.activities.registry import default_registry
 from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
 from app.domain.knowledge import SkillVerb
@@ -111,6 +115,42 @@ async def get_dashboard(
             for r in board.recurring_errors
         ],
     )
+
+
+@router.get("/children/{child_id}/mistakes")
+async def get_mistakes(
+    child_id: uuid.UUID,
+    parent: CurrentParent,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    before: Annotated[
+        datetime | None, Query(description="Curseur : `next_before` de la page précédente")
+    ] = None,
+) -> MistakesOut:
+    """Questions ratées, de la plus récente à la plus ancienne : question, réponse, bonne réponse."""
+    child = await own_child(db, parent, child_id)
+    rows = await dashboard.mistakes(db, child.id, limit, before)
+    registry = default_registry()
+    out: list[MistakeOut] = []
+    for row in rows:
+        described = mistakes_domain.describe(registry, row.activity, row.response)
+        if described is None:
+            continue
+        out.append(
+            MistakeOut(
+                answered_at=row.answered_at,
+                lesson_id=row.lesson_id,
+                lesson_title=row.lesson_title,
+                subject=row.subject,
+                activity_type=row.activity.type,
+                notions=row.notions,
+                question=described.question,
+                given=described.given,
+                expected=described.expected,
+                partial=row.score > 0,
+            )
+        )
+    return MistakesOut(mistakes=out, next_before=rows[-1].answered_at if len(rows) == limit else None)
 
 
 @router.get("/children/{child_id}/history")

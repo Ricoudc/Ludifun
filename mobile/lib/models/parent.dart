@@ -431,3 +431,57 @@ class SessionDetail {
   /// Remédiations, pauses proposées, défis bonus : en une phrase chacune.
   final List<String> decisions;
 }
+
+/// Une question ratée, vue par le parent : question, réponse de l'enfant, bonne réponse.
+class Mistake {
+  const Mistake({
+    required this.answeredAt,
+    required this.lessonId,
+    required this.activityType,
+    required this.notions,
+    required this.question,
+    required this.given,
+    required this.expected,
+    required this.partial,
+    this.lessonTitle,
+    this.subject,
+  });
+
+  factory Mistake.fromJson(Json json) => Mistake(
+    answeredAt: DateTime.parse(json['answered_at'] as String),
+    lessonId: json['lesson_id'] as String,
+    lessonTitle: json['lesson_title'] as String?,
+    subject: json['subject'] as String?,
+    activityType: json['activity_type'] as String,
+    notions: [for (final n in json['notions'] as List<dynamic>) n as String],
+    question: json['question'] as String,
+    given: json['given'] as String,
+    expected: json['expected'] as String,
+    partial: json['partial'] as bool? ?? false,
+  );
+
+  final DateTime answeredAt;
+  final String lessonId;
+  final String? lessonTitle;
+  final String? subject;
+  final String activityType;
+  final List<String> notions;
+  final String question;
+  final String given;
+  final String expected;
+  final bool partial;
+}
+
+class MistakesPage {
+  const MistakesPage({required this.mistakes, this.nextBefore});
+
+  factory MistakesPage.fromJson(Json json) => MistakesPage(
+    mistakes: [for (final m in json['mistakes'] as List<dynamic>) Mistake.fromJson(m as Json)],
+    nextBefore: json['next_before'] as String?,
+  );
+
+  final List<Mistake> mistakes;
+
+  /// Curseur de la page suivante, `null` à la fin.
+  final String? nextBefore;
+}
