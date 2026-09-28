@@ -197,6 +197,42 @@ async def test_targeted_retry_for_weak_important_notion() -> None:
     assert len(default_registry().single_options(k2)) >= 2
 
 
+async def test_rejected_elements_are_asked_again_and_merged() -> None:
+    """Une notion peu importante dont une question est refusée : relance avec la raison du
+    refus ; ce qui avait passé les contrôles est gardé, la nouvelle question s'y ajoute."""
+    script = LessonScript.from_file(HISTORY)
+    first = copy.deepcopy(script.material)
+    kept = copy.deepcopy(first["k7"]["questions"])
+    bad = {
+        "difficulty": 1,
+        "stem": "Qui ? Robespierre",
+        "answer": "Robespierre",
+        "distractors": ["a", "b", "c"],
+    }
+    first["k7"]["questions"] = [*kept, bad]
+    second = copy.deepcopy(script.material)
+    new_question = {
+        "difficulty": 2,
+        "stem": "Quelle nouvelle question sur cette notion ?",
+        "answer": "La bonne",
+        "distractors": ["Une autre", "Encore une", "La dernière"],
+    }
+    second["k7"]["questions"] = [new_question]
+
+    def answer(attempt: int, text: str) -> Any:
+        return material_output(first if attempt <= 2 else second, requested_ids(text))
+
+    result, llm, _ = await run(overrides={"material": answer})
+    assert result.ready
+    retries = [text for stage, text in llm.calls if stage == "material"][2:]
+    assert [requested_ids(t) for t in retries] == [["k7"]]
+    assert "l'énoncé contient la réponse" in retries[0]
+    k7 = next(u for u in result.units if u.id == "k7")
+    stems = [q.stem for q in k7.material.questions]
+    assert stems == [q["stem"] for q in kept] + [new_question["stem"]]
+    assert not [r for r in result.rejected if r.element.startswith("k7.")]
+
+
 async def test_high_rejection_rate_is_flagged() -> None:
     script = LessonScript.from_file(HISTORY)
     bad = copy.deepcopy(script.material)

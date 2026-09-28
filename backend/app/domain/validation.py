@@ -468,3 +468,38 @@ def _check_help(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) -> Hel
     steps = [str(s).strip() for s in (raw_steps if isinstance(raw_steps, list) else []) if str(s).strip()]
     ladder = HelpLadder(hint=hint, reminder=reminder, example=example, steps=steps[:6])
     return ladder if (hint or reminder or example or steps) else None
+
+
+def merge_material(first: MaterialValidation, second: MaterialValidation) -> MaterialValidation:
+    """Deux versions validées du matériel d'une notion : on garde tout ce qui a passé les
+    contrôles dans la première, et on complète avec les éléments nouveaux de la seconde (la
+    relance après refus). Les refus restants sont ceux de la seconde version."""
+    a, b = first.material, second.material
+    stems = {normalize(q.stem) for q in a.questions}
+    questions = a.questions + [q for q in b.questions if normalize(q.stem) not in stems]
+    truths = {normalize(t) for t in a.true_statements}
+    falses = {normalize(f) for f in a.false_statements}
+    true_statements = a.true_statements + [
+        t for t in b.true_statements if normalize(t) not in truths | falses
+    ]
+    false_statements = a.false_statements + [
+        f for f in b.false_statements if normalize(f) not in truths | falses
+    ]
+    prompts = {normalize(q.prompt) for q in a.open_questions}
+    open_questions = a.open_questions + [q for q in b.open_questions if normalize(q.prompt) not in prompts]
+    merged = a.model_copy(
+        update={
+            "questions": questions,
+            "true_statements": true_statements,
+            "false_statements": false_statements,
+            "cloze": a.cloze or b.cloze,
+            "pair": a.pair or b.pair,
+            "flashcard": a.flashcard or b.flashcard,
+            "tip": a.tip or b.tip,
+            "help": a.help or b.help,
+            "open_questions": open_questions[:OPEN_QUESTIONS_MAX],
+            "sorting": a.sorting or b.sorting,
+            "sequence": a.sequence or b.sequence,
+        }
+    )
+    return MaterialValidation(merged, second.rejected)

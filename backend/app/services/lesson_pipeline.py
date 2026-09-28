@@ -39,6 +39,7 @@ from app.domain.validation import (
     AnalysisError,
     MaterialValidation,
     Rejection,
+    merge_material,
     validate_analysis,
     validate_material,
 )
@@ -262,17 +263,26 @@ class LessonPipeline:
         for found in await asyncio.gather(*(self._material(result, analysis, text, b) for b in batches)):
             validated |= found
 
-        # Relance ciblée : notions importantes sans assez de matériel utilisable (§5.3).
+        # Relance ciblée (§5.3) : notions importantes sans assez de matériel utilisable, et
+        # notions dont des éléments ont été refusés (fréquent avec un petit modèle local). L'IA
+        # reçoit les raisons des refus ; ce qui avait passé les contrôles est gardé, la
+        # nouvelle version ne fait que compléter (`merge_material`).
         weak = [
             i
             for i in items
-            if i.importance >= IMPORTANT and self._options(i, validated) < MIN_OPTIONS_IMPORTANT
+            if (i.importance >= IMPORTANT and self._options(i, validated) < MIN_OPTIONS_IMPORTANT)
+            or (i.id in validated and validated[i.id].rejected)
         ]
-        if weak:
-            feedback = {i.id: validated[i.id].rejected for i in weak if i.id in validated}
-            retried = await self._material(result, analysis, text, weak, feedback)
-            for item in weak:
-                if item.id in retried and self._options(item, retried) > self._options(item, validated):
+        retry_batches = [weak[i : i + MATERIAL_BATCH] for i in range(0, len(weak), MATERIAL_BATCH)]
+        for batch in retry_batches:
+            feedback = {i.id: validated[i.id].rejected for i in batch if i.id in validated}
+            retried = await self._material(result, analysis, text, batch, feedback)
+            for item in batch:
+                if item.id not in retried:
+                    continue
+                if item.id in validated:
+                    validated[item.id] = merge_material(validated[item.id], retried[item.id])
+                else:
                     validated[item.id] = retried[item.id]
 
         units, rejected = [], []
