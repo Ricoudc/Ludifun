@@ -81,9 +81,14 @@ def _key(settings: Settings, given: str | None) -> str:
 
 def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider:
     if choice is not None:
-        settings = settings.model_copy(
-            update={"ai_provider": choice.provider, "ai_base_url": choice.base_url or None}
-        )
+        update: dict[str, object] = {"ai_provider": choice.provider, "ai_base_url": choice.base_url or None}
+        if choice.provider != settings.ai_provider:
+            # Les modèles du .env valent pour l'IA du serveur, pas pour celle choisie par la
+            # famille chez un autre fournisseur (« gemini-2.5-pro » envoyé à Ollama).
+            update |= dict.fromkeys(
+                ("ai_model", "ai_ocr_model", "ai_analysis_model", "ai_material_model", "ai_evaluation_model")
+            )
+        settings = settings.model_copy(update=update)
     model = choice.model if choice else None
     api_key = choice.api_key if choice else None
     provider = settings.ai_provider

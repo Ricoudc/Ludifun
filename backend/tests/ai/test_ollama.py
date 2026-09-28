@@ -109,6 +109,18 @@ def test_factory_builds_ollama_without_key() -> None:
     assert (chosen.base_url, chosen.model_for("ocr")) == ("http://autre:11434", "gemma3:12b")
 
 
+def test_the_server_model_does_not_leak_into_another_provider() -> None:
+    """Serveur réglé sur Gemini (.env), famille sur Ollama sans modèle : le modèle conseillé
+    d'Ollama, pas « gemini-2.5-pro » (qu'Ollama ne connaît pas)."""
+    server = Settings(ai_provider="gemini", ai_model="gemini-2.5-pro", ai_ocr_model="gemini-2.5-flash")
+    family = build_llm(server, AiChoice("ollama"))
+    assert isinstance(family, OllamaProvider) and family.model_for("ocr") == "qwen2.5vl:7b"
+    assert family.model_for("material") == "qwen2.5vl:7b"
+    # Même fournisseur que le serveur : ses modèles restent la valeur par défaut.
+    same = Settings(ai_provider="ollama", ai_model="gemma3:12b")
+    assert build_llm(same, AiChoice("ollama")).model_for("ocr") == "gemma3:12b"
+
+
 def client_for(routes: dict[str, httpx.Response]) -> httpx.AsyncClient:
     def handler(request: httpx.Request) -> httpx.Response:
         return routes.get(str(request.url), httpx.Response(404))
