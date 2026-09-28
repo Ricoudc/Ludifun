@@ -542,11 +542,28 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
 - **Sites par défaut** : Vikidia, Lumni, Éduscol, education.gouv.fr, Sésamath, Wikipédia (fr).
 - **Activation** : dans `.env`, `COMPOSE_PROFILES=recherche` et
   `LUDIFUN_WEB_SEARCH_URL=http://recherche:8080`. Sans ces réglages, rien ne change.
-- **Étape 24a (faite)** : fondations et outil d'essai. **24b** : usage dans « ❓ Je n'ai pas
-  compris » (un exemple sourcé quand la leçon n'en donne pas) et interrupteur du parent.
-  **24c** : vérification de la lecture d'une photo (une date lue différemment de toutes les
-  sources → « Peux-tu vérifier ? »). **24d** : bibliothèque locale (Vikidia, programmes), sans
-  Internet.
+- **Tri des extraits** : un extrait doit être un vrai paragraphe (8 mots au moins, une phrase
+  terminée : pas de menu ni de métadonnées) ; pour « pourquoi » et « quand », les passages qui
+  donnent une cause ou une date passent devant ; pluriels simples ramenés au singulier.
+- **24a** : fondations et outil d'essai (essai réel le 28/09 : Vikidia et Lumni trouvés).
+- **24b — aide sourcée** : `app/services/sourced_help.py`. Une fois la leçon prête, pour les 3
+  notions les plus importantes sans exemple, une explication tirée des sources, citations
+  vérifiées, est gardée (`knowledge_items.external_help`, migration `0016`) ; « ❓ Je n'ai pas
+  compris » la propose au niveau 3 (`kind: "sourced"`, « 📚 Expliqué autrement », dernière
+  ligne « 📚 En plus de ta leçon — site »), jamais si elle dévoile la réponse, jamais à la place
+  d'un exemple de la leçon. Interrupteur du parent : `families.web_sources` (désactivé),
+  `PUT /v1/parent/ai/sources {"enabled"}`, écran « Intelligence artificielle ».
+- **24c — dates vérifiées** : `app/domain/reading_check.py` (code seul, sans IA). Après
+  l'analyse d'une photo, une année d'une notion importante absente des sources, alors qu'au moins
+  deux sources donnent une année à un chiffre près (1798 / 1789), devient un passage « Peux-tu
+  vérifier ? » ; l'année des sources n'est jamais montrée. Le texte vérifié repart sans nouvelle
+  vérification.
+- **24d — bibliothèque sur le PC** : `library_pages` (migration `0017`), recherche plein texte
+  en français de PostgreSQL. Chaque page lue y est gardée et n'est plus relue ; si le moteur ou
+  Internet ne répond pas, la recherche se fait dans la bibliothèque seule. Remplissage :
+  `python -m app.tools.library depart` (premier lot Vikidia, `app/library/depart.txt`),
+  `ajouter <adresses>` ou `--liste`, `etat`, `chercher "question"`. Les programmes officiels
+  (Éduscol, souvent en PDF) ne sont pas encore lus : pages HTML seulement.
 
 ---
 
@@ -699,7 +716,7 @@ documentation, intégration continue verte.
 | 22 ✅ | **Carte et coloriage** (V2, CDC §110 n° 17) | bibliothèque de 12 figures (IGN, Natural Earth, dessins Ludifun), `GET /v1/figures/{id}`, activités `MAP` et `COLORING` (§5.12), écrans de l'application, correction sur le dessin | une leçon sur les régions donne une carte à la première séance, une classification des planètes un coloriage, chaque figure se lit et se touche dans l'application (tests) |
 | 23 ✅ | **Décisions expliquées** (CDC §112-149) | règles du moteur dans `engine_rules.toml` et leur version ; raison de chaque activité et décision (migration 0014), « Pourquoi ces activités ? » pour le parent ; réussite par niveau, autonomie et faits chiffrés ; repli sur une autre IA de la famille (au choix du parent) ; « Pourquoi cette notion ? » ; 6 leçons de référence (§5.13) | chaque activité d'une séance simulée a sa raison ; une remédiation et une pause apparaissent avec leurs faits ; Ollama en panne → Gemini lit la leçon si le parent l'a permis, sinon l'échec est expliqué (tests) |
 
-| 24 🟡 | **Sources externes** (CDC §116-117) | 24a ✅ recherche sur des sites autorisés (SearXNG), extraits, lecture par l'IA, citations vérifiées, outil d'essai (§5.14) ; 24b aide sourcée et réglage du parent ; 24c vérification de la lecture ; 24d bibliothèque locale | une citation inventée fait écarter la réponse ; une page d'un site non autorisé ou une redirection n'est jamais lue ; une page ne peut pas fermer sa balise (tests) |
+| 24 ✅ | **Sources externes** (CDC §116-117) | recherche sur des sites autorisés (SearXNG), extraits, lecture par l'IA, citations vérifiées, outil d'essai ; aide sourcée dans « Je n'ai pas compris » et réglage du parent ; dates de la photo vérifiées ; bibliothèque sur le PC, sans Internet (§5.14) | une citation inventée fait écarter la réponse ; une page d'un site non autorisé ou une redirection n'est jamais lue ; une notion sans exemple reçoit une explication sourcée au niveau 3 ; « 1789 » contredit par deux sources devient « Peux-tu vérifier ? » ; hors ligne, la bibliothèque répond (tests) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 

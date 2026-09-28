@@ -16,6 +16,8 @@ from typing import TextIO
 
 from app.ai.factory import build_llm
 from app.config import Settings, get_settings
+from app.db.base import Database
+from app.services.library import Library
 from app.services.sourced_answer import SourcedAnswerer
 from app.services.web_sources import SearchUnavailable, WebSources
 
@@ -39,7 +41,8 @@ async def run(
         if not settings.web_search_url:
             print(NOT_ENABLED, file=out)
             return 2
-        sources = WebSources(settings.web_search_url, settings.web_sites)
+        library = Library(Database(settings.database_url))
+        sources = WebSources(settings.web_search_url, settings.web_sites, library=library)
     print(f"Question : {question}\nSites autorisés : {', '.join(sources.sites)}\n", file=out)
     try:
         excerpts = await sources.excerpts(question)

@@ -614,3 +614,18 @@ class AiRun(Base):
         CheckConstraint(_in("status", AI_RUN_STATUSES), name="status"),
         Index(None, "lesson_id"),
     )
+
+
+class LibraryPage(Base):
+    """Bibliothèque sur le PC (étape 24d) : pages de sites éducatifs autorisés déjà lues, pour
+    chercher des sources sans Internet. Contenu public ; aucune donnée d'enfant."""
+
+    __tablename__ = "library_pages"
+
+    url: Mapped[str] = mapped_column(Text, primary_key=True)
+    site: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (Index(None, "site"),)

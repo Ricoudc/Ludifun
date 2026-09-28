@@ -10,10 +10,12 @@ import logging
 
 from app.ai.schemas import OcrResult
 from app.config import Settings
+from app.db.base import Database
 from app.domain.knowledge import LessonAnalysis
 from app.domain.ocr_review import Uncertain
 from app.domain.reading_check import doubtful_years, review_items, years
 from app.services.lesson_pipeline import ReadingCheck
+from app.services.library import Library
 from app.services.web_sources import SearchUnavailable, WebSources
 
 logger = logging.getLogger("ludifun.sources")
@@ -22,9 +24,10 @@ MAX_NOTIONS = 3  # notions datées vérifiées par leçon (les plus importantes)
 PAGES = 3  # pages lues par notion
 
 
-def for_settings(settings: Settings) -> ReadingCheck:
+def for_settings(settings: Settings, database: Database) -> ReadingCheck:
     assert settings.web_search_url is not None
-    return make_reading_check(WebSources(settings.web_search_url, settings.web_sites))
+    library = Library(database)
+    return make_reading_check(WebSources(settings.web_search_url, settings.web_sites, library=library))
 
 
 def make_reading_check(web: WebSources) -> ReadingCheck:
@@ -37,15 +40,11 @@ def make_reading_check(web: WebSources) -> ReadingCheck:
         doubts = []
         for item in dated:
             try:
-                results = await web.search(f"{item.label} {title}".strip(), limit=PAGES)
+                pages = await web.pages(f"{item.label} {title}".strip(), limit=PAGES)
             except SearchUnavailable as exc:
                 logger.info("Vérification des dates impossible : %s", exc)
                 return []
-            texts = []
-            for result in results:
-                page = await web.fetch(result.url)
-                if page is not None and page[1]:
-                    texts.append(page[1])
+            texts = [text for _, _, text in pages]
             doubts += doubtful_years(years(f"{item.label} {item.statement}"), texts)
         unique = list({d.read: d for d in doubts}.values())
         found = review_items(unique, [(p.index, p.text) for p in ocr.pages])

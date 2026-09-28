@@ -14,6 +14,7 @@ from html.parser import HTMLParser
 import httpx
 
 from app.domain.sources import DEFAULT_SITES, EXCERPT_CHARS, Excerpt, allowed, best_excerpts
+from app.services.library import Library
 
 logger = logging.getLogger("ludifun.sources")
 
@@ -89,9 +90,11 @@ class WebSources:
         search_url: str,
         sites: Sequence[str] = DEFAULT_SITES,
         client: httpx.AsyncClient | None = None,
+        library: Library | None = None,
     ) -> None:
         self.search_url = search_url.rstrip("/")
         self.sites = tuple(sites)
+        self.library = library  # étape 24d : pages déjà lues, et recherche sans Internet
         self._client = client or httpx.AsyncClient(
             timeout=TIMEOUT_S, headers={"User-Agent": USER_AGENT}, follow_redirects=False
         )
@@ -154,12 +157,32 @@ class WebSources:
             return None
         return page_text(body.decode(encoding, errors="replace"))
 
+    async def pages(self, question: str, limit: int = MAX_PAGES) -> list[tuple[str, str, str]]:
+        """(adresse, titre, texte) des pages trouvées. Avec une bibliothèque : chaque page lue y
+        est gardée, une page déjà gardée n'est pas relue, et si le moteur ou Internet ne répond
+        pas, la recherche se fait dans la bibliothèque seule."""
+        found: dict[str, tuple[str, str, str]] = {}
+        try:
+            results = await self.search(question, limit)
+        except SearchUnavailable:
+            if self.library is None:
+                raise
+            logger.info("Moteur de recherche injoignable : bibliothèque du PC seulement")
+            results = []
+        for result in results:
+            read = await self.library.get(result.url) if self.library is not None else None
+            if read is None:
+                read = await self.fetch(result.url)
+                if read is not None and read[1] and self.library is not None:
+                    await self.library.save(result.url, read[0] or result.title, read[1])
+            if read is not None and read[1]:
+                found[result.url] = (result.url, read[0] or result.title, read[1])
+        if self.library is not None and len(found) < limit:
+            for url, title, text in await self.library.search(question, limit):
+                if allowed(url, self.sites):
+                    found.setdefault(url, (url, title, text))
+        return list(found.values())[:limit]
+
     async def excerpts(self, question: str, count: int = 3, max_chars: int = EXCERPT_CHARS) -> list[Excerpt]:
         """Les meilleurs extraits des pages trouvées, numérotés à partir de 1."""
-        pages: list[tuple[str, str, str]] = []
-        for result in await self.search(question):
-            read = await self.fetch(result.url)
-            if read is not None and read[1]:
-                title, text = read
-                pages.append((result.url, title or result.title, text))
-        return best_excerpts(question, pages, count, max_chars)
+        return best_excerpts(question, await self.pages(question), count, max_chars)

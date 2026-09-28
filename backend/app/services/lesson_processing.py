@@ -41,7 +41,7 @@ async def process_lesson(
     if pages:  # une photo : ses dates peuvent être comparées à des sources (étape 24c)
         async with database.sessionmaker() as session:
             if await sourced_help.web_sources_allowed(session, settings, lesson_id):
-                check = reading_check.for_settings(settings)
+                check = reading_check.for_settings(settings, database)
     pipeline = LessonPipeline(
         ocr,
         llm,

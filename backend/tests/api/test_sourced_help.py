@@ -36,8 +36,9 @@ def search_engine(app: FastAPI, monkeypatch: pytest.MonkeyPatch) -> None:
     settings: Settings = app.state.settings
     app.state.settings = settings.model_copy(update={"web_search_url": SEARX})
 
-    def fake_web(url: str, sites: Any) -> WebSources:
-        return WebSources(url, sites, client=httpx.AsyncClient(transport=httpx.MockTransport(internet)))
+    def fake_web(url: str, sites: Any, library: Any = None) -> WebSources:
+        client = httpx.AsyncClient(transport=httpx.MockTransport(internet))
+        return WebSources(url, sites, client=client, library=library)
 
     monkeypatch.setattr(sourced_help, "WebSources", fake_web)
 

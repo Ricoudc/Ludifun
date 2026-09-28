@@ -18,6 +18,7 @@ from app.db import models as db
 from app.db.base import Database
 from app.domain.sources import SourcedAnswer
 from app.services.lesson_store import load_units
+from app.services.library import Library
 from app.services.sourced_answer import SourcedAnswerer
 from app.services.web_sources import SearchUnavailable, WebSources
 
@@ -71,7 +72,7 @@ async def prepare(
         if not without_example:
             return 0
         assert settings.web_search_url is not None
-        web = web or WebSources(settings.web_search_url, settings.web_sites)
+        web = web or WebSources(settings.web_search_url, settings.web_sites, library=Library(database))
         answerer = SourcedAnswerer(llm)
         grade = lesson.grade or "CM1"
         helped = 0

@@ -135,8 +135,19 @@ def allowed(url: str, sites: Iterable[str]) -> bool:
     return any(host == site or host.endswith("." + site) for site in sites)
 
 
+def search_words(text: str) -> list[str]:
+    """Les mots utiles d'une question, accents gardés (pour la recherche plein texte)."""
+    words = re.findall(r"[a-zà-öø-ÿ0-9]+", text.lower())
+    return sorted({w for w in words if len(w) > 1 and normalize(w) not in _STOP})
+
+
+def _singular(word: str) -> str:
+    """Pluriel simple ramené au singulier (« éruptions » → « éruption »), pour comparer les mots."""
+    return word[:-1] if len(word) > 4 and word[-1] in "sx" else word
+
+
 def keywords(text: str) -> set[str]:
-    return {w for w in _WORD.findall(normalize(text)) if w not in _STOP and len(w) > 1}
+    return {_singular(w) for w in _WORD.findall(normalize(text)) if w not in _STOP and len(w) > 1}
 
 
 def passages(text: str, max_chars: int = EXCERPT_CHARS) -> list[str]:
