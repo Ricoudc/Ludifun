@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
+import 'package:ludifun/features/session/activities/common.dart';
 import 'package:ludifun/features/session/correction_view.dart';
 import 'package:ludifun/models/session.dart';
 
@@ -10,7 +11,12 @@ void main() {
   late List<Map<String, Object?>> sent;
   setUp(() => sent = []);
 
-  Future<void> show(WidgetTester tester, String type, Map<String, Object?> payload) async {
+  Future<void> show(
+    WidgetTester tester,
+    String type,
+    Map<String, Object?> payload, {
+    String? instruction,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
@@ -20,7 +26,10 @@ void main() {
         home: Scaffold(
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: activityRegistry[type]!(payload, sent.add),
+            child: ActivityInstruction(
+              text: instruction,
+              child: activityRegistry[type]!(payload, sent.add),
+            ),
           ),
         ),
       ),
@@ -50,6 +59,34 @@ void main() {
       {'value': false},
     ]);
   });
+
+  testWidgets(
+    'étape 25 : la consigne du serveur, au niveau de la classe, remplace la consigne par défaut',
+    (tester) async {
+      await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
+      expect(find.text('Vrai ou faux ?'), findsOneWidget);
+      await show(tester, 'TRUE_FALSE', {
+        'statement': 'La Bastille est prise en 1789.',
+      }, instruction: 'Lis la phrase. Est-ce vrai ou faux ?');
+      expect(find.text('Lis la phrase. Est-ce vrai ou faux ?'), findsOneWidget);
+      expect(find.text('Vrai ou faux ?'), findsNothing);
+      await show(tester, 'FILL_BLANK', {
+        'text': 'La ___ est prise en 1789.',
+      }, instruction: 'Il manque un mot. Écris-le.');
+      expect(find.text('Il manque un mot. Écris-le.'), findsOneWidget);
+
+      Map<String, Object?> item([String? instruction]) => {
+        'id': 'i1',
+        'position': 1,
+        'block': 'core',
+        'type': 'TRUE_FALSE',
+        'payload': <String, Object?>{},
+        'instruction': ?instruction,
+      };
+      expect(SessionItem.fromJson(item('Lis la phrase.')).instruction, 'Lis la phrase.');
+      expect(SessionItem.fromJson(item()).instruction, isNull); // serveur plus ancien
+    },
+  );
 
   testWidgets('texte à trou : la réponse s\'écrit dans la phrase', (tester) async {
     await show(tester, 'FILL_BLANK', {

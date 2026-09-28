@@ -65,7 +65,7 @@ class _ColoringViewState extends State<ColoringView> {
         Prompt(widget.payload['prompt'] as String, label: '🎨 Coloriage'),
         const SizedBox(height: 8),
         Text(
-          '$_count zones à colorier. Choisis une couleur, puis touche le dessin.',
+          '$_count zones à colorier. ${ActivityInstruction.of(context) ?? 'Choisis une couleur, puis touche le dessin.'}',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 12),

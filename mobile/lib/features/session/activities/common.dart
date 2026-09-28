@@ -2,6 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 
+/// Comment jouer, dit au niveau de la classe de l'enfant (envoyé par le serveur, étape 25).
+/// Absent (serveur plus ancien) : chaque jeu garde sa consigne habituelle.
+class ActivityInstruction extends InheritedWidget {
+  const ActivityInstruction({required this.text, required super.child, super.key});
+
+  final String? text;
+
+  static String? of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ActivityInstruction>()?.text;
+
+  @override
+  bool updateShouldNotify(ActivityInstruction oldWidget) => oldWidget.text != text;
+}
+
 /// Consigne ou question, en grand.
 class Prompt extends StatelessWidget {
   const Prompt(this.text, {this.label, super.key});

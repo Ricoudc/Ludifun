@@ -43,7 +43,14 @@ def describe(decision: Reason | None) -> str | None:
     if not decision:
         return None
     f: dict[str, Any] = decision.get("facts", {})
-    match decision.get("rule"):
+    text = _sentence(decision.get("rule"), f)
+    if text is not None and f.get("visual_first"):
+        text += " Jeu visuel proposé avant un quiz."
+    return text
+
+
+def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
+    match rule:
         case Rule.FIRST_SESSION:
             return (
                 f"Première séance : notion d'importance {f.get('importance')}/5, "

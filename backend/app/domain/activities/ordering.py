@@ -9,6 +9,7 @@ from typing import Any
 from pydantic import Field
 
 from app.domain.activities.base import (
+    ALL_TYPES,
     ActivityCode,
     ActivityType,
     BuiltActivity,
@@ -96,16 +97,26 @@ def grade_order(activity: BuiltActivity, response: dict[str, Any]) -> tuple[list
 
 
 class Order(ActivityType):
-    """Remets dans l'ordre les étapes d'un processus (« Les étapes de la digestion »)."""
+    """Remets dans l'ordre les étapes d'un processus (« Les étapes de la digestion »), ou les
+    éléments que l'IA a proposé d'ordonner pour une autre notion (« du plus petit au plus
+    grand », étape 25)."""
 
     code = ActivityCode.ORDER
-    knowledge_types = frozenset({KnowledgeType.PROCESS})
+    knowledge_types = ALL_TYPES
     difficulties = frozenset({2})
     base_duration_s = 45
 
     def _steps(self, unit: KnowledgeUnit) -> list[str]:
-        steps = ProcessAttributes.model_validate(unit.item.attributes).steps
-        return steps[:MAX_STEPS]
+        if unit.type == KnowledgeType.PROCESS:
+            return ProcessAttributes.model_validate(unit.item.attributes).steps[:MAX_STEPS]
+        if unit.material.sequence is not None:
+            return unit.material.sequence.items[:MAX_STEPS]
+        return []
+
+    def _prompt(self, unit: KnowledgeUnit) -> str:
+        if unit.type != KnowledgeType.PROCESS and unit.material.sequence is not None:
+            return unit.material.sequence.prompt
+        return f"Remets dans l'ordre : {unit.item.label}"
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
         steps = self._steps(unit)
@@ -119,7 +130,7 @@ class Order(ActivityType):
         ids = [f"s{i}" for i in range(1, len(steps) + 1)]
         texts = dict(zip(ids, steps, strict=True))
         payload = {
-            "prompt": f"Remets dans l'ordre : {unit.item.label}",
+            "prompt": self._prompt(unit),
             "items": [{"id": i, "text": texts[i]} for i in _shuffled(ids, rng)],
         }
         solution = {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../models/account.dart';
 import 'activity_registry.dart';
+import 'common.dart';
 
 const blank = '___';
 
@@ -48,7 +49,7 @@ class _FillBlankViewState extends State<FillBlankView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Complète la phrase',
+          ActivityInstruction.of(context) ?? 'Complète la phrase',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
         ),
         const SizedBox(height: 8),

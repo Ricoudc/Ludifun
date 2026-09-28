@@ -37,7 +37,10 @@ class _OpenQuestionViewState extends State<OpenQuestionView> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Prompt(widget.payload['prompt'] as String, label: 'Réponds avec tes mots'),
+      Prompt(
+        widget.payload['prompt'] as String,
+        label: ActivityInstruction.of(context) ?? 'Réponds avec tes mots',
+      ),
       const SizedBox(height: 20),
       TextField(
         controller: _answer,

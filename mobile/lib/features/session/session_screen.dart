@@ -9,6 +9,7 @@ import '../../core/session.dart';
 import '../home/home_providers.dart';
 import '../report/report_view.dart';
 import 'activities/activity_registry.dart';
+import 'activities/common.dart';
 import 'correction_view.dart';
 import 'help_sheet.dart';
 import 'session_controller.dart';
@@ -129,7 +130,10 @@ class SessionScreen extends ConsumerWidget {
                     absorbing: state.phase == Phase.submitting,
                     child: KeyedSubtree(
                       key: ValueKey(item.id),
-                      child: activityRegistry[item.type]!(item.payload, controller.submit),
+                      child: ActivityInstruction(
+                        text: item.instruction,
+                        child: activityRegistry[item.type]!(item.payload, controller.submit),
+                      ),
                     ),
                   ),
                   if (item.helpAvailable && state.phase == Phase.question) ...[

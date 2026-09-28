@@ -40,6 +40,7 @@ class SessionItem {
     this.result,
     this.helpAvailable = false,
     this.intro,
+    this.instruction,
   });
 
   factory SessionItem.fromJson(Json json) => SessionItem(
@@ -48,6 +49,7 @@ class SessionItem {
     position: json['position'] as int,
     block: Block.parse(json['block'] as String),
     intro: json['intro'] as String?,
+    instruction: json['instruction'] as String?,
     type: json['type'] as String,
     difficulty: json['difficulty'] as int? ?? 1,
     payload: json['payload'] as Json,
@@ -74,6 +76,9 @@ class SessionItem {
 
   /// Rappel de la règle, affiché avant l'activité (remédiation).
   final String? intro;
+
+  /// Comment jouer, au niveau de la classe de l'enfant (étape 25) ; null avec un serveur ancien.
+  final String? instruction;
 
   bool get answered => result != null;
 

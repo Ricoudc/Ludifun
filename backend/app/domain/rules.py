@@ -28,6 +28,9 @@ class SessionRules(_Section):
     level_up_score: int = Field(ge=0, le=100)
     deepen_score: int = Field(ge=0, le=100)
     missing_level_score: int = Field(ge=0, le=100)
+    # Étape 25 : dans l'approfondissement, les jeux visuels (ranger, remettre dans l'ordre,
+    # colorier) passent avant les autres formats quand la notion le permet.
+    visual_first: bool = False
 
 
 class MasteryRules(_Section):

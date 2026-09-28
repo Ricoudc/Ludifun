@@ -29,7 +29,10 @@ class _TrueFalseViewState extends State<TrueFalseView> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Prompt(widget.payload['statement'] as String, label: 'Vrai ou faux ?'),
+      Prompt(
+        widget.payload['statement'] as String,
+        label: ActivityInstruction.of(context) ?? 'Vrai ou faux ?',
+      ),
       const SizedBox(height: 32),
       Row(
         children: [

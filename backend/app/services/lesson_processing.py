@@ -5,12 +5,12 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 from app.ai.ports import LLMProvider, OcrProvider, PageImage
 from app.config import Settings
 from app.db.base import Database
-from app.db.models import Lesson
+from app.db.models import Child, Lesson
 from app.domain.activities.registry import ActivityRegistry
 from app.services import reading_check, sourced_help
 from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
@@ -37,6 +37,10 @@ async def process_lesson(
             await session.execute(update(Lesson).where(Lesson.id == lesson_id).values(status=status.value))
             await session.commit()
 
+    async with database.sessionmaker() as session:
+        pupil_grade = await session.scalar(
+            select(Child.grade).join(Lesson, Lesson.child_id == Child.id).where(Lesson.id == lesson_id)
+        )
     check = None
     if pages:  # une photo : ses dates peuvent être comparées à des sources (étape 24c)
         async with database.sessionmaker() as session:
@@ -50,6 +54,7 @@ async def process_lesson(
         on_status=on_status,
         on_call=lambda stage, model: LIVE.track(lesson_id, stage, model),
         reading_check=check,
+        pupil_grade=pupil_grade,
     )
     try:
         result = await pipeline.run(pages, text)

@@ -283,6 +283,25 @@ class OpenQuestion(_Model):
     model_answer: NonEmpty
 
 
+class SortingBox(_Model):
+    name: NonEmpty
+    members: list[NonEmpty] = Field(min_length=2)
+
+
+class Sorting(_Model):
+    """Jeu de tri proposé par l'IA pour n'importe quelle notion (« Nom ou verbe ? ») : étape 25."""
+
+    prompt: NonEmpty
+    categories: list[SortingBox] = Field(min_length=2)
+
+
+class Sequence(_Model):
+    """Éléments à remettre dans l'ordre (« du plus petit au plus grand ») : étape 25."""
+
+    prompt: NonEmpty
+    items: list[NonEmpty] = Field(min_length=3)
+
+
 class KnowledgeMaterial(_Model):
     """Matériel validé : chaque élément présent a passé les contrôles de §6.4."""
 
@@ -297,6 +316,8 @@ class KnowledgeMaterial(_Model):
     explanation: NonEmpty
     help: HelpLadder | None = None
     open_questions: list[OpenQuestion] = Field(default_factory=list)
+    sorting: Sorting | None = None
+    sequence: Sequence | None = None
 
     def questions_of(self, difficulty: int) -> list[MaterialQuestion]:
         return [q for q in self.questions if q.difficulty == difficulty]

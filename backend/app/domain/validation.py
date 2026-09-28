@@ -23,7 +23,9 @@ from app.domain.knowledge import (
     MaterialQuestion,
     OpenQuestion,
     Pair,
+    Sequence,
     Skill,
+    Sorting,
     WorkedExample,
 )
 from app.domain.text import compatible_natures, contains_words, fuzzy_contains, normalize
@@ -31,6 +33,9 @@ from app.domain.text import compatible_natures, contains_words, fuzzy_contains, 
 TIP_MAX_LENGTH = 120
 HELP_TEXT_MAX_LENGTH = 300
 OPEN_QUESTIONS_MAX = 2
+SORTING_BOXES = (2, 3)  # cases du jeu de tri
+SORTING_MEMBERS = (2, 4)  # éléments par case
+SEQUENCE_ITEMS = (3, 6)  # éléments à remettre dans l'ordre
 BLANK = "___"
 
 
@@ -318,6 +323,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         except ValidationError as exc:
             rejected.append(Rejection(f"open_questions[{i}]", _first_error(exc)))
 
+    sorting = _check_sorting(raw.get("sorting"), rejected)
+    sequence = _check_sequence(raw.get("sequence"), rejected)
+
     material = KnowledgeMaterial(
         knowledge_id=item.id,
         questions=questions,
@@ -330,8 +338,55 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         explanation=explanation.strip(),
         help=help_ladder,
         open_questions=open_questions[:OPEN_QUESTIONS_MAX],
+        sorting=sorting,
+        sequence=sequence,
     )
     return MaterialValidation(material, rejected)
+
+
+def _check_sorting(raw: Any, rejected: list[Rejection]) -> Sorting | None:
+    """Jeu de tri : 2 ou 3 cases de 2 à 4 éléments, chaque élément dans une seule case."""
+    if raw is None:
+        return None
+    try:
+        sorting = Sorting.model_validate(raw)
+    except ValidationError as exc:
+        rejected.append(Rejection("sorting", _first_error(exc)))
+        return None
+    boxes = sorting.categories
+    members = [normalize(m) for box in boxes for m in box.members]
+    names = {normalize(box.name) for box in boxes}
+    reason = (
+        "il faut 2 ou 3 cases"
+        if not SORTING_BOXES[0] <= len(boxes) <= SORTING_BOXES[1]
+        else "il faut 2 à 4 éléments par case"
+        if any(not SORTING_MEMBERS[0] <= len(box.members) <= SORTING_MEMBERS[1] for box in boxes)
+        else "un élément est dans deux cases, ou deux cases ont le même nom"
+        if len(set(members)) != len(members) or len(names) != len(boxes)
+        else "un élément porte le nom d'une case (la réponse serait donnée)"
+        if names & set(members)
+        else None
+    )
+    if reason:
+        rejected.append(Rejection("sorting", reason))
+        return None
+    return sorting
+
+
+def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
+    """Éléments à remettre dans l'ordre : 3 à 6, tous différents."""
+    if raw is None:
+        return None
+    try:
+        sequence = Sequence.model_validate(raw)
+    except ValidationError as exc:
+        rejected.append(Rejection("sequence", _first_error(exc)))
+        return None
+    items = [normalize(i) for i in sequence.items]
+    if not SEQUENCE_ITEMS[0] <= len(items) <= SEQUENCE_ITEMS[1] or len(set(items)) != len(items):
+        rejected.append(Rejection("sequence", "il faut 3 à 6 éléments, tous différents"))
+        return None
+    return sequence
 
 
 def _check_help(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) -> HelpLadder | None:

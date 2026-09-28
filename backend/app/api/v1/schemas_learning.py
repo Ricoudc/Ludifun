@@ -150,6 +150,9 @@ class SessionItemOut(BaseModel):
     help_available: bool = Field(True, description="Bouton « Je n'ai pas compris » proposé.")
     help_level: int = Field(0, description="Aide déjà demandée pour cette activité (0 à 5).")
     intro: str | None = Field(None, description="À afficher avant l'activité (rappel de la règle).")
+    instruction: str | None = Field(
+        None, description="Comment jouer, dit au niveau de la classe de l'enfant (étape 25)."
+    )
 
 
 class SessionOut(BaseModel):

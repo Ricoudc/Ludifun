@@ -30,6 +30,7 @@ from app.ai.ports import (
     Stage,
 )
 from app.ai.schemas import AnalysisOutput, MaterialBatchOutput, OcrPage, OcrResult
+from app.domain import instructions
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit, LessonAnalysis
 from app.domain.ocr_review import Uncertain, select_uncertain
@@ -133,6 +134,7 @@ class LessonPipeline:
         on_status: StatusCallback | None = None,
         on_call: CallTracker | None = None,
         reading_check: ReadingCheck | None = None,
+        pupil_grade: str | None = None,
     ) -> None:
         self.ocr = ocr
         self.llm = llm
@@ -142,6 +144,7 @@ class LessonPipeline:
         self.on_call = on_call
         # Étape 24c : dates de la photo comparées à des sources (si le parent l'a permis).
         self.reading_check = reading_check
+        self.pupil_grade = pupil_grade  # classe de l'enfant : les questions sont écrites pour elle
         self.analysis_prompt = Prompt.load("analysis")
         self.material_prompt = Prompt.load("material")
 
@@ -311,7 +314,7 @@ class LessonPipeline:
                 self.llm.model_for("material"),
                 lambda: self.llm.structured(
                     prompt=self.material_prompt,
-                    input=_material_input(analysis, text, items, feedback),
+                    input=_material_input(analysis, text, items, feedback, self.pupil_grade),
                     schema=MaterialBatchOutput,
                 ),
             )
@@ -406,9 +409,11 @@ def _material_input(
     text: str,
     items: list[KnowledgeItem],
     feedback: dict[str, list[Rejection]] | None,
+    pupil_grade: str | None = None,
 ) -> str:
     lesson = analysis.lesson
     assert lesson is not None
+    grade = pupil_grade or lesson.grade
     notions = [
         {
             "id": i.id,
@@ -421,7 +426,8 @@ def _material_input(
         for i in items
     ]
     parts = [
-        f"Matière : {lesson.subject} · niveau : {lesson.grade} · leçon : {lesson.title}",
+        f"Matière : {lesson.subject} · niveau : {grade} · leçon : {lesson.title}",
+        f"Écriture : {instructions.writing_rules(grade)}",
         f"<lecon>\n{text}\n</lecon>",
         f"<notions>\n{json.dumps({'notions': notions}, ensure_ascii=False, indent=1)}\n</notions>",
     ]

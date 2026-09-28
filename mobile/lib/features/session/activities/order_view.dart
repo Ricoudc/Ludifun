@@ -54,8 +54,9 @@ class _OrderViewState extends State<OrderView> {
         const SizedBox(height: 8),
         Text(
           widget.timeline
-              ? 'Touche les événements du plus ancien au plus récent.'
-              : 'Touche les étiquettes dans l\'ordre.',
+              ? ActivityInstruction.of(context) ??
+                    'Touche les événements du plus ancien au plus récent.'
+              : ActivityInstruction.of(context) ?? 'Touche les étiquettes dans l\'ordre.',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 16),

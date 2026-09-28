@@ -213,6 +213,21 @@ class OpenQuestionOut(BaseModel):
     model_answer: str = Field(description="Une réponse modèle, au niveau de l'enfant.")
 
 
+class SortingBoxOut(BaseModel):
+    name: str
+    members: list[str] = Field(description="2 à 4 éléments, chacun dans une seule case.")
+
+
+class SortingOut(BaseModel):
+    prompt: str = Field(description="La consigne du jeu de tri.")
+    categories: list[SortingBoxOut] = Field(description="2 ou 3 cases.")
+
+
+class SequenceOut(BaseModel):
+    prompt: str = Field(description="La consigne (« Range du plus petit au plus grand »).")
+    items: list[str] = Field(description="3 à 6 éléments, dans le bon ordre.")
+
+
 class MaterialOut(BaseModel):
     knowledge_id: str
     questions: list[QuestionOut]
@@ -225,6 +240,8 @@ class MaterialOut(BaseModel):
     explanation: str = Field(description="Explication courte et bienveillante.")
     help: HelpOut | None
     open_questions: list[OpenQuestionOut] = Field(description="0 à 2 questions ouvertes.")
+    sorting: SortingOut | None = Field(None, description="Jeu de tri (étape 25), sinon null.")
+    sequence: SequenceOut | None = Field(None, description="Éléments à remettre dans l'ordre, sinon null.")
 
 
 class MaterialBatchOutput(BaseModel):

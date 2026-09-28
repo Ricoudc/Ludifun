@@ -1,0 +1,130 @@
+"""Consignes adaptées à la classe de l'enfant (étape 25).
+
+Trois registres, un par cycle : cycle 2 (CP, CE1, CE2) des phrases très courtes et concrètes, à
+lire seul ; cycle 3 (CM1, CM2, 6e) un peu plus de précision ; cycle 4 (5e, 4e, 3e) un ton plus
+scolaire. La consigne dit comment jouer ; la question, elle, vient du matériel de la leçon.
+
+Les règles d'écriture (`writing_rules`) sont données à l'IA qui prépare le matériel : elle écrit
+les questions au niveau de l'enfant. Le code, lui, ne dépend pas de ce qu'elle en fait.
+"""
+
+from app.domain.activities.base import ActivityCode
+from app.domain.knowledge import Grade
+
+CYCLES: dict[Grade, int] = {
+    Grade.CP: 2,
+    Grade.CE1: 2,
+    Grade.CE2: 2,
+    Grade.CM1: 3,
+    Grade.CM2: 3,
+    Grade.SIXIEME: 3,
+    Grade.CINQUIEME: 4,
+    Grade.QUATRIEME: 4,
+    Grade.TROISIEME: 4,
+}
+
+# Pour chaque jeu : consigne du cycle 2, du cycle 3, du cycle 4.
+_TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
+    ActivityCode.MCQ: (
+        "Lis la question. Touche la bonne réponse.",
+        "Lis la question, puis choisis la bonne réponse parmi les quatre.",
+        "Choisis la réponse exacte parmi les quatre propositions.",
+    ),
+    ActivityCode.TRUE_FALSE: (
+        "Lis la phrase. Est-ce vrai ou faux ?",
+        "Lis la phrase et dis si elle est vraie ou fausse.",
+        "Indique si l'affirmation est vraie ou fausse.",
+    ),
+    ActivityCode.FILL_BLANK: (
+        "Il manque un mot. Écris-le.",
+        "Écris le mot qui manque dans la phrase.",
+        "Complète la phrase avec le terme exact.",
+    ),
+    ActivityCode.MATCH: (
+        "Touche un mot, puis touche ce qui va avec.",
+        "Relie chaque élément de gauche à celui qui lui correspond à droite.",
+        "Associe chaque élément à sa correspondance.",
+    ),
+    ActivityCode.SPEED_CHALLENGE: (
+        "Vite ! Vrai ou faux ?",
+        "Réponds vrai ou faux le plus vite possible.",
+        "Vrai ou faux : réponds avant la fin du temps.",
+    ),
+    ActivityCode.FLASHCARD: (
+        "Lis la carte. Tu sais ? Retourne-la pour voir.",
+        "Essaie de te souvenir de la réponse, puis retourne la carte pour vérifier.",
+        "Récite la réponse de mémoire, puis retourne la carte et sois honnête.",
+    ),
+    ActivityCode.OPEN_QUESTION: (
+        "Réponds avec tes mots. Une phrase suffit.",
+        "Réponds en une ou deux phrases, avec tes mots.",
+        "Rédige une réponse courte et précise, en une ou deux phrases.",
+    ),
+    ActivityCode.ORDER: (
+        "Touche les étiquettes dans le bon ordre.",
+        "Touche les étiquettes dans l'ordre, de la première à la dernière.",
+        "Remets les éléments dans l'ordre en touchant les étiquettes.",
+    ),
+    ActivityCode.TIMELINE: (
+        "Touche d'abord ce qui s'est passé en premier.",
+        "Place les événements du plus ancien au plus récent.",
+        "Classe les événements dans l'ordre chronologique.",
+    ),
+    ActivityCode.CLASSIFY: (
+        "Touche un mot, puis touche sa case.",
+        "Touche une étiquette, puis la case où elle va.",
+        "Range chaque élément dans la bonne catégorie.",
+    ),
+    ActivityCode.MEMORY: (
+        "Retourne deux cartes. Trouve celles qui vont ensemble.",
+        "Retourne les cartes deux par deux pour retrouver les paires.",
+        "Retrouve les paires en retournant le moins de cartes possible.",
+    ),
+    ActivityCode.MAP: (
+        "Touche sur le dessin le nom demandé.",
+        "Touche sur le dessin l'endroit de chaque nom demandé.",
+        "Situe chaque élément demandé sur le document.",
+    ),
+    ActivityCode.COLORING: (
+        "Choisis une couleur. Puis touche le dessin.",
+        "Choisis une couleur de la légende, puis touche les zones à colorier.",
+        "Colorie chaque zone selon la légende.",
+    ),
+}
+
+_WRITING: dict[int, str] = {
+    2: (
+        "Élève de cycle 2 (CP à CE2), qui apprend à lire : phrases de 12 mots au plus, "
+        "mots simples et concrets, une seule idée par phrase, pas de négation dans les "
+        "questions, pas de mot savant sans l'expliquer."
+    ),
+    3: (
+        "Élève de cycle 3 (CM1 à 6e) : phrases de 20 mots au plus, vocabulaire de la leçon, "
+        "une seule question à la fois, pas de double négation."
+    ),
+    4: (
+        "Élève de cycle 4 (5e à 3e) : phrases claires et précises, vocabulaire disciplinaire "
+        "de la leçon, pas de tournure ambiguë."
+    ),
+}
+
+
+def cycle(grade: str | None) -> int:
+    """Cycle de la classe ; cycle 3 si la classe est inconnue."""
+    try:
+        return CYCLES[Grade(grade)] if grade else 3
+    except ValueError:
+        return 3
+
+
+def instruction(code: str, grade: str | None) -> str | None:
+    """Comment jouer, dit au niveau de l'enfant ; None pour un jeu inconnu."""
+    try:
+        texts = _TEXTS[ActivityCode(code)]
+    except (ValueError, KeyError):
+        return None
+    return texts[cycle(grade) - 2]
+
+
+def writing_rules(grade: str | None) -> str:
+    return _WRITING[cycle(grade)]

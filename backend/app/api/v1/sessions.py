@@ -26,6 +26,7 @@ from app.api.v1.schemas_learning import (
     SessionOut,
 )
 from app.db.models import Attempt, Child, RevisionSession, SessionItem
+from app.domain import instructions
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, NothingToReview
@@ -53,8 +54,9 @@ def attempt_summary(attempt: Attempt | None) -> AttemptSummary | None:
     )
 
 
-def item_out(item: SessionItem, attempt: Attempt | None = None) -> SessionItemOut:
+def item_out(item: SessionItem, attempt: Attempt | None = None, grade: str | None = None) -> SessionItemOut:
     return SessionItemOut(
+        instruction=instructions.instruction(item.activity_type, grade),
         help_available=item.activity_type not in MULTI_KNOWLEDGE,
         help_level=item.help_level,
         intro=item.intro,
@@ -72,6 +74,8 @@ def item_out(item: SessionItem, attempt: Attempt | None = None) -> SessionItemOu
 async def session_out(db: DbSession, revision: RevisionSession) -> SessionOut:
     items = await learning.session_items(db, revision)
     attempts = await learning.attempts_by_item(db, revision)
+    child = await db.get(Child, revision.child_id)
+    grade = child.grade if child is not None else None
     blocks = {i.block for i in items}
     return SessionOut(
         id=revision.id,
@@ -81,7 +85,7 @@ async def session_out(db: DbSession, revision: RevisionSession) -> SessionOut:
         objective=revision.objective,
         estimated_duration_min=max(1, -(-revision.estimated_duration_s // 60)),
         express=revision.kind == "review" and Block.CORE not in blocks,
-        items=[item_out(i, attempts.get(i.id)) for i in items],
+        items=[item_out(i, attempts.get(i.id), grade) for i in items],
         score_on_10=float(revision.score_on_10) if revision.score_on_10 is not None else None,
     )
 
@@ -207,7 +211,7 @@ async def submit_attempt(
         tip=grade.tip,
         explanation=grade.explanation,
         details=grade.details,
-        inserted_items=[item_out(i) for i in adaptation.inserted],
+        inserted_items=[item_out(i, grade=child.grade) for i in adaptation.inserted],
         engagement_hint=hint,
     )
 
@@ -254,7 +258,7 @@ async def replay(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
     offer = not items and await learning.bonus_offer(db, revision)
     await db.commit()
     attempts = await learning.attempts_by_item(db, revision)
-    return ReplayOut(items=[item_out(i, attempts.get(i.id)) for i in items], bonus_offer=offer)
+    return ReplayOut(items=[item_out(i, attempts.get(i.id), child.grade) for i in items], bonus_offer=offer)
 
 
 @router.post("/sessions/{session_id}/extend")
@@ -269,7 +273,7 @@ async def extend(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
         raise ApiError(409, "session_not_finished", "Termine d'abord les activités de la séance.") from exc
     await db.commit()
     attempts = await learning.attempts_by_item(db, revision)
-    return ReplayOut(items=[item_out(i, attempts.get(i.id)) for i in items])
+    return ReplayOut(items=[item_out(i, attempts.get(i.id), child.grade) for i in items])
 
 
 @router.post("/sessions/{session_id}/complete")

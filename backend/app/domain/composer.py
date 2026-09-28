@@ -37,6 +37,7 @@ EXPRESS_BELOW = RULES.session.express_below
 LEVEL_UP_SCORE = RULES.session.level_up_score
 DEEPEN_SCORE = RULES.session.deepen_score
 MISSING_LEVEL_SCORE = RULES.session.missing_level_score
+VISUAL_FIRST = RULES.session.visual_first
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 
 TRANSITION_S = 5
@@ -47,6 +48,8 @@ EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
+# Jeux visuels, plus agréables à faire et à voir qu'un quiz : proposés d'abord (étape 25).
+VISUAL = frozenset({ActivityCode.ORDER, ActivityCode.CLASSIFY, ActivityCode.COLORING})
 INTERMEDIATE = frozenset(
     {
         ActivityCode.FILL_BLANK,
@@ -207,7 +210,7 @@ class SessionComposer:
 
         by_id = {u.id: u for u in units}
         planned = [
-            PlannedItem(i, block, a, self._reason(a, block, first, by_id, masteries, now))
+            PlannedItem(i, block, a, _visual(a, self._reason(a, block, first, by_id, masteries, now)))
             for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
         ]
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
@@ -495,6 +498,8 @@ class SessionComposer:
                     and (code in allowed if allowed is not None else code not in ON_REQUEST)
                 )
                 rng.shuffle(codes)
+                if VISUAL_FIRST:
+                    codes.sort(key=lambda code: code not in VISUAL)
                 result += [(code, difficulty) for code in codes if (code, difficulty) not in result]
         return result
 
@@ -543,6 +548,13 @@ class SessionComposer:
             self.registry.get(a.type).base_duration_s + TRANSITION_S + CORRECTION_S for a in activities
         )
         return math.ceil(seconds + (REPLAY_PROVISION_S if with_replay else 0))
+
+
+def _visual(activity: BuiltActivity, why: Reason) -> Reason:
+    """Un jeu visuel choisi avant les autres formats le dit (règle `visual_first`, étape 25)."""
+    if VISUAL_FIRST and activity.type in VISUAL:
+        why["facts"]["visual_first"] = True
+    return why
 
 
 def _eligible(units: Sequence[KnowledgeUnit]) -> list[KnowledgeUnit]:

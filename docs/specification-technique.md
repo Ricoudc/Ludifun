@@ -565,6 +565,28 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   `ajouter <adresses>` ou `--liste`, `etat`, `chercher "question"`. Les programmes officiels
   (Éduscol, souvent en PDF) ne sont pas encore lus : pages HTML seulement.
 
+### 5.15 Retours de la famille : erreurs, suppression, consignes, jeux (étape 25)
+
+- **Erreurs aux questions** (`domain/mistakes.py`, `GET /v1/children/{id}/mistakes`) : pour
+  chaque réponse pas entièrement juste, la question, la réponse de l'enfant et la bonne réponse,
+  recalculées par le code du jeu à partir de l'activité enregistrée (aucun appel à l'IA). Jeux à
+  plusieurs éléments : seuls les éléments ratés (5 au plus). Écran parent « Erreurs d'Emma ».
+- **Suppression des leçons** : réservée au parent (« Compétences par leçon » → 🗑). L'appareil de
+  l'enfant ne peut plus retirer qu'une leçon ratée, pour la reprendre en photo (403
+  `parent_only` sinon).
+- **Consignes par classe** (`domain/instructions.py`) : une consigne par jeu et par cycle
+  (cycle 2 CP-CE2 : phrases de 10 mots au plus ; cycle 3 CM1-6e ; cycle 4 5e-3e), envoyée avec
+  chaque activité (`instruction`, facultatif : une application ancienne garde ses textes).
+  L'IA qui prépare le matériel reçoit la classe de l'enfant et des règles d'écriture pour elle
+  (prompt `material.v3`, ligne « Écriture »).
+- **Jeux plus variés** : l'IA peut proposer pour n'importe quelle notion un jeu de tri
+  (`sorting` : 2-3 cases de 2-4 éléments, chaque élément dans une seule case, jamais le nom
+  d'une case) et des éléments à remettre dans l'ordre (`sequence` : 3 à 6, tous différents),
+  contrôlés par `validation.py` ; « Ranger » et « Remettre dans l'ordre » s'en servent. Règle
+  `session.visual_first` (règles du moteur 1.1.0) : dans l'approfondissement, les jeux visuels
+  (ranger, remettre dans l'ordre, colorier) passent avant un quiz quand la notion le permet ;
+  la décision le dit (« Jeu visuel proposé avant un quiz. »).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -717,6 +739,7 @@ documentation, intégration continue verte.
 | 23 ✅ | **Décisions expliquées** (CDC §112-149) | règles du moteur dans `engine_rules.toml` et leur version ; raison de chaque activité et décision (migration 0014), « Pourquoi ces activités ? » pour le parent ; réussite par niveau, autonomie et faits chiffrés ; repli sur une autre IA de la famille (au choix du parent) ; « Pourquoi cette notion ? » ; 6 leçons de référence (§5.13) | chaque activité d'une séance simulée a sa raison ; une remédiation et une pause apparaissent avec leurs faits ; Ollama en panne → Gemini lit la leçon si le parent l'a permis, sinon l'échec est expliqué (tests) |
 
 | 24 ✅ | **Sources externes** (CDC §116-117) | recherche sur des sites autorisés (SearXNG), extraits, lecture par l'IA, citations vérifiées, outil d'essai ; aide sourcée dans « Je n'ai pas compris » et réglage du parent ; dates de la photo vérifiées ; bibliothèque sur le PC, sans Internet (§5.14) | une citation inventée fait écarter la réponse ; une page d'un site non autorisé ou une redirection n'est jamais lue ; une notion sans exemple reçoit une explication sourcée au niveau 3 ; « 1789 » contredit par deux sources devient « Peux-tu vérifier ? » ; hors ligne, la bibliothèque répond (tests) |
+| 25 ✅ | **Retours de la famille** | erreurs aux questions pour le parent, suppression des leçons réservée au parent, consignes par classe, jeux de tri et d'ordre proposés par l'IA et mis en avant (§5.15) | chaque jeu raté se décrit en texte ; l'appareil de l'enfant reçoit 403 sur une leçon analysée ; la consigne suit la classe (CP ≠ 4e) ; une notion avec un jeu de tri commence son approfondissement par « Ranger » (tests) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 

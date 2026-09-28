@@ -33,7 +33,9 @@ class _FlashcardViewState extends State<FlashcardView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          _flipped ? 'Le savais-tu ?' : 'Te souviens-tu de ce que ça veut dire ?',
+          _flipped
+              ? 'Le savais-tu ?'
+              : ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
           style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
         ),
         const SizedBox(height: 12),

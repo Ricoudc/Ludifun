@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme.dart';
 import '../../../models/account.dart';
 import 'activity_registry.dart';
+import 'common.dart';
 
 /// Association : `{left:[{id,text}], right:[{id,text}]}` → `{pairs:[[left_id,right_id]…]}`.
 ///
@@ -120,7 +121,10 @@ class _MatchViewState extends State<MatchView> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text('Relie chaque élément à sa réponse', style: Theme.of(context).textTheme.titleLarge),
+      Text(
+        ActivityInstruction.of(context) ?? 'Relie chaque élément à sa réponse',
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
       const SizedBox(height: 16),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,

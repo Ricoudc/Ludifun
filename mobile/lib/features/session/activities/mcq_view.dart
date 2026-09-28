@@ -40,7 +40,7 @@ class _McqViewState extends State<McqView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Prompt(widget.payload['prompt'] as String),
+        Prompt(widget.payload['prompt'] as String, label: ActivityInstruction.of(context)),
         const SizedBox(height: 24),
         for (final (i, choice) in choices.indexed) ...[
           AnswerButton(

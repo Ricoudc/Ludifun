@@ -76,7 +76,7 @@ class _ClassifyViewState extends State<ClassifyView> {
         const SizedBox(height: 8),
         Text(
           _selected == null
-              ? 'Touche une étiquette, puis la case où elle va.'
+              ? ActivityInstruction.of(context) ?? 'Touche une étiquette, puis la case où elle va.'
               : 'Maintenant, touche la bonne case.',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
