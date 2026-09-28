@@ -68,7 +68,6 @@ def test_ocr_typos_do_not_reject_a_notion(history: ReferenceLesson) -> None:
         ({"importance": 6}, "importance"),
         ({"id": "notion-1"}, "id"),
         ({"type": "animal"}, "type"),
-        ({"attributes": {"precision": "year", "event": "Début"}}, "value"),  # date sans valeur
         ({"label": "  "}, "label"),
     ],
 )
@@ -79,6 +78,23 @@ def test_invalid_notion_is_rejected(history: ReferenceLesson, change: dict[str, 
     assert len(result.rejected) == 1
     assert reason in result.rejected[0].reason
     assert len(result.analysis.knowledge) == len(raw["knowledge"]) - 1
+
+
+def test_incomplete_attributes_keep_the_notion(history: ReferenceLesson) -> None:
+    """Petit modèle qui oublie un champ : la notion est gardée (texte repris de la phrase à
+    retenir, ou simple fait), avec un avertissement, au lieu d'être perdue."""
+    raw = _analysis(history)
+    date, term = raw["knowledge"][0], next(k for k in raw["knowledge"] if k["type"] == "term")
+    date["attributes"] = {"precision": "year", "event": "Début"}  # date sans valeur
+    term["attributes"] = {}  # mot sans définition
+    result = validate_analysis(raw, history.raw["ocr_text"])
+    assert result.rejected == []
+    kept = {k.id: k for k in result.analysis.knowledge}
+    assert kept[date["id"]].type == "fact" and kept[date["id"]].attributes == {}
+    assert kept[term["id"]].type == "term"
+    assert kept[term["id"]].attributes["definition"] == term["statement"]
+    warnings = " ".join(result.analysis.warnings)
+    assert "gardée comme simple fait" in warnings and "repris de la phrase à retenir" in warnings
 
 
 def test_duplicate_notion_id_is_rejected(history: ReferenceLesson) -> None:

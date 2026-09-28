@@ -13,11 +13,13 @@ from pydantic import ValidationError
 
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
+    ATTRIBUTE_MODELS,
     Cloze,
     Flashcard,
     HelpLadder,
     KnowledgeItem,
     KnowledgeMaterial,
+    KnowledgeType,
     LessonAnalysis,
     LessonInfo,
     MaterialQuestion,
@@ -102,11 +104,15 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
         raise AnalysisError(f"leçon invalide ({_first_error(exc)})") from exc
 
     rejected: list[Rejection] = []
+    repairs: list[str] = []
     items: list[KnowledgeItem] = []
     raw_items = raw.get("knowledge")
     for index, raw_item in enumerate(raw_items if isinstance(raw_items, list) else []):
         name = raw_item.get("id") if isinstance(raw_item, dict) else None
         element = str(name) if name else f"knowledge[{index}]"
+        raw_item, repaired = repair_attributes(raw_item)
+        if repaired:
+            repairs.append(f"{element} : {repaired}")
         try:
             item = KnowledgeItem.model_validate(raw_item)
         except ValidationError as exc:
@@ -121,7 +127,7 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
 
     # Une relation vers une notion absente (ou rejetée) est retirée, la notion est gardée.
     known = {item.id for item in items}
-    warnings = [w for w in raw.get("warnings", []) if isinstance(w, str)]
+    warnings = [w for w in raw.get("warnings", []) if isinstance(w, str)] + repairs
     cleaned: list[KnowledgeItem] = []
     for item in items:
         relations = [r for r in item.relations if r.target in known and r.target != item.id]
@@ -139,6 +145,53 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
         warnings=warnings,
     )
     return AnalysisValidation(analysis, rejected)
+
+
+# Un seul texte manquant, que la phrase « à retenir » dit déjà (petits modèles : souvent oublié).
+_FROM_STATEMENT = {
+    KnowledgeType.TERM: "definition",
+    KnowledgeType.PERSON: "role",
+    KnowledgeType.PLACE: "description",
+}
+
+
+def repair_attributes(raw_item: Any) -> tuple[Any, str | None]:
+    """Attributs incomplets (champ oublié par l'IA) : la notion est gardée plutôt qu'écartée.
+
+    Un texte manquant est repris de la phrase « à retenir » (définition d'un mot, rôle d'un
+    personnage, description d'un lieu) ; sinon la notion devient un simple fait, sans attribut
+    (elle perd seulement les jeux propres à son type : frise, étapes, rangement…). Rien n'est
+    inventé : la notion reste tirée de la leçon et doit toujours citer le texte.
+    """
+    if not isinstance(raw_item, dict):
+        return raw_item, None
+    try:
+        kind = KnowledgeType(str(raw_item.get("type")))
+    except ValueError:
+        return raw_item, None
+    attributes = raw_item.get("attributes")
+    attributes = dict(attributes) if isinstance(attributes, dict) else {}
+    try:
+        ATTRIBUTE_MODELS[kind].model_validate(attributes)
+        return raw_item, None
+    except ValidationError:
+        pass
+    statement = raw_item.get("statement")
+    field_name = _FROM_STATEMENT.get(kind)
+    if field_name and isinstance(statement, str) and statement.strip():
+        filled = {**attributes, field_name: statement.strip()}
+        try:
+            ATTRIBUTE_MODELS[kind].model_validate(filled)
+            return {
+                **raw_item,
+                "attributes": filled,
+            }, f"« {field_name} » absent, repris de la phrase à retenir"
+        except ValidationError:
+            pass
+    return (
+        {**raw_item, "type": KnowledgeType.FACT.value, "attributes": {}},
+        f"attributs de « {kind.value} » incomplets : gardée comme simple fait",
+    )
 
 
 def _validate_skills(
