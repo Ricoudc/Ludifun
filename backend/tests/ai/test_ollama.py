@@ -58,6 +58,7 @@ async def test_native_chat_with_images_and_context() -> None:
     assert body["stream"] is False and body["options"]["num_ctx"] == 16384
     # Une réponse qui tourne en boucle est coupée : elle ne bloque pas les leçons suivantes.
     assert body["options"]["num_predict"] == MAX_OUTPUT[PROMPT.stage]
+    assert body["keep_alive"] == "30m"  # pas de rechargement d'une minute à chaque leçon
     assert body["format"]["title"] == "Page"
     assert body["messages"][1]["images"] == ["/9hqcGVn"]
     assert '"text"' in body["messages"][0]["content"]  # schéma rappelé dans les consignes
@@ -270,7 +271,7 @@ async def test_crash_while_reading_a_photo_retries_with_a_smaller_photo() -> Non
 
     from PIL import Image
 
-    from app.ai.providers.ollama import RETRY_IMAGE_SIDE
+    from app.ai.providers.ollama import MAX_IMAGE_SIDE, RETRY_IMAGE_SIDE
 
     photo = io.BytesIO()
     Image.new("RGB", (1500, 2000), "white").save(photo, format="JPEG")
@@ -288,7 +289,7 @@ async def test_crash_while_reading_a_photo_retries_with_a_smaller_photo() -> Non
     result = await ollama(handler).structured(
         prompt=PROMPT, input="Page 1", schema=Page, images=(PageImage(photo.getvalue(), "image/jpeg"),)
     )
-    assert result.output.text == "ok" and sides == [1344, RETRY_IMAGE_SIDE]
+    assert result.output.text == "ok" and sides == [MAX_IMAGE_SIDE, RETRY_IMAGE_SIDE]
 
 
 async def test_crash_twice_explains_the_graphics_memory() -> None:

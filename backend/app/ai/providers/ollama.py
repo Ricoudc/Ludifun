@@ -23,11 +23,16 @@ from app.ai.providers.openai_compatible import parse_json, schema_instructions
 
 TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusieurs minutes
 # Photos réduites avant l'envoi : sur un PC, le temps de lecture suit la taille de l'image (une
-# photo de 2000 px en demande plus du double). 1344 px (48 × 28) restent lisibles pour un cahier.
-MAX_IMAGE_SIDE = 1344
+# photo de 2000 px en demande plus du double). Sur une carte graphique de 8 Go, une page de cahier
+# à 1344 px fait s'arrêter le moteur pendant l'analyse de l'image (PC d'essai, RX 6600) :
+# 1024 px (environ 1 300 morceaux d'image au lieu de 2 300) restent lisibles pour un cahier.
+MAX_IMAGE_SIDE = 1024
 # Ollama qui s'arrête pendant la lecture d'une photo (« error reading llama-server response ») :
 # le plus souvent, la carte graphique manque de mémoire. Un seul nouvel essai, photos réduites.
-RETRY_IMAGE_SIDE = 896
+RETRY_IMAGE_SIDE = 768
+# Modèle gardé en mémoire entre deux demandes : le recharger prend plus d'une minute sur un PC
+# (5 minutes par défaut dans Ollama, soit un rechargement à chaque leçon ou presque).
+KEEP_ALIVE = "30m"
 # « health resp … connectex » : le moteur venait de s'arrêter et ne répondait pas encore.
 _CRASH_MARKERS = (
     "llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status", "health resp",
@@ -106,6 +111,7 @@ class OllamaProvider:
             "messages": [{"role": "system", "content": prompt.text + schema_instructions(schema)}, user],
             "format": schema.model_json_schema(),
             "stream": False,
+            "keep_alive": KEEP_ALIVE,
             "options": {
                 "num_ctx": self.num_ctx,
                 "num_predict": MAX_OUTPUT[prompt.stage],
