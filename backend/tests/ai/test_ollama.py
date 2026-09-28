@@ -13,7 +13,7 @@ from app.ai.check import check, probe_llm
 from app.ai.factory import AiChoice, build_llm
 from app.ai.ports import AIError, AIInvalidOutput, PageImage, Prompt, Stage
 from app.ai.pricing import run_cost
-from app.ai.providers.ollama import OllamaProvider
+from app.ai.providers.ollama import MAX_OUTPUT, OllamaProvider
 from app.config import Settings
 
 PROMPT = Prompt("ocr", "v9", "Lis la page.")
@@ -56,6 +56,8 @@ async def test_native_chat_with_images_and_context() -> None:
     (body,) = sent
     assert body["_url"] == "http://host.docker.internal:11434/api/chat"
     assert body["stream"] is False and body["options"]["num_ctx"] == 16384
+    # Une réponse qui tourne en boucle est coupée : elle ne bloque pas les leçons suivantes.
+    assert body["options"]["num_predict"] == MAX_OUTPUT[PROMPT.stage]
     assert body["format"]["title"] == "Page"
     assert body["messages"][1]["images"] == ["/9hqcGVn"]
     assert '"text"' in body["messages"][0]["content"]  # schéma rappelé dans les consignes
@@ -70,6 +72,13 @@ async def test_native_chat_with_images_and_context() -> None:
             httpx.Response(200, json={"message": {"content": "{"}, "done_reason": "length"}),
             AIInvalidOutput,
             "NUM_CTX",
+        ),
+        (
+            httpx.Response(
+                200, json={"message": {"content": "{"}, "done_reason": "length", "eval_count": 2500}
+            ),
+            AIInvalidOutput,
+            "tourné en boucle",
         ),
         (
             httpx.Response(200, json={"message": {"content": "{}"}, "done_reason": "stop"}),

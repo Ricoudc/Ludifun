@@ -32,6 +32,17 @@ RETRY_IMAGE_SIDE = 896
 _CRASH_MARKERS = (
     "llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status", "health resp",
 )  # fmt: skip
+# Longueur maximale de la réponse, par étape (jetons). Un petit modèle de vision se met parfois à
+# répéter le même texte sans fin : sans plafond, il remplit tout le contexte (un quart d'heure sur
+# certains PC) et bloque les leçons suivantes. Réponses réelles observées : lecture 300-750 jetons,
+# notions 500-1900, exercices jusqu'à 4000.
+MAX_OUTPUT: dict[Stage, int] = {
+    "ocr": 2500,
+    "analysis": 3500,
+    "material": 6000,
+    "evaluation": 800,
+    "sources": 1500,
+}
 # Une seule demande à la fois par serveur Ollama : sur une carte graphique de 8 Go, deux lectures
 # de photo en même temps (deux leçons envoyées coup sur coup) font s'arrêter le moteur.
 _BUSY: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.Lock]]" = (
@@ -95,7 +106,11 @@ class OllamaProvider:
             "messages": [{"role": "system", "content": prompt.text + schema_instructions(schema)}, user],
             "format": schema.model_json_schema(),
             "stream": False,
-            "options": {"num_ctx": self.num_ctx, "temperature": 0.2},
+            "options": {
+                "num_ctx": self.num_ctx,
+                "num_predict": MAX_OUTPUT[prompt.stage],
+                "temperature": 0.2,
+            },
         }
         started = time.perf_counter()
         try:
@@ -123,6 +138,11 @@ class OllamaProvider:
         latency_ms = round((time.perf_counter() - started) * 1000)
         data: dict[str, Any] = response.json()
         if data.get("done_reason") == "length":
+            written = data.get("eval_count")
+            if isinstance(written, int) and written >= MAX_OUTPUT[prompt.stage]:
+                raise AIInvalidOutput(
+                    f"l'IA a tourné en boucle : réponse coupée après {written} jetons (nouvel essai)"
+                )
             raise AIInvalidOutput("réponse tronquée (augmentez LUDIFUN_OLLAMA_NUM_CTX)")
         content = (data.get("message") or {}).get("content")
         if not isinstance(content, str) or not content.strip():
