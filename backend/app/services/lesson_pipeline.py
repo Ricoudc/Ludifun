@@ -20,6 +20,7 @@ from enum import StrEnum
 from pydantic import BaseModel
 
 from app.ai.ports import (
+    AIContextFull,
     AIError,
     AIInvalidOutput,
     LLMProvider,
@@ -329,6 +330,14 @@ class LessonPipeline:
                     schema=MaterialBatchOutput,
                 ),
             )
+        except AIContextFull:
+            if len(items) < 2:
+                return {}
+            # Trop de notions pour la place du modèle (petit modèle local) : deux demandes plus
+            # petites, l'une après l'autre.
+            half = len(items) // 2
+            first = await self._material(result, analysis, text, items[:half], feedback, remark)
+            return first | await self._material(result, analysis, text, items[half:], feedback, remark)
         except AIError:
             return {}  # les notions de ce lot n'auront pas de matériel ; la relance ciblée peut les rattraper
         by_id = {i.id: i for i in items}
@@ -391,7 +400,11 @@ class LessonPipeline:
                         stage, provider, model, prompt_version, None, None, latency, exc.status, [str(exc)]
                     )
                 )
-                if isinstance(exc, AIInvalidOutput) and attempt < retries:
+                if (
+                    isinstance(exc, AIInvalidOutput)
+                    and not isinstance(exc, AIContextFull)
+                    and attempt < retries
+                ):
                     continue
                 raise
             except BaseException:

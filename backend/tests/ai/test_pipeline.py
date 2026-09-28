@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from app.ai.ocr.vision_llm import VisionLLMOcr
-from app.ai.ports import AIError, AIInvalidOutput, AIRefused, PageImage, Stage
+from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, AIRefused, PageImage, Stage
 from app.ai.providers.fake import (
     REFERENCE_LESSONS,
     FakeProvider,
@@ -231,6 +231,25 @@ async def test_rejected_elements_are_asked_again_and_merged() -> None:
     stems = [q.stem for q in k7.material.questions]
     assert stems == [q["stem"] for q in kept] + [new_question["stem"]]
     assert not [r for r in result.rejected if r.element.startswith("k7.")]
+
+
+async def test_a_full_context_splits_the_batch_instead_of_failing() -> None:
+    """Petit modèle local : 5 notions d'un coup dépassent sa place (réponse tronquée). Le lot est
+    coupé en deux, sans relancer la même demande pour rien, et toutes les notions sont gardées."""
+    script = LessonScript.from_file(HISTORY)
+
+    def small_context(attempt: int, text: str) -> Any:
+        ids = requested_ids(text)
+        if len(ids) > 3:
+            return AIContextFull("réponse tronquée (augmentez LUDIFUN_OLLAMA_NUM_CTX)")
+        return material_output(script.material, ids)
+
+    result, llm, _ = await run(overrides={"material": small_context})
+    assert result.ready
+    assert {u.id for u in result.units} == set(script.material)
+    asked = [requested_ids(text) for stage, text in llm.calls if stage == "material"]
+    assert asked[0] == ["k1", "k2", "k3", "k4", "k5"] and asked[1] != asked[0]  # pas de relance identique
+    assert all(len(ids) <= 3 for ids in asked[1:])
 
 
 async def test_high_rejection_rate_is_flagged() -> None:

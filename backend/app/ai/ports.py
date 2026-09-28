@@ -84,6 +84,11 @@ class AIInvalidOutput(AIError):
     status = "invalid_output"
 
 
+class AIContextFull(AIInvalidOutput):
+    """Consignes et réponse dépassent la place du modèle (contexte plein) : redemander la même
+    chose échouerait encore ; il faut demander moins à la fois."""
+
+
 class LLMProvider(Protocol):
     name: str
 

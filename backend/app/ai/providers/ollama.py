@@ -18,7 +18,7 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from app.ai.images import shrink
-from app.ai.ports import AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
 
 TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusieurs minutes
@@ -149,7 +149,7 @@ class OllamaProvider:
                 raise AIInvalidOutput(
                     f"l'IA a tourné en boucle : réponse coupée après {written} jetons (nouvel essai)"
                 )
-            raise AIInvalidOutput("réponse tronquée (augmentez LUDIFUN_OLLAMA_NUM_CTX)")
+            raise AIContextFull("réponse tronquée (augmentez LUDIFUN_OLLAMA_NUM_CTX)")
         content = (data.get("message") or {}).get("content")
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
