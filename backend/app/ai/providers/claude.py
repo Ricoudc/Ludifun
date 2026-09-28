@@ -7,10 +7,11 @@ from collections.abc import Mapping
 from typing import Literal
 
 import anthropic
-from anthropic.types.beta import BetaContentBlockParam
+from anthropic.types.beta import BetaContentBlockParam, BetaMessage
 from pydantic import BaseModel, ValidationError
 
 from app.ai.ports import AIError, AIInvalidOutput, AIRefused, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.providers.openai_compatible import parse_json, schema_instructions
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
 
@@ -56,19 +57,48 @@ class ClaudeProvider:
 
         model = self.models[prompt.stage]
         started = time.perf_counter()
+        response: BetaMessage
+        output: T | None
         try:
-            response = await self._client.beta.messages.parse(
-                model=model,
-                max_tokens=MAX_TOKENS,
-                # Prompt système fixe et mis en cache ; le contenu variable est dans le message.
-                system=[{"type": "text", "text": prompt.text, "cache_control": {"type": "ephemeral"}}],
-                messages=[{"role": "user", "content": content}],
-                thinking={"type": "adaptive"},
-                output_config={"effort": self.efforts[prompt.stage]},
-                output_format=schema,
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
-            )
+            try:
+                response = await self._client.beta.messages.parse(
+                    model=model,
+                    max_tokens=MAX_TOKENS,
+                    # Prompt système fixe et mis en cache ; le contenu variable est dans le message.
+                    system=[{"type": "text", "text": prompt.text, "cache_control": {"type": "ephemeral"}}],
+                    messages=[{"role": "user", "content": content}],
+                    thinking={"type": "adaptive"},
+                    output_config={"effort": self.efforts[prompt.stage]},
+                    output_format=schema,
+                    betas=[FALLBACK_BETA],
+                    fallbacks="default",
+                )
+                output = response.parsed_output
+            except anthropic.BadRequestError as exc:
+                if "grammar" not in str(exc.message).lower():
+                    raise
+                # Schéma trop riche pour la sortie contrainte (l'analyse d'une leçon) : le schéma
+                # passe dans les consignes, et la réponse est validée ici, comme avec Ollama.
+                response = await self._client.beta.messages.create(
+                    model=model,
+                    max_tokens=MAX_TOKENS,
+                    system=[
+                        {
+                            "type": "text",
+                            "text": prompt.text + schema_instructions(schema),
+                            "cache_control": {"type": "ephemeral"},
+                        }
+                    ],
+                    messages=[{"role": "user", "content": content}],
+                    thinking={"type": "adaptive"},
+                    output_config={"effort": self.efforts[prompt.stage]},
+                    betas=[FALLBACK_BETA],
+                    fallbacks="default",
+                )
+                text = "".join(b.text for b in response.content if b.type == "text")
+                output = (
+                    schema.model_validate(parse_json(text)) if response.stop_reason == "end_turn" else None
+                )
         except (ValidationError, json.JSONDecodeError) as exc:
             raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
         except anthropic.APIStatusError as exc:
@@ -81,7 +111,6 @@ class ClaudeProvider:
             raise AIRefused("le modèle a refusé la demande")
         if response.stop_reason == "max_tokens":
             raise AIInvalidOutput("réponse tronquée (max_tokens)")
-        output = response.parsed_output
         if output is None:
             raise AIInvalidOutput("aucune sortie structurée")
         usage = Usage(

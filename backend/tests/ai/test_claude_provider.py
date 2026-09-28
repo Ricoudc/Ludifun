@@ -132,3 +132,40 @@ async def test_http_errors_become_ai_errors(status: int) -> None:
         await api.provider().structured(prompt=Prompt.load("ocr"), input="…", schema=OcrResult)
     assert type(info.value) is AIError
     assert str(status) in str(info.value)
+
+
+async def test_a_schema_too_large_for_the_grammar_falls_back_to_validated_json() -> None:
+    """Claude refuse parfois le schéma de l'analyse (« compiled grammar is too large ») : la
+    requête repart sans sortie contrainte, schéma dans les consignes, réponse validée ici."""
+    analysis = {"is_lesson": False, "lesson": None, "knowledge": [], "skills": [], "warnings": ["chat"]}
+    too_large = {
+        "type": "error",
+        "error": {
+            "type": "invalid_request_error",
+            "message": "The compiled grammar is too large, which would cause performance issues.",
+        },
+    }
+    api = FakeApi()
+    replies = [httpx2.Response(400, json=too_large), httpx2.Response(200, json=message(analysis))]
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        api.requests.append(request)
+        return replies.pop(0)
+
+    api.handler = handler  # type: ignore[method-assign]
+    result = await api.provider().structured(
+        prompt=Prompt.load("analysis"), input="<lecon>…</lecon>", schema=AnalysisOutput
+    )
+    assert result.output.warnings == ["chat"]
+    first, second = (json.loads(r.content) for r in api.requests)
+    assert first["output_config"]["format"]["type"] == "json_schema"
+    assert "format" not in second["output_config"]
+    assert "# Format de la réponse" in second["system"][0]["text"]
+
+    # Une autre erreur 400 n'est pas relancée.
+    other = FakeApi(
+        status=400, body={"type": "error", "error": {"type": "invalid_request_error", "message": "x"}}
+    )
+    with pytest.raises(AIError, match="400"):
+        await other.provider().structured(prompt=Prompt.load("ocr"), input="…", schema=OcrResult)
+    assert len(other.requests) == 1
