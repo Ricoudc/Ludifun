@@ -46,7 +46,8 @@ services:
       # Ollama tourne sur le PC, hors du conteneur : host.docker.internal désigne le PC.
       LUDIFUN_OLLAMA_BASE_URL: ${LUDIFUN_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       LUDIFUN_AI_MODEL: ${LUDIFUN_AI_MODEL:-}
-      # Contexte d'Ollama : 8192 libère de la mémoire sur une carte graphique de 8 Go.
+      # Contexte d'Ollama : 12288 tient sur une carte graphique de 8 Go avec qwen2.5vl:7b (8192 : trop
+      # juste pour les exercices de plusieurs notions ; 16384 : déborde sur le processeur).
       LUDIFUN_OLLAMA_NUM_CTX: ${LUDIFUN_OLLAMA_NUM_CTX:-16384}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}

@@ -160,7 +160,7 @@ function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
         }
     } catch { }
     if (-not $valeurs['LUDIFUN_OLLAMA_NUM_CTX']) {
-        $conseils += 'LUDIFUN_OLLAMA_NUM_CTX absent du .env : avec une carte de 8 Go, ajoute LUDIFUN_OLLAMA_NUM_CTX=8192.'
+        $conseils += 'LUDIFUN_OLLAMA_NUM_CTX absent du .env : avec une carte de 8 Go, ajoute LUDIFUN_OLLAMA_NUM_CTX=12288.'
     }
     return $conseils
 }
