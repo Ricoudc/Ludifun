@@ -87,7 +87,7 @@ votre adresse). Si la page ne s'ouvre pas, voir « En cas de problème ».
    workflow **Mobile**.
 2. Ouvrez la dernière exécution **verte** de la branche `claude/revision-coach-app-8t5pfz`.
 3. En bas de la page, section **Artifacts**, téléchargez **ludifun-apk-test** (un `.zip`,
-   conservé 30 jours).
+   conservé 7 jours).
 4. Décompressez-le : il contient `app-debug.apk`. Envoyez ce fichier sur le téléphone (câble
    USB, Google Drive, e-mail…).
 5. Sur le téléphone, ouvrez le fichier et acceptez l'installation depuis cette source
@@ -162,7 +162,7 @@ puis relancez `docker compose up -d` et vérifiez `"ai":"claude"` sur `/health/r
 | `port is already allocated` au démarrage | Un autre serveur occupe le port (souvent une autre copie de Ludifun, par exemple un ZIP téléchargé à nouveau). `Demarrer-Ludifun.bat` arrête maintenant les autres copies et n'utilise plus le port 5432 ; gardez un seul dossier de Ludifun. Si le port 8000 est pris par un autre logiciel, fermez-le. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |
 | L'outil de démonstration refuse | Le compte existe déjà : ajoutez `--replace`. |
-| Pas d'« Artifacts » sur la page GitHub | L'exécution n'est pas terminée, a échoué, ou date de plus de 30 jours. |
+| Pas d'« Artifacts » sur la page GitHub | L'exécution n'est pas terminée, a échoué, ou date de plus de 7 jours. |
 
 Limites de cette version de test : APK de débogage (plus lent qu'une version publiée), serveur
 en HTTP sur le réseau local uniquement. Sur iPhone, il faut un Mac avec Xcode (`flutter run`).

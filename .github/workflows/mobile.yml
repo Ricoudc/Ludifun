@@ -59,10 +59,15 @@ jobs:
         run: flutter build apk --debug
       # APK de test à télécharger (onglet Actions → cette exécution → « Artifacts ») : voir
       # docs/tester-sur-telephone.md. L'adresse du serveur se règle dans l'application.
+      # Une seule copie par envoi de code (pas aussi pour la pull request, qui reconstruit le même
+      # APK), gardée 7 jours : chaque APK pèse environ 100 Mo et le stockage GitHub est limité.
+      # Quota de stockage atteint : la compilation a réussi, la vérification reste verte.
       - name: APK de test téléchargeable
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: ludifun-apk-test
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 30
+          retention-days: 7
           if-no-files-found: error
