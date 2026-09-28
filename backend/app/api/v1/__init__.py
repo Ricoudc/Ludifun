@@ -8,6 +8,7 @@ from app.api.v1 import (
     feedback,
     figures,
     goals,
+    lesson_content,
     lessons,
     rewards,
     sessions,
@@ -21,6 +22,7 @@ router.include_router(dashboard.router)
 router.include_router(feedback.router)
 router.include_router(figures.router)
 router.include_router(goals.router)
+router.include_router(lesson_content.router)
 router.include_router(lessons.router)
 router.include_router(rewards.router)
 router.include_router(sessions.router)

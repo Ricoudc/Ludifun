@@ -134,7 +134,11 @@ class _LessonCard extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () => context.go(Routes.lessonContent(childId, lesson.lessonId)),
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('Voir les questions et les corriger'),
+            ),
             for (final skill in lesson.skills)
               _Group(
                 title: skill.label,

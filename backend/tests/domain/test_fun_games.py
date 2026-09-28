@@ -15,6 +15,7 @@ from app.domain.composer import SessionComposer
 from app.domain.decisions import describe
 from app.domain.instructions import cycle, instruction, writing_rules
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
+from app.domain.material_view import material_blocks
 from app.domain.simulated_pupil import respond
 from app.domain.validation import validate_material
 from tests.domain.conftest import ReferenceLesson
@@ -117,3 +118,13 @@ def test_every_game_has_an_instruction_for_every_cycle() -> None:
         assert all(len(sentence.split()) <= 10 for sentence in str(texts[0]).split(". ")), code
     assert instruction("JEU_INCONNU", "CP") is None
     assert "12 mots" in writing_rules("CE1") and "cycle 4" in writing_rules("3e")
+
+
+def test_the_parent_sees_every_question_with_its_answer(lesson: ReferenceLesson) -> None:
+    for unit in lesson.units.values():
+        blocks = material_blocks(unit.material)
+        titles = [b.title for b in blocks]
+        assert titles[-1] == "🆘 Aides" and all(b.lines for b in blocks)
+        for question in unit.material.questions:
+            assert any(question.stem in line and question.answer in line for b in blocks for line in b.lines)
+        assert any(unit.material.explanation in line for line in blocks[-1].lines)

@@ -17,6 +17,7 @@ import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
 import '../features/parent/child_mistakes_screen.dart';
 import '../features/parent/child_skills_screen.dart';
+import '../features/parent/lesson_content_screen.dart';
 import '../features/parent/email_verification_screen.dart';
 import '../features/parent/goals_screen.dart';
 import '../features/parent/link_code_screen.dart';
@@ -49,6 +50,8 @@ abstract final class Routes {
   static String childSkills(String childId) => '/parent/enfants/$childId/competences';
   static String childGoals(String childId) => '/parent/enfants/$childId/objectifs';
   static String childMistakes(String childId) => '/parent/enfants/$childId/erreurs';
+  static String lessonContent(String childId, String lessonId) =>
+      '/parent/enfants/$childId/lecons/$lessonId';
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static String childPaste(String childId) => '/parent/enfants/$childId/texte';
@@ -137,6 +140,13 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'objectifs',
                 builder: (_, state) => GoalsScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'lecons/:lesson',
+                builder: (_, state) => LessonContentScreen(
+                  childId: state.pathParameters['id']!,
+                  lessonId: state.pathParameters['lesson']!,
+                ),
               ),
               GoRoute(
                 path: 'erreurs',

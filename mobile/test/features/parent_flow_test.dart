@@ -951,6 +951,63 @@ void main() {
     expect(find.text('📐 Les fractions'), findsNothing);
   });
 
+  testWidgets('étape 25 : le parent relit les questions d\'une leçon et en fait corriger', (
+    tester,
+  ) async {
+    var version = 1;
+    Map<String, Object?> notion() => {
+      'knowledge_id': 'n1',
+      'label': 'Numérateur',
+      'statement': 'Le numérateur est le nombre du haut.',
+      'blocks': [
+        {
+          'title': '❓ Questions à choix',
+          'lines': [
+            version == 1
+                ? 'Quel terme désigne le nombre supérieur ?\n✅ Numérateur'
+                : 'Dans 3/4, quel est le nombre du haut ?\n✅ 3',
+          ],
+        },
+      ],
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'notions': [notion()],
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/lessons/l2/notions/n1/rework', (r) {
+        expect(r.data, {'reason': 'too_hard', 'comment': 'Des mots plus simples'});
+        version = 2;
+        return (200, notion());
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(find.text('Les fractions'), findsOneWidget);
+    await tap(tester, find.text('Numérateur'));
+    expect(find.text('Quel terme désigne le nombre supérieur ?\n✅ Numérateur'), findsOneWidget);
+
+    await tap(tester, find.text('Demander une correction à l\'IA'));
+    expect(
+      tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Demander à l\'IA')).onPressed,
+      isNull,
+    );
+    await tap(tester, find.text('Trop difficile'));
+    await tester.enterText(find.byType(TextField), 'Des mots plus simples');
+    await tap(tester, find.text('Demander à l\'IA'));
+    expect(find.text('Nouvelles questions enregistrées.'), findsOneWidget);
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/notions/n1/rework'));
+    // Rechargées : la notion reste ouverte, avec la nouvelle version.
+    expect(find.text('Dans 3/4, quel est le nombre du haut ?\n✅ 3'), findsOneWidget);
+  });
+
   testWidgets('le parent voit les erreurs d\'Emma aux questions', (tester) async {
     server.on(
       'GET /v1/children/c1/mistakes',

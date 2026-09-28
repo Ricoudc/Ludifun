@@ -485,3 +485,51 @@ class MistakesPage {
   /// Curseur de la page suivante, `null` à la fin.
   final String? nextBefore;
 }
+
+/// Un jeu d'une notion, tel que l'enfant le verra (réponses comprises), pour le parent.
+class ContentBlock {
+  const ContentBlock({required this.title, required this.lines});
+
+  factory ContentBlock.fromJson(Json json) => ContentBlock(
+    title: json['title'] as String,
+    lines: [for (final l in json['lines'] as List<dynamic>) l as String],
+  );
+
+  final String title;
+  final List<String> lines;
+}
+
+class NotionContent {
+  const NotionContent({
+    required this.knowledgeId,
+    required this.label,
+    required this.statement,
+    required this.blocks,
+  });
+
+  factory NotionContent.fromJson(Json json) => NotionContent(
+    knowledgeId: json['knowledge_id'] as String,
+    label: json['label'] as String,
+    statement: json['statement'] as String,
+    blocks: [for (final b in json['blocks'] as List<dynamic>) ContentBlock.fromJson(b as Json)],
+  );
+
+  final String knowledgeId;
+  final String label;
+  final String statement;
+  final List<ContentBlock> blocks;
+}
+
+class LessonContent {
+  const LessonContent({required this.grade, required this.notions, this.title});
+
+  factory LessonContent.fromJson(Json json) => LessonContent(
+    title: json['title'] as String?,
+    grade: json['grade'] as String,
+    notions: [for (final n in json['notions'] as List<dynamic>) NotionContent.fromJson(n as Json)],
+  );
+
+  final String? title;
+  final String grade;
+  final List<NotionContent> notions;
+}

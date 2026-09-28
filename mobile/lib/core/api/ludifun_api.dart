@@ -292,6 +292,27 @@ class LudifunApi {
     return HistoryPage.fromJson(r.data!);
   });
 
+  Future<LessonContent> lessonContent(String childId, String lessonId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/lessons/$lessonId/content');
+    return LessonContent.fromJson(r.data!);
+  });
+
+  /// Nouvelle version des questions d'une notion ; l'IA peut prendre une ou deux minutes.
+  Future<NotionContent> reworkNotion(
+    String childId,
+    String lessonId,
+    String knowledgeId, {
+    required String reason,
+    String? comment,
+  }) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/children/$childId/lessons/$lessonId/notions/$knowledgeId/rework',
+      data: {'reason': reason, 'comment': ?comment},
+      options: Options(receiveTimeout: const Duration(minutes: 16)),
+    );
+    return NotionContent.fromJson(r.data!);
+  });
+
   Future<MistakesPage> mistakes(String childId, {int limit = 20, String? before}) =>
       _call(() async {
         final r = await _dio.get<Json>(

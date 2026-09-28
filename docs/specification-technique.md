@@ -586,6 +586,15 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   `session.visual_first` (règles du moteur 1.1.0) : dans l'approfondissement, les jeux visuels
   (ranger, remettre dans l'ordre, colorier) passent avant un quiz quand la notion le permet ;
   la décision le dit (« Jeu visuel proposé avant un quiz. »).
+- **Le parent relit et fait corriger les questions** (`domain/material_view.py`,
+  `api/v1/lesson_content.py`) : écran « Voir les questions et les corriger » (depuis
+  « Compétences par leçon ») avec tout ce que l'enfant verra, réponses et aides comprises. Par
+  notion, « Demander une correction à l'IA » : motif (trop difficile, trop facile, pas clair,
+  réponse fausse, autre) et précision libre. La remarque est transmise comme une donnée entre
+  balises `<remarque_parent>` (chevrons neutralisés, §142-143) avec la classe de l'enfant ; la
+  nouvelle version passe les contrôles de `validation.py` et doit permettre au moins un jeu, sinon
+  l'ancienne reste. L'appel est journalisé dans `ai_runs` ; la maîtrise de l'enfant n'est pas
+  touchée. Pas encore : faire la séance soi-même en mode essai (sans compter pour l'enfant).
 
 ---
 
@@ -697,6 +706,10 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | GET | `/v1/children/{id}/sessions/{session_id}` | ✅ étape 23 : chaque activité de la séance, son résultat et la raison du choix du moteur ; décisions pendant la séance ; version des règles |
 | POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
+| GET | `/v1/children/{id}/mistakes?limit=&before=` | ✅ étape 25 : questions ratées : question, réponse de l'enfant, bonne réponse |
+| GET | `/v1/children/{id}/lessons/{lesson_id}/content` | ✅ étape 25 : toutes les questions de la leçon, réponses comprises, notion par notion |
+| POST | `/v1/children/{id}/lessons/{lesson_id}/notions/{knowledge_id}/rework` `{reason, comment?}` | ✅ étape 25 : nouvelle version des questions d'une notion par l'IA, d'après la remarque du parent (409 `rework_failed` si rien ne passe les contrôles) |
+| DELETE | `/v1/lessons/{id}` | ✅ étape 25 : parent ; l'appareil de l'enfant, leçon ratée seulement (403 `parent_only`) |
 
 Réponse enrichie de `POST /v1/sessions/{id}/attempts` : `error_type`, `inserted_items`,
 `engagement_hint`. Toutes les nouvelles routes suivent la séparation parent/enfant (V1 §16.1)
@@ -739,7 +752,7 @@ documentation, intégration continue verte.
 | 23 ✅ | **Décisions expliquées** (CDC §112-149) | règles du moteur dans `engine_rules.toml` et leur version ; raison de chaque activité et décision (migration 0014), « Pourquoi ces activités ? » pour le parent ; réussite par niveau, autonomie et faits chiffrés ; repli sur une autre IA de la famille (au choix du parent) ; « Pourquoi cette notion ? » ; 6 leçons de référence (§5.13) | chaque activité d'une séance simulée a sa raison ; une remédiation et une pause apparaissent avec leurs faits ; Ollama en panne → Gemini lit la leçon si le parent l'a permis, sinon l'échec est expliqué (tests) |
 
 | 24 ✅ | **Sources externes** (CDC §116-117) | recherche sur des sites autorisés (SearXNG), extraits, lecture par l'IA, citations vérifiées, outil d'essai ; aide sourcée dans « Je n'ai pas compris » et réglage du parent ; dates de la photo vérifiées ; bibliothèque sur le PC, sans Internet (§5.14) | une citation inventée fait écarter la réponse ; une page d'un site non autorisé ou une redirection n'est jamais lue ; une notion sans exemple reçoit une explication sourcée au niveau 3 ; « 1789 » contredit par deux sources devient « Peux-tu vérifier ? » ; hors ligne, la bibliothèque répond (tests) |
-| 25 ✅ | **Retours de la famille** | erreurs aux questions pour le parent, suppression des leçons réservée au parent, consignes par classe, jeux de tri et d'ordre proposés par l'IA et mis en avant (§5.15) | chaque jeu raté se décrit en texte ; l'appareil de l'enfant reçoit 403 sur une leçon analysée ; la consigne suit la classe (CP ≠ 4e) ; une notion avec un jeu de tri commence son approfondissement par « Ranger » (tests) |
+| 25 ✅ | **Retours de la famille** | erreurs aux questions pour le parent, suppression des leçons réservée au parent, relecture des questions par le parent et correction par l'IA, consignes par classe, jeux de tri et d'ordre proposés par l'IA et mis en avant (§5.15) | chaque jeu raté se décrit en texte ; l'appareil de l'enfant reçoit 403 sur une leçon analysée ; la consigne suit la classe (CP ≠ 4e) ; une notion avec un jeu de tri commence son approfondissement par « Ranger » (tests) |
 
 Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
