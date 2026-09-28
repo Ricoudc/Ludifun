@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+from sqlalchemy import select
 
 from app import clock
 from app.ai.check import check, probe_llm
@@ -14,6 +15,7 @@ from app.ai.presets import PRESETS
 from app.api.deps import AppSettings, CurrentParent, DbSession, get_ai_resolver, rate_limit
 from app.api.errors import ApiError
 from app.config import AiProviderName, Settings
+from app.db.models import Family
 from app.services import ai_settings
 from app.services.ai_settings import AiResolver
 
@@ -59,6 +61,18 @@ class AiSettingsOut(BaseModel):
         description="Si l'IA active ne répond pas, essayer les autres IA enregistrées par la famille (§147).",
     )
     providers: list[ProviderOut]
+    web_sources: bool = Field(
+        False, description="Recherche sur des sites éducatifs autorisés (étape 24), permise par le parent."
+    )
+    web_sources_available: bool = Field(
+        False, description="Le serveur a un moteur de recherche (LUDIFUN_WEB_SEARCH_URL)."
+    )
+
+
+class WebSourcesIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
 
 
 class AiSettingsIn(BaseModel):
@@ -151,6 +165,8 @@ async def settings_out(
         server_provider=resolver.default[1].name,
         fallback=active.fallback if active is not None else False,
         providers=providers_out(settings),
+        web_sources=bool(await db.scalar(select(Family.web_sources).where(Family.id == family_id))),
+        web_sources_available=bool(settings.web_search_url),
     )
 
 
@@ -199,6 +215,26 @@ async def put_ai_settings(
     await ai_settings.save(
         db, family_id, settings, choice, clock.now(), keep_key=keep, fallback=body.fallback
     )
+    await db.commit()
+    return await settings_out(db, family_id, settings, resolver)
+
+
+@router.put("/parent/ai/sources")
+async def put_web_sources(
+    body: WebSourcesIn, parent: CurrentParent, db: DbSession, settings: AppSettings, resolver: Resolver
+) -> AiSettingsOut:
+    """Autorise (ou non) la recherche sur des sites éducatifs pour aider l'enfant (étape 24).
+    Seule la notion part sur Internet, jamais le prénom de l'enfant ni sa photo."""
+    family_id = await _family(db, parent)
+    if body.enabled and not settings.web_search_url:
+        raise ApiError(
+            409,
+            "web_search_unavailable",
+            "Ce serveur n'a pas de moteur de recherche (LUDIFUN_WEB_SEARCH_URL).",
+        )
+    family = await db.get(Family, family_id)
+    assert family is not None
+    family.web_sources = body.enabled
     await db.commit()
     return await settings_out(db, family_id, settings, resolver)
 

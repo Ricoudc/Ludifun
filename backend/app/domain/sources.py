@@ -164,19 +164,43 @@ def passages(text: str, max_chars: int = EXCERPT_CHARS) -> list[str]:
     return chunks
 
 
+_SENTENCE = re.compile(r"[a-zà-öø-ÿ0-9)»\"]\s*[.!?](\s|$)", re.IGNORECASE)
+# Mots qui annoncent une cause ou une date : ils répondent à « pourquoi » et à « quand ».
+_WHY = {"car", "parce", "cause", "raison", "crise", "afin", "pour", "dette", "endette", "argent", "faute"}
+_WHEN = re.compile(r"\b(1\d{3}|20\d{2}|siecle)\b")
+
+
+def is_prose(passage: str) -> bool:
+    """Un vrai paragraphe : au moins 8 mots et une phrase terminée. Écarte menus, légendes,
+    fils d'Ariane et métadonnées (« En savoir plus Histoire05:52 Publié le… »)."""
+    return len(passage.split()) >= 8 and _SENTENCE.search(passage) is not None
+
+
+def _bonus(question: str, passage: str) -> float:
+    asked = normalize(question)
+    words = set(normalize(passage).split())
+    if asked.startswith("pourquoi") and words & _WHY:
+        return 0.3
+    if asked.startswith(("quand", "en quelle annee")) and _WHEN.search(normalize(passage)):
+        return 0.3
+    return 0.0
+
+
 def best_excerpts(
     question: str, pages: Sequence[tuple[str, str, str]], count: int = 3, max_chars: int = EXCERPT_CHARS
 ) -> list[Excerpt]:
-    """Les `count` passages qui partagent le plus de mots avec la question, au plus deux par page
-    pour varier les sources. `pages` : (adresse, titre, texte), dans l'ordre de préférence."""
+    """Les `count` passages qui partagent le plus de mots avec la question (une cause pour
+    « pourquoi », une date pour « quand »), au plus deux par page pour varier les sources.
+    `pages` : (adresse, titre, texte), dans l'ordre de préférence."""
     wanted = keywords(question)
     scored: list[tuple[float, int, int, str, str, str]] = []
     for rank, (url, title, text) in enumerate(pages):
         for position, passage in enumerate(passages(text, max_chars)):
             common = len(wanted & keywords(passage))
-            if common:
+            if common and is_prose(passage):
                 # À égalité : la page la mieux classée, puis le début de la page (l'essentiel).
-                scored.append((common / len(wanted), -rank, -position, url, title, passage))
+                score = common / len(wanted) + _bonus(question, passage)
+                scored.append((score, -rank, -position, url, title, passage))
     scored.sort(reverse=True)
     chosen: list[Excerpt] = []
     per_page: dict[str, int] = {}

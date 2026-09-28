@@ -39,7 +39,11 @@ def test_pages_become_short_passages() -> None:
 
 
 def test_best_excerpts_match_the_question_and_vary_the_sources() -> None:
-    other = ("https://fr.wikipedia.org/wiki/Tiers_%C3%A9tat", "Tiers état", "Le tiers état désigne " * 5)
+    other = (
+        "https://fr.wikipedia.org/wiki/Tiers_%C3%A9tat",
+        "Tiers état",
+        "Le tiers état désigne la très grande majorité des Français du royaume. " * 3,
+    )
     pages = [(VIKIDIA, "États généraux", PAGE), other]
     chosen = best_excerpts("Qui compose le tiers état aux États généraux ?", pages, count=3, max_chars=200)
     assert [e.number for e in chosen] == [1, 2, 3]
@@ -67,3 +71,23 @@ def test_an_answer_is_kept_only_with_a_verified_quote() -> None:
     # Une citation sur deux vérifiée : seule la vérifiée est gardée.
     both = check_answer("Réponse.", [real, invented], [excerpt()], found=True)
     assert both is not None and both.quotes == [Quote(1, real.text)]
+
+
+def test_menus_are_skipped_and_causes_answer_why() -> None:
+    """Essai réel du 28/09 : un bout de menu de Lumni choisi, et aucun extrait sur la cause."""
+    lumni = (
+        "https://www.lumni.fr/video/etats-generaux",
+        "Lumni",
+        "-> En savoir plus Histoire05:52Publié le 25/11/2025 Face à la crise, Louis XVI convoque les "
+        "États généraux en 1789",
+    )
+    vikidia = (
+        VIKIDIA,
+        "États généraux",
+        "Les États généraux sont convoqués pour la dernière fois en 1789, par Louis XVI.\n\n"
+        "Le royaume est endetté : pour trouver de l'argent, Louis XVI réunit les États généraux "
+        "afin de voter de nouveaux impôts.",
+    )
+    chosen = best_excerpts("Pourquoi Louis XVI réunit-il les États généraux ?", [vikidia, lumni], count=2)
+    assert all("En savoir plus" not in e.text for e in chosen)
+    assert "endetté" in chosen[0].text

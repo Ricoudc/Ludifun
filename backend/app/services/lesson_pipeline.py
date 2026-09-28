@@ -118,6 +118,8 @@ StatusCallback = Callable[[LessonStatus], Awaitable[None]]
 # Suivi en direct (page /suivi, écran d'analyse) : appelé au début d'un appel à l'IA ; rend la
 # fonction de fin (statut, message d'erreur).
 CallTracker = Callable[[Stage, str], Callable[[str, str | None], None]]
+# Étape 24c : passages à faire vérifier d'après des sources externes (dates lues de travers).
+ReadingCheck = Callable[[OcrResult, LessonAnalysis], Awaitable[list[Uncertain]]]
 
 
 class LessonPipeline:
@@ -130,6 +132,7 @@ class LessonPipeline:
         max_chars: int = 20000,
         on_status: StatusCallback | None = None,
         on_call: CallTracker | None = None,
+        reading_check: ReadingCheck | None = None,
     ) -> None:
         self.ocr = ocr
         self.llm = llm
@@ -137,6 +140,8 @@ class LessonPipeline:
         self.max_chars = max_chars
         self.on_status = on_status
         self.on_call = on_call
+        # Étape 24c : dates de la photo comparées à des sources (si le parent l'a permis).
+        self.reading_check = reading_check
         self.analysis_prompt = Prompt.load("analysis")
         self.material_prompt = Prompt.load("material")
 
@@ -198,6 +203,10 @@ class LessonPipeline:
             )
             run.warnings.insert(0, note)
             raise _Failed(FailureReason.NOT_A_LESSON)
+        if text is None and self.reading_check is not None:
+            result.review = await self.reading_check(result.ocr, analysis)
+            if result.review:
+                return  # une date lue probablement de travers : l'enfant vérifie, puis on reprend
 
         # ③ Enrichissement
         await self._status(LessonStatus.GENERATING)

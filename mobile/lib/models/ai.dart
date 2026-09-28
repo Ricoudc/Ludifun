@@ -74,6 +74,8 @@ class AiSettings {
     required this.providers,
     this.saved = const [],
     this.fallback = false,
+    this.webSources = false,
+    this.webSourcesAvailable = false,
   });
 
   factory AiSettings.fromJson(Json json) => AiSettings(
@@ -87,7 +89,15 @@ class AiSettings {
     ],
     providers: [for (final p in json['providers'] as List<dynamic>) AiProvider.fromJson(p as Json)],
     fallback: json['fallback'] as bool? ?? false,
+    webSources: json['web_sources'] as bool? ?? false,
+    webSourcesAvailable: json['web_sources_available'] as bool? ?? false,
   );
+
+  /// Recherche sur des sites éducatifs autorisés (Vikidia, Lumni…), permise par le parent.
+  final bool webSources;
+
+  /// Le serveur a un moteur de recherche : sinon, le réglage n'est pas proposé.
+  final bool webSourcesAvailable;
 
   /// Si l'IA active ne répond pas, essayer les autres IA enregistrées par la famille.
   final bool fallback;

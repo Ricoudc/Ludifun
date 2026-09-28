@@ -16,7 +16,7 @@ from app.domain.errors import (
     with_speed,
     written_answer_error,
 )
-from app.domain.help import HelpKind, next_help, result_with_help, reveals
+from app.domain.help import ExternalHelp, HelpKind, next_help, result_with_help, reveals
 from app.domain.knowledge import HelpLadder, KnowledgeUnit, OpenQuestion, WorkedExample
 from app.domain.mastery import Mastery
 from app.domain.scoring import evidences_from, validated_levels
@@ -89,6 +89,24 @@ def test_help_falls_back_on_a_generic_hint(math: ReferenceLesson, registry: Acti
     assert next_help(unit, activity, 0).text.startswith("Relis bien la question")
     # Une règle se rappelle sans donner la réponse de l'exercice.
     assert next_help(unit, activity, 1).text == unit.item.statement
+
+
+def test_sourced_help_stands_in_for_a_missing_example(
+    math: ReferenceLesson, registry: ActivityRegistry
+) -> None:
+    """Étape 24b : sans exemple dans la leçon, l'explication d'un site éducatif, marquée comme
+    apport externe ; jamais à la place d'un exemple de la leçon, jamais si elle dévoile la réponse."""
+    external = ExternalHelp("Quand le bas est pareil, le plus grand haut gagne.", "fr.vikidia.org")
+    no_example = with_material(math.unit("k4"), help=LADDER.model_copy(update={"example": None}))
+    activity = registry.get(ActivityCode.MCQ).build([no_example], 1, random.Random(1))
+    step = next_help(no_example, activity, 2, external)
+    assert (step.level, step.kind, step.text) == (3, HelpKind.SOURCED, external.text)
+    assert step.title == "📚 Expliqué autrement" and step.lines == ["📚 En plus de ta leçon — fr.vikidia.org"]
+    assert next_help(no_example, activity, 2).kind is HelpKind.STEPS  # sans source : on passe
+    with_example = with_material(math.unit("k4"), help=LADDER)
+    assert next_help(with_example, activity, 2, external).kind is HelpKind.EXAMPLE
+    telling = ExternalHelp(f"La réponse est {activity.solution['display']}.", "fr.vikidia.org")
+    assert next_help(no_example, activity, 2, telling).kind is HelpKind.STEPS
 
 
 def test_help_reduces_proof_of_mastery_but_not_the_score(

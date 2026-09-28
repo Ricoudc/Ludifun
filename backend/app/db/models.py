@@ -120,6 +120,8 @@ class Family(Base):
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     created_at: Mapped[datetime] = _created_at()
+    # Recherche de sources sur des sites éducatifs (étape 24), au choix du parent ; désactivée.
+    web_sources: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
 
 class FamilyAiSettings(Base):
@@ -369,6 +371,9 @@ class KnowledgeItem(Base):
     required_levels: Mapped[list[int]] = mapped_column(
         ARRAY(SmallInteger), nullable=False, server_default="{1}"
     )
+    # Explication tirée de sources externes (étape 24b), pour « Je n'ai pas compris » quand la
+    # leçon ne donne pas d'exemple : {"text", "sources": [{"site", "url", "title"}], "quotes"}.
+    external_help: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     __table_args__ = (
         UniqueConstraint("lesson_id", "key"),

@@ -323,3 +323,19 @@ async def test_migration_0015_accepts_source_searches(engine: AsyncEngine, db: A
         left = (await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'sources'"))).scalar()
     assert left == 0
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0016_keeps_families_without_web_sources(
+    engine: AsyncEngine, db: AsyncSession
+) -> None:
+    """Familles existantes : pas de recherche sur Internet sans l'accord du parent."""
+    await db.commit()
+    await run_alembic("downgrade", "0015")
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO families (id, created_at) VALUES (:id, now())"), {"id": uuid.uuid4()}
+        )
+    await run_alembic("upgrade", "head")
+    async with engine.connect() as conn:
+        rows = (await conn.execute(text("SELECT web_sources FROM families"))).all()
+    assert [tuple(r) for r in rows] == [(False,)]

@@ -335,6 +335,21 @@ class _AiFormState extends ConsumerState<_AiForm> {
     }
   }
 
+  /// Recherche de sources (étape 24) : réglage de la famille, indépendant de l'IA choisie.
+  Future<void> _setWebSources(bool value) async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(apiProvider).setWebSources(value);
+      ref.invalidate(aiSettingsProvider);
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
@@ -473,6 +488,20 @@ class _AiFormState extends ConsumerState<_AiForm> {
             subtitle: Text(
               'Par exemple Ollama éteint : ${_settings.saved.where((s) => s.provider != family.provider).map((s) => _settings.labelOf(s.provider)).join(', ')} prend le relais. '
               'Les photos partent alors vers cette autre IA.',
+            ),
+          ),
+        ],
+        if (_settings.webSourcesAvailable) ...[
+          const SizedBox(height: 16),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _settings.webSources,
+            onChanged: _busy ? null : _setWebSources,
+            title: const Text('📚 Chercher des explications sur des sites éducatifs'),
+            subtitle: const Text(
+              'Quand la leçon ne donne pas d\'exemple, « Je n\'ai pas compris » propose une '
+              'explication tirée de Vikidia, Lumni, Éduscol… avec sa source. Seule la notion part '
+              'sur Internet, jamais le prénom de l\'enfant ni sa photo.',
             ),
           ),
         ],

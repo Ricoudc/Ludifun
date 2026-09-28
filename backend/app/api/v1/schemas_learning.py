@@ -207,7 +207,7 @@ class HelpOut(BaseModel):
     """« Je n'ai pas compris » : l'aide suivante. Avant le niveau 5, jamais la réponse."""
 
     level: int = Field(description="1 indice, 2 rappel, 3 exemple, 4 étapes, 5 la réponse.")
-    kind: Literal["hint", "reminder", "example", "steps", "answer"]
+    kind: Literal["hint", "reminder", "example", "steps", "answer", "sourced"]
     title: str
     text: str
     lines: list[str] = Field(description="Étapes, ou réponse et explication de l'exemple.")

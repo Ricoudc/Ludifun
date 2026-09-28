@@ -42,7 +42,7 @@ from app.domain.engagement import (
 )
 from app.domain.engagement import Answer as EngagementAnswer
 from app.domain.errors import with_speed
-from app.domain.help import HelpStep, next_help, result_with_help
+from app.domain.help import ExternalHelp, HelpStep, next_help, result_with_help
 from app.domain.mastery import Mastery
 from app.domain.planning import Focus
 from app.domain.rules import ENGINE_VERSION
@@ -408,7 +408,13 @@ async def request_help(
     lesson = await load_units(session, lesson_row)
     activity = activity_of(item, lesson.id_to_key)
     unit = next(u for u in lesson.units if u.id == activity.knowledge_ids[0])
-    step = next_help(unit, activity, item.help_level)
+    stored = await session.scalar(
+        select(db.KnowledgeItem.external_help).where(db.KnowledgeItem.id == lesson.key_to_id[unit.id])
+    )
+    external = None
+    if stored and stored.get("text") and stored.get("sources"):
+        external = ExternalHelp(str(stored["text"]), str(stored["sources"][0]["site"]))
+    step = next_help(unit, activity, item.help_level, external)
     item.help_level = step.level
     return step
 

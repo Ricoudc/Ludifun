@@ -43,7 +43,7 @@ cp deploy/.env.example deploy/.env && chmod 600 deploy/.env
 # éditeur et contact des pages publiques, clé publique age des sauvegardes.
 
 docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
-curl https://api.ludifun.fr/health/ready     # {"status":"ok","schema":"0015"}
+curl https://api.ludifun.fr/health/ready     # {"status":"ok","schema":"0016"}
 ```
 
 Compose refuse de démarrer si une variable obligatoire est vide. Au démarrage, l'API applique

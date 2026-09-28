@@ -12,6 +12,7 @@ from app.config import Settings
 from app.db.base import Database
 from app.db.models import Lesson
 from app.domain.activities.registry import ActivityRegistry
+from app.services import reading_check, sourced_help
 from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
 from app.services.lesson_store import save_pipeline_result
 from app.services.live_calls import LIVE
@@ -36,6 +37,11 @@ async def process_lesson(
             await session.execute(update(Lesson).where(Lesson.id == lesson_id).values(status=status.value))
             await session.commit()
 
+    check = None
+    if pages:  # une photo : ses dates peuvent être comparées à des sources (étape 24c)
+        async with database.sessionmaker() as session:
+            if await sourced_help.web_sources_allowed(session, settings, lesson_id):
+                check = reading_check.for_settings(settings)
     pipeline = LessonPipeline(
         ocr,
         llm,
@@ -43,6 +49,7 @@ async def process_lesson(
         max_chars=settings.max_lesson_chars,
         on_status=on_status,
         on_call=lambda stage, model: LIVE.track(lesson_id, stage, model),
+        reading_check=check,
     )
     try:
         result = await pipeline.run(pages, text)
@@ -63,6 +70,10 @@ async def process_lesson(
             await session.execute(update(Lesson).where(Lesson.id == lesson_id).values(**failed))
             await session.commit()
     LIVE.forget(lesson_id)  # la trace est maintenant dans ai_runs
+    try:  # aide sourcée (étape 24b) : leçon déjà prête, un échec ne la touche pas
+        await sourced_help.prepare(database, llm, settings, lesson_id)
+    except Exception:
+        logger.exception("Leçon %s : aide sourcée non préparée", lesson_id)
 
 
 IN_PROGRESS = ("uploaded", "reading", "analyzing", "generating")

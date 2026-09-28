@@ -29,6 +29,7 @@ class HelpKind(StrEnum):
     EXAMPLE = "example"
     STEPS = "steps"
     ANSWER = "answer"
+    SOURCED = "sourced"  # étape 24b : expliqué à partir d'une source externe citée
 
 
 TITLES = {
@@ -37,6 +38,7 @@ TITLES = {
     HelpKind.EXAMPLE: "✏️ Un exemple",
     HelpKind.STEPS: "🪜 Étape par étape",
     HelpKind.ANSWER: "✅ La réponse",
+    HelpKind.SOURCED: "📚 Expliqué autrement",
 }
 DEFAULT_HINT = "Relis bien la question : quel mot te met sur la piste ?"
 
@@ -61,7 +63,15 @@ def result_with_help(result: float, help_level: int) -> float:
     return result * HELP_RESULT_FACTOR[max(0, min(MAX_HELP, help_level))]
 
 
-def _candidates(unit: KnowledgeUnit) -> dict[int, HelpStep | None]:
+@dataclass(frozen=True)
+class ExternalHelp:
+    """Explication tirée d'un site éducatif, citations vérifiées (§117 : apport externe)."""
+
+    text: str
+    site: str
+
+
+def _candidates(unit: KnowledgeUnit, external: ExternalHelp | None = None) -> dict[int, HelpStep | None]:
     material, item = unit.material, unit.item
     ladder = material.help
     reminder = ladder.reminder if ladder and ladder.reminder else None
@@ -83,6 +93,8 @@ def _candidates(unit: KnowledgeUnit) -> dict[int, HelpStep | None]:
             [f"→ {example.answer}", *([example.why] if example.why else [])],
         )
         if example
+        else HelpStep(3, HelpKind.SOURCED, external.text, [f"📚 En plus de ta leçon — {external.site}"])
+        if external
         else None,
         4: HelpStep(4, HelpKind.STEPS, "Suis ces étapes :", list(steps)) if steps else None,
     }
@@ -106,11 +118,14 @@ def reveals(shown: str, answer: str) -> bool:
     return all(present(expected) for expected in wanted)
 
 
-def next_help(unit: KnowledgeUnit, activity: BuiltActivity, current: int) -> HelpStep:
+def next_help(
+    unit: KnowledgeUnit, activity: BuiltActivity, current: int, external: ExternalHelp | None = None
+) -> HelpStep:
     """L'aide suivant `current` (0 : aucune encore), en sautant celles qui manquent ou qui
-    dévoileraient la réponse ; au bout, la réponse elle-même avec son explication."""
+    dévoileraient la réponse ; au bout, la réponse elle-même avec son explication. Sans exemple
+    dans la leçon, une explication sourcée (`external`, étape 24b) peut en tenir lieu."""
     answer = str(activity.solution.get("display", ""))
-    for level, step in _candidates(unit).items():
+    for level, step in _candidates(unit, external).items():
         if level <= current or step is None:
             continue
         if reveals(" ".join([step.text, *step.lines]), answer):

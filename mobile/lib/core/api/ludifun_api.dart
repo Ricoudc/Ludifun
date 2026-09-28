@@ -157,6 +157,12 @@ class LudifunApi {
     return AiSettings.fromJson(r.data!);
   });
 
+  /// Permettre (ou non) la recherche de sources sur des sites éducatifs (étape 24).
+  Future<AiSettings> setWebSources(bool enabled) => _call(() async {
+    final r = await _dio.put<Json>('/v1/parent/ai/sources', data: {'enabled': enabled});
+    return AiSettings.fromJson(r.data!);
+  });
+
   /// Oublier une IA : sa clé est effacée (retour à l'IA du serveur si elle était active).
   Future<void> forgetAiProvider(String provider) =>
       _call(() => _dio.delete<void>('/v1/parent/ai/providers/$provider'));
