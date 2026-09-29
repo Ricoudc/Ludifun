@@ -11,6 +11,7 @@ import '../../core/api/api_exception.dart';
 import '../../models/parent.dart';
 import '../../models/subject.dart';
 import '../rewards/progress_strip.dart';
+import 'lessons_panel.dart';
 import 'parent_providers.dart';
 import 'progress_chart.dart';
 
@@ -61,7 +62,9 @@ class ChildDashboardScreen extends ConsumerWidget {
       ),
       body: RefreshIndicator(
         onRefresh: () {
-          ref.invalidate(childProgressProvider(childId));
+          ref
+            ..invalidate(childProgressProvider(childId))
+            ..invalidate(allLessonsProvider(childId));
           return ref.refresh(dashboardProvider(childId).future);
         },
         child: CenteredBody(
@@ -71,6 +74,7 @@ class ChildDashboardScreen extends ConsumerWidget {
               ProgressStrip(progress),
               const SizedBox(height: 16),
             ],
+            LessonsPanel(childId: childId),
             ...switch (board) {
               AsyncData(:final value) => _content(context, value, name),
               AsyncError(:final error) => [

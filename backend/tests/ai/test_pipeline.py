@@ -252,6 +252,18 @@ async def test_a_full_context_splits_the_batch_instead_of_failing() -> None:
     assert all(len(ids) <= 3 for ids in asked[1:])
 
 
+async def test_a_local_model_gets_one_notion_per_call() -> None:
+    """Ollama : une notion par appel, sinon l'appel dépasse la place du modèle, s'arrête après
+    une dizaine de minutes, et tout est refait (PC d'essai)."""
+    script = LessonScript.from_file(HISTORY)
+    llm = FakeProvider(script)
+    llm.name = "ollama"
+    result = await LessonPipeline(VisionLLMOcr(llm), llm, default_registry()).run((PAGE,))
+    assert result.ready
+    asked = [requested_ids(text) for stage, text in llm.calls if stage == "material"]
+    assert asked[:5] == [["k1"], ["k2"], ["k3"], ["k4"], ["k5"]]
+
+
 async def test_high_rejection_rate_is_flagged() -> None:
     script = LessonScript.from_file(HISTORY)
     bad = copy.deepcopy(script.material)

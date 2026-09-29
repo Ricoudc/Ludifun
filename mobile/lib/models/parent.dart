@@ -488,15 +488,19 @@ class MistakesPage {
 
 /// Un jeu d'une notion, tel que l'enfant le verra (réponses comprises), pour le parent.
 class ContentBlock {
-  const ContentBlock({required this.title, required this.lines});
+  const ContentBlock({required this.title, required this.lines, this.instruction});
 
   factory ContentBlock.fromJson(Json json) => ContentBlock(
     title: json['title'] as String,
     lines: [for (final l in json['lines'] as List<dynamic>) l as String],
+    instruction: json['instruction'] as String?,
   );
 
   final String title;
   final List<String> lines;
+
+  /// Consigne du jeu, telle que l'enfant la lit (à sa classe).
+  final String? instruction;
 }
 
 class NotionContent {
@@ -521,15 +525,19 @@ class NotionContent {
 }
 
 class LessonContent {
-  const LessonContent({required this.grade, required this.notions, this.title});
+  const LessonContent({required this.grade, required this.notions, this.title, this.text});
 
   factory LessonContent.fromJson(Json json) => LessonContent(
     title: json['title'] as String?,
     grade: json['grade'] as String,
+    text: json['text'] as String?,
     notions: [for (final n in json['notions'] as List<dynamic>) NotionContent.fromJson(n as Json)],
   );
 
   final String? title;
   final String grade;
+
+  /// Texte de la leçon tel que l'IA l'a lu.
+  final String? text;
   final List<NotionContent> notions;
 }

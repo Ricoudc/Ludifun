@@ -15,6 +15,7 @@ from app.api.errors import ApiError
 from app.api.v1.children import own_child
 from app.api.v1.lessons import ensure_ai_budget
 from app.db import models as db_models
+from app.domain.instructions import instruction
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, LessonAnalysis
 from app.domain.material_view import material_blocks
 from app.services.ai_settings import AiResolver
@@ -35,6 +36,7 @@ REASONS: dict[str, str] = {
 class BlockOut(BaseModel):
     title: str
     lines: list[str]
+    instruction: str | None = Field(None, description="Consigne du jeu, telle que l'enfant la lit.")
 
 
 class NotionContentOut(BaseModel):
@@ -48,6 +50,7 @@ class LessonContentOut(BaseModel):
     lesson_id: uuid.UUID
     title: str | None
     grade: str = Field(description="Classe de l'enfant.")
+    text: str | None = Field(None, description="Texte de la leçon tel que l'IA l'a lu.")
     notions: list[NotionContentOut]
 
 
@@ -58,14 +61,32 @@ class ReworkIn(BaseModel):
     comment: str | None = Field(None, max_length=500)
 
 
-def notion_out(item: db_models.KnowledgeItem, material: db_models.KnowledgeMaterial) -> NotionContentOut:
+def notion_out(
+    item: db_models.KnowledgeItem, material: db_models.KnowledgeMaterial, grade: str
+) -> NotionContentOut:
     blocks = material_blocks(KnowledgeMaterial.model_validate(material.material))
     return NotionContentOut(
         knowledge_id=item.id,
         label=item.label,
         statement=item.statement,
-        blocks=[BlockOut(title=b.title, lines=b.lines) for b in blocks],
+        blocks=[
+            BlockOut(
+                title=b.title,
+                lines=b.lines,
+                instruction=instruction(b.game, grade) if b.game else None,
+            )
+            for b in blocks
+        ],
     )
+
+
+async def lesson_text(db: DbSession, lesson: db_models.Lesson) -> str:
+    pages = await db.scalars(
+        select(db_models.LessonPage)
+        .where(db_models.LessonPage.lesson_id == lesson.id)
+        .order_by(db_models.LessonPage.page_index)
+    )
+    return "\n\n".join(p.ocr_text for p in pages if p.ocr_text)
 
 
 async def _lesson(db: DbSession, child: db_models.Child, lesson_id: uuid.UUID) -> db_models.Lesson:
@@ -99,7 +120,8 @@ async def get_content(
         lesson_id=lesson.id,
         title=lesson.title,
         grade=child.grade,
-        notions=[notion_out(item, material) for item, material in rows.all()],
+        text=await lesson_text(db, lesson) or None,
+        notions=[notion_out(item, material, child.grade) for item, material in rows.all()],
     )
 
 
@@ -139,12 +161,7 @@ async def rework_notion(
             503, "ai_not_configured", "L'IA choisie n'est pas prête : vérifiez son réglage."
         ) from exc
 
-    pages = await db.scalars(
-        select(db_models.LessonPage)
-        .where(db_models.LessonPage.lesson_id == lesson.id)
-        .order_by(db_models.LessonPage.page_index)
-    )
-    text = "\n\n".join(p.ocr_text for p in pages)
+    text = await lesson_text(db, lesson)
     item = KnowledgeItem(
         id=row.key,
         type=row.type,
@@ -187,4 +204,4 @@ async def rework_notion(
     ]
     material_row.prompt_version = PROMPT_VERSIONS["material"]
     await db.commit()
-    return notion_out(row, material_row)
+    return notion_out(row, material_row, child.grade)

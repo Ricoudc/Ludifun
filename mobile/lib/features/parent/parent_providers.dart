@@ -68,3 +68,9 @@ String avatarOf(Child child) => child.avatar ?? child.displayName.characters.fir
 extension on String {
   Iterable<String> get characters => runes.map(String.fromCharCode);
 }
+
+/// Toutes les leçons de l'enfant, en préparation comprises : le parent les vérifie avant les
+/// révisions (tableau de bord).
+final allLessonsProvider = FutureProvider.autoDispose.family<List<LessonSummary>, String>(
+  (ref, childId) => ref.watch(apiProvider).lessons(childId: childId),
+);

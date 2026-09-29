@@ -587,8 +587,11 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   (ranger, remettre dans l'ordre, colorier) passent avant un quiz quand la notion le permet ;
   la décision le dit (« Jeu visuel proposé avant un quiz. »).
 - **Le parent relit et fait corriger les questions** (`domain/material_view.py`,
-  `api/v1/lesson_content.py`) : écran « Voir les questions et les corriger » (depuis
-  « Compétences par leçon ») avec tout ce que l'enfant verra, réponses et aides comprises. Par
+  `api/v1/lesson_content.py`) : écran « Voir les questions et les corriger » avec tout ce que
+  l'enfant verra : le texte de la leçon tel que l'IA l'a lu, la consigne de chaque jeu à la classe
+  de l'enfant, les questions, réponses et aides. On y arrive par la liste « Leçons » du tableau de
+  bord de l'enfant (toutes les leçons, en préparation comprises) et, directement, à la fin de
+  l'analyse d'une leçon déposée par le parent. Par
   notion, « Demander une correction à l'IA » : motif (trop difficile, trop facile, pas clair,
   réponse fausse, autre) et précision libre. La remarque est transmise comme une donnée entre
   balises `<remarque_parent>` (chevrons neutralisés, §142-143) avec la classe de l'enfant ; la
@@ -707,7 +710,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | POST | `/v1/feedback` `{rating?, message?, screen?, session_id?, child_id?}` | ✅ étape 18 : avis du parent ou de l'enfant (au moins une note ou un message) |
 | GET | `/v1/me/mission` | ✅ étape 16 : `exam` (titre, date, étape du jour) et `daily_minutes` ajoutés (pas de route séparée) |
 | GET | `/v1/children/{id}/mistakes?limit=&before=` | ✅ étape 25 : questions ratées : question, réponse de l'enfant, bonne réponse |
-| GET | `/v1/children/{id}/lessons/{lesson_id}/content` | ✅ étape 25 : toutes les questions de la leçon, réponses comprises, notion par notion |
+| GET | `/v1/children/{id}/lessons/{lesson_id}/content` | ✅ étape 25 : texte lu, puis toutes les questions de la leçon, réponses et consignes comprises, notion par notion |
 | POST | `/v1/children/{id}/lessons/{lesson_id}/notions/{knowledge_id}/rework` `{reason, comment?}` | ✅ étape 25 : nouvelle version des questions d'une notion par l'IA, d'après la remarque du parent (409 `rework_failed` si rien ne passe les contrôles) |
 | DELETE | `/v1/lessons/{id}` | ✅ étape 25 : parent ; l'appareil de l'enfant, leçon ratée seulement (403 `parent_only`) |
 

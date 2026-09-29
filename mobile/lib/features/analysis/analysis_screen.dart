@@ -119,10 +119,11 @@ class _AnalysisScreenState extends ConsumerState<AnalysisScreen> {
         if (widget.childId == null) {
           context.go(Routes.lesson(widget.lessonId));
         } else {
+          // Le parent vérifie d'abord ce que l'enfant verra (texte lu, consignes, réponses).
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Leçon prête : elle apparaît dans la mission du jour.')),
+            const SnackBar(content: Text('Leçon prête : vérifiez les questions et les réponses.')),
           );
-          context.go(widget.home);
+          context.go(Routes.lessonContent(widget.childId!, widget.lessonId));
         }
       });
     }

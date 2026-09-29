@@ -56,6 +56,10 @@ STAGE_LABELS: dict[Stage, str] = {
     "sources": "recherche de sources",
 }
 MATERIAL_BATCH = 5  # notions par appel d'enrichissement (appels en parallèle)
+# IA installée sur le PC (Ollama) : une notion par appel. Plusieurs notions dans un appel
+# dépassent la place du modèle (contexte de 8192 jetons) : l'appel est coupé après une dizaine
+# de minutes d'écriture, puis tout est refait en deux (PC d'essai, carte de 8 Go, 6 jetons/s).
+LOCAL_MATERIAL_BATCH = 1
 MIN_OPTIONS_IMPORTANT = 2  # activités minimales pour une notion d'importance ≥ 4 (§5.3)
 IMPORTANT = 4
 REJECTION_WARNING_RATE = 0.3  # au-delà, signal de qualité dans ai_runs (§6.4)
@@ -150,6 +154,7 @@ class LessonPipeline:
         self.pupil_grade = pupil_grade  # classe de l'enfant : les questions sont écrites pour elle
         self.analysis_prompt = Prompt.load("analysis")
         self.material_prompt = Prompt.load("material")
+        self.material_batch = LOCAL_MATERIAL_BATCH if llm.name == "ollama" else MATERIAL_BATCH
 
     async def run(self, pages: Sequence[PageImage] = (), text: str | None = None) -> PipelineResult:
         """Analyse une leçon à partir de ses photos, ou directement de son texte (OCR déjà fait)."""
@@ -260,7 +265,8 @@ class LessonPipeline:
         self, result: PipelineResult, analysis: LessonAnalysis, text: str
     ) -> list[KnowledgeUnit]:
         items = analysis.knowledge
-        batches = [items[i : i + MATERIAL_BATCH] for i in range(0, len(items), MATERIAL_BATCH)]
+        size = self.material_batch
+        batches = [items[i : i + size] for i in range(0, len(items), size)]
         validated: dict[str, MaterialValidation] = {}
         for found in await asyncio.gather(*(self._material(result, analysis, text, b) for b in batches)):
             validated |= found
@@ -275,7 +281,7 @@ class LessonPipeline:
             if (i.importance >= IMPORTANT and self._options(i, validated) < MIN_OPTIONS_IMPORTANT)
             or (i.id in validated and validated[i.id].rejected)
         ]
-        retry_batches = [weak[i : i + MATERIAL_BATCH] for i in range(0, len(weak), MATERIAL_BATCH)]
+        retry_batches = [weak[i : i + size] for i in range(0, len(weak), size)]
         for batch in retry_batches:
             feedback = {i.id: validated[i.id].rejected for i in batch if i.id in validated}
             retried = await self._material(result, analysis, text, batch, feedback)

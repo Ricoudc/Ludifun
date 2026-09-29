@@ -41,6 +41,11 @@ async def test_the_parent_reads_and_reworks_the_questions(
     assert content["grade"] == "CM1" and content["notions"]
     notion = content["notions"][0]
     assert any(b["title"] == "❓ Questions à choix" and "✅" in b["lines"][0] for b in notion["blocks"])
+    # Le parent relit aussi la leçon elle-même et la consigne de chaque jeu, à sa classe.
+    assert content["text"]
+    mcq = next(b for b in notion["blocks"] if b["title"] == "❓ Questions à choix")
+    assert mcq["instruction"] == "Lis la question, puis choisis la bonne réponse parmi les quatre."
+    assert next(b for b in notion["blocks"] if b["title"] == "🆘 Aides")["instruction"] is None
 
     # Le parent trouve la notion trop difficile : l'IA refait ses questions, avec sa remarque.
     def better(attempt: int, text: str) -> MaterialBatchOutput:

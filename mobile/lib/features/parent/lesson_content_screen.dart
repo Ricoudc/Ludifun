@@ -36,7 +36,7 @@ class LessonContentScreen extends ConsumerWidget {
     final content = ref.watch(lessonContentProvider((childId, lessonId)));
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go(Routes.childSkills(childId))),
+        leading: BackButton(onPressed: () => context.go(Routes.childDashboard(childId))),
         title: Text(content.value?.title ?? 'Questions de la leçon'),
       ),
       body: CenteredBody(
@@ -50,6 +50,21 @@ class LessonContentScreen extends ConsumerWidget {
               style: const TextStyle(fontSize: 15, color: Colors.black54),
             ),
             const SizedBox(height: 12),
+            if (value.text case final text?)
+              Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ExpansionTile(
+                  shape: const Border(),
+                  leading: const Icon(Icons.menu_book_outlined),
+                  title: const Text('La leçon, telle que l\'IA l\'a lue'),
+                  subtitle: const Text('Vérifiez qu\'il ne manque rien et que rien n\'est mal lu'),
+                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SelectableText(text, style: const TextStyle(fontSize: 15, height: 1.4)),
+                  ],
+                ),
+              ),
             for (final notion in value.notions)
               _NotionCard(notion, childId: childId, lessonId: lessonId),
           ],
@@ -132,6 +147,18 @@ class _NotionCard extends ConsumerWidget {
           for (final block in notion.blocks) ...[
             const SizedBox(height: 8),
             Text(block.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            if (block.instruction case final instruction?)
+              Padding(
+                padding: const EdgeInsets.only(top: 2, left: 8),
+                child: Text(
+                  'Consigne lue par l\'enfant : « $instruction »',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
             for (final line in block.lines)
               Padding(
                 padding: const EdgeInsets.only(top: 4, left: 8),

@@ -413,6 +413,19 @@ void main() {
   testWidgets('le parent photographie une leçon pour Emma', (tester) async {
     var polls = 0;
     server
+      ..on(
+        'GET /v1/children/c1/lessons/l9/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l9',
+            'title': 'La Révolution française',
+            'grade': 'CM1',
+            'text': 'En 1789, les Français prennent la Bastille.',
+            'notions': <Object>[],
+          },
+        ),
+      )
       ..on('POST /v1/lessons', (r) {
         expect(r.queryParameters['child_id'], 'c1');
         return (202, {'id': 'l9', 'status': 'uploaded'});
@@ -440,12 +453,43 @@ void main() {
     expect(find.text('📷 Photographier la leçon'), findsOneWidget);
     await tap(tester, find.text('Ajouter depuis la galerie'));
     await tester.tap(find.text('Analyser ma leçon'));
-    for (var i = 0; i < 60 && find.text('Cette semaine').evaluate().isEmpty; i++) {
+    for (var i = 0; i < 60 && find.textContaining('Voici tout').evaluate().isEmpty; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
     await tester.pumpAndSettle();
-    expect(find.text('Leçon prête : elle apparaît dans la mission du jour.'), findsOneWidget);
-    expect(find.text('Cette semaine'), findsOneWidget);
+    // Prête : le parent arrive sur ce que l'enfant verra, pour le vérifier.
+    expect(find.text('Leçon prête : vérifiez les questions et les réponses.'), findsOneWidget);
+    expect(find.text('La leçon, telle que l\'IA l\'a lue'), findsOneWidget);
+  });
+
+  testWidgets('tableau de bord : les leçons, prêtes ou en préparation', (tester) async {
+    Map<String, Object?> lesson(String id, String status, String? title) => {
+      'id': id,
+      'status': status,
+      'failure_reason': null,
+      'subject': 'history',
+      'title': title,
+      'created_at': '2026-09-23T15:00:00Z',
+    };
+    server
+      ..on('GET /v1/lessons', (r) {
+        expect(r.queryParameters['child_id'], 'c1');
+        return (200, [lesson('l9', 'generating', null), lesson('l2', 'ready', 'Les fractions')]);
+      })
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {'lesson_id': 'l2', 'title': 'Les fractions', 'grade': 'CM1', 'notions': <Object>[]},
+        ),
+      );
+    final container = await launch(tester);
+    await go(tester, container, Routes.childDashboard('c1'));
+    expect(find.text('Leçons'), findsOneWidget);
+    expect(find.text('⏳ L\'IA la prépare… · touchez pour suivre'), findsOneWidget);
+    expect(find.text('Leçon du mercredi 23 septembre'), findsOneWidget);
+    await tap(tester, find.text('Les fractions'));
+    expect(find.textContaining('Voici tout ce que l\'enfant verra'), findsOneWidget);
   });
 
   testWidgets('mot de passe oublié, puis lien de l\'e-mail', (tester) async {
@@ -962,6 +1006,7 @@ void main() {
       'blocks': [
         {
           'title': '❓ Questions à choix',
+          'instruction': 'Lis la question, puis choisis la bonne réponse parmi les quatre.',
           'lines': [
             version == 1
                 ? 'Quel terme désigne le nombre supérieur ?\n✅ Numérateur'
@@ -979,6 +1024,7 @@ void main() {
             'lesson_id': 'l2',
             'title': 'Les fractions',
             'grade': 'CM1',
+            'text': 'Une fraction a un numérateur et un dénominateur.',
             'notions': [notion()],
           },
         ),
@@ -993,6 +1039,14 @@ void main() {
     expect(find.text('Les fractions'), findsOneWidget);
     await tap(tester, find.text('Numérateur'));
     expect(find.text('Quel terme désigne le nombre supérieur ?\n✅ Numérateur'), findsOneWidget);
+    expect(
+      find.text(
+        'Consigne lue par l\'enfant : « Lis la question, puis choisis la bonne réponse parmi les quatre. »',
+      ),
+      findsOneWidget,
+    );
+    await tap(tester, find.text('La leçon, telle que l\'IA l\'a lue'));
+    expect(find.text('Une fraction a un numérateur et un dénominateur.'), findsOneWidget);
 
     await tap(tester, find.text('Demander une correction à l\'IA'));
     expect(
