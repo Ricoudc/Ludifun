@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import time
+from collections import Counter
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -304,6 +305,12 @@ class LessonPipeline:
         dropped = sum(len(v.rejected) for v in validated.values())
         total = dropped + sum(v.kept for v in validated.values())
         rate = dropped / total if total else 0.0
+        kinds = Counter(r.element.split("[")[0] for v in validated.values() for r in v.rejected)
+        logger.info(
+            "IA : exercices : %d notion(s) sur %d utilisables, %d élément(s) gardé(s), %d refusé(s)%s",
+            len(units), len(items), total - dropped, dropped,
+            f" ({', '.join(f'{k} {n}' for k, n in kinds.most_common())})" if kinds else "",
+        )  # fmt: skip
         if material_runs and rate > REJECTION_WARNING_RATE:
             material_runs[-1].warnings.append(f"taux de rejet du matériel élevé : {rate:.0%}")
         return units

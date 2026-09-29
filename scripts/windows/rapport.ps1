@@ -53,7 +53,7 @@ if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
 
 Section 'Journal du serveur (IA et erreurs)'
 if (Docker-Pret) {
-    $journal = & docker compose logs api --tail 400 2>&1 | Select-String -Pattern 'IA :|ERROR|WARNING|Traceback|Error' | Select-Object -Last 60
+    $journal = & docker compose logs api --tail 400 2>&1 | Select-String -Pattern 'IA :|Ollama :|ERROR|WARNING|Traceback|Error' | Select-Object -Last 60
     Ajouter ($journal | ForEach-Object { $_.Line })
 }
 

@@ -385,3 +385,31 @@ async def test_photos_are_read_as_plain_text_one_page_at_a_time() -> None:
     assert [p.quality for p in result.output.pages] == ["good", "partial", "unreadable"]
     assert result.output.text.startswith("La Révolution française")
     assert (result.usage.input_tokens, result.usage.output_tokens) == (2700, 120)
+
+
+async def test_each_call_logs_where_the_time_went(caplog: pytest.LogCaptureFixture) -> None:
+    """Pour `Surveiller-Ludifun.bat` : une ligne technique par appel, sans texte de leçon."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": '{"text": "Le secret de la leçon"}'},
+                "done_reason": "stop",
+                "load_duration": 71_000_000_000,
+                "prompt_eval_count": 1300,
+                "prompt_eval_duration": 4_000_000_000,
+                "eval_count": 520,
+                "eval_duration": 20_000_000_000,
+            },
+        )
+
+    caplog.set_level("INFO", logger="ludifun.ai")
+    await ollama(handler).structured(
+        prompt=Prompt("analysis", "v9", "x"), input="Le secret de la leçon", schema=Page
+    )
+    (line,) = [r.getMessage() for r in caplog.records if r.name == "ludifun.ai"]
+    assert line.startswith("Ollama : analysis : ")
+    assert "chargement 71 s" in line and "lecture 1300 jetons en 4 s" in line
+    assert "écriture 520/3500 jetons à 26 jetons/s" in line and line.endswith("fin : stop")
+    assert "secret" not in line

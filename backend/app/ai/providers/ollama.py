@@ -9,6 +9,7 @@ passent en base64 (`images`). Gratuit : le modèle est journalisé `ollama/<nom>
 import asyncio
 import base64
 import json
+import logging
 import time
 import weakref
 from collections.abc import Mapping
@@ -21,6 +22,8 @@ from app.ai.images import shrink
 from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
 from app.ai.schemas import OcrPage, OcrResult
+
+logger = logging.getLogger("ludifun.ai")
 
 TIMEOUT_S = 900.0  # sur un PC sans carte graphique, une page peut prendre plusieurs minutes
 # Photos réduites avant l'envoi : sur un PC, le temps de lecture suit la taille de l'image (une
@@ -205,6 +208,11 @@ class OllamaProvider:
             ) from exc
         if response.status_code == 404:
             raise AIError(f"modèle Ollama « {model} » absent : lancez « ollama pull {model} » sur le PC")
+        if response.status_code >= 400:
+            logger.warning(
+                "Ollama : %s, %d photo(s) à %d px : erreur %d après %d s",
+                prompt.stage, len(images), side, response.status_code, time.perf_counter() - started,
+            )  # fmt: skip
         if response.status_code >= 400 and any(m in response.text for m in _CRASH_MARKERS):
             raise _Crashed(
                 AIError(
@@ -216,6 +224,7 @@ class OllamaProvider:
             raise AIError(f"Ollama {response.status_code} : {response.text[:300]}")
         latency_ms = round((time.perf_counter() - started) * 1000)
         data: dict[str, Any] = response.json()
+        logger.info("%s", _timings(prompt.stage, data, len(images), side, latency_ms))
         if data.get("done_reason") == "length":
             written = data.get("eval_count")
             if isinstance(written, int) and written >= MAX_OUTPUT[prompt.stage]:
@@ -227,3 +236,23 @@ class OllamaProvider:
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
         return content, data, latency_ms
+
+
+def _timings(stage: Stage, data: Mapping[str, Any], images: int, side: int, latency_ms: int) -> str:
+    """Une ligne technique par appel, pour `Surveiller-Ludifun.bat` : où passe le temps
+    (chargement du modèle, lecture de la demande, écriture), et pourquoi la réponse s'arrête.
+    Aucun texte de leçon ni de réponse."""
+
+    def seconds(key: str) -> float:
+        value = data.get(key)
+        return value / 1e9 if isinstance(value, int | float) else 0.0
+
+    written = data.get("eval_count") or 0
+    writing = seconds("eval_duration")
+    speed = f"{written / writing:.0f} jetons/s" if writing else "?"
+    photos = f", {images} photo(s) à {side} px" if images else ""
+    return (
+        f"Ollama : {stage}{photos} : {latency_ms / 1000:.0f} s (chargement {seconds('load_duration'):.0f} s, "
+        f"lecture {data.get('prompt_eval_count') or 0} jetons en {seconds('prompt_eval_duration'):.0f} s, "
+        f"écriture {written}/{MAX_OUTPUT[stage]} jetons à {speed}), fin : {data.get('done_reason') or '?'}"
+    )
