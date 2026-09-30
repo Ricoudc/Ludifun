@@ -81,7 +81,7 @@ class OllamaProvider:
         self,
         base_url: str,
         models: Mapping[Stage, str],
-        num_ctx: int = 16384,
+        num_ctx: int = 8192,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")

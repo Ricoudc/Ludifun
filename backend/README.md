@@ -125,7 +125,7 @@ techniques seulement) et `/suivi/rapport.txt` ; ouverte hors production, réglag
 
 | `LUDIFUN_AI_PROVIDER` | Service | Clé | Modèles conseillés (lecture et analyse / correction) |
 |---|---|---|---|
-| `ollama` (défaut du `docker-compose.yml`) | Ollama, sur le PC (gratuit, rien ne sort) ; adresse `LUDIFUN_OLLAMA_BASE_URL` (`http://host.docker.internal:11434` dans Docker), contexte `LUDIFUN_OLLAMA_NUM_CTX` (16384) | — | `qwen2.5vl:7b` (doit lire les images ; plus léger : `gemma3:4b`) |
+| `ollama` (défaut du `docker-compose.yml`) | Ollama, sur le PC (gratuit, rien ne sort) ; adresse `LUDIFUN_OLLAMA_BASE_URL` (`http://host.docker.internal:11434` dans Docker), contexte `LUDIFUN_OLLAMA_NUM_CTX` (8192) | — | `qwen2.5vl:7b` (doit lire les images ; plus léger : `gemma3:4b`) |
 | `claude` (défaut hors Docker) | Claude, Anthropic | `ANTHROPIC_API_KEY` | `claude-opus-5` / `claude-sonnet-5` |
 | `openai` | ChatGPT, OpenAI | `OPENAI_API_KEY` | `gpt-5` / `gpt-5-mini` |
 | `gemini` | Gemini, Google | `GEMINI_API_KEY` | `gemini-2.5-pro` / `gemini-2.5-flash` |

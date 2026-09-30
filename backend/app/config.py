@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     ai_api_key: SecretStr | None = None
     # Ollama : IA locale, gratuite. Dans Docker, http://host.docker.internal:11434 (docker-compose).
     ollama_base_url: str = "http://localhost:11434"
-    ollama_num_ctx: int = 16384  # contexte : consignes, leçon et schéma doivent y tenir
+    ollama_num_ctx: int = 8192  # contexte : consignes, leçon, schéma et une notion doivent y tenir
     # Réglage de l'IA par famille (espace parent). Les adresses libres (Ollama, service
     # compatible) font appeler une adresse choisie par le parent : refusées en production sauf
     # si ce réglage vaut true (serveur familial).

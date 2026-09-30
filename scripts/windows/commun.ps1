@@ -160,7 +160,29 @@ function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
         }
     } catch { }
     if (-not $valeurs['LUDIFUN_OLLAMA_NUM_CTX']) {
-        $conseils += 'LUDIFUN_OLLAMA_NUM_CTX absent du .env : avec une carte de 8 Go, ajoute LUDIFUN_OLLAMA_NUM_CTX=12288.'
+        $conseils += 'LUDIFUN_OLLAMA_NUM_CTX absent du .env : ajoute LUDIFUN_OLLAMA_NUM_CTX=8192.'
+    } elseif ([int]$valeurs['LUDIFUN_OLLAMA_NUM_CTX'] -gt 8192) {
+        $conseils += "LUDIFUN_OLLAMA_NUM_CTX=$($valeurs['LUDIFUN_OLLAMA_NUM_CTX']) : avec une carte de 8 Go, 8192 suffit et évite que le modèle déborde de la carte."
+    }
+    # Ollama sur ce PC : mémoire de travail réduite (PC d'essai, RX 6600 : 9 -> 43 jetons/s). Sans
+    # ces réglages, le modèle déborde de la carte graphique dans la mémoire du PC, 4 fois plus lente.
+    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+        $attendus = [ordered]@{ OLLAMA_FLASH_ATTENTION = '1'; OLLAMA_KV_CACHE_TYPE = 'q8_0'; OLLAMA_NUM_PARALLEL = '1' }
+        foreach ($nom in $attendus.Keys) {
+            $valeur = [Environment]::GetEnvironmentVariable($nom, 'User')
+            if (-not $valeur) { $valeur = [Environment]::GetEnvironmentVariable($nom, 'Machine') }
+            if ($valeur -ne $attendus[$nom]) {
+                $conseils += "Ollama plus rapide : dans une invite de commandes, setx $nom $($attendus[$nom]) (puis quitter et relancer Ollama)."
+            }
+        }
+        try {
+            $charges = (Invoke-RestMethod -Uri "$base/api/ps" -TimeoutSec 5).models
+            foreach ($m in $charges) {
+                if ($m.size -and $m.size_vram -lt $m.size) {
+                    $conseils += "« $($m.name) » ne tient pas entièrement dans la carte graphique ($([math]::Round(100 * $m.size_vram / $m.size)) %) : dans les réglages d'Ollama, mets « Context length » sur 4k."
+                }
+            }
+        } catch { }
     }
     return $conseils
 }
