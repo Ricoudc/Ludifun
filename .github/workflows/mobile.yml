@@ -40,6 +40,8 @@ jobs:
   android:
     name: APK Android (debug)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # publier l'APK de test dans la release « apk-test »
     defaults:
       run:
         working-directory: mobile
@@ -57,17 +59,20 @@ jobs:
       - run: flutter pub get --enforce-lockfile
       - name: Compilation
         run: flutter build apk --debug
-      # APK de test à télécharger (onglet Actions → cette exécution → « Artifacts ») : voir
+      # APK de test à télécharger : page « Releases » du dépôt, version « apk-test »
+      # (https://github.com/Ricoudc/Ludifun/releases/tag/apk-test), remplacé à chaque envoi de
+      # code. Les « Artifacts » d'Actions ne servent plus : leur quota de stockage était plein
+      # (« Artifact storage quota has been hit ») ; une release n'y compte pas. Voir
       # docs/tester-sur-telephone.md. L'adresse du serveur se règle dans l'application.
-      # Une seule copie par envoi de code (pas aussi pour la pull request, qui reconstruit le même
-      # APK), gardée 7 jours : chaque APK pèse environ 100 Mo et le stockage GitHub est limité.
-      # Quota de stockage atteint : la compilation a réussi, la vérification reste verte.
       - name: APK de test téléchargeable
         if: github.event_name != 'pull_request'
         continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: ludifun-apk-test
-          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
-          retention-days: 7
-          if-no-files-found: error
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: "APK de test de la branche ${{ github.ref_name }}, commit ${{ github.sha }}. Remplacé à chaque envoi de code."
+        run: |
+          cp build/app/outputs/flutter-apk/app-debug.apk ludifun-test.apk
+          gh release view apk-test >/dev/null 2>&1 || gh release create apk-test --prerelease \
+            --target "${{ github.sha }}" --title "APK de test" --notes "$NOTES"
+          gh release edit apk-test --notes "$NOTES"
+          gh release upload apk-test ludifun-test.apk --clobber
