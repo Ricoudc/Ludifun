@@ -57,7 +57,7 @@ def test_order_steps(history: ReferenceLesson, registry: ActivityRegistry) -> No
     activity = order.build([unit], 2, random.Random(3))
     shown = [i["text"] for i in activity.payload["items"]]
     assert sorted(shown) == sorted(STEPS) and shown != STEPS  # jamais déjà dans l'ordre
-    assert activity.payload["prompt"] == "Remets dans l'ordre : La digestion"
+    assert activity.payload["prompt"] == "Remets les étapes dans l'ordre : La digestion"
 
     perfect = order.grade(activity, {"order": activity.solution["order"]})
     assert perfect.score == 1 and perfect.correct_answer == " → ".join(STEPS) and not perfect.errors

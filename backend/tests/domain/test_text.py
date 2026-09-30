@@ -87,3 +87,12 @@ def test_fuzzy_contains_tolerates_ocr_errors() -> None:
     assert fuzzy_contains(text, "Le 14 juillet 1789, le peuple de Paris prend la Bastille")
     assert not fuzzy_contains(text, "Napoléon devient empereur en 1804")
     assert not fuzzy_contains(text, "")
+
+
+def test_a_multiplication_table_is_found_whatever_the_sign() -> None:
+    """Photo d'une table de multiplication : « 7 x 8 » lu sur la photo, « 7 × 8 » écrit par l'IA."""
+    table = "La table de 7\n7 x 7 = 49\n7 x 8 = 56\n7x9=63"
+    for excerpt in ("7 × 8 = 56", "7 * 9 = 63", "7 x 7 = 49"):
+        assert fuzzy_contains(table, excerpt), excerpt
+    assert not fuzzy_contains(table, "7 × 6 = 42")
+    assert normalize("Max a 3 ans") == "max a 3 ans"

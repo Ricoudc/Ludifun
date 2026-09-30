@@ -61,7 +61,7 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Rédige une réponse courte et précise, en une ou deux phrases.",
     ),
     ActivityCode.ORDER: (
-        "Touche les étiquettes dans le bon ordre.",
+        "Touche les étiquettes une par une, dans l'ordre demandé.",
         "Touche les étiquettes dans l'ordre, de la première à la dernière.",
         "Remets les éléments dans l'ordre en touchant les étiquettes.",
     ),
@@ -81,7 +81,7 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Retrouve les paires en retournant le moins de cartes possible.",
     ),
     ActivityCode.MAP: (
-        "Touche sur le dessin le nom demandé.",
+        "Lis le nom demandé. Touche sa place sur le dessin.",
         "Touche sur le dessin l'endroit de chaque nom demandé.",
         "Situe chaque élément demandé sur le document.",
     ),
@@ -96,11 +96,13 @@ _WRITING: dict[int, str] = {
     2: (
         "Élève de cycle 2 (CP à CE2), qui apprend à lire : phrases de 12 mots au plus, "
         "mots simples et concrets, une seule idée par phrase, pas de négation dans les "
-        "questions, pas de mot savant sans l'expliquer."
+        "questions, pas de mot savant sans l'expliquer. Chaque consigne commence par un verbe "
+        "(Touche, Range, Écris, Choisis) et dit ce qu'il faut faire, comme à un enfant de 6 ans."
     ),
     3: (
         "Élève de cycle 3 (CM1 à 6e) : phrases de 20 mots au plus, vocabulaire de la leçon, "
-        "une seule question à la fois, pas de double négation."
+        "une seule question à la fois, pas de double négation. Chaque consigne commence par "
+        "un verbe et dit ce qu'il faut faire et selon quel critère."
     ),
     4: (
         "Élève de cycle 4 (5e à 3e) : phrases claires et précises, vocabulaire disciplinaire "

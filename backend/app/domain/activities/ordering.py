@@ -116,7 +116,7 @@ class Order(ActivityType):
     def _prompt(self, unit: KnowledgeUnit) -> str:
         if unit.type != KnowledgeType.PROCESS and unit.material.sequence is not None:
             return unit.material.sequence.prompt
-        return f"Remets dans l'ordre : {unit.item.label}"
+        return f"Remets les étapes dans l'ordre : {unit.item.label}"
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
         steps = self._steps(unit)

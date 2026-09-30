@@ -6,6 +6,8 @@ from difflib import SequenceMatcher
 
 _PUNCTUATION = re.compile(r"[^\w\s/]", re.UNICODE)
 _SPACES = re.compile(r"\s+")
+# « 7 × 8 », « 7x8 », « 7 * 8 » : le même produit, quelle que soit l'écriture (photo ou IA).
+_TIMES = re.compile(r"(\d)\s*[x×*]\s*(?=\d)")
 _INTEGER = re.compile(r"^-?\d+$")
 _DECIMAL = re.compile(r"^-?\d+([.,]\d+)?$")
 _FRACTION = re.compile(r"^\d+\s?/\s?\d+$")
@@ -23,6 +25,7 @@ def strip_accents(text: str) -> str:
 def normalize(text: str) -> str:
     """Minuscules, sans accents ni ponctuation, espaces réduits. « L'État. » → « l etat »."""
     text = strip_accents(text.lower()).replace("’", "'").replace("_", " ")
+    text = _TIMES.sub(r"\1 x ", text)
     text = _PUNCTUATION.sub(" ", text)
     return _SPACES.sub(" ", text).strip()
 

@@ -53,7 +53,7 @@ class Classify(ActivityType):
     def _prompt(self, unit: KnowledgeUnit) -> str:
         if unit.type != KnowledgeType.CLASSIFICATION and unit.material.sorting is not None:
             return unit.material.sorting.prompt
-        return f"Range dans les bonnes cases : {unit.item.label}"
+        return f"Range chaque étiquette dans la bonne case : {unit.item.label}"
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
         categories = self._categories(unit)

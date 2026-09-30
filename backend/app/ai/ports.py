@@ -15,8 +15,8 @@ MediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif"]
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 PROMPT_VERSIONS: dict[Stage, str] = {
     "ocr": "v2",
-    "analysis": "v2",
-    "material": "v4",
+    "analysis": "v3",
+    "material": "v5",
     "evaluation": "v1",
     "sources": "v1",
 }
