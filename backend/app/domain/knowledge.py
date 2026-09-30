@@ -302,6 +302,14 @@ class Sequence(_Model):
     items: list[NonEmpty] = Field(min_length=3)
 
 
+class Spelling(_Model):
+    """Un mot à savoir écrire (liste de mots, dictée à préparer) : jeux « Mot éclair » et
+    « Lettres mélangées ». `sentence` : une phrase d'exemple où le mot est remplacé par « ___ »."""
+
+    word: Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=40)]
+    sentence: NonEmpty | None = None
+
+
 class KnowledgeMaterial(_Model):
     """Matériel validé : chaque élément présent a passé les contrôles de §6.4."""
 
@@ -318,6 +326,7 @@ class KnowledgeMaterial(_Model):
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     sorting: Sorting | None = None
     sequence: Sequence | None = None
+    spelling: Spelling | None = None
 
     def questions_of(self, difficulty: int) -> list[MaterialQuestion]:
         return [q for q in self.questions if q.difficulty == difficulty]

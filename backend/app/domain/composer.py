@@ -49,7 +49,7 @@ EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
 # Jeux visuels, plus agréables à faire et à voir qu'un quiz : proposés d'abord (étape 25).
-VISUAL = frozenset({ActivityCode.ORDER, ActivityCode.CLASSIFY, ActivityCode.COLORING})
+VISUAL = frozenset({ActivityCode.ORDER, ActivityCode.CLASSIFY, ActivityCode.COLORING, ActivityCode.SCRAMBLE})
 INTERMEDIATE = frozenset(
     {
         ActivityCode.FILL_BLANK,
@@ -58,6 +58,8 @@ INTERMEDIATE = frozenset(
         ActivityCode.ORDER,
         ActivityCode.CLASSIFY,
         ActivityCode.COLORING,
+        ActivityCode.WORD_FLASH,
+        ActivityCode.SCRAMBLE,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les

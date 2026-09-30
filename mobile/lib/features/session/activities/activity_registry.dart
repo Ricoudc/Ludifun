@@ -12,6 +12,7 @@ import 'memory_view.dart';
 import 'open_question_view.dart';
 import 'order_view.dart';
 import 'speed_challenge_view.dart';
+import 'spelling_views.dart';
 import 'true_false_view.dart';
 
 typedef ActivitySubmit = void Function(Map<String, Object?> response);
@@ -37,6 +38,9 @@ final activityRegistry = <String, ActivityBuilder>{
   // Activités sur une figure (étape 22)
   'MAP': (payload, onSubmit) => MapView(payload: payload, onSubmit: onSubmit),
   'COLORING': (payload, onSubmit) => ColoringView(payload: payload, onSubmit: onSubmit),
+  // Jeux d'orthographe : listes de mots à savoir écrire
+  'WORD_FLASH': (payload, onSubmit) => WordFlashView(payload: payload, onSubmit: onSubmit),
+  'SCRAMBLE': (payload, onSubmit) => ScrambleView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

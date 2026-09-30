@@ -228,6 +228,13 @@ class SequenceOut(BaseModel):
     items: list[str] = Field(description="3 à 6 éléments, dans le bon ordre.")
 
 
+class SpellingOut(BaseModel):
+    word: str = Field(description="Le mot à savoir écrire, exactement comme dans la leçon.")
+    sentence: str | None = Field(
+        None, description="Une phrase courte qui utilise le mot, remplacé par « ___ » ; sinon null."
+    )
+
+
 class MaterialOut(BaseModel):
     knowledge_id: str
     questions: list[QuestionOut]
@@ -242,6 +249,7 @@ class MaterialOut(BaseModel):
     open_questions: list[OpenQuestionOut] = Field(description="0 à 2 questions ouvertes.")
     sorting: SortingOut | None = Field(None, description="Jeu de tri (étape 25), sinon null.")
     sequence: SequenceOut | None = Field(None, description="Éléments à remettre dans l'ordre, sinon null.")
+    spelling: SpellingOut | None = Field(None, description="Mot à savoir écrire, sinon null.")
 
 
 class MaterialBatchOutput(BaseModel):

@@ -239,7 +239,9 @@ class LessonPipeline:
                     self.llm.name,
                     self.llm.model_for("analysis"),
                     lambda: self.llm.structured(
-                        prompt=self.analysis_prompt, input=f"<lecon>\n{text}\n</lecon>", schema=AnalysisOutput
+                        prompt=self.analysis_prompt,
+                        input=_analysis_input(text, self.pupil_grade),
+                        schema=AnalysisOutput,
                     ),
                     retries=0,
                 )
@@ -450,6 +452,18 @@ class LessonPipeline:
     async def _status(self, status: LessonStatus) -> None:
         if self.on_status is not None:
             await self.on_status(status)
+
+
+def _analysis_input(text: str, pupil_grade: str | None) -> str:
+    """La leçon, précédée de la classe de l'enfant (réglée par le parent) : ce qu'il doit
+    retenir est écrit pour cette classe, quel que soit le niveau que la leçon semble viser."""
+    if not pupil_grade:
+        return f"<lecon>\n{text}\n</lecon>"
+    return (
+        f"Classe de l'élève : {pupil_grade}\n"
+        f"Écriture : {instructions.writing_rules(pupil_grade)}\n"
+        f"<lecon>\n{text}\n</lecon>"
+    )
 
 
 def _material_input(

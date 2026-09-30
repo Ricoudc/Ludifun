@@ -22,10 +22,13 @@ GRAPHIC_CODES = {
     ActivityCode.MEMORY,
 }  # étape 21
 FIGURE_CODES = {ActivityCode.MAP, ActivityCode.COLORING}  # étape 22
+SPELLING_CODES = {ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE}  # listes de mots à écrire
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
-    assert set(registry.codes) == V1_CODES | GRAPHIC_CODES | FIGURE_CODES == set(ActivityCode)
+    assert (
+        set(registry.codes) == V1_CODES | GRAPHIC_CODES | FIGURE_CODES | SPELLING_CODES == set(ActivityCode)
+    )
     assert all(registry.get(code).code == code for code in registry.codes)
 
 

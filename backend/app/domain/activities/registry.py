@@ -15,6 +15,7 @@ from app.domain.activities.memory import Memory
 from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.ordering import Order, Timeline
 from app.domain.activities.speed_challenge import SpeedChallenge
+from app.domain.activities.spelling import Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
 from app.domain.knowledge import KnowledgeUnit
 
@@ -80,5 +81,8 @@ def default_registry() -> ActivityRegistry:
             # Activités sur une figure (étape 22)
             MapLocate(),
             Coloring(),
+            # Jeux d'orthographe
+            WordFlash(),
+            Scramble(),
         ]
     )

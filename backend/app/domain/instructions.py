@@ -85,6 +85,16 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Touche sur le dessin l'endroit de chaque nom demandé.",
         "Situe chaque élément demandé sur le document.",
     ),
+    ActivityCode.WORD_FLASH: (
+        "Regarde bien le mot. Il va se cacher. Écris-le.",
+        "Mémorise le mot affiché, puis écris-le sans le voir.",
+        "Mémorise l'orthographe du mot, puis écris-le de mémoire.",
+    ),
+    ActivityCode.SCRAMBLE: (
+        "Touche les lettres dans l'ordre. Tu écris le mot.",
+        "Touche les lettres dans le bon ordre pour écrire le mot.",
+        "Reconstitue le mot en touchant ses lettres dans l'ordre.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",

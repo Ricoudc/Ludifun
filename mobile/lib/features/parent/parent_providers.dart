@@ -58,6 +58,15 @@ const activityLabels = {
   'MATCH': ('🔗', 'Associations'),
   'SPEED_CHALLENGE': ('⚡', 'Défis rapides'),
   'FLASHCARD': ('🃏', 'Cartes'),
+  'OPEN_QUESTION': ('💬', 'Questions à rédiger'),
+  'ORDER': ('🔢', 'Remettre dans l\'ordre'),
+  'TIMELINE': ('📅', 'Frises'),
+  'CLASSIFY': ('🗂️', 'Jeux de tri'),
+  'MEMORY': ('🧠', 'Memory'),
+  'MAP': ('🗺️', 'Cartes à situer'),
+  'COLORING': ('🎨', 'Coloriages'),
+  'WORD_FLASH': ('⚡', 'Mots éclair'),
+  'SCRAMBLE': ('🔤', 'Lettres mélangées'),
 };
 
 /// Avatars proposés à la création d'un profil.

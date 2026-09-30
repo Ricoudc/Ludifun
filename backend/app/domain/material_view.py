@@ -63,6 +63,13 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
             [material.sequence.prompt, " → ".join(material.sequence.items)],
             ActivityCode.ORDER,
         )
+    if material.spelling:
+        add(
+            "✍️ Mot à savoir écrire (mot éclair, lettres mélangées)",
+            [material.spelling.word]
+            + ([f"Phrase d'aide : {material.spelling.sentence}"] if material.spelling.sentence else []),
+            ActivityCode.WORD_FLASH,
+        )
     add(
         "💬 Questions à rédiger",
         [f"{q.prompt}\nRéponse attendue : {q.model_answer}" for q in material.open_questions],

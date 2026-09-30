@@ -35,6 +35,9 @@ class ActivityCode(StrEnum):
     # Activités sur une figure (étape 22).
     MAP = "MAP"  # situer sur une carte ou un schéma
     COLORING = "COLORING"  # colorier selon une légende
+    # Jeux d'orthographe : apprendre à écrire les mots d'une liste.
+    WORD_FLASH = "WORD_FLASH"  # mot éclair : voir le mot, puis l'écrire de mémoire
+    SCRAMBLE = "SCRAMBLE"  # lettres mélangées à remettre dans l'ordre
 
 
 Result = Literal["correct", "partial", "incorrect"]

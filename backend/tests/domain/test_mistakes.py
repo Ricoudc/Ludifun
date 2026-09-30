@@ -7,6 +7,7 @@ from app.domain.activities.registry import ActivityRegistry
 from app.domain.mistakes import describe
 from tests.domain.conftest import LESSON_FILES, load_lesson
 from tests.domain.test_activities import wrong_response
+from tests.domain.test_spelling_games import spelling_unit
 
 
 def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
@@ -26,6 +27,10 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
                         built.append(game.build(group, difficulty, random.Random(3)))
                     except CannotBuild:
                         continue
+    # Listes de mots à savoir écrire (aucune leçon de référence n'en a).
+    unit = spelling_unit("chevaux")
+    for game in (registry.get(ActivityCode.WORD_FLASH), registry.get(ActivityCode.SCRAMBLE)):
+        built.append(game.build([unit], min(game.difficulties), random.Random(3)))
     return built
 
 

@@ -28,6 +28,7 @@ from app.domain.knowledge import (
     Sequence,
     Skill,
     Sorting,
+    Spelling,
     WorkedExample,
 )
 from app.domain.text import compatible_natures, contains_words, fuzzy_contains, normalize
@@ -78,7 +79,7 @@ class MaterialValidation:
     def kept(self) -> int:
         """Nombre d'éléments de matériel conservés."""
         m = self.material
-        optional = (m.cloze, m.pair, m.flashcard, m.tip)
+        optional = (m.cloze, m.pair, m.flashcard, m.tip, m.sorting, m.sequence, m.spelling)
         return (
             len(m.questions)
             + len(m.true_statements)
@@ -408,6 +409,7 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
 
     sorting = _check_sorting(raw.get("sorting"), rejected)
     sequence = _check_sequence(raw.get("sequence"), rejected)
+    spelling = _check_spelling(raw.get("spelling"), item, rejected)
 
     material = KnowledgeMaterial(
         knowledge_id=item.id,
@@ -423,6 +425,7 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         open_questions=open_questions[:OPEN_QUESTIONS_MAX],
         sorting=sorting,
         sequence=sequence,
+        spelling=spelling,
     )
     return MaterialValidation(material, rejected)
 
@@ -476,6 +479,30 @@ def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
         rejected.append(Rejection("sequence", "il faut 3 à 6 éléments, tous différents"))
         return None
     return sequence
+
+
+def _check_spelling(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) -> Spelling | None:
+    """Mot à savoir écrire : il vient de la notion, écrit exactement pareil (accents compris,
+    c'est l'orthographe qui est apprise) ; la phrase d'exemple a un seul « ___ » et ne le
+    donne pas."""
+    if raw is None:
+        return None
+    try:
+        spelling = Spelling.model_validate(raw)
+    except ValidationError as exc:
+        rejected.append(Rejection("spelling", _first_error(exc)))
+        return None
+    source = " ".join((item.label, item.statement, item.source_excerpt)).casefold().replace("’", "'")
+    word = spelling.word.casefold().replace("’", "'")
+    if word not in source:
+        rejected.append(Rejection("spelling", "mot absent de la notion (orthographe différente ?)"))
+        return None
+    sentence = spelling.sentence
+    if sentence is not None and (
+        sentence.count("___") != 1 or word in sentence.casefold() or needs_picture(sentence)
+    ):
+        spelling = spelling.model_copy(update={"sentence": None})  # le mot reste, sans la phrase
+    return spelling
 
 
 def _check_help(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) -> HelpLadder | None:
@@ -536,6 +563,7 @@ def merge_material(first: MaterialValidation, second: MaterialValidation) -> Mat
             "open_questions": open_questions[:OPEN_QUESTIONS_MAX],
             "sorting": a.sorting or b.sorting,
             "sequence": a.sequence or b.sequence,
+            "spelling": a.spelling or b.spelling,
         }
     )
     return MaterialValidation(merged, second.rejected)

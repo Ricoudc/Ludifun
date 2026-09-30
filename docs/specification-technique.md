@@ -22,7 +22,7 @@ ont été mises à jour depuis.
 | §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
-| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v3.md` |
+| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v4.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
 | §15, §65 | Mémorisation vs compréhension, transfert | ✅ étapes 13-14 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer (exigés), 4 expliquer et 5 transférer (questions ouvertes d'approfondissement) | `domain/understanding.py` |
@@ -586,6 +586,17 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   `session.visual_first` (règles du moteur 1.1.0) : dans l'approfondissement, les jeux visuels
   (ranger, remettre dans l'ordre, colorier) passent avant un quiz quand la notion le permet ;
   la décision le dit (« Jeu visuel proposé avant un quiz. »).
+- **Listes de mots à savoir écrire** (`analysis.v4`, `material.v6`) : chaque mot devient une
+  notion ; le matériel `spelling` (mot recopié lettre pour lettre, accents compris, contrôlé
+  contre la notion ; phrase d'aide avec « ___ ») sert deux jeux d'orthographe
+  (`domain/activities/spelling.py`) : **Mot éclair** (`WORD_FLASH`, le mot s'affiche 5 s ou
+  2,5 s puis se cache, l'enfant l'écrit de mémoire) et **Lettres mélangées** (`SCRAMBLE`, 3 à
+  12 lettres à remettre dans l'ordre). Notation stricte sur l'orthographe (accents), pas sur
+  les majuscules ; une faute de peu est une imprécision. Les QCM demandent la bonne
+  orthographe parmi de vraies fautes d'enfants.
+- **Classe réglée par le parent** : elle est donnée à l'IA dès l'analyse (« Classe de l'élève »,
+  règles d'écriture du cycle) et pour le matériel ; objectif, phrases à retenir, questions et
+  consignes sont écrits pour cette classe, même si la leçon semble viser un autre niveau.
 - **Documents à apprendre par cœur** (`analysis.v3`) : une table de multiplication, un tableau
   de conjugaison ou une liste de mots photographiés sont des leçons ; chaque élément devient une
   notion à restituer. « 7 × 8 », « 7x8 » et « 7 * 8 » se valent pour retrouver la citation

@@ -22,6 +22,11 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"value": s["value"] if single_ok else not s["value"]}
         case ActivityCode.FILL_BLANK:
             return {"text": s["answers"][0] if single_ok else "je ne sais pas"}
+        case ActivityCode.WORD_FLASH:
+            return {"text": s["word"] if single_ok else s["word"][:-1]}  # une lettre oubliée
+        case ActivityCode.SCRAMBLE:
+            order = list(s["letters"])
+            return {"order": order if single_ok else order[1:] + order[:1]}
         case ActivityCode.FLASHCARD:
             return {"self_assessment": "knew" if single_ok else "didnt_know"}
         case ActivityCode.OPEN_QUESTION:

@@ -104,6 +104,69 @@ void main() {
     ]);
   });
 
+  testWidgets('mot éclair : le mot se cache, puis on l\'écrit de mémoire', (tester) async {
+    await show(tester, 'WORD_FLASH', {
+      'prompt': 'Regarde bien le mot, puis écris-le sans le voir.',
+      'word': 'hôpital',
+      'show_ms': 3000,
+      'sentence': 'Le docteur travaille à l\'___.',
+    }, instruction: 'Regarde bien le mot. Il va se cacher. Écris-le.');
+    expect(find.text('hôpital'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('hôpital'), findsNothing); // caché
+    expect(find.text('💡 Le docteur travaille à l\'___.'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), ' hopital ');
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'text': 'hopital'},
+    ]);
+  });
+
+  testWidgets('mot éclair : « Je l\'ai retenu » cache le mot tout de suite', (tester) async {
+    await show(tester, 'WORD_FLASH', {
+      'prompt': 'Écris le mot.',
+      'word': 'chevaux',
+      'show_ms': 5000,
+    });
+    await tester.tap(find.text('Je l\'ai retenu'));
+    await tester.pump();
+    expect(find.text('chevaux'), findsNothing);
+    expect(find.byType(TextField), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6)); // le minuteur annulé ne fait rien
+  });
+
+  testWidgets('lettres mélangées : toucher dans l\'ordre, retirer une lettre', (tester) async {
+    await show(tester, 'SCRAMBLE', {
+      'prompt': 'Remets les lettres dans l\'ordre pour écrire le mot.',
+      'letters': [
+        {'id': 'l2', 'text': 'u'},
+        {'id': 'l3', 'text': 'n'},
+        {'id': 'l1', 'text': 'l'},
+        {'id': 'l4', 'text': 'e'},
+      ],
+    });
+    expect(find.text('Encore 4 lettre(s)'), findsOneWidget);
+    for (final letter in ['l', 'n']) {
+      await tester.tap(find.text(letter));
+      await tester.pump();
+    }
+    await tester.tap(find.text('n')); // placée par erreur : retirée
+    await tester.pump();
+    for (final letter in ['u', 'n', 'e']) {
+      await tester.tap(find.text(letter));
+      await tester.pump();
+    }
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'order': ['l1', 'l2', 'l3', 'l4'],
+      },
+    ]);
+  });
+
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
     await show(tester, 'FLASHCARD', {'front': '1789', 'back': 'Début de la Révolution'});
     expect(find.text('Je savais 👍'), findsNothing);
