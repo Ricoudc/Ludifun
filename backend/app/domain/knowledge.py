@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 NonEmpty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 KnowledgeId = Annotated[str, StringConstraints(pattern=r"^k\d+$")]
 SkillId = Annotated[str, StringConstraints(pattern=r"^s\d+$")]
+PASSAGE_MAX_LENGTH = 400  # passage de la leçon montré avec une question
 ANALYSIS_SCHEMA_VERSION = "2.0"  # 2.0 : compétences
 
 
@@ -230,6 +231,8 @@ class MaterialQuestion(_Model):
     stem: NonEmpty
     answer: NonEmpty
     distractors: list[NonEmpty] = Field(min_length=3, max_length=3)
+    # Passage de la leçon à relire, affiché avec la question : l'enfant n'a plus la fiche.
+    passage: str | None = Field(default=None, max_length=PASSAGE_MAX_LENGTH)
     # Type d'erreur que révèle chaque distracteur (même ordre), quand l'IA l'a indiqué.
     misconceptions: list[str | None] = Field(default_factory=list)
 
@@ -281,6 +284,7 @@ class OpenQuestion(_Model):
     prompt: NonEmpty
     key_points: list[NonEmpty] = Field(min_length=1, max_length=5)
     model_answer: NonEmpty
+    passage: str | None = Field(default=None, max_length=PASSAGE_MAX_LENGTH)
 
 
 class SortingBox(_Model):

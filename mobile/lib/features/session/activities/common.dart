@@ -18,10 +18,13 @@ class ActivityInstruction extends InheritedWidget {
 
 /// Consigne ou question, en grand.
 class Prompt extends StatelessWidget {
-  const Prompt(this.text, {this.label, super.key});
+  const Prompt(this.text, {this.label, this.passage, super.key});
 
   final String text;
   final String? label;
+
+  /// Passage de la leçon à relire avant la question : l'enfant n'a plus la fiche.
+  final String? passage;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -33,6 +36,21 @@ class Prompt extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
         ),
         const SizedBox(height: 8),
+      ],
+      if (passage != null && passage!.isNotEmpty) ...[
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: LudiColors.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(12),
+            border: Border(left: BorderSide(color: LudiColors.primary, width: 4)),
+          ),
+          child: Text(
+            '📖 $passage',
+            style: const TextStyle(fontSize: 18, height: 1.4, fontStyle: FontStyle.italic),
+          ),
+        ),
+        const SizedBox(height: 12),
       ],
       Text(
         text,

@@ -15,6 +15,11 @@ class Block:
     game: ActivityCode | None = None  # le jeu qui s'en sert : sa consigne est montrée au parent
 
 
+def _with_passage(passage: str | None, line: str) -> str:
+    """Le passage de la leçon montré à l'enfant avec la question, s'il y en a un."""
+    return f"📖 « {passage} »\n{line}" if passage else line
+
+
 def material_blocks(material: KnowledgeMaterial) -> list[Block]:
     blocks: list[Block] = []
 
@@ -25,7 +30,7 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
     add(
         "❓ Questions à choix",
         [
-            f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}"
+            _with_passage(q.passage, f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}")
             for q in sorted(material.questions, key=lambda q: q.difficulty)
         ],
         ActivityCode.MCQ,
@@ -72,7 +77,10 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
         )
     add(
         "💬 Questions à rédiger",
-        [f"{q.prompt}\nRéponse attendue : {q.model_answer}" for q in material.open_questions],
+        [
+            _with_passage(q.passage, f"{q.prompt}\nRéponse attendue : {q.model_answer}")
+            for q in material.open_questions
+        ],
         ActivityCode.OPEN_QUESTION,
     )
     help_lines = []

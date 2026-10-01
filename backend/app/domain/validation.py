@@ -54,6 +54,51 @@ def needs_picture(text: str) -> bool:
     return bool(_PICTURE.search(text))
 
 
+# Plus largement, la fiche n'est plus devant l'enfant (photo prise sur Internet, dans un cahier…) :
+# une question qui renvoie au texte lu, au tableau ou à l'exercice de la fiche est sans réponse
+# possible. Les données utiles doivent être dans la question, ou dans le passage montré avec elle.
+_SUPPORT = (
+    r"textes?|documents?|fiches?|extraits?|récits?|poèmes?|tableaux?|graphiques?|frises?|"
+    r"exercices?|pages?|lectures?|leçons?|listes?|étiquettes?|cases?|cadres?|encadrés?"
+)
+_ABSENT_SUPPORT = re.compile(
+    rf"\b(ce|cet|cette|ces)\s+({_SUPPORT})\b"
+    rf"|\b(d'après|d’après|selon|dans|sur)\s+(le|la|les|l'|l’)\s*({_SUPPORT})\b"
+    r"|\b(de\s+la|de\s+l'|de\s+l’|du)\s*(liste|fiche|leçon|texte|tableau)\b"
+    r"|\b(le|la|l'|l’)\s*(texte|histoire|récit|poème|extrait)\s+(lu|lue|étudié|étudiée|précédent|précédente)\b"
+    r"|\b(que tu as lu|que tu viens de lire|lu en classe|lue en classe)\b"
+    r"|\b(exercice|question)\s+(n°\s*)?\d",
+    re.IGNORECASE,
+)
+SUPPORT_REASON = "renvoie à la fiche ou à un texte que l'enfant n'aura plus sous les yeux"
+PASSAGE_REASON = "le passage à relire n'est pas recopié de la leçon"
+
+
+def needs_support(text: str) -> bool:
+    """Le texte renvoie à la fiche photographiée (texte lu, tableau, exercice…)."""
+    return bool(_ABSENT_SUPPORT.search(text))
+
+
+def _absent(text: str) -> str | None:
+    """Raison du rejet d'un texte montré seul à l'enfant, ou None s'il se suffit à lui-même."""
+    if needs_picture(text):
+        return PICTURE_REASON
+    if needs_support(text):
+        return SUPPORT_REASON
+    return None
+
+
+def _passage(raw: Any, source: str) -> tuple[str | None, str | None]:
+    """Passage à relire montré avec la question : recopié de la leçon, sinon la question est
+    écartée (l'IA pourrait inventer le texte sur lequel elle interroge)."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None, None
+    passage = raw.strip()
+    if not fuzzy_contains(source, passage):
+        return None, PASSAGE_REASON
+    return passage, None
+
+
 class AnalysisError(ValueError):
     """La sortie de l'analyse est inexploitable dans son ensemble (pas seulement une notion)."""
 
@@ -326,15 +371,27 @@ def _check_tip(tip: str, item: KnowledgeItem) -> str:
     return ""
 
 
-def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialValidation:
+def validate_material(
+    item: KnowledgeItem, raw: Mapping[str, Any], lesson_text: str | None = None
+) -> MaterialValidation:
+    """`lesson_text` : le texte de la leçon, dont un passage à relire doit être recopié (sans
+    lui, le passage doit venir de la notion)."""
     rejected: list[Rejection] = []
+    source = lesson_text if lesson_text is not None else item.corpus()
 
     questions: list[MaterialQuestion] = []
     raw_questions = raw.get("questions")
     for i, raw_question in enumerate(raw_questions if isinstance(raw_questions, list) else []):
         question, reason = _check_question(raw_question)
-        if question is not None and needs_picture(question.stem):
-            question, reason = None, PICTURE_REASON
+        if question is not None:
+            passage, passage_reason = _passage(question.passage, source)
+            question = question.model_copy(update={"passage": passage})
+            if passage_reason:
+                question, reason = None, passage_reason
+            elif needs_picture(question.stem):
+                question, reason = None, PICTURE_REASON
+            elif passage is None and needs_support(question.stem):
+                question, reason = None, SUPPORT_REASON
         if question is None:
             rejected.append(Rejection(f"questions[{i}]", reason))
         else:
@@ -364,8 +421,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         text = str(s).strip()
         if not text or normalize(text) in {normalize(t) for t in true_statements}:
             rejected.append(Rejection(f"true_statements[{i}]", "vide ou en double"))
-        elif needs_picture(text):
-            rejected.append(Rejection(f"true_statements[{i}]", PICTURE_REASON))
+        elif (absent := _absent(text)) is not None:
+            rejected.append(Rejection(f"true_statements[{i}]", absent))
         elif is_instruction(text):
             rejected.append(Rejection(f"true_statements[{i}]", INSTRUCTION_REASON))
         else:
@@ -378,8 +435,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         text = str(s).strip()
         if not text or normalize(text) in {normalize(f) for f in false_statements}:
             rejected.append(Rejection(f"false_statements[{i}]", "vide ou en double"))
-        elif needs_picture(text):
-            rejected.append(Rejection(f"false_statements[{i}]", PICTURE_REASON))
+        elif (absent := _absent(text)) is not None:
+            rejected.append(Rejection(f"false_statements[{i}]", absent))
         elif is_instruction(text):
             rejected.append(Rejection(f"false_statements[{i}]", INSTRUCTION_REASON))
         elif any(normalize(text) == normalize(t) for t in truths):
@@ -392,8 +449,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     cloze: Cloze | None = None
     if raw.get("cloze") is not None:
         cloze, reason = _check_cloze(raw["cloze"])
-        if cloze is not None and needs_picture(cloze.text):
-            cloze, reason = None, PICTURE_REASON
+        if cloze is not None and (absent := _absent(cloze.text)) is not None:
+            cloze, reason = None, absent
         if cloze is None:
             rejected.append(Rejection("cloze", reason))
 
@@ -401,9 +458,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     if raw.get("pair") is not None:
         try:
             pair = Pair.model_validate(raw["pair"])
-            if needs_picture(f"{pair.left} {pair.right}"):
+            if (absent := _absent(f"{pair.left} {pair.right}")) is not None:
                 pair = None
-                rejected.append(Rejection("pair", PICTURE_REASON))
+                rejected.append(Rejection("pair", absent))
         except ValidationError as exc:
             rejected.append(Rejection("pair", _first_error(exc)))
 
@@ -414,9 +471,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
             if normalize(flashcard.front) == normalize(flashcard.back):
                 flashcard = None
                 rejected.append(Rejection("flashcard", "recto et verso identiques"))
-            elif needs_picture(flashcard.front):
+            elif (absent := _absent(flashcard.front)) is not None:
                 flashcard = None
-                rejected.append(Rejection("flashcard", PICTURE_REASON))
+                rejected.append(Rejection("flashcard", absent))
         except ValidationError as exc:
             rejected.append(Rejection("flashcard", _first_error(exc)))
 
@@ -439,8 +496,15 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
     for i, raw_question in enumerate(raw_open if isinstance(raw_open, list) else []):
         try:
             open_question = OpenQuestion.model_validate(raw_question)
-            if needs_picture(open_question.prompt):
-                rejected.append(Rejection(f"open_questions[{i}]", PICTURE_REASON))
+            passage, passage_reason = _passage(open_question.passage, source)
+            open_question = open_question.model_copy(update={"passage": passage})
+            refused = (
+                passage_reason
+                or (PICTURE_REASON if needs_picture(open_question.prompt) else None)
+                or (SUPPORT_REASON if passage is None and needs_support(open_question.prompt) else None)
+            )
+            if refused:
+                rejected.append(Rejection(f"open_questions[{i}]", refused))
                 continue
             if normalize(open_question.model_answer).startswith(normalize(open_question.prompt)):
                 rejected.append(Rejection(f"open_questions[{i}]", "la réponse attendue recopie la question"))
@@ -481,8 +545,8 @@ def _check_sorting(raw: Any, rejected: list[Rejection]) -> Sorting | None:
     except ValidationError as exc:
         rejected.append(Rejection("sorting", _first_error(exc)))
         return None
-    if needs_picture(sorting.prompt):
-        rejected.append(Rejection("sorting", PICTURE_REASON))
+    if (absent := _absent(sorting.prompt)) is not None:
+        rejected.append(Rejection("sorting", absent))
         return None
     boxes = sorting.categories
     members = [normalize(m) for box in boxes for m in box.members]
@@ -513,8 +577,8 @@ def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
     except ValidationError as exc:
         rejected.append(Rejection("sequence", _first_error(exc)))
         return None
-    if needs_picture(sequence.prompt):
-        rejected.append(Rejection("sequence", PICTURE_REASON))
+    if (absent := _absent(sequence.prompt)) is not None:
+        rejected.append(Rejection("sequence", absent))
         return None
     items = [normalize(i) for i in sequence.items]
     if not SEQUENCE_ITEMS[0] <= len(items) <= SEQUENCE_ITEMS[1] or len(set(items)) != len(items):
@@ -546,7 +610,7 @@ def _check_spelling(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) ->
         return None
     sentence = spelling.sentence
     if sentence is not None and (
-        sentence.count("___") != 1 or word in sentence.casefold() or needs_picture(sentence)
+        sentence.count("___") != 1 or word in sentence.casefold() or _absent(sentence) is not None
     ):
         spelling = spelling.model_copy(update={"sentence": None})  # le mot reste, sans la phrase
     return spelling

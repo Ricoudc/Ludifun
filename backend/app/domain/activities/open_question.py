@@ -80,7 +80,9 @@ class OpenQuestionActivity(ActivityType):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
         question = rng.choice(unit.material.open_questions_of(difficulty + LEVEL_OFFSET))
-        payload = {"prompt": question.prompt, "max_length": MAX_ANSWER_LENGTH}
+        payload: dict[str, Any] = {"prompt": question.prompt, "max_length": MAX_ANSWER_LENGTH}
+        if question.passage:
+            payload["passage"] = question.passage
         solution = {
             "key_points": question.key_points,
             "model_answer": question.model_answer,

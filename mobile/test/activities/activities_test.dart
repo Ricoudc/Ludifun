@@ -70,6 +70,19 @@ void main() {
     ]);
   });
 
+  testWidgets('QCM sur un texte lu : le passage à relire est affiché', (tester) async {
+    await show(tester, 'MCQ', {
+      'prompt': 'Dans ce passage, que porte le Petit Chaperon rouge ?',
+      'passage': 'Elle part avec une galette et un petit pot de beurre.',
+      'choices': [
+        {'id': 'a', 'text': 'une galette'},
+        {'id': 'b', 'text': 'des fleurs'},
+      ],
+    });
+    expect(find.text('📖 Elle part avec une galette et un petit pot de beurre.'), findsOneWidget);
+    expect(find.text('Dans ce passage, que porte le Petit Chaperon rouge ?'), findsOneWidget);
+  });
+
   testWidgets('vrai ou faux', (tester) async {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
     await tester.tap(find.text('❌ Faux'));

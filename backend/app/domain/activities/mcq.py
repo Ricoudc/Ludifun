@@ -50,7 +50,9 @@ class Mcq(ActivityType):
             for cid, text in zip(CHOICE_IDS, texts, strict=True)
             if text != question.answer and (kind := question.misconception_of(text)) is not None
         }
-        payload = {"prompt": question.stem, "choices": choices}
+        payload: dict[str, Any] = {"prompt": question.stem, "choices": choices}
+        if question.passage:
+            payload["passage"] = question.passage  # à relire : l'enfant n'a plus la fiche
         solution = {
             "choice_id": answer_id,
             "display": question.answer,

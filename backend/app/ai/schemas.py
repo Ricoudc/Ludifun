@@ -172,6 +172,9 @@ class QuestionOut(BaseModel):
     distractors: list[DistractorOut] = Field(
         description="Exactement 3 mauvaises réponses plausibles, de même nature."
     )
+    passage: str | None = Field(
+        None, description="Passage de la leçon recopié mot pour mot, si la question porte sur un texte lu."
+    )
 
 
 class ClozeOut(BaseModel):
@@ -211,6 +214,9 @@ class OpenQuestionOut(BaseModel):
     prompt: str = Field(description="La question, à laquelle l'enfant répond en une ou deux phrases.")
     key_points: list[str] = Field(description="1 à 4 points clés attendus, courts, tirés de la leçon.")
     model_answer: str = Field(description="Une réponse modèle, au niveau de l'enfant.")
+    passage: str | None = Field(
+        None, description="Passage de la leçon recopié mot pour mot, si la question porte sur un texte lu."
+    )
 
 
 class SortingBoxOut(BaseModel):

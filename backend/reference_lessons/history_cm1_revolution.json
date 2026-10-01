@@ -154,7 +154,7 @@
       "knowledge_id": "k5",
       "questions": [
         {"difficulty": 1, "stem": "Quel texte l'Assemblée adopte-t-elle le 26 août 1789 ?", "answer": "La Déclaration des droits de l'homme et du citoyen", "distractors": ["La Constitution de la Ve République", "Le Code civil", "L'édit de Nantes"]},
-        {"difficulty": 2, "stem": "Quand l'Assemblée adopte-t-elle ce texte sur les droits de l'homme ?", "answer": "Le 26 août 1789", "distractors": ["Le 14 juillet 1789", "Le 5 mai 1789", "Le 4 septembre 1792"]}
+        {"difficulty": 2, "stem": "Quand l'Assemblée adopte-t-elle la Déclaration des droits de l'homme ?", "answer": "Le 26 août 1789", "distractors": ["Le 14 juillet 1789", "Le 5 mai 1789", "Le 4 septembre 1792"]}
       ],
       "true_statements": ["En 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen."],
       "false_statements": ["La Déclaration des droits de l'homme et du citoyen est écrite par Louis XVI."],

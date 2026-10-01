@@ -40,6 +40,7 @@ class _OpenQuestionViewState extends State<OpenQuestionView> {
       Prompt(
         widget.payload['prompt'] as String,
         label: ActivityInstruction.of(context) ?? 'Réponds avec tes mots',
+        passage: widget.payload['passage'] as String?,
       ),
       const SizedBox(height: 20),
       TextField(
