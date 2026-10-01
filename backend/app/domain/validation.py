@@ -249,6 +249,21 @@ def _without_negation(sentence: str) -> str:
     return " ".join(w for w in normalize(sentence).split() if w not in _NEGATION_WORDS)
 
 
+INCOMPLETE_REASON = "la même question a plusieurs réponses : il manque la donnée (laquelle ?)"
+INSTRUCTION_REASON = "c'est une consigne d'exercice, pas une affirmation vraie ou fausse"
+CLOZE_MAX_ANSWERS = 3
+# Verbes de consigne : une phrase qui commence ainsi dit quoi faire, elle n'affirme rien.
+_INSTRUCTION = re.compile(
+    r"^(ecri(s|re|vez)|indique(r|z)?|remplace(r|z)?|complete(r|z)?|range(r|z)?|relie(r|z)?|"
+    r"souligne(r|z)?|entoure(r|z)?|colorie(r|z)?|calcule(r|z)?|trouve(r|z)?|recopie(r|z)?|"
+    r"coche(r|z)?|barre(r|z)?|classe(r|z)?)\b"
+)
+
+
+def is_instruction(text: str) -> bool:
+    return _INSTRUCTION.match(normalize(text)) is not None
+
+
 def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
     if not isinstance(raw, dict):
         return None, "format invalide"
@@ -286,6 +301,8 @@ def _check_cloze(raw: Any) -> tuple[Cloze | None, str]:
         return None, _first_error(exc)
     if cloze.text.count(BLANK) != 1:
         return None, "la phrase doit contenir exactement un « ___ »"
+    if len({normalize(a) for a in cloze.answers}) > CLOZE_MAX_ANSWERS:
+        return None, "trop de réponses différentes : il manque la donnée qui dit laquelle écrire"
     rest = cloze.text.replace(BLANK, " ")
     if any(contains_words(rest, answer) for answer in cloze.answers):
         return None, "la réponse apparaît ailleurs dans la phrase"
@@ -323,6 +340,24 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
         else:
             questions.append(question)
 
+    # Une fiche d'exercices recopiée : la même consigne (« Écris la lettre qui précède. ») pour
+    # plusieurs questions aux réponses différentes. Il manque la donnée (laquelle ?) : sans elle,
+    # l'enfant ne peut pas répondre.
+    answers_by_stem: dict[str, set[str]] = {}
+    for question in questions:
+        answers_by_stem.setdefault(normalize(question.stem), set()).add(normalize(question.answer))
+    incomplete = {stem for stem, answers in answers_by_stem.items() if len(answers) > 1}
+    kept_questions: list[MaterialQuestion] = []
+    for question in questions:
+        stem = normalize(question.stem)
+        if stem in incomplete:
+            rejected.append(Rejection("questions", INCOMPLETE_REASON))
+        elif any(normalize(q.stem) == stem for q in kept_questions):
+            rejected.append(Rejection("questions", "question en double"))
+        else:
+            kept_questions.append(question)
+    questions = kept_questions
+
     true_statements: list[str] = []
     raw_true = raw.get("true_statements")
     for i, s in enumerate(raw_true if isinstance(raw_true, list) else []):
@@ -331,6 +366,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
             rejected.append(Rejection(f"true_statements[{i}]", "vide ou en double"))
         elif needs_picture(text):
             rejected.append(Rejection(f"true_statements[{i}]", PICTURE_REASON))
+        elif is_instruction(text):
+            rejected.append(Rejection(f"true_statements[{i}]", INSTRUCTION_REASON))
         else:
             true_statements.append(text)
 
@@ -343,6 +380,8 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
             rejected.append(Rejection(f"false_statements[{i}]", "vide ou en double"))
         elif needs_picture(text):
             rejected.append(Rejection(f"false_statements[{i}]", PICTURE_REASON))
+        elif is_instruction(text):
+            rejected.append(Rejection(f"false_statements[{i}]", INSTRUCTION_REASON))
         elif any(normalize(text) == normalize(t) for t in truths):
             rejected.append(Rejection(f"false_statements[{i}]", "identique à une affirmation vraie"))
         elif any(_without_negation(text) == _without_negation(t) for t in truths):
@@ -402,6 +441,9 @@ def validate_material(item: KnowledgeItem, raw: Mapping[str, Any]) -> MaterialVa
             open_question = OpenQuestion.model_validate(raw_question)
             if needs_picture(open_question.prompt):
                 rejected.append(Rejection(f"open_questions[{i}]", PICTURE_REASON))
+                continue
+            if normalize(open_question.model_answer).startswith(normalize(open_question.prompt)):
+                rejected.append(Rejection(f"open_questions[{i}]", "la réponse attendue recopie la question"))
                 continue
             open_questions.append(open_question)
         except ValidationError as exc:
@@ -496,6 +538,11 @@ def _check_spelling(raw: Any, item: KnowledgeItem, rejected: list[Rejection]) ->
     word = spelling.word.casefold().replace("’", "'")
     if word not in source:
         rejected.append(Rejection("spelling", "mot absent de la notion (orthographe différente ?)"))
+        return None
+    if normalize(spelling.word) != normalize(item.label):
+        # Un mot à savoir écrire est la notion elle-même (une liste de mots), pas un mot pris
+        # dans une consigne (« lettre » dans « Écrire des lettres dans l'ordre »).
+        rejected.append(Rejection("spelling", "ce n'est pas le mot de la notion"))
         return None
     sentence = spelling.sentence
     if sentence is not None and (

@@ -22,7 +22,7 @@ ont été mises à jour depuis.
 | §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
-| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v4.md` |
+| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v5.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
 | §15, §65 | Mémorisation vs compréhension, transfert | ✅ étapes 13-14 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer (exigés), 4 expliquer et 5 transférer (questions ouvertes d'approfondissement) | `domain/understanding.py` |
@@ -596,6 +596,12 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   sans l'avoir vu. Sans voix française sur le téléphone, le mot s'affiche 3 s (repli mot éclair). Notation stricte sur l'orthographe (accents), pas sur
   les majuscules ; une faute de peu est une imprécision. Les QCM demandent la bonne
   orthographe parmi de vraies fautes d'enfants.
+- **Fiches d'exercices** (`analysis.v5`, `material.v7`, `validation.py`) : une fiche photographiée
+  est analysée comme la notion qu'elle entraîne (« la lettre qui précède »), jamais comme ses
+  consignes. Contrôles du code : plusieurs questions au même énoncé avec des réponses différentes
+  sont refusées (il manque la donnée), comme une phrase à trous à plus de 3 réponses, une
+  affirmation qui est une consigne (« Écris… », « Indique… »), une réponse modèle qui recopie la
+  question, et un « mot à savoir écrire » qui n'est pas la notion elle-même.
 - **Classe réglée par le parent** : elle est donnée à l'IA dès l'analyse (« Classe de l'élève »,
   règles d'écriture du cycle) et pour le matériel ; objectif, phrases à retenir, questions et
   consignes sont écrits pour cette classe, même si la leçon semble viser un autre niveau.
