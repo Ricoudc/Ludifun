@@ -38,6 +38,7 @@ class ActivityCode(StrEnum):
     # Jeux d'orthographe : apprendre à écrire les mots d'une liste.
     WORD_FLASH = "WORD_FLASH"  # mot éclair : voir le mot, puis l'écrire de mémoire
     SCRAMBLE = "SCRAMBLE"  # lettres mélangées à remettre dans l'ordre
+    DICTATION = "DICTATION"  # dictée : le téléphone prononce le mot, l'enfant l'écrit
 
 
 Result = Literal["correct", "partial", "incorrect"]

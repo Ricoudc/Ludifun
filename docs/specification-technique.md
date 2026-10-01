@@ -591,7 +591,9 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   contre la notion ; phrase d'aide avec « ___ ») sert deux jeux d'orthographe
   (`domain/activities/spelling.py`) : **Mot éclair** (`WORD_FLASH`, le mot s'affiche 5 s ou
   2,5 s puis se cache, l'enfant l'écrit de mémoire) et **Lettres mélangées** (`SCRAMBLE`, 3 à
-  12 lettres à remettre dans l'ordre). Notation stricte sur l'orthographe (accents), pas sur
+  12 lettres à remettre dans l'ordre). **Dictée** (`DICTATION`, niveau 3) : le téléphone lit le mot, la phrase
+  d'aide, puis le mot (synthèse vocale `flutter_tts`, voix française, débit lent) ; l'enfant l'écrit
+  sans l'avoir vu. Sans voix française sur le téléphone, le mot s'affiche 3 s (repli mot éclair). Notation stricte sur l'orthographe (accents), pas sur
   les majuscules ; une faute de peu est une imprécision. Les QCM demandent la bonne
   orthographe parmi de vraies fautes d'enfants.
 - **Classe réglée par le parent** : elle est donnée à l'IA dès l'analyse (« Classe de l'élève »,

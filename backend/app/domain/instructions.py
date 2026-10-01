@@ -90,6 +90,11 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Mémorise le mot affiché, puis écris-le sans le voir.",
         "Mémorise l'orthographe du mot, puis écris-le de mémoire.",
     ),
+    ActivityCode.DICTATION: (
+        "Écoute bien le mot. Écris-le.",
+        "Écoute le mot (touche le haut-parleur pour le réentendre), puis écris-le.",
+        "Écris le mot dicté ; tu peux le réécouter autant que nécessaire.",
+    ),
     ActivityCode.SCRAMBLE: (
         "Touche les lettres dans l'ordre. Tu écris le mot.",
         "Touche les lettres dans le bon ordre pour écrire le mot.",

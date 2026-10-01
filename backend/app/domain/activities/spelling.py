@@ -4,6 +4,9 @@ savoir écrire). Le mot vient du matériel `spelling`, contrôlé : il est écri
 - « Mot éclair » (WORD_FLASH) : le mot s'affiche quelques secondes, puis l'enfant l'écrit de
   mémoire (la « copie flash » des classes) ; plus court au niveau 3.
 - « Lettres mélangées » (SCRAMBLE) : l'enfant remet les lettres du mot dans l'ordre.
+- « Dictée » (DICTATION) : le téléphone lit le mot à voix haute (puis la phrase d'aide) ;
+  l'enfant l'écrit sans l'avoir vu. Le mot est dans la charge utile pour être prononcé,
+  l'application ne l'affiche pas.
 
 L'orthographe est ce qui est appris : les accents comptent, pas les majuscules ni l'apostrophe
 typographique.
@@ -85,6 +88,33 @@ class WordFlash(ActivityType):
             "sentence": _sentence(unit),
         }
         return payload, {"word": _word(unit), **feedback(unit)}
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        return _written_grade(activity, parse_response(WordFlashResponse, response).text)
+
+
+class Dictation(ActivityType):
+    code = ActivityCode.DICTATION
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({3})
+    base_duration_s = 30
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return unit.material.spelling is not None
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        word, sentence = _word(unit), _sentence(unit)
+        payload = {
+            "prompt": "Écoute le mot, puis écris-le.",
+            "word": word,  # à prononcer, jamais affiché
+            "sentence": sentence,
+            # La phrase lue à voix haute contient le mot ; celle qui est affichée, « ___ ».
+            "spoken_sentence": sentence.replace("___", word) if sentence else None,
+        }
+        return payload, {"word": word, **feedback(unit)}
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         return _written_grade(activity, parse_response(WordFlashResponse, response).text)

@@ -65,7 +65,7 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
         )
     if material.spelling:
         add(
-            "✍️ Mot à savoir écrire (mot éclair, lettres mélangées)",
+            "✍️ Mot à savoir écrire (dictée, mot éclair, lettres mélangées)",
             [material.spelling.word]
             + ([f"Phrase d'aide : {material.spelling.sentence}"] if material.spelling.sentence else []),
             ActivityCode.WORD_FLASH,

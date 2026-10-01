@@ -29,7 +29,8 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
                         continue
     # Listes de mots à savoir écrire (aucune leçon de référence n'en a).
     unit = spelling_unit("chevaux")
-    for game in (registry.get(ActivityCode.WORD_FLASH), registry.get(ActivityCode.SCRAMBLE)):
+    for code in (ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE, ActivityCode.DICTATION):
+        game = registry.get(code)
         built.append(game.build([unit], min(game.difficulties), random.Random(3)))
     return built
 

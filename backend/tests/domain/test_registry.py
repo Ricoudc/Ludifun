@@ -22,7 +22,11 @@ GRAPHIC_CODES = {
     ActivityCode.MEMORY,
 }  # étape 21
 FIGURE_CODES = {ActivityCode.MAP, ActivityCode.COLORING}  # étape 22
-SPELLING_CODES = {ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE}  # listes de mots à écrire
+SPELLING_CODES = {
+    ActivityCode.WORD_FLASH,
+    ActivityCode.SCRAMBLE,
+    ActivityCode.DICTATION,
+}  # listes de mots à écrire
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:

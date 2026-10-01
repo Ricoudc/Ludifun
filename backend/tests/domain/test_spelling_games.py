@@ -113,3 +113,20 @@ def test_a_word_list_gets_writing_games_in_the_session(registry: ActivityRegistr
         for a in SessionComposer(registry).compose(units, {}, NOW, seed).items
     }
     assert {ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE} <= types
+
+
+def test_dictation(registry: ActivityRegistry) -> None:
+    """Dictée : le mot est prononcé par le téléphone, jamais affiché ; la phrase lue le contient."""
+    unit = spelling_unit()
+    game = registry.get(ActivityCode.DICTATION)
+    activity = game.build([unit], 3, random.Random(1))
+    assert activity.payload["word"] == "hôpital"
+    assert activity.payload["sentence"] == "Le docteur travaille à l'___."
+    assert activity.payload["spoken_sentence"] == "Le docteur travaille à l'hôpital."
+    assert game.grade(activity, {"text": "hôpital"}).score == 1
+    assert game.grade(activity, {"text": "hopitale"}).score == 0
+    assert (
+        game.build([spelling_unit("chevaux", None)], 3, random.Random(1)).payload["spoken_sentence"] is None
+    )
+    mistake = describe(registry, activity, {"text": "opital"})
+    assert mistake is not None and mistake.given == "opital"

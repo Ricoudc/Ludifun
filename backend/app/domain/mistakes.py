@@ -65,6 +65,9 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
         case ActivityCode.WORD_FLASH:
             question = f"Mot éclair : écrire « {payload.get('word', '?')} » de mémoire"
             given = str(response.get("text", "")).strip() or "(rien écrit)"
+        case ActivityCode.DICTATION:
+            question = f"Dictée : écrire « {payload.get('word', '?')} » entendu à voix haute"
+            given = str(response.get("text", "")).strip() or "(rien écrit)"
         case ActivityCode.SCRAMBLE:
             letters = _texts(payload.get("letters"))
             question = "Lettres mélangées : " + " ".join(letters.values())

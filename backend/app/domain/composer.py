@@ -60,6 +60,7 @@ INTERMEDIATE = frozenset(
         ActivityCode.COLORING,
         ActivityCode.WORD_FLASH,
         ActivityCode.SCRAMBLE,
+        ActivityCode.DICTATION,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les

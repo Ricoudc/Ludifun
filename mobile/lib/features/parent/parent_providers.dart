@@ -67,6 +67,7 @@ const activityLabels = {
   'COLORING': ('🎨', 'Coloriages'),
   'WORD_FLASH': ('⚡', 'Mots éclair'),
   'SCRAMBLE': ('🔤', 'Lettres mélangées'),
+  'DICTATION': ('🎧', 'Dictées'),
 };
 
 /// Avatars proposés à la création d'un profil.

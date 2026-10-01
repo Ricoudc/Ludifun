@@ -2,9 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
+import 'package:ludifun/core/speech.dart';
 import 'package:ludifun/features/session/activities/common.dart';
+import 'package:ludifun/features/session/activities/dictation_view.dart';
 import 'package:ludifun/features/session/correction_view.dart';
 import 'package:ludifun/models/session.dart';
+
+class FakeSpeaker implements Speaker {
+  FakeSpeaker({this.voice = true});
+
+  final bool voice;
+  final said = <String>[];
+
+  @override
+  Future<bool> speak(String text) async {
+    said.add(text);
+    return voice;
+  }
+
+  @override
+  Future<void> stop() async {}
+}
 
 /// Chaque widget d'activité produit la réponse attendue par l'API (§7.3).
 void main() {
@@ -165,6 +183,43 @@ void main() {
         'order': ['l1', 'l2', 'l3', 'l4'],
       },
     ]);
+  });
+
+  testWidgets('dictée : le mot est lu à voix haute, jamais affiché', (tester) async {
+    final speaker = FakeSpeaker();
+    DictationView.speakerFactory = () => speaker;
+    addTearDown(() => DictationView.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'DICTATION', {
+      'prompt': 'Écoute le mot, puis écris-le.',
+      'word': 'hôpital',
+      'sentence': 'Le docteur travaille à l\'___.',
+      'spoken_sentence': 'Le docteur travaille à l\'hôpital.',
+    });
+    await tester.pump();
+    expect(speaker.said, ['hôpital', 'Le docteur travaille à l\'hôpital.', 'hôpital']);
+    expect(find.text('hôpital'), findsNothing);
+    expect(find.text('💡 Le docteur travaille à l\'___.'), findsOneWidget);
+    await tester.tap(find.text('Réécouter'));
+    await tester.pump();
+    expect(speaker.said, hasLength(6));
+    await tester.enterText(find.byType(TextField), 'hôpital');
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'text': 'hôpital'},
+    ]);
+  });
+
+  testWidgets('dictée sans voix française : le mot s\'affiche trois secondes', (tester) async {
+    DictationView.speakerFactory = () => FakeSpeaker(voice: false);
+    addTearDown(() => DictationView.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'DICTATION', {'prompt': 'Écoute.', 'word': 'chevaux'});
+    await tester.pump();
+    expect(find.text('chevaux'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+    expect(find.text('chevaux'), findsNothing);
+    expect(find.textContaining('ne sait pas lire à voix haute'), findsOneWidget);
   });
 
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
