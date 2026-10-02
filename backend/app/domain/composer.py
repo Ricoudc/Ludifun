@@ -49,7 +49,15 @@ EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
 # Jeux visuels, plus agréables à faire et à voir qu'un quiz : proposés d'abord (étape 25).
-VISUAL = frozenset({ActivityCode.ORDER, ActivityCode.CLASSIFY, ActivityCode.COLORING, ActivityCode.SCRAMBLE})
+VISUAL = frozenset(
+    {
+        ActivityCode.ORDER,
+        ActivityCode.CLASSIFY,
+        ActivityCode.COLORING,
+        ActivityCode.SCRAMBLE,
+        ActivityCode.UNJUMBLE,
+    }
+)
 INTERMEDIATE = frozenset(
     {
         ActivityCode.FILL_BLANK,
@@ -61,16 +69,22 @@ INTERMEDIATE = frozenset(
         ActivityCode.WORD_FLASH,
         ActivityCode.SCRAMBLE,
         ActivityCode.DICTATION,
+        ActivityCode.UNJUMBLE,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les
 # notions sont sur une même figure, sinon l'association ; ensuite au choix carte, association,
-# frise chronologique ou memory (étape 21), pour varier.
+# frise chronologique ou memory (étape 21), trouver la correspondance, roue, boîtes ou cartes
+# aléatoires (étape 26), pour varier.
 PUZZLES = (
     (ActivityCode.MAP, 2),
     (ActivityCode.MATCH, 2),
     (ActivityCode.TIMELINE, 2),
     (ActivityCode.MEMORY, 1),
+    (ActivityCode.FIND_MATCH, 2),
+    (ActivityCode.WHEEL, 1),
+    (ActivityCode.BOX, 1),
+    (ActivityCode.RANDOM_CARDS, 2),
 )
 FIRST_PUZZLES = frozenset({ActivityCode.MAP, ActivityCode.MATCH})
 

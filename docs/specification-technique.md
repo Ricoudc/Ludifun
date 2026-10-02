@@ -631,6 +631,29 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   l'ancienne reste. L'appel est journalisé dans `ai_runs` ; la maîtrise de l'enfant n'est pas
   touchée. Pas encore : faire la séance soi-même en mode essai (sans compter pour l'enfant).
 
+### 5.16 Jeux en plus (étape 26)
+
+Demande de la famille, comparée aux jeux existants : Quiz = `MCQ`, Apparier = `MATCH`, Fiches de
+révision = `FLASHCARD`, Trier par groupe = `CLASSIFY`, Complétez la phrase = `FILL_BLANK`,
+Anagramme = `SCRAMBLE`, Des paires = `MEMORY`, Coloriage = `COLORING`. Cinq jeux nouveaux, tous
+construits sur le matériel déjà validé (aucun appel à l'IA en plus) :
+
+| Jeu | Code | Notions | Matériel | Réponse |
+|---|---|---|---|---|
+| Démêler | `UNJUMBLE` (difficulté 2, jeu visuel) | 1 | une affirmation vraie ou la phrase à retenir, 4 à 10 mots | `{order:[id…]}` ; chaque mot à sa place compte (au plus 0,9 si la phrase n'est pas entière) |
+| Trouver la correspondance | `FIND_MATCH` (2) | 3 à 6 | `pair` | `{answers:[[indice, réponse]…]}` ; un indice à la fois, la réponse choisie disparaît |
+| Roue aléatoire | `WHEEL` (1) | 3 à 6 | QCM le plus facile, sinon vrai/faux | `{answers:[{id, choice_id}]}` ; trois tours, trois cases différentes |
+| Ouvrir la boîte | `BOX` (1) | 4 à 6 | idem | idem ; une boîte par notion, ouvertes dans l'ordre choisi par l'enfant |
+| Cartes aléatoires | `RANDOM_CARDS` (2, preuve × 0,5) | 3 à 6 | `flashcard` | `{cards:[{id, knew}]}` ; auto-évaluation comme la carte mémoire (niveau « se rappeler ») |
+
+Le hasard (case où s'arrête la roue, ordre des cartes et des boîtes) est tiré par le serveur avec
+la graine de la séance : la séance se rejoue à l'identique. Les cases de la roue portent des
+images (🍎 🚀 ⭐…), jamais le nom de la notion, qui donnerait parfois la réponse. Les quatre jeux à
+plusieurs notions s'ajoutent au jeu de fin de séance (🧩, à partir de la deuxième séance ; la
+première garde la carte ou l'association). Chaque élément de la correction porte son texte
+(`details[].text`) : l'application l'affiche sans rien connaître du jeu. Une application plus
+ancienne saute ces jeux (type inconnu).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

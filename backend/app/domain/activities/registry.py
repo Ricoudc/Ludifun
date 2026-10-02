@@ -8,7 +8,9 @@ from app.domain.activities.base import ActivityCode, ActivityType, BuiltActivity
 from app.domain.activities.classify import Classify
 from app.domain.activities.figures import Coloring, MapLocate
 from app.domain.activities.fill_blank import FillBlank
+from app.domain.activities.find_match import FindMatch
 from app.domain.activities.flashcard import Flashcard
+from app.domain.activities.lucky import Box, RandomCards, Wheel
 from app.domain.activities.match import Match
 from app.domain.activities.mcq import Mcq
 from app.domain.activities.memory import Memory
@@ -17,6 +19,7 @@ from app.domain.activities.ordering import Order, Timeline
 from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.spelling import Dictation, Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
+from app.domain.activities.unjumble import Unjumble
 from app.domain.knowledge import KnowledgeUnit
 
 
@@ -85,5 +88,11 @@ def default_registry() -> ActivityRegistry:
             WordFlash(),
             Scramble(),
             Dictation(),
+            # Jeux en plus (étape 26)
+            Unjumble(),
+            FindMatch(),
+            Wheel(),
+            Box(),
+            RandomCards(),
         ]
     )

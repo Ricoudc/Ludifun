@@ -68,6 +68,11 @@ const activityLabels = {
   'WORD_FLASH': ('⚡', 'Mots éclair'),
   'SCRAMBLE': ('🔤', 'Lettres mélangées'),
   'DICTATION': ('🎧', 'Dictées'),
+  'UNJUMBLE': ('🧶', 'Phrases à démêler'),
+  'FIND_MATCH': ('🔎', 'Trouver la correspondance'),
+  'WHEEL': ('🎡', 'Roues aléatoires'),
+  'BOX': ('🎁', 'Boîtes à ouvrir'),
+  'RANDOM_CARDS': ('🃏', 'Cartes aléatoires'),
 };
 
 /// Avatars proposés à la création d'un profil.

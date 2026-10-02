@@ -29,6 +29,36 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"order": order if single_ok else order[1:] + order[:1]}
         case ActivityCode.FLASHCARD:
             return {"self_assessment": "knew" if single_ok else "didnt_know"}
+        case ActivityCode.UNJUMBLE:
+            order = list(s["words"])
+            return {"order": order if single_ok else order[1:] + order[:1]}
+        case ActivityCode.FIND_MATCH:
+            targets = sorted(set(s["expected"].values()))
+            return {
+                "answers": [
+                    [
+                        clue,
+                        target
+                        if knows(s["knowledge_by_clue"][clue])
+                        else targets[(targets.index(target) + 1) % len(targets)],
+                    ]
+                    for clue, target in s["expected"].items()
+                ]
+            }
+        case ActivityCode.WHEEL | ActivityCode.BOX:
+            return {
+                "answers": [
+                    {
+                        "id": question,
+                        "choice_id": answer
+                        if knows(s["knowledge_by_question"][question])
+                        else ("b" if answer == "a" else "a"),
+                    }
+                    for question, answer in s["expected"].items()
+                ]
+            }
+        case ActivityCode.RANDOM_CARDS:
+            return {"cards": [{"id": c, "knew": knows(k)} for c, k in s["knowledge_by_card"].items()]}
         case ActivityCode.OPEN_QUESTION:
             return {"text": s["model_answer"] if single_ok else "je ne sais pas"}
         case ActivityCode.MATCH:

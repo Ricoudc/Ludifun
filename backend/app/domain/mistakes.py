@@ -18,6 +18,8 @@ QUESTION_OF: dict[ActivityCode, str] = {
     ActivityCode.MATCH: "Relier chaque élément à sa réponse",
     ActivityCode.SPEED_CHALLENGE: "Défi rapide : vrai ou faux ?",
     ActivityCode.MEMORY: "Memory : retrouver les paires",
+    ActivityCode.FIND_MATCH: "Trouver la correspondance",
+    ActivityCode.RANDOM_CARDS: "Cartes aléatoires",
 }
 
 
@@ -128,6 +130,42 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
             expected = _lines([f"{d.get('text', '?')} : {d['expected']}" for d in wrong])
         case ActivityCode.MEMORY:
             given = f"{len(response.get('moves', []))} cartes retournées"
+        case ActivityCode.UNJUMBLE:
+            words = _texts(payload.get("words"))
+            question = "Démêler : " + " / ".join(words.values())
+            given = " ".join(words.get(i, "?") for i in response.get("order", [])) or "(rien placé)"
+        case ActivityCode.FIND_MATCH:
+            clues, targets = _texts(payload.get("clues")), _texts(payload.get("targets"))
+            chosen = dict(response.get("answers", []))
+            given = _lines(
+                [
+                    f"{clues.get(d['id'], '?')} → {targets.get(chosen.get(d['id'], ''), 'pas de réponse')}"
+                    for d in wrong
+                ]
+            )
+            expected = _lines([f"{clues.get(d['id'], '?')} → {d['expected']}" for d in wrong])
+        case ActivityCode.WHEEL | ActivityCode.BOX:
+            questions = {
+                q["id"]: q for q in payload.get("spins") or payload.get("boxes") or [] if isinstance(q, dict)
+            }
+            question = "Roue aléatoire" if code is ActivityCode.WHEEL else "Ouvrir la boîte"
+            answers = {a["id"]: a["choice_id"] for a in response.get("answers", [])}
+            given = _lines(
+                [
+                    f"{questions.get(d['id'], {}).get('prompt', '?')} : "
+                    + _texts(questions.get(d["id"], {}).get("choices")).get(
+                        answers.get(d["id"], ""), "pas de réponse"
+                    )
+                    for d in wrong
+                ]
+            )
+            expected = _lines(
+                [f"{questions.get(d['id'], {}).get('prompt', '?')} : {d['expected']}" for d in wrong]
+            )
+        case ActivityCode.RANDOM_CARDS:
+            fronts = {c["id"]: c["front"] for c in payload.get("cards", []) if isinstance(c, dict)}
+            given = _lines([f"{fronts.get(d['id'], '?')} : « Je ne savais pas »" for d in wrong])
+            expected = _lines([f"{fronts.get(d['id'], '?')} : {d['expected']}" for d in wrong])
         case _:
             return None
     return Mistake(question=question, given=given, expected=expected)

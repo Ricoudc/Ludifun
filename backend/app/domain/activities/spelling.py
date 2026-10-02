@@ -87,7 +87,7 @@ class WordFlash(ActivityType):
             "show_ms": FLASH_MS[difficulty],
             "sentence": _sentence(unit),
         }
-        return payload, {"word": _word(unit), **feedback(unit)}
+        return payload, {"word": _word(unit), "display": _word(unit), **feedback(unit)}
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         return _written_grade(activity, parse_response(WordFlashResponse, response).text)
@@ -114,7 +114,7 @@ class Dictation(ActivityType):
             # La phrase lue à voix haute contient le mot ; celle qui est affichée, « ___ ».
             "spoken_sentence": sentence.replace("___", word) if sentence else None,
         }
-        return payload, {"word": word, **feedback(unit)}
+        return payload, {"word": word, "display": word, **feedback(unit)}
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         return _written_grade(activity, parse_response(WordFlashResponse, response).text)
@@ -155,7 +155,7 @@ class Scramble(ActivityType):
             "letters": [{"id": i, "text": letters[i]} for i in order],
             "sentence": _sentence(unit),
         }
-        return payload, {"word": word, "letters": letters, **feedback(unit)}
+        return payload, {"word": word, "display": word, "letters": letters, **feedback(unit)}
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         order = parse_response(ScrambleResponse, response).order

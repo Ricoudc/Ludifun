@@ -42,6 +42,7 @@ RECALLED = frozenset(
     {
         ActivityCode.FILL_BLANK,
         ActivityCode.FLASHCARD,
+        ActivityCode.RANDOM_CARDS,
         ActivityCode.ORDER,
         ActivityCode.CLASSIFY,
         ActivityCode.COLORING,

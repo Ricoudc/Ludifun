@@ -8,7 +8,7 @@ import pytest
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.activities.ordering import comparable, date_key
 from app.domain.activities.registry import ActivityRegistry
-from app.domain.composer import SessionComposer
+from app.domain.composer import PUZZLES, SessionComposer
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 from app.domain.mastery import Mastery
 from app.domain.simulated_pupil import respond
@@ -132,7 +132,8 @@ def test_memory_counts_moves_and_mistakes(history: ReferenceLesson, registry: Ac
 
 
 def test_review_sessions_vary_the_puzzle(history: ReferenceLesson, registry: ActivityRegistry) -> None:
-    """Première séance : l'association ; ensuite, association, frise ou memory selon la séance."""
+    """Première séance : l'association ; ensuite, association, frise, memory, ou l'un des jeux de
+    l'étape 26 (trouver la correspondance, roue, boîtes, cartes aléatoires) selon la séance."""
     composer = SessionComposer(registry)
     units = list(history.units.values())
     first = composer.compose(units, {}, NOW, seed=1)
@@ -145,4 +146,12 @@ def test_review_sessions_vary_the_puzzle(history: ReferenceLesson, registry: Act
         for i in composer.compose(units, due, NOW, seed=seed).items
         if i.block == "match"
     }
-    assert puzzles == {ActivityCode.MATCH, ActivityCode.TIMELINE, ActivityCode.MEMORY}
+    assert puzzles >= {
+        ActivityCode.MATCH,
+        ActivityCode.TIMELINE,
+        ActivityCode.MEMORY,
+        ActivityCode.FIND_MATCH,
+        ActivityCode.WHEEL,
+        ActivityCode.BOX,
+    }
+    assert puzzles <= {code for code, _ in PUZZLES}

@@ -123,6 +123,11 @@ async def test_dashboard_over_several_weeks(
         "FLASHCARD",
         "TIMELINE",  # étape 21 : frise ou memory en fin de séance de révision
         "MEMORY",
+        "FIND_MATCH",  # étape 26 : autres jeux de fin de séance
+        "WHEEL",
+        "BOX",
+        "RANDOM_CARDS",
+        "UNJUMBLE",
     }
 
     # Réussite par matière : maîtrise pondérée par l'importance des notions travaillées.

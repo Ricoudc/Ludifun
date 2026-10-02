@@ -6,6 +6,7 @@ import 'coloring_view.dart';
 import 'dictation_view.dart';
 import 'fill_blank_view.dart';
 import 'flashcard_view.dart';
+import 'fun_games_views.dart';
 import 'map_view.dart';
 import 'match_view.dart';
 import 'mcq_view.dart';
@@ -43,6 +44,12 @@ final activityRegistry = <String, ActivityBuilder>{
   'WORD_FLASH': (payload, onSubmit) => WordFlashView(payload: payload, onSubmit: onSubmit),
   'SCRAMBLE': (payload, onSubmit) => ScrambleView(payload: payload, onSubmit: onSubmit),
   'DICTATION': (payload, onSubmit) => DictationView(payload: payload, onSubmit: onSubmit),
+  // Jeux en plus (étape 26)
+  'UNJUMBLE': (payload, onSubmit) => UnjumbleView(payload: payload, onSubmit: onSubmit),
+  'FIND_MATCH': (payload, onSubmit) => FindMatchView(payload: payload, onSubmit: onSubmit),
+  'WHEEL': (payload, onSubmit) => WheelView(payload: payload, onSubmit: onSubmit),
+  'BOX': (payload, onSubmit) => BoxView(payload: payload, onSubmit: onSubmit),
+  'RANDOM_CARDS': (payload, onSubmit) => RandomCardsView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

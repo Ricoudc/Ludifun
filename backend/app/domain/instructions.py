@@ -100,6 +100,31 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Touche les lettres dans le bon ordre pour écrire le mot.",
         "Reconstitue le mot en touchant ses lettres dans l'ordre.",
     ),
+    ActivityCode.UNJUMBLE: (
+        "Touche les mots dans l'ordre. Tu écris la phrase.",
+        "Touche les mots dans le bon ordre pour reformer la phrase de la leçon.",
+        "Reconstitue la phrase de la leçon en remettant ses mots dans l'ordre.",
+    ),
+    ActivityCode.FIND_MATCH: (
+        "Lis la phrase. Touche le mot qui va avec.",
+        "Lis l'indice, puis touche la réponse qui lui correspond.",
+        "Associe chaque indice à la réponse qui lui correspond.",
+    ),
+    ActivityCode.WHEEL: (
+        "Touche la roue pour la faire tourner. Puis réponds.",
+        "Fais tourner la roue : elle choisit ta question. Réponds, puis relance.",
+        "Lance la roue, puis réponds à la question qu'elle désigne.",
+    ),
+    ActivityCode.BOX: (
+        "Touche une boîte pour l'ouvrir. Réponds à la question.",
+        "Ouvre les boîtes une par une et réponds à la question cachée dans chacune.",
+        "Ouvre chaque boîte et réponds à la question qu'elle contient.",
+    ),
+    ActivityCode.RANDOM_CARDS: (
+        "Tire une carte. Tu sais ? Retourne-la pour voir.",
+        "Tire une carte, essaie de te souvenir, puis retourne-la pour vérifier.",
+        "Tire une carte, récite la réponse, retourne-la et sois honnête.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",

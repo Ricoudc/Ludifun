@@ -39,6 +39,12 @@ class ActivityCode(StrEnum):
     WORD_FLASH = "WORD_FLASH"  # mot éclair : voir le mot, puis l'écrire de mémoire
     SCRAMBLE = "SCRAMBLE"  # lettres mélangées à remettre dans l'ordre
     DICTATION = "DICTATION"  # dictée : le téléphone prononce le mot, l'enfant l'écrit
+    # Jeux en plus (étape 26).
+    UNJUMBLE = "UNJUMBLE"  # démêler : remettre les mots d'une phrase dans l'ordre
+    FIND_MATCH = "FIND_MATCH"  # trouver la correspondance : une définition, toucher sa réponse
+    WHEEL = "WHEEL"  # roue aléatoire : la roue choisit la question
+    BOX = "BOX"  # ouvrir la boîte : chaque boîte cache une question
+    RANDOM_CARDS = "RANDOM_CARDS"  # cartes aléatoires : cartes mémoire tirées au hasard
 
 
 Result = Literal["correct", "partial", "incorrect"]

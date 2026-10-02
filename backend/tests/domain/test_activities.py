@@ -25,6 +25,7 @@ PAYLOAD_KEYS = {
     ActivityCode.MEMORY: {"prompt", "cards"},
     ActivityCode.MAP: {"prompt", "figure", "items"},
     ActivityCode.COLORING: {"prompt", "figure", "palette", "count"},
+    ActivityCode.UNJUMBLE: {"prompt", "words"},
 }
 
 

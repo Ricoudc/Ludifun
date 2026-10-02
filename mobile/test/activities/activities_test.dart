@@ -83,6 +83,157 @@ void main() {
     expect(find.text('Dans ce passage, que porte le Petit Chaperon rouge ?'), findsOneWidget);
   });
 
+  testWidgets('démêler : toucher les mots dans l\'ordre', (tester) async {
+    await show(tester, 'UNJUMBLE', {
+      'prompt': 'Remets les mots dans l\'ordre.',
+      'words': [
+        {'id': 'w2', 'text': 'chat'},
+        {'id': 'w1', 'text': 'Le'},
+        {'id': 'w3', 'text': 'dort.'},
+      ],
+    });
+    await tester.tap(find.text('Le'));
+    await tester.tap(find.text('chat'));
+    await tester.pump();
+    expect(find.text('Encore 1 mot(s)'), findsOneWidget);
+    await tester.tap(find.text('dort.'));
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'order': ['w1', 'w2', 'w3'],
+      },
+    ]);
+  });
+
+  testWidgets('trouver la correspondance : un indice à la fois', (tester) async {
+    await show(tester, 'FIND_MATCH', {
+      'targets': [
+        {'id': 't1', 'text': 'Clovis'},
+        {'id': 't2', 'text': 'Charlemagne'},
+      ],
+      'clues': [
+        {'id': 'c1', 'text': 'Empereur en 800'},
+        {'id': 'c2', 'text': 'Roi des Francs baptisé'},
+      ],
+    });
+    expect(find.text('Empereur en 800'), findsOneWidget);
+    await tester.tap(find.text('Charlemagne'));
+    await tester.pump();
+    expect(find.text('Roi des Francs baptisé'), findsOneWidget);
+    expect(find.text('Charlemagne'), findsNothing); // déjà choisie
+    await tester.tap(find.text('Clovis'));
+    await tester.pump();
+    expect(sent, [
+      {
+        'answers': [
+          ['c1', 't2'],
+          ['c2', 't1'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('roue aléatoire : tourner, répondre, trois fois', (tester) async {
+    Map<String, Object?> spin(String id, String segment) => {
+      'id': id,
+      'segment': segment,
+      'prompt': 'Question $id ?',
+      'choices': [
+        {'id': 'a', 'text': 'Réponse A $id'},
+        {'id': 'b', 'text': 'Réponse B $id'},
+      ],
+    };
+    await show(tester, 'WHEEL', {
+      'segments': [
+        {'id': 's0', 'text': '🍎'},
+        {'id': 's1', 'text': '🚀'},
+        {'id': 's2', 'text': '⭐'},
+      ],
+      'spins': [spin('q1', 's2'), spin('q2', 's0'), spin('q3', 's1')],
+    });
+    for (final id in ['q1', 'q2', 'q3']) {
+      await tester.tap(find.text('Faire tourner la roue'));
+      await tester.pumpAndSettle();
+      expect(find.text('Question $id ?'), findsOneWidget);
+      await tester.tap(find.text('Réponse A $id'));
+      await tester.pumpAndSettle();
+    }
+    expect(sent, [
+      {
+        'answers': [
+          {'id': 'q1', 'choice_id': 'a'},
+          {'id': 'q2', 'choice_id': 'a'},
+          {'id': 'q3', 'choice_id': 'a'},
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('ouvrir la boîte : chaque boîte cache une question', (tester) async {
+    Map<String, Object?> box(String id, int number) => {
+      'id': id,
+      'number': number,
+      'prompt': 'Question $number ?',
+      'choices': [
+        {'id': 'a', 'text': 'Vrai'},
+        {'id': 'b', 'text': 'Faux'},
+      ],
+    };
+    await show(tester, 'BOX', {
+      'boxes': [box('q1', 1), box('q2', 2)],
+    });
+    await tester.tap(find.bySemanticsLabel('Boîte 2'));
+    await tester.pump();
+    expect(find.text('Question 2 ?'), findsOneWidget);
+    await tester.tap(find.text('Faux'));
+    await tester.pump();
+    expect(find.bySemanticsLabel('Boîte 2, déjà ouverte'), findsOneWidget);
+    expect(sent, isEmpty);
+    await tester.tap(find.bySemanticsLabel('Boîte 1'));
+    await tester.pump();
+    await tester.tap(find.text('Vrai'));
+    await tester.pump();
+    expect(sent, [
+      {
+        'answers': [
+          {'id': 'q2', 'choice_id': 'b'},
+          {'id': 'q1', 'choice_id': 'a'},
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('cartes aléatoires : tirer, retourner, dire si on savait', (tester) async {
+    await show(tester, 'RANDOM_CARDS', {
+      'cards': [
+        {'id': 'c1', 'front': 'Clovis', 'back': 'Roi des Francs'},
+        {'id': 'c2', 'front': '1789', 'back': 'La Révolution'},
+      ],
+    });
+    for (final (front, back, knew) in [
+      ('Clovis', 'Roi des Francs', true),
+      ('1789', 'La Révolution', false),
+    ]) {
+      await tester.tap(find.text('Tirer une carte'));
+      await tester.pump();
+      expect(find.text(front), findsOneWidget);
+      await tester.tap(find.text('Retourner la carte'));
+      await tester.pump();
+      expect(find.text(back), findsOneWidget);
+      await tester.tap(find.text(knew ? 'Je savais' : 'Je ne savais pas'));
+      await tester.pump();
+    }
+    expect(sent, [
+      {
+        'cards': [
+          {'id': 'c1', 'knew': true},
+          {'id': 'c2', 'knew': false},
+        ],
+      },
+    ]);
+  });
+
   testWidgets('vrai ou faux', (tester) async {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
     await tester.tap(find.text('❌ Faux'));
