@@ -445,3 +445,24 @@ async def test_each_call_logs_where_the_time_went(caplog: pytest.LogCaptureFixtu
     assert "chargement 71 s" in line and "lecture 1300 jetons en 4 s" in line
     assert "écriture 520/3500 jetons à 26 jetons/s" in line and line.endswith("fin : stop")
     assert "secret" not in line
+
+
+@pytest.mark.parametrize(
+    ("models", "cause"),
+    [
+        ([{"name": "qwen2.5vl:7b", "size": 10_000, "size_vram": 6_000}], "40 % sur le processeur"),
+        ([{"name": "qwen2.5vl:7b", "size": 10_000, "size_vram": 10_000}], "bien sur la carte graphique"),
+        ([], "n'est plus chargé"),
+    ],
+)
+async def test_timeout_says_where_the_model_runs(models: list[dict[str, Any]], cause: str) -> None:
+    """Cas réel : « identification des notions en échec après 900 s ». Le message dit si le modèle
+    déborde de la carte graphique (4 jetons/s au lieu de 43), ce que l'on ne voyait pas."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/ps":
+            return httpx.Response(200, json={"models": models})
+        raise httpx.ReadTimeout("trop long", request=request)
+
+    with pytest.raises(AIError, match=cause):
+        await ollama(handler).structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)

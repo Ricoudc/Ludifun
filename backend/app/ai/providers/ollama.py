@@ -171,6 +171,31 @@ class OllamaProvider:
             ),
         )
 
+    async def _placement(self, model: str) -> str:
+        """Pourquoi Ollama a été si lent : où est le modèle (`/api/ps`). Sur le PC d'essai, un modèle
+        qui déborde de la carte graphique passe de 43 à 4 jetons/s, et une étape d'une minute et
+        demie dépasse alors 15 minutes."""
+        try:
+            response = await self._client.get(f"{self.base_url}/api/ps", timeout=5)
+            loaded = [m for m in response.json().get("models", []) if isinstance(m, dict)]
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return "modèle trop lourd ou carte graphique non utilisée"
+        current = next((m for m in loaded if m.get("name") == model or m.get("model") == model), None)
+        if current is None:
+            return f"le modèle {model} n'est plus chargé (Ollama a redémarré ou manque de mémoire)"
+        size, vram = current.get("size") or 0, current.get("size_vram") or 0
+        if size and vram < size:
+            cpu = round(100 * (size - vram) / size)
+            return (
+                f"le modèle tourne à {cpu} % sur le processeur, la carte graphique est pleine : "
+                "fermez les jeux et vidéos, gardez « Context length » à 4k dans Ollama, puis "
+                "quittez et relancez Ollama"
+            )
+        return (
+            "le modèle est bien sur la carte graphique : la leçon est peut-être très longue ; "
+            "essayez de la photographier en plusieurs fois"
+        )
+
     async def _request(
         self,
         prompt: Prompt,
@@ -204,9 +229,10 @@ class OllamaProvider:
         try:
             response = await self._client.post(f"{self.base_url}/api/chat", json=body)
         except httpx.TimeoutException as exc:
+            cause = await self._placement(model)
+            logger.warning("Ollama : %s sans réponse après %d s ; %s", prompt.stage, TIMEOUT_S, cause)
             raise AIError(
-                f"Ollama n'a pas répondu en {TIMEOUT_S / 60:.0f} min ({type(exc).__name__}) : "
-                "modèle trop lourd ou carte graphique non utilisée"
+                f"Ollama n'a pas répondu en {TIMEOUT_S / 60:.0f} min ({type(exc).__name__}) : {cause}"
             ) from exc
         except httpx.HTTPError as exc:
             raise AIError(
