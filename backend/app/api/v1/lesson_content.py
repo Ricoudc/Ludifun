@@ -18,6 +18,7 @@ from app.db import models as db_models
 from app.domain.instructions import instruction
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, LessonAnalysis
 from app.domain.material_view import material_blocks
+from app.domain.text import clean_markup
 from app.services.ai_settings import AiResolver
 from app.services.lesson_pipeline import LessonPipeline
 
@@ -64,7 +65,8 @@ class ReworkIn(BaseModel):
 def notion_out(
     item: db_models.KnowledgeItem, material: db_models.KnowledgeMaterial, grade: str
 ) -> NotionContentOut:
-    blocks = material_blocks(KnowledgeMaterial.model_validate(material.material))
+    # Sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage du matériel.
+    blocks = material_blocks(KnowledgeMaterial.model_validate(clean_markup(material.material)))
     return NotionContentOut(
         knowledge_id=item.id,
         label=item.label,

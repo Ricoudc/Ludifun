@@ -1,8 +1,10 @@
 """Outils de texte partagés : normalisation, distance d'édition, recherche approximative."""
 
+import html
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from typing import Any
 
 _PUNCTUATION = re.compile(r"[^\w\s/]", re.UNICODE)
 _SPACES = re.compile(r"\s+")
@@ -15,6 +17,37 @@ _MONTHS = (
     "janvier", "fevrier", "mars", "avril", "mai", "juin",
     "juillet", "aout", "septembre", "octobre", "novembre", "decembre",
 )  # fmt: skip
+
+
+# Mise en forme que l'IA (ou la lecture de la photo) glisse parfois dans le texte : « 3<sup>e</sup> »,
+# « <b>mot</b> », « **mot** », « &nbsp; ». L'application affiche du texte brut : on n'en garde
+# que les lettres (« 3e », « mot »).
+_LINE_BREAK = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_TAG = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]*(\s[^<>]*)?/?>")
+_BOLD = re.compile(r"\*\*(.+?)\*\*")
+_LINE_SPACES = re.compile(r"[ \t\u00a0]{2,}")
+
+
+def strip_markup(text: str) -> str:
+    """Texte sans balises HTML ni gras Markdown, entités décodées. « 3<sup>e</sup> » → « 3e »."""
+    if "<" not in text and "&" not in text and "**" not in text:
+        return text
+    text = _LINE_BREAK.sub(" ", text)
+    text = _TAG.sub("", text)
+    text = _BOLD.sub(r"\1", text)
+    text = html.unescape(text).replace("\u00a0", " ")
+    return _LINE_SPACES.sub(" ", text)
+
+
+def clean_markup(value: Any) -> Any:
+    """`strip_markup` sur toutes les chaînes d'une structure JSON (dictionnaires, listes)."""
+    if isinstance(value, str):
+        return strip_markup(value)
+    if isinstance(value, dict):
+        return {key: clean_markup(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [clean_markup(item) for item in value]
+    return value
 
 
 def strip_accents(text: str) -> str:
@@ -98,6 +131,12 @@ def contains_words(haystack: str, needle: str) -> bool:
     """`needle` apparaît comme suite de mots entiers dans `haystack` (texte normalisé)."""
     h, n = f" {normalize(haystack)} ", f" {normalize(needle)} "
     return n.strip() != "" and n in h
+
+
+def gives_away(left: str, right: str) -> bool:
+    """Les deux côtés d'une paire à relier se trahissent : identiques, ou l'un contient l'autre
+    (« Tu » ↔ « Tu vois bien… »). Il n'y a alors rien à chercher."""
+    return normalize(left) == normalize(right) or contains_words(left, right) or contains_words(right, left)
 
 
 def fuzzy_contains(text: str, excerpt: str, min_ratio: float = 0.9) -> bool:

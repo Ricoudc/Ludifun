@@ -32,6 +32,7 @@ from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, NothingToReview
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
+from app.domain.text import clean_markup, strip_markup
 from app.services import ai_budget, goals, learning, rewards
 from app.services.answer_evaluation import AnswerEvaluator
 
@@ -66,7 +67,8 @@ def item_out(item: SessionItem, attempt: Attempt | None = None, grade: str | Non
         type=item.activity_type,
         difficulty=item.difficulty,
         knowledge_ids=item.knowledge_ids,
-        payload=item.payload,  # jamais la solution
+        # Jamais la solution ; sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage.
+        payload=clean_markup(item.payload),
         attempt=attempt_summary(attempt),
     )
 
@@ -207,10 +209,10 @@ async def submit_attempt(
         item_id=item.id,
         result=grade.result,
         score=grade.score,
-        correct_answer=grade.correct_answer,
-        tip=grade.tip,
-        explanation=grade.explanation,
-        details=grade.details,
+        correct_answer=strip_markup(grade.correct_answer),
+        tip=grade.tip and strip_markup(grade.tip),
+        explanation=grade.explanation and strip_markup(grade.explanation),
+        details=clean_markup(grade.details),
         inserted_items=[item_out(i, grade=child.grade) for i in adaptation.inserted],
         engagement_hint=hint,
     )

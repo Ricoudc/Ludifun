@@ -14,7 +14,7 @@ from app.domain.activities.base import (
 )
 from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
-from app.domain.text import normalize
+from app.domain.text import gives_away, normalize
 
 
 class MatchResponse(ResponseModel):
@@ -43,14 +43,16 @@ class Match(ActivityType):
     max_units = 5
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
-        return unit.material.pair is not None
+        # Une paire enregistrée avant le contrôle `gives_away` (« Tu » ↔ « Tu vois… ») est écartée.
+        pair = unit.material.pair
+        return pair is not None and not gives_away(pair.left, pair.right)
 
     def _can_combine(self, units: list[KnowledgeUnit], difficulty: int) -> bool:
         pairs = [u.material.pair for u in units if u.material.pair is not None]
         lefts = {normalize(p.left) for p in pairs}
         rights = {normalize(p.right) for p in pairs}
-        # Deux éléments identiques rendraient l'association ambiguë.
-        return len({u.id for u in units}) == len(units) == len(lefts) == len(rights)
+        # Deux éléments identiques (même d'un côté à l'autre) rendraient l'association ambiguë.
+        return len({u.id for u in units}) == len(units) == len(lefts) == len(rights) and not lefts & rights
 
     def _build(
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random

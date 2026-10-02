@@ -37,7 +37,7 @@ class FindMatch(ActivityType):
     max_units = 6
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
-        return unit.material.pair is not None
+        return Match().accepts(unit)
 
     def _can_combine(self, units: list[KnowledgeUnit], difficulty: int) -> bool:
         return Match()._can_combine(units, difficulty)

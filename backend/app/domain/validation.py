@@ -31,7 +31,15 @@ from app.domain.knowledge import (
     Spelling,
     WorkedExample,
 )
-from app.domain.text import compatible_natures, contains_words, fuzzy_contains, normalize
+from app.domain.text import (
+    clean_markup,
+    compatible_natures,
+    contains_words,
+    fuzzy_contains,
+    gives_away,
+    normalize,
+    strip_markup,
+)
 
 TIP_MAX_LENGTH = 120
 HELP_TEXT_MAX_LENGTH = 300
@@ -71,6 +79,7 @@ _ABSENT_SUPPORT = re.compile(
     re.IGNORECASE,
 )
 SUPPORT_REASON = "renvoie à la fiche ou à un texte que l'enfant n'aura plus sous les yeux"
+PAIR_REASON = "les deux côtés de la paire sont pareils, ou l'un contient l'autre : rien à chercher"
 PASSAGE_REASON = "le passage à relire n'est pas recopié de la leçon"
 
 
@@ -152,6 +161,7 @@ def _first_error(exc: ValidationError) -> str:
 
 
 def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidation:
+    raw, ocr_text = clean_markup(dict(raw)), strip_markup(ocr_text)
     if not isinstance(raw.get("is_lesson"), bool):
         raise AnalysisError("is_lesson manquant")
     if not raw["is_lesson"]:
@@ -377,7 +387,8 @@ def validate_material(
     """`lesson_text` : le texte de la leçon, dont un passage à relire doit être recopié (sans
     lui, le passage doit venir de la notion)."""
     rejected: list[Rejection] = []
-    source = lesson_text if lesson_text is not None else item.corpus()
+    raw = clean_markup(dict(raw))
+    source = strip_markup(lesson_text) if lesson_text is not None else item.corpus()
 
     questions: list[MaterialQuestion] = []
     raw_questions = raw.get("questions")
@@ -461,6 +472,9 @@ def validate_material(
             if (absent := _absent(f"{pair.left} {pair.right}")) is not None:
                 pair = None
                 rejected.append(Rejection("pair", absent))
+            elif gives_away(pair.left, pair.right):
+                pair = None
+                rejected.append(Rejection("pair", PAIR_REASON))
         except ValidationError as exc:
             rejected.append(Rejection("pair", _first_error(exc)))
 
