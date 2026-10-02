@@ -17,7 +17,14 @@ from app.ai.providers.fake import (
 )
 from app.ai.schemas import OcrPage, OcrResult
 from app.domain.activities.registry import default_registry
-from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
+from app.domain.knowledge import KnowledgeItem
+from app.services.lesson_pipeline import (
+    FailureReason,
+    LessonPipeline,
+    LessonStatus,
+    PipelineResult,
+    lesson_window,
+)
 
 PAGE = PageImage(b"\xff\xd8\xffphoto", "image/jpeg")
 LESSONS = sorted(REFERENCE_LESSONS.glob("*.json"))
@@ -287,3 +294,38 @@ async def test_the_analysis_is_written_for_the_class_set_by_the_parent() -> None
     (analysis,) = [text for stage, text in llm.calls if stage == "analysis"]
     assert analysis.startswith("Classe de l'élève : CE1\nÉcriture : Élève de cycle 2")
     assert "<lecon>" in analysis
+
+
+def sent_lesson(text: str) -> str:
+    return text.split("<lecon>\n", 1)[1].split("\n</lecon>", 1)[0]
+
+
+async def test_a_local_model_still_too_full_gets_only_the_excerpts() -> None:
+    """Cas réel (PC d'essai) : même une seule notion déborde du contexte de 8 192 jetons. Au lieu
+    d'abandonner, le serveur renvoie la notion avec seulement ses citations de la leçon ; le
+    matériel est quand même validé sur le texte entier."""
+    script = LessonScript.from_file(HISTORY)
+
+    def full_context(attempt: int, text: str) -> Any:
+        if len(sent_lesson(text)) > 200:
+            return AIContextFull("réponse tronquée")
+        return material_output(script.material, requested_ids(text))
+
+    llm = FakeProvider(script, {"material": full_context})
+    llm.name = "ollama"
+    result = await LessonPipeline(VisionLLMOcr(llm), llm, default_registry()).run((PAGE,))
+    assert result.ready
+    assert {u.id for u in result.units} == set(script.material)
+    sizes = [len(sent_lesson(text)) for stage, text in llm.calls if stage == "material"]
+    assert sizes[0] > 200 and sizes[1] <= 200  # le second essai n'envoie que la citation
+
+
+def test_lesson_window_keeps_the_passages_around_the_notions() -> None:
+    script = LessonScript.from_file(HISTORY)
+    items = [KnowledgeItem.model_validate(k) for k in script.analysis["knowledge"]]
+    text = "Intro sans rapport. " * 400 + script.ocr_text + " Fin sans rapport." * 400
+    assert lesson_window(text, items, None) == text
+    window = lesson_window(text, items, 3000)
+    assert len(window) <= 3000 and items[0].source_excerpt in window
+    only = lesson_window(text, items[:1], 0)
+    assert only == items[0].source_excerpt

@@ -60,6 +60,11 @@ MATERIAL_BATCH = 5  # notions par appel d'enrichissement (appels en parallèle)
 # dépassent la place du modèle (contexte de 8192 jetons) : l'appel est coupé après une dizaine
 # de minutes d'écriture, puis tout est refait en deux (PC d'essai, carte de 8 Go, 6 jetons/s).
 LOCAL_MATERIAL_BATCH = 1
+# Modèle local (contexte de 8 192 jetons) : la leçon envoyée avec une notion est réduite aux
+# passages autour de ses citations ; si la réponse est encore tronquée, un second essai n'envoie
+# que les citations. La validation, elle, se fait toujours sur le texte entier.
+LOCAL_LESSON_CHARS = 3000
+EXCERPT_MARGIN = 600
 MIN_OPTIONS_IMPORTANT = 2  # activités minimales pour une notion d'importance ≥ 4 (§5.3)
 IMPORTANT = 4
 REJECTION_WARNING_RATE = 0.3  # au-delà, signal de qualité dans ai_runs (§6.4)
@@ -155,6 +160,7 @@ class LessonPipeline:
         self.analysis_prompt = Prompt.load("analysis")
         self.material_prompt = Prompt.load("material")
         self.material_batch = LOCAL_MATERIAL_BATCH if llm.name == "ollama" else MATERIAL_BATCH
+        self.lesson_chars: int | None = LOCAL_LESSON_CHARS if llm.name == "ollama" else None
 
     async def run(self, pages: Sequence[PageImage] = (), text: str | None = None) -> PipelineResult:
         """Analyse une leçon à partir de ses photos, ou directement de son texte (OCR déjà fait)."""
@@ -331,7 +337,9 @@ class LessonPipeline:
         items: list[KnowledgeItem],
         feedback: dict[str, list[Rejection]] | None = None,
         remark: str | None = None,
+        shortened: bool = False,
     ) -> dict[str, MaterialValidation]:
+        sent = lesson_window(text, items, 0 if shortened else self.lesson_chars)
         try:
             output = await self._call(
                 result,
@@ -341,13 +349,16 @@ class LessonPipeline:
                 self.llm.model_for("material"),
                 lambda: self.llm.structured(
                     prompt=self.material_prompt,
-                    input=_material_input(analysis, text, items, feedback, self.pupil_grade, remark),
+                    input=_material_input(analysis, sent, items, feedback, self.pupil_grade, remark),
                     schema=MaterialBatchOutput,
                 ),
             )
         except AIContextFull:
             if len(items) < 2:
-                return {}
+                if shortened or sent == lesson_window(text, items, 0):
+                    return {}
+                # Une seule notion et toujours trop long : seulement ses citations de la leçon.
+                return await self._material(result, analysis, text, items, feedback, remark, shortened=True)
             # Trop de notions pour la place du modèle (petit modèle local) : deux demandes plus
             # petites, l'une après l'autre.
             half = len(items) // 2
@@ -464,6 +475,35 @@ def _analysis_input(text: str, pupil_grade: str | None) -> str:
         f"Écriture : {instructions.writing_rules(pupil_grade)}\n"
         f"<lecon>\n{text}\n</lecon>"
     )
+
+
+def lesson_window(text: str, items: Sequence[KnowledgeItem], limit: int | None) -> str:
+    """La leçon entière si elle tient dans `limit` caractères (None : pas de limite) ; sinon les
+    passages autour des citations des notions (`source_excerpt`), dans l'ordre de la leçon.
+    `limit` à 0 : les citations seules."""
+    if limit is None or len(text) <= limit:
+        return text
+    margin = EXCERPT_MARGIN if limit else 0
+    spans: list[tuple[int, int]] = []
+    for item in items:
+        at = text.find(item.source_excerpt)
+        if at < 0:
+            at = text.casefold().find(item.source_excerpt.casefold())
+        if at < 0:
+            continue
+        spans.append((max(0, at - margin), min(len(text), at + len(item.source_excerpt) + margin)))
+    if not spans:
+        excerpts = " […] ".join(dict.fromkeys(i.source_excerpt for i in items))
+        return excerpts if not limit else text[:limit]
+    spans.sort()
+    merged = [spans[0]]
+    for start, end in spans[1:]:
+        if start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    window = " […] ".join(text[start:end].strip() for start, end in merged)
+    return window[:limit] if limit else window
 
 
 def _material_input(

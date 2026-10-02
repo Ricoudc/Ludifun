@@ -52,6 +52,11 @@ MAX_OUTPUT: dict[Stage, int] = {
     "evaluation": 800,
     "sources": 1500,
 }
+# Étapes dont les consignes décrivent déjà chaque champ : le schéma n'est pas recopié en texte
+# (Ollama l'impose de toute façon avec `format`). Pour le matériel, il occupait à lui seul environ
+# 2 000 jetons d'un contexte de 8 192, et la réponse était tronquée.
+SCHEMA_ENFORCED_ONLY: frozenset[Stage] = frozenset({"material"})
+JSON_ONLY = "\n\n# Format de la réponse\nRéponds uniquement par un objet JSON valide, sans texte autour."
 PLAIN_TRANSCRIPTION = (
     "\n\n# Format de la réponse\n"
     "Pour cette image, réponds uniquement par le texte transcrit, sans JSON, sans commentaire ni "
@@ -147,8 +152,9 @@ class OllamaProvider:
         self, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...], side: int
     ) -> LLMResult[T]:
         model = self.models[prompt.stage]
+        reminder = JSON_ONLY if prompt.stage in SCHEMA_ENFORCED_ONLY else schema_instructions(schema)
         content, data, latency_ms = await self._request(
-            prompt, prompt.text + schema_instructions(schema), input, schema.model_json_schema(), images, side
+            prompt, prompt.text + reminder, input, schema.model_json_schema(), images, side
         )
         try:
             output = schema.model_validate(parse_json(content))
@@ -231,7 +237,11 @@ class OllamaProvider:
                 raise AIInvalidOutput(
                     f"l'IA a tourné en boucle : réponse coupée après {written} jetons (nouvel essai)"
                 )
-            raise AIContextFull("réponse tronquée (augmentez LUDIFUN_OLLAMA_NUM_CTX)")
+            read = data.get("prompt_eval_count")
+            raise AIContextFull(
+                f"réponse tronquée : demande de {read or '?'} jetons + réponse de {written or '?'} jetons "
+                f"> contexte de {self.num_ctx} (augmentez LUDIFUN_OLLAMA_NUM_CTX)"
+            )
         content = (data.get("message") or {}).get("content")
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")

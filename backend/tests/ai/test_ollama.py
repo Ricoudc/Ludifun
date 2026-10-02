@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.ai.check import check, probe_llm
 from app.ai.factory import AiChoice, build_llm
-from app.ai.ports import AIError, AIInvalidOutput, PageImage, Prompt, Stage
+from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, PageImage, Prompt, Stage
 from app.ai.pricing import run_cost
 from app.ai.providers.ollama import MAX_OUTPUT, OllamaProvider
 from app.config import Settings
@@ -62,6 +62,38 @@ async def test_native_chat_with_images_and_context() -> None:
     assert body["format"]["title"] == "Page"
     assert body["messages"][1]["images"] == ["/9hqcGVn"]
     assert '"text"' in body["messages"][0]["content"]  # schéma rappelé dans les consignes
+
+
+async def test_material_schema_is_enforced_not_repeated() -> None:
+    """Préparation des exercices : le schéma (≈ 2 000 jetons) n'est plus recopié dans les
+    consignes, Ollama l'impose avec `format` ; la réponse a ainsi la place de finir."""
+    sent: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": '{"text": "ok"}'}, "done_reason": "stop"})
+
+    await ollama(handler).structured(prompt=Prompt("material", "v8", "Prépare."), input="x", schema=Page)
+    (body,) = sent
+    assert body["format"]["title"] == "Page"
+    assert '"properties"' not in body["messages"][0]["content"]
+    assert "JSON" in body["messages"][0]["content"]
+
+
+async def test_truncation_says_how_full_the_context_was() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": "{"},
+                "done_reason": "length",
+                "prompt_eval_count": 7000,
+                "eval_count": 1192,
+            },
+        )
+
+    with pytest.raises(AIContextFull, match=r"7000 jetons.*1192 jetons.*16384"):
+        await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)
 
 
 @pytest.mark.parametrize(

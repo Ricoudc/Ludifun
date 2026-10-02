@@ -631,6 +631,13 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   l'ancienne reste. L'appel est journalisé dans `ai_runs` ; la maîtrise de l'enfant n'est pas
   touchée. Pas encore : faire la séance soi-même en mode essai (sans compter pour l'enfant).
 
+- **Contexte d'Ollama** (`ai/providers/ollama.py`, `services/lesson_pipeline.py`) : pour la
+  préparation des exercices, le schéma n'est plus recopié dans les consignes (Ollama l'impose avec
+  `format`, il occupait environ 2 000 jetons sur 8 192) ; la leçon envoyée avec une notion est
+  réduite aux passages autour de ses citations (3 000 caractères au plus) et, si la réponse est
+  encore tronquée, un second essai n'envoie que les citations. La validation se fait toujours sur
+  le texte entier. Le message « réponse tronquée » donne les jetons lus, écrits et le contexte.
+
 ### 5.16 Jeux en plus (étape 26)
 
 Demande de la famille, comparée aux jeux existants : Quiz = `MCQ`, Apparier = `MATCH`, Fiches de
