@@ -6,7 +6,7 @@ mémorisation) ; ce module la relie à PostgreSQL.
 
 import secrets
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal
@@ -26,6 +26,7 @@ from app.domain.composer import (
     PlannedItem,
     SessionComposer,
     SessionPlan,
+    fingerprint,
 )
 from app.domain.decisions import Reason, Rule, reason
 from app.domain.engagement import (
@@ -182,6 +183,36 @@ class SessionOptions:
 
     core_size: int = BLOCK_SIZE  # selon le temps de révision par jour
     focus: Focus | None = None  # étape du plan avant un contrôle
+    recent: frozenset[str] = frozenset()  # questions des dernières séances, à ne pas reposer
+
+
+RECENT_SESSIONS = 3  # séances d'une leçon dont les questions sont évitées à la suivante
+
+
+async def recent_questions(
+    session: AsyncSession, child_id: uuid.UUID, lesson_id: uuid.UUID
+) -> frozenset[str]:
+    """Empreintes des questions posées à l'enfant lors des dernières séances de cette leçon : la
+    séance suivante en pose d'autres tant que la leçon en a (étape 26)."""
+    last = (
+        select(db.RevisionSession.id)
+        .where(db.RevisionSession.child_id == child_id, db.RevisionSession.lesson_id == lesson_id)
+        .order_by(db.RevisionSession.started_at.desc())
+        .limit(RECENT_SESSIONS)
+    )
+    rows = await session.execute(
+        select(db.SessionItem.activity_type, db.SessionItem.difficulty, db.SessionItem.payload).where(
+            db.SessionItem.session_id.in_(last)
+        )
+    )
+    prints: set[str] = set()
+    for activity_type, difficulty, payload in rows:
+        try:
+            code = ActivityCode(activity_type)
+        except ValueError:
+            continue
+        prints.add(fingerprint(BuiltActivity(code, difficulty, [], payload, {})))
+    return frozenset(prints)
 
 
 def compose_with(
@@ -211,6 +242,7 @@ def compose_with(
         seed,
         core_size=options.core_size,
         include_known=options.focus is Focus.MOCK_TEST,
+        recent=options.recent,
     )
 
 
@@ -243,7 +275,10 @@ async def start_session(
     lesson = await load_units(session, lesson_row)
     masteries = await load_masteries(session, child_id, lesson)
     seed = new_seed()
-    plan = compose_with(SessionComposer(registry), lesson, masteries, now, seed, options or SessionOptions())
+    options = replace(
+        options or SessionOptions(), recent=await recent_questions(session, child_id, lesson_row.id)
+    )
+    plan = compose_with(SessionComposer(registry), lesson, masteries, now, seed, options)
     return await _new_session(session, child_id, lesson, plan, seed, now)
 
 

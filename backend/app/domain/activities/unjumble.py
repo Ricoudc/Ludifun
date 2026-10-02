@@ -29,13 +29,21 @@ class UnjumbleResponse(ResponseModel):
     order: list[str] = Field(max_length=WORDS[1])
 
 
-def sentence_of(unit: KnowledgeUnit) -> str | None:
-    """La première phrase de la notion qui a le bon nombre de mots (vraie, tirée de la leçon)."""
+def sentences_of(unit: KnowledgeUnit) -> list[str]:
+    """Les phrases vraies de la notion (tirées de la leçon) qui ont le bon nombre de mots."""
+    found: list[str] = []
     for text in [*unit.material.true_statements, unit.item.statement]:
         words = text.split()
         if WORDS[0] <= len(words) <= WORDS[1] and len({normalize(w) for w in words}) > 1:
-            return " ".join(words)
-    return None
+            sentence = " ".join(words)
+            if sentence not in found:
+                found.append(sentence)
+    return found
+
+
+def sentence_of(unit: KnowledgeUnit) -> str | None:
+    sentences = sentences_of(unit)
+    return sentences[0] if sentences else None
 
 
 class Unjumble(ActivityType):
@@ -51,8 +59,7 @@ class Unjumble(ActivityType):
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
-        sentence = sentence_of(unit)
-        assert sentence is not None
+        sentence = rng.choice(sentences_of(unit))  # une autre phrase d'une séance à l'autre
         words = {f"w{i}": word for i, word in enumerate(sentence.split(), start=1)}
         order = list(words)
         # Mélange qui ne redonne jamais la phrase (deux mots identiques ne suffisent pas).

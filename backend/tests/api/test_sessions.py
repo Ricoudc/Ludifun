@@ -16,6 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import clock
 from app.db.models import KnowledgeItem, KnowledgeMastery, SessionItem
+from app.domain.activities.base import ActivityCode, BuiltActivity
+from app.domain.composer import fingerprint
 from app.domain.simulated_pupil import Knows, respond
 from app.services.learning import activity_of
 from tests.api.helpers import auth, family_with_device, upload_lesson
@@ -80,7 +82,9 @@ async def test_full_child_journey(client: AsyncClient, db: AsyncSession, now: li
     # Écran 4 : la séance.
     session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     assert session["kind"] == "first" and session["status"] == "active" and not session["express"]
-    assert [i["block"] for i in session["items"]] == ["warmup"] * 3 + ["core"] * 3 + ["match", "speed"]
+    # 10 minutes par défaut (étape 26) : 13 activités, un peu moins de 10 minutes.
+    assert [i["block"] for i in session["items"]] == ["warmup"] * 3 + ["core"] * 8 + ["match", "speed"]
+    assert session["estimated_duration_min"] <= 10
     assert all(not SOLUTION_KEYS & set(i["payload"]) for i in session["items"])  # jamais la solution
     reopened = (
         await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
@@ -231,3 +235,28 @@ async def test_sessions_of_another_child_are_invisible(client: AsyncClient) -> N
         headers=auth(leo["device"]),
     )
     assert r.status_code == 404
+
+
+async def test_redoing_a_lesson_asks_other_questions(
+    client: AsyncClient, db: AsyncSession, now: list[datetime]
+) -> None:
+    """Étape 26 : quand l'enfant refait la leçon, la séance suivante évite les questions des
+    séances précédentes tant que la leçon en a d'autres."""
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token, pages=2)
+    url = f"/v1/lessons/{lesson['id']}/sessions"
+
+    def asked(session: dict[str, Any]) -> list[str]:
+        return [
+            fingerprint(BuiltActivity(ActivityCode(i["type"]), i["difficulty"], [], i["payload"], {}))
+            for i in session["items"]
+        ]
+
+    first = (await client.post(url, json={}, headers=auth(token))).json()
+    await play(client, db, token, first["id"], first["items"], lambda key: key != "k3")
+    await client.post(f"/v1/sessions/{first['id']}/complete", headers=auth(token))
+    now[0] += timedelta(days=2)
+    second = (await client.post(url, json={}, headers=auth(token))).json()
+    assert second["id"] != first["id"]
+    again = [f for f in asked(second) if f in set(asked(first))]
+    assert len(again) <= len(second["items"]) // 3, again

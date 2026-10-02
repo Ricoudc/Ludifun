@@ -13,8 +13,11 @@ from enum import StrEnum
 
 DAILY_MINUTES = (5, 10, 15, 20, 30)
 DEFAULT_MINUTES = 10
-# Activités de l'approfondissement selon le temps du jour (l'échauffement en compte toujours 3).
-CORE_SIZE = {5: 0, 10: 3, 15: 6, 20: 9, 30: 12}
+# Activités de l'approfondissement selon le temps du jour (l'échauffement en compte toujours 3,
+# puis viennent le jeu de fin, le défi rapide et la reprise des erreurs). Réglé pour que la séance
+# dure un peu moins que le temps choisi : 10 minutes → 13 activités, environ 9 minutes (étape 26 ;
+# avant : 3, soit 8 activités et 5 minutes, jugé trop court par la famille).
+CORE_SIZE = {5: 1, 10: 8, 15: 14, 20: 20, 30: 30}
 
 
 class Focus(StrEnum):

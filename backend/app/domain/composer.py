@@ -25,6 +25,7 @@ from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import IMPORTANT, KNOWN_SCORE, Mastery
 from app.domain.rules import RULES
 from app.domain.scoring import Evidence
+from app.domain.text import normalize
 from app.domain.understanding import cognitive_level, required_levels
 
 # Seuils réglés dans engine_rules.toml (§125).
@@ -39,6 +40,7 @@ DEEPEN_SCORE = RULES.session.deepen_score
 MISSING_LEVEL_SCORE = RULES.session.missing_level_score
 VISUAL_FIRST = RULES.session.visual_first
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
+FRESH_TRIES = 8  # tirages essayés pour trouver une question pas posée aux séances précédentes
 
 TRANSITION_S = 5
 CORRECTION_S = 8
@@ -149,6 +151,7 @@ def target_difficulties(mastery: Mastery | None) -> tuple[int, ...]:
 class SessionComposer:
     def __init__(self, registry: ActivityRegistry) -> None:
         self.registry = registry
+        self.recent: frozenset[str] = frozenset()
 
     # ------------------------------------------------------------------ #
     # Séances « première révision » et « révision »
@@ -162,10 +165,14 @@ class SessionComposer:
         seed: int,
         core_size: int = BLOCK_SIZE,
         include_known: bool = False,
+        recent: frozenset[str] = frozenset(),
     ) -> SessionPlan:
         """`core_size` : activités d'approfondissement (selon le temps du jour choisi par le parent ;
-        0 : révision express). `include_known` : toute la leçon, même ce qui est su (mini-contrôle)."""
+        0 : révision express). `include_known` : toute la leçon, même ce qui est su (mini-contrôle).
+        `recent` : empreintes (`fingerprint`) des questions des séances précédentes de la leçon,
+        évitées tant que la notion en a d'autres."""
         rng = random.Random(seed)
+        self.recent = recent
         eligible = _eligible(units)
         first = not any(u.id in masteries for u in units)
         if first:
@@ -486,8 +493,34 @@ class SessionComposer:
         activities = []
         for unit, code, difficulty in chain:
             used.setdefault(unit.id, set()).add(code)
-            activities.append(self.registry.get(code).build([unit], difficulty, rng))
+            activities.append(self._fresh(code, unit, difficulty, rng))
         return activities
+
+    def _fresh(
+        self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int, rng: random.Random
+    ) -> BuiltActivity:
+        """L'activité, avec une question pas encore posée aux séances précédentes si la notion en
+        a une (autre question du QCM, autre affirmation, autre ordre…)."""
+        activity_type = self.registry.get(code)
+        first = activity_type.build([unit], difficulty, rng)
+        if not self.recent or fingerprint(first) not in self.recent:
+            return first
+        for attempt in range(FRESH_TRIES):
+            other = activity_type.build([unit], difficulty, random.Random(f"{rng.random()}:{attempt}"))
+            if fingerprint(other) not in self.recent:
+                return other
+        return first
+
+    def _has_fresh(self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int) -> bool:
+        """Ce format peut encore poser à cette notion une question qu'elle n'a pas eue."""
+        if not self.recent:
+            return True
+        activity_type = self.registry.get(code)
+        return any(
+            fingerprint(activity_type.build([unit], difficulty, random.Random(f"{unit.id}:{code}:{i}")))
+            not in self.recent
+            for i in range(FRESH_TRIES)
+        )
 
     def _options(
         self,
@@ -518,6 +551,9 @@ class SessionComposer:
                 if VISUAL_FIRST:
                     codes.sort(key=lambda code: code not in VISUAL)
                 result += [(code, difficulty) for code in codes if (code, difficulty) not in result]
+        # Les formats dont toutes les questions ont déjà été posées aux séances précédentes passent
+        # en dernier, quelle que soit leur difficulté (l'ordre reste sinon celui des préférences).
+        result.sort(key=lambda option: not self._has_fresh(option[0], unit, option[1]))
         return result
 
     def _group(
@@ -551,13 +587,27 @@ class SessionComposer:
         if first and options[0][0] in FIRST_PUZZLES:
             code, difficulty, units = options[0]
         else:
-            code, difficulty, units = rng.choice(options)
+            # D'abord un jeu dont les questions n'ont pas été posées aux séances précédentes.
+            fresh = [
+                o
+                for o in options
+                if fingerprint(self.registry.get(o[0]).build(o[2], o[1], random.Random(f"{o[0]}")))
+                not in self.recent
+            ]
+            code, difficulty, units = rng.choice(fresh or options)
         return self.registry.get(code).build(units, difficulty, rng)
 
     def _speed(self, candidates: list[KnowledgeUnit], rng: random.Random) -> BuiltActivity | None:
         speed = self.registry.get(ActivityCode.SPEED_CHALLENGE)
         chosen = [u for u in candidates if speed.accepts(u)][:SPEED_NOTIONS]
-        return speed.build(chosen, 1, rng) if chosen and speed.can_build(chosen, 1) else None
+        if not chosen or not speed.can_build(chosen, 1):
+            return None
+        activity = speed.build(chosen, 1, rng)
+        for attempt in range(FRESH_TRIES if fingerprint(activity) in self.recent else 0):
+            other = speed.build(chosen, 1, random.Random(f"speed:{attempt}:{rng.random()}"))
+            if fingerprint(other) not in self.recent:
+                return other
+        return activity
 
     def estimate_duration_s(self, activities: Sequence[BuiltActivity], with_replay: bool) -> int:
         """§8.2 : durées de base + transitions + corrections (+ provision pour la reprise)."""
@@ -565,6 +615,44 @@ class SessionComposer:
             self.registry.get(a.type).base_duration_s + TRANSITION_S + CORRECTION_S for a in activities
         )
         return math.ceil(seconds + (REPLAY_PROVISION_S if with_replay else 0))
+
+
+_QUESTION_KEYS = (
+    "statement",
+    "text",
+    "front",
+    "word",
+    "words",
+    "letters",
+    "items",
+    "statements",  # défi rapide
+    "left",  # association
+    "clues",  # trouver la correspondance
+    "spins",  # roue aléatoire
+    "boxes",  # ouvrir la boîte
+    "cards",  # memory, cartes aléatoires
+    "prompt",
+)
+
+
+def fingerprint(activity: BuiltActivity) -> str:
+    """Ce que l'enfant voit de la question, pour reconnaître une question déjà posée d'une séance à
+    l'autre : le type et le premier texte qui la distingue (énoncé, phrase, carte, mot…). Les
+    étiquettes à remettre dans l'ordre sont triées : leur mélange ne fait pas une autre question."""
+    payload = activity.payload
+    for key in _QUESTION_KEYS:
+        value = payload.get(key)
+        if isinstance(value, list):
+            texts = sorted(
+                str(v.get("text") or v.get("prompt") or v.get("front") or "")
+                if isinstance(v, dict)
+                else str(v)
+                for v in value
+            )
+            return f"{activity.type}:{key}:{normalize(' '.join(texts))}"
+        if isinstance(value, str) and value:
+            return f"{activity.type}:{key}:{normalize(value)}"
+    return f"{activity.type}:{normalize(str(sorted(payload)))}"
 
 
 def _visual(activity: BuiltActivity, why: Reason) -> Reason:

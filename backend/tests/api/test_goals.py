@@ -56,9 +56,10 @@ async def test_daily_minutes_and_priority_subject(
     mission = (await client.get("/v1/me/mission", headers=auth(token))).json()
     assert mission["lesson"]["id"] == history["id"] and mission["daily_minutes"] == 5
 
-    # 5 minutes : une révision express ; 20 minutes : bien plus d'activités.
+    # 5 minutes : une séance courte (1 activité d'approfondissement) ; 20 minutes : bien plus.
     short = (await client.post(f"/v1/lessons/{history['id']}/sessions", json={}, headers=auth(token))).json()
-    assert {i["block"] for i in short["items"]} == {"warmup", "speed"}
+    assert sum(1 for i in short["items"] if i["block"] == "core") == 1
+    assert short["estimated_duration_min"] <= 5
     await client.patch(url, json={"daily_minutes": 20}, headers=auth(parent))
     await play(client, db, token, short["id"], short["items"], lambda _: True)
     await client.post(f"/v1/sessions/{short['id']}/complete", headers=auth(token))

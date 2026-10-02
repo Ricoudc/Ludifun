@@ -63,7 +63,7 @@ def test_today_done_and_plan_end() -> None:
     )
 
 
-@pytest.mark.parametrize(("minutes", "size"), [(None, 3), (5, 0), (10, 3), (15, 6), (20, 9), (30, 12)])
+@pytest.mark.parametrize(("minutes", "size"), [(None, 8), (5, 1), (10, 8), (15, 14), (20, 20), (30, 30)])
 def test_core_size_follows_the_daily_minutes(minutes: int | None, size: int) -> None:
     assert core_size(minutes) == size
 

@@ -653,6 +653,17 @@ construits sur le matériel déjà validé (aucun appel à l'IA en plus) :
 | Ouvrir la boîte | `BOX` (1) | 4 à 6 | idem | idem ; une boîte par notion, ouvertes dans l'ordre choisi par l'enfant |
 | Cartes aléatoires | `RANDOM_CARDS` (2, preuve × 0,5) | 3 à 6 | `flashcard` | `{cards:[{id, knew}]}` ; auto-évaluation comme la carte mémoire (niveau « se rappeler ») |
 
+**Durée et variété des séances** (demande de la famille) : le temps quotidien règle les activités
+d'approfondissement (`planning.CORE_SIZE` : 5 min → 1, 10 min → 8, 15 → 14, 20 → 20, 30 → 30) ;
+10 minutes, le réglage par défaut, donne 13 activités, environ 9 minutes (avant : 8 activités, 5
+minutes). Quand l'enfant refait une leçon, le composeur reçoit les empreintes (`fingerprint` :
+type et texte de la question, étiquettes triées) des questions de ses 3 dernières séances sur
+cette leçon : il retire d'autres questions du même format (autre QCM, autre phrase…), passe en
+dernier les formats dont tout a été posé, et choisit un jeu de fin et un défi rapide neufs si
+possible. Sans historique, une graine redonne toujours la même séance. `material.v9` demande 3 à
+5 questions à choix (au lieu de 1 à 3) et 2 ou 3 affirmations vraies et fausses par notion, pour
+avoir de quoi varier.
+
 Le hasard (case où s'arrête la roue, ordre des cartes et des boîtes) est tiré par le serveur avec
 la graine de la séance : la séance se rejoue à l'identique. Les cases de la roue portent des
 images (🍎 🚀 ⭐…), jamais le nom de la notion, qui donnerait parfois la réponse. Les quatre jeux à
