@@ -68,8 +68,13 @@ function Charge {
         $gpu = ($parType | ForEach-Object { "$($_.Type) $([math]::Min(100, $_.Total)) %" }) -join ', '
         if (-not $gpu) { $gpu = 'au repos' }
         $morceaux += "carte graphique $gpu"
-        $memoire = (Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction Stop | Measure-Object DedicatedUsage -Sum).Sum
+        $compteurs = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory -ErrorAction Stop
+        $memoire = ($compteurs | Measure-Object DedicatedUsage -Sum).Sum
+        $partagee = ($compteurs | Measure-Object SharedUsage -Sum).Sum
         $morceaux += "mémoire graphique $([math]::Round($memoire / 1GB, 1)) Go"
+        # Mémoire partagée qui monte pendant un calcul : la carte déborde dans la mémoire du PC
+        # (Ollama affiche quand même « 100 % GPU », mais écrit 2 jetons/s au lieu de 40).
+        $morceaux += "partagée $([math]::Round($partagee / 1GB, 1)) Go"
     } catch { }
     try {
         $os = Get-CimInstance Win32_OperatingSystem

@@ -93,6 +93,7 @@ class OllamaProvider:
         self.models = dict(models)
         self.num_ctx = num_ctx
         self._client = client or httpx.AsyncClient(timeout=TIMEOUT_S)
+        self.last_speed: float | None = None  # jetons écrits par seconde au dernier appel
 
     def model_for(self, stage: Stage) -> str:
         return self.models[stage]
@@ -184,6 +185,8 @@ class OllamaProvider:
         if current is None:
             return f"le modèle {model} n'est plus chargé (Ollama a redémarré ou manque de mémoire)"
         size, vram = current.get("size") or 0, current.get("size_vram") or 0
+        if self.last_speed is not None and self.last_speed < SLOW_SPEED and not (size and vram < size):
+            return _slow(self.last_speed)
         if size and vram < size:
             cpu = round(100 * (size - vram) / size)
             return (
@@ -257,6 +260,9 @@ class OllamaProvider:
         latency_ms = round((time.perf_counter() - started) * 1000)
         data: dict[str, Any] = response.json()
         logger.info("%s", _timings(prompt.stage, data, len(images), side, latency_ms))
+        self.last_speed = _speed(data)
+        if self.last_speed is not None and self.last_speed < SLOW_SPEED:
+            logger.warning("Ollama : %s", _slow(self.last_speed))
         if data.get("done_reason") == "length":
             written = data.get("eval_count")
             if isinstance(written, int) and written >= MAX_OUTPUT[prompt.stage]:
@@ -272,6 +278,27 @@ class OllamaProvider:
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
         return content, data, latency_ms
+
+
+SLOW_SPEED = 10  # jetons/s : une carte graphique de 8 Go en fait environ 40 avec qwen2.5vl:7b
+
+
+def _speed(data: Mapping[str, Any]) -> float | None:
+    """Vitesse d'écriture du dernier appel, si elle est mesurable (assez de jetons écrits)."""
+    written, duration = data.get("eval_count"), data.get("eval_duration")
+    if not isinstance(written, int) or written < 50 or not isinstance(duration, int | float) or not duration:
+        return None
+    return float(written / (duration / 1e9))
+
+
+def _slow(speed: float) -> str:
+    """Cas réel (PC d'essai) : « 100 % GPU » affiché mais 2 jetons/s au lieu d'environ 40."""
+    return (
+        f"Ollama n'écrit que {speed:.0f} jeton(s)/s (environ 40 attendus sur la carte graphique) "
+        "alors que le modèle est sur la carte : sa mémoire déborde dans la mémoire partagée de "
+        "Windows, ou Ollama a changé de version. Redémarrez le PC, puis vérifiez avec "
+        "« ollama run qwen2.5vl:7b --verbose » (ligne eval rate)"
+    )
 
 
 def _timings(stage: Stage, data: Mapping[str, Any], images: int, side: int, latency_ms: int) -> str:

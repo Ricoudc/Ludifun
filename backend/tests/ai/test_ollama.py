@@ -466,3 +466,34 @@ async def test_timeout_says_where_the_model_runs(models: list[dict[str, Any]], c
 
     with pytest.raises(AIError, match=cause):
         await ollama(handler).structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
+
+
+async def test_a_slow_gpu_is_reported(caplog: pytest.LogCaptureFixture) -> None:
+    """Cas réel : « 100 % GPU » mais 2 jetons/s ; puis délai dépassé. Le message dit la lenteur
+    mesurée au lieu de « la leçon est peut-être très longue »."""
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/ps":
+            return httpx.Response(
+                200, json={"models": [{"name": "qwen2.5vl:7b", "size": 10, "size_vram": 10}]}
+            )
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(
+                200,
+                json={
+                    "message": {"content": '{"text": "ok"}'},
+                    "done_reason": "stop",
+                    "eval_count": 1011,
+                    "eval_duration": 505_000_000_000,
+                },
+            )
+        raise httpx.ReadTimeout("trop long", request=request)
+
+    llm = ollama(handler)
+    with caplog.at_level("WARNING", logger="ludifun.ai"):
+        await llm.structured(prompt=PROMPT, input="x", schema=Page)
+    assert any("2 jeton(s)/s" in r.getMessage() for r in caplog.records if r.name == "ludifun.ai")
+    with pytest.raises(AIError, match="2 jeton"):
+        await llm.structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
