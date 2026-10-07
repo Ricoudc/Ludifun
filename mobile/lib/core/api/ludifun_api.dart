@@ -313,6 +313,35 @@ class LudifunApi {
     return NotionContent.fromJson(r.data!);
   });
 
+  Future<LessonImages> lessonImages(String childId, String lessonId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/lessons/$lessonId/image');
+    return LessonImages.fromJson(r.data!);
+  });
+
+  Future<LessonImage> approveImage(String childId, String lessonId) =>
+      _imageDecision('/v1/children/$childId/lessons/$lessonId/image/approve');
+
+  Future<LessonImage> rejectImage(String childId, String lessonId) =>
+      _imageDecision('/v1/children/$childId/lessons/$lessonId/image/reject');
+
+  /// Nouvelle image, préparée en arrière-plan ; la remarque du parent guide l'IA.
+  Future<LessonImage> redoImage(String childId, String lessonId, {String? remark}) =>
+      _imageDecision(
+        '/v1/children/$childId/lessons/$lessonId/image/redo',
+        data: {'remark': ?remark},
+      );
+
+  Future<LessonImage> _imageDecision(String path, {Json? data}) => _call(() async {
+    final r = await _dio.post<Json>(path, data: data);
+    return LessonImage.fromJson(r.data!);
+  });
+
+  /// Fichier d'une image (parent ou enfant : le chemin vient du serveur).
+  Future<Uint8List> imageBytes(String path) => _call(() async {
+    final r = await _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes));
+    return Uint8List.fromList(r.data!);
+  });
+
   Future<MistakesPage> mistakes(String childId, {int limit = 20, String? before}) =>
       _call(() async {
         final r = await _dio.get<Json>(

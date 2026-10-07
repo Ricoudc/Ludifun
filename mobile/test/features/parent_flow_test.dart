@@ -1062,6 +1062,77 @@ void main() {
     expect(find.text('Dans 3/4, quel est le nombre du haut ?\n✅ 3'), findsOneWidget);
   });
 
+  testWidgets('étape 27 : le parent valide, refuse et fait refaire l\'image d\'une leçon', (
+    tester,
+  ) async {
+    var status = 'to_review';
+    Map<String, Object?> image() => {
+      'status': status,
+      'alt': 'Une pizza coupée en quatre parts',
+      'remark': status == 'generating' ? 'Plus de couleurs' : null,
+      'error': null,
+      'url': status == 'generating' ? null : '/v1/children/c1/lessons/l2/image/file',
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'text': null,
+            'notions': <Object?>[],
+          },
+        ),
+      )
+      ..on(
+        'GET /v1/children/c1/lessons/l2/image',
+        (_) => (200, {'available': true, 'image': image()}),
+      )
+      ..on('GET /v1/children/c1/lessons/l2/image/file', (_) => (200, tinyPng))
+      ..on('POST /v1/children/c1/lessons/l2/image/approve', (_) {
+        status = 'approved';
+        return (200, image());
+      })
+      ..on('POST /v1/children/c1/lessons/l2/image/reject', (_) {
+        status = 'rejected';
+        return (200, image());
+      })
+      ..on('POST /v1/children/c1/lessons/l2/image/redo', (r) {
+        expect(r.data, {'remark': 'Plus de couleurs'});
+        status = 'generating';
+        return (202, image());
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(find.textContaining('À valider'), findsOneWidget);
+    expect(find.bySemanticsLabel('Une pizza coupée en quatre parts'), findsOneWidget);
+
+    await tap(tester, find.text('Valider'));
+    expect(find.textContaining('l\'enfant la verra avec sa leçon'), findsOneWidget);
+    expect(find.text('Validée : l\'enfant la voit avec sa leçon.'), findsOneWidget);
+    expect(find.text('Valider'), findsNothing);
+
+    await tap(tester, find.text('Refuser'));
+    expect(find.textContaining('Refusée'), findsOneWidget);
+
+    await tap(tester, find.text('Refaire'));
+    await tester.enterText(find.byType(TextField), 'Plus de couleurs');
+    await tap(tester, find.widgetWithText(FilledButton, 'Refaire l\'image'));
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/image/redo'));
+    expect(find.text('Image en préparation… (quelques minutes)'), findsOneWidget);
+    expect(find.text('Votre remarque : « Plus de couleurs »'), findsOneWidget);
+
+    // Prête : l'état est relu tout seul, la nouvelle image attend la validation.
+    status = 'to_review';
+    await tester.pump(const Duration(seconds: 11));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('À valider'), findsOneWidget);
+    expect(server.routes, contains('GET /v1/children/c1/lessons/l2/image/file'));
+  });
+
   testWidgets('le parent voit les erreurs d\'Emma aux questions', (tester) async {
     server.on(
       'GET /v1/children/c1/mistakes',

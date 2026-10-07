@@ -105,6 +105,13 @@ class DiagnosticsOut(BaseModel):
     explanation: str | None = Field(None, description="Raison de l'échec, en clair (pour le parent).")
 
 
+class LessonIllustrationOut(BaseModel):
+    """Image de la leçon validée par le parent (étape 27) ; facultative, décorative."""
+
+    url: str = Field(description="GET avec le jeton de l'appareil.")
+    alt: str | None = None
+
+
 class LessonOut(LessonSummaryOut):
     """Écrans 3 (statut et étapes) et 4 (leçon et notions)."""
 
@@ -119,6 +126,9 @@ class LessonOut(LessonSummaryOut):
     review: list[ReviewItemOut] = Field([], description="Passages à vérifier (statut `needs_review`).")
     can_retry: bool = False
     diagnostics: DiagnosticsOut | None = None
+    image: LessonIllustrationOut | None = Field(
+        None, description="Seulement une image validée par le parent."
+    )
 
 
 class LessonPatch(BaseModel):

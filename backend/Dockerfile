@@ -18,7 +18,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 RUN uv sync --frozen --no-dev
 
-RUN useradd --system --uid 1000 ludifun
+RUN useradd --system --uid 1000 ludifun \
+    && mkdir -p /app/data/images && chown -R ludifun /app/data  # images des leçons (volume)
 USER ludifun
 
 EXPOSE 8000

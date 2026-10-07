@@ -15,6 +15,7 @@ import time
 import weakref
 from collections.abc import Mapping
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -52,6 +53,7 @@ MAX_OUTPUT: dict[Stage, int] = {
     "material": 6000,
     "evaluation": 800,
     "sources": 1500,
+    "illustration": 400,
 }
 # Étapes dont les consignes décrivent déjà chaque champ : le schéma n'est pas recopié en texte
 # (Ollama l'impose de toute façon avec `format`). Pour le matériel, il occupait à lui seul environ
@@ -70,9 +72,42 @@ _BUSY: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, asyncio.L
 )
 
 
-def _lock(base_url: str) -> asyncio.Lock:
+def gpu_lock(base_url: str) -> asyncio.Lock:
+    """Une demande à la fois par ordinateur (pas seulement par adresse) : Ollama et le moteur
+    d'images (étape 27) partagent la même carte graphique, ils ne calculent jamais ensemble."""
     locks = _BUSY.setdefault(asyncio.get_running_loop(), {})
-    return locks.setdefault(base_url, asyncio.Lock())
+    host = urlsplit(base_url).hostname or base_url
+    return locks.setdefault(_same_machine(host), asyncio.Lock())
+
+
+def _same_machine(host: str) -> str:
+    """Docker joint le PC par host.docker.internal : c'est la même carte que localhost."""
+    return "localhost" if host in ("host.docker.internal", "127.0.0.1", "::1") else host
+
+
+_lock = gpu_lock
+
+
+async def unload_models(base_url: str, client: httpx.AsyncClient | None = None) -> list[str]:
+    """Décharge les modèles chargés (`keep_alive: 0`) pour libérer la carte avant une image.
+    Renvoie les modèles déchargés ; une erreur n'empêche rien (Ollama peut être éteint)."""
+    own = client is None
+    http = client or httpx.AsyncClient(timeout=30)
+    base = base_url.rstrip("/")
+    unloaded: list[str] = []
+    try:
+        loaded = (await http.get(f"{base}/api/ps")).json().get("models", [])
+        for entry in loaded if isinstance(loaded, list) else []:
+            name = entry.get("model") or entry.get("name") if isinstance(entry, dict) else None
+            if isinstance(name, str):
+                await http.post(f"{base}/api/generate", json={"model": name, "keep_alive": 0})
+                unloaded.append(name)
+    except (httpx.HTTPError, ValueError, AttributeError):
+        logger.info("Ollama : rien à décharger à %s", base)
+    finally:
+        if own:
+            await http.aclose()
+    return unloaded
 
 
 class _Crashed(Exception):

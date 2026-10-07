@@ -16,6 +16,7 @@ from app import clock
 from app.config import get_settings
 from app.db.base import Database
 from app.services.email import build_email_sender
+from app.services.illustration import remove_orphan_files
 from app.services.retention import apply_retention
 
 
@@ -27,6 +28,8 @@ async def run(dry_run: bool) -> int:
             result = await apply_retention(
                 session, settings, build_email_sender(settings), clock.now(), dry_run=dry_run
             )
+        if not dry_run:  # images des leçons des comptes supprimés
+            await remove_orphan_files(database, settings)
     finally:
         await database.dispose()
     verb = "seraient" if dry_run else "ont été"

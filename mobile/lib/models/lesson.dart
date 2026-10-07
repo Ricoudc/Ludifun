@@ -142,6 +142,7 @@ class Lesson extends LessonSummary {
     this.review = const [],
     this.canRetry = false,
     this.diagnostics,
+    this.image,
   });
 
   factory Lesson.fromJson(Json json) {
@@ -181,8 +182,15 @@ class Lesson extends LessonSummary {
         final Json d => Diagnostics.fromJson(d),
         _ => null,
       },
+      image: switch (json['image']) {
+        final Json i => LessonIllustration.fromJson(i),
+        _ => null,
+      },
     );
   }
+
+  /// Image validée par le parent (facultative : aucune question n'en dépend).
+  final LessonIllustration? image;
 
   final Map<String, AnalysisStep> steps;
   final String? failureMessage;
@@ -295,4 +303,16 @@ class Diagnostics {
 
   /// Raison de l'échec, en clair.
   final String? explanation;
+}
+
+/// Image d'une leçon, validée par le parent.
+class LessonIllustration {
+  const LessonIllustration({required this.url, this.alt});
+
+  factory LessonIllustration.fromJson(Json json) =>
+      LessonIllustration(url: json['url'] as String, alt: json['alt'] as String?);
+
+  /// Chemin du fichier sur le serveur (même authentification que l'API).
+  final String url;
+  final String? alt;
 }

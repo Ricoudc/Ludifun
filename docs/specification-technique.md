@@ -672,6 +672,53 @@ première garde la carte ou l'association). Chaque élément de la correction po
 (`details[].text`) : l'application l'affiche sans rien connaître du jeu. Une application plus
 ancienne saute ces jeux (type inconnu).
 
+
+### 5.17 Image de la leçon (étape 27)
+
+Demande de la famille : une image peut accompagner la leçon, **facultative** (aucune question
+n'en dépend, une leçon sans image est complète) et **validée par le parent** avant que l'enfant
+la voie ; refusée, elle peut être refaite, avec une remarque du parent.
+
+Chaîne, entièrement sur le PC de la famille et **une étape à la fois sur la carte graphique** :
+
+1. la leçon est prête (questions, aides) ; l'image vient après, elle ne retarde rien ;
+2. l'IA de texte propose la scène (étape `illustration`, prompt `illustration.v1`, sortie
+   `{scene, alt}` : scène en anglais, phrase en français pour le parent) ; le titre, le résumé,
+   les notions et la remarque du parent sont des données entre balises (`<lecon>`,
+   `<remarque_parent>`), jamais des consignes ;
+3. le code contrôle la scène (`domain/illustration.py` : longueur, mots interdits pour des
+   enfants, aucune demande de texte ou de chiffre dans l'image) et construit seul le prompt :
+   scène + style Ludifun + âge de l'enfant + « no text », prompt négatif fixe, 1024 × 1024 ;
+4. Ollama est déchargé (`keep_alive: 0`), le moteur d'images calcule, puis libère la carte ; un
+   verrou par machine (`ollama.gpu_lock`, clé = nom d'hôte, `localhost` et
+   `host.docker.internal` confondus) empêche Ollama et le moteur de calculer en même temps ;
+5. l'image est enregistrée (`LUDIFUN_MEDIA_DIR`, volume `images`), statut `to_review`.
+
+Moteurs (`app/ai/imagegen/`, interface `ImageEngine` : `generate`, `release`) :
+`sdcpp` (stable-diffusion.cpp, `sd-server`, route `POST /sdapi/v1/txt2img`, Vulkan : fonctionne
+sur les cartes AMD sous Windows sans ROCm), `comfyui` (graphe SDXL envoyé à `POST /prompt`,
+résultat par `/history` et `/view`, carte vidée par `POST /free`), `fake` (tests). Modèle par
+défaut : SDXL-Lightning 4 étapes (Euler, `sgm_uniform`, CFG 1). Réglages :
+`LUDIFUN_IMAGE_ENGINE` (`none` par défaut), `LUDIFUN_IMAGE_URL`, `LUDIFUN_IMAGE_MODEL`.
+
+Base : table `lesson_images` (migration 0018 ; une image par leçon, supprimée avec elle),
+statuts `generating`, `to_review`, `approved`, `rejected`, `failed` (avec la raison). Le
+fichier est effacé quand la leçon, l'enfant ou le compte l'est, et au démarrage s'il est
+orphelin. Les photos de la leçon, elles, ne sont toujours jamais gardées.
+
+| Route | Qui | Effet |
+|---|---|---|
+| `GET /v1/children/{c}/lessons/{l}/image` | parent | `{available, image: {status, alt, remark, error, url}}` |
+| `GET …/image/file` | parent | le fichier, quel que soit son statut |
+| `POST …/image/approve` / `reject` | parent | l'enfant la voit / ne la voit pas (409 si pas prête) |
+| `POST …/image/redo` `{remark?}` | parent | 202, nouvelle image en arrière-plan (503 sans moteur) |
+| `GET /v1/lessons/{l}/image` | enfant | le fichier, seulement s'il est validé (404 sinon) |
+
+`LessonOut.image` (`{url, alt}`, facultatif) n'est rempli que pour une image validée.
+Application : carte « Image de la leçon » dans l'écran des questions de la leçon (parent :
+Valider, Refuser, Refaire avec remarque, état relu toutes les 10 s pendant la préparation) ;
+écran de la leçon (enfant) : l'image validée sous le titre, sinon rien.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

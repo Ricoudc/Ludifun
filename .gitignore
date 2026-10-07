@@ -34,3 +34,6 @@ tools/figures/sources/
 tools/figures/preview/
 rapport-ludifun.txt
 surveillance-ludifun.txt
+
+# Images des leçons générées sur le PC (jamais dans le dépôt)
+backend/data/

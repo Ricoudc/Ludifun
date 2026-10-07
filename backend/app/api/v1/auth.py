@@ -1,9 +1,9 @@
 """Compte parent : inscription, connexion, jetons, mot de passe, suppression."""
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from app import clock
-from app.api.deps import AppSettings, CurrentParent, DbSession, Mailer, client_ip, rate_limit
+from app.api.deps import AppSettings, CurrentParent, DbSession, Mailer, client_ip, get_database, rate_limit
 from app.api.errors import ApiError
 from app.api.v1.schemas import (
     EmailVerificationIn,
@@ -18,7 +18,7 @@ from app.api.v1.schemas import (
 )
 from app.db.models import Parent
 from app.security.tokens import decode_access_token
-from app.services import accounts
+from app.services import accounts, illustration
 from app.services.email import EmailNotSent
 
 router = APIRouter(tags=["compte parent"])
@@ -182,8 +182,11 @@ async def update_parent(body: ParentPatch, parent: CurrentParent, db: DbSession)
 
 
 @router.delete("/parent", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_parent(parent: CurrentParent, db: DbSession) -> Response:
+async def delete_parent(
+    parent: CurrentParent, db: DbSession, request: Request, background: BackgroundTasks, settings: AppSettings
+) -> Response:
     """Droit à l'effacement : le compte, la famille, les enfants et toutes leurs données."""
     await accounts.delete_parent(db, parent.parent_id)
     await db.commit()
+    illustration.forget_files_later(background, get_database(request), settings)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

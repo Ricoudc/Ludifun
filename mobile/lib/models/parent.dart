@@ -541,3 +541,49 @@ class LessonContent {
   final String? text;
   final List<NotionContent> notions;
 }
+
+/// Statuts de l'image d'une leçon (étape 27).
+enum ImageStatus { generating, toReview, approved, rejected, failed }
+
+/// Image d'une leçon, vue par le parent : il la valide avant que l'enfant la voie.
+class LessonImage {
+  const LessonImage({required this.status, this.alt, this.remark, this.error, this.url});
+
+  factory LessonImage.fromJson(Json json) => LessonImage(
+    status: switch (json['status']) {
+      'generating' => ImageStatus.generating,
+      'to_review' => ImageStatus.toReview,
+      'approved' => ImageStatus.approved,
+      'rejected' => ImageStatus.rejected,
+      _ => ImageStatus.failed,
+    },
+    alt: json['alt'] as String?,
+    remark: json['remark'] as String?,
+    error: json['error'] as String?,
+    url: json['url'] as String?,
+  );
+
+  final ImageStatus status;
+  final String? alt;
+  final String? remark;
+  final String? error;
+
+  /// Chemin du fichier sur le serveur (même authentification que l'API).
+  final String? url;
+}
+
+class LessonImages {
+  const LessonImages({required this.available, this.image});
+
+  factory LessonImages.fromJson(Json json) => LessonImages(
+    available: json['available'] as bool? ?? false,
+    image: switch (json['image']) {
+      final Json i => LessonImage.fromJson(i),
+      _ => null,
+    },
+  );
+
+  /// Le serveur a un moteur d'images.
+  final bool available;
+  final LessonImage? image;
+}

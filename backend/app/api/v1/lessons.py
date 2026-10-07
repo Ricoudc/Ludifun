@@ -28,6 +28,7 @@ from app.api.v1.schemas_learning import (
     DiagnosticsOut,
     KnowledgeOut,
     LessonAccepted,
+    LessonIllustrationOut,
     LessonOut,
     LessonPatch,
     LessonSummaryOut,
@@ -39,12 +40,12 @@ from app.api.v1.schemas_learning import (
     ReviewItemOut,
     SkillOut,
 )
-from app.db.models import AiRun, Child, Lesson, LessonPage, LessonReviewItem
+from app.db.models import AiRun, Child, Lesson, LessonImage, LessonPage, LessonReviewItem
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
 from app.domain.text import fuzzy_contains
-from app.services import ai_budget, goals, learning, lesson_diagnostics
+from app.services import ai_budget, goals, illustration, learning, lesson_diagnostics
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 from app.services.live_calls import LIVE
@@ -291,6 +292,11 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
             for i in await review_items(db, lesson)
         ]
     if lesson.status == "ready":
+        approved = await db.scalar(
+            select(LessonImage).where(LessonImage.lesson_id == lesson.id, LessonImage.status == "approved")
+        )
+        if approved is not None:
+            out.image = LessonIllustrationOut(url=f"/v1/lessons/{lesson.id}/image", alt=approved.alt)
         units = await load_units(db, lesson)
         pages = list(
             await db.scalars(
@@ -346,6 +352,9 @@ async def delete_lesson(
     child: ChildInScope,
     db: DbSession,
     principal: Annotated[Principal, Depends(current_principal)],
+    request: Request,
+    background: BackgroundTasks,
+    settings: AppSettings,
 ) -> Response:
     """Supprimer une leçon est réservé au parent. L'appareil de l'enfant ne peut retirer qu'une
     leçon ratée (photo illisible, pas une leçon) pour la reprendre en photo."""
@@ -354,6 +363,7 @@ async def delete_lesson(
         raise ApiError(403, "parent_only", "Demande à tes parents de supprimer cette leçon.")
     await db.delete(lesson)
     await db.commit()
+    illustration.forget_files_later(background, get_database(request), settings)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

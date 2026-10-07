@@ -207,10 +207,18 @@ void main() {
     const progression = ['uploaded', 'reading', 'analyzing', 'generating', 'ready'];
     server
       ..on('POST /v1/lessons', (_) => (202, {'id': 'l1', 'status': 'uploaded'}))
-      ..on(
-        'GET /v1/lessons/l1',
-        (_) => (200, lessonJson(progression[(polls++).clamp(0, progression.length - 1)])),
-      )
+      ..on('GET /v1/lessons/l1', (_) {
+        final status = progression[(polls++).clamp(0, progression.length - 1)];
+        return (
+          200,
+          lessonJson(status)
+            // Image validée par le parent : montrée avec la leçon.
+            ..['image'] = status == 'ready'
+                ? {'url': '/v1/lessons/l1/image', 'alt': 'La prise de la Bastille'}
+                : null,
+        );
+      })
+      ..on('GET /v1/lessons/l1/image', (_) => (200, tinyPng))
       ..on('POST /v1/lessons/l1/sessions', (_) => (200, session));
     await tester.tap(find.text('Analyser ma leçon'));
     await advance(tester, const Duration(milliseconds: 200));
@@ -239,6 +247,7 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
     expect(find.text('🎯 Objectif : Connaître les grandes dates de la Révolution'), findsOneWidget);
     expect(find.text('⏱️ Durée estimée : 8 min'), findsOneWidget);
+    expect(find.bySemanticsLabel('La prise de la Bastille'), findsOneWidget);
     // Compétences de la leçon et niveau de chaque notion, en étoiles.
     expect(find.text('Tu vas savoir :'), findsOneWidget);
     expect(find.text('Situer les grands événements de 1789'), findsOneWidget);

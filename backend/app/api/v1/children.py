@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 
 from app import clock
 from app.api.deps import (
@@ -12,6 +12,7 @@ from app.api.deps import (
     CurrentParent,
     DbSession,
     client_ip,
+    get_database,
     rate_limit,
 )
 from app.api.errors import ApiError
@@ -26,7 +27,7 @@ from app.api.v1.schemas import (
     LinkOut,
 )
 from app.db.models import Child
-from app.services import accounts
+from app.services import accounts, illustration
 
 router = APIRouter()
 
@@ -94,10 +95,18 @@ async def update_child(
 
 
 @router.delete("/children/{child_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["enfants"])
-async def delete_child(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> Response:
-    """Supprime l'enfant et toutes ses données : leçons, séances, maîtrise, appareils liés."""
+async def delete_child(
+    child_id: uuid.UUID,
+    parent: CurrentParent,
+    db: DbSession,
+    request: Request,
+    background: BackgroundTasks,
+    settings: AppSettings,
+) -> Response:
+    """Supprime l'enfant et toutes ses données : leçons, séances, maîtrise, appareils liés, images."""
     await db.delete(await own_child(db, parent, child_id))
     await db.commit()
+    illustration.forget_files_later(background, get_database(request), settings)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 

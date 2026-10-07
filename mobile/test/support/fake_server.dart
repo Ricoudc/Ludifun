@@ -51,6 +51,15 @@ class FakeServer implements HttpClientAdapter {
     final (status, body) = handler == null
         ? error(404, 'not_found', 'Introuvable.')
         : await handler(options);
+    if (body is Uint8List) {
+      return ResponseBody.fromBytes(
+        body,
+        status,
+        headers: {
+          Headers.contentTypeHeader: ['image/png'],
+        },
+      );
+    }
     return ResponseBody.fromString(
       body == null ? '' : jsonEncode(body),
       status,

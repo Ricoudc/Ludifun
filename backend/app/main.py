@@ -17,6 +17,7 @@ from app.security.rate_limit import RateLimiter
 from app.services import ai_settings
 from app.services.ai_settings import AiResolver
 from app.services.email import EmailSender, build_email_sender
+from app.services.illustration import remove_orphan_files
 from app.services.lesson_processing import recover_interrupted_lessons
 
 
@@ -38,6 +39,7 @@ def create_app(
         app.state.registry = default_registry()
         try:
             await recover_interrupted_lessons(app.state.database)
+            await remove_orphan_files(app.state.database, settings)  # images de leçons supprimées
         except (SQLAlchemyError, OSError):  # base injoignable : /health/ready le signalera
             logging.getLogger("ludifun").exception("Récupération des analyses interrompues impossible")
         if settings.environment == "dev" and settings.uses_dev_secret:

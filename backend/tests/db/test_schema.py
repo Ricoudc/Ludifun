@@ -339,3 +339,36 @@ async def test_migration_0016_keeps_families_without_web_sources(
     async with engine.connect() as conn:
         rows = (await conn.execute(text("SELECT web_sources FROM families"))).all()
     assert [tuple(r) for r in rows] == [(False,)]
+
+
+async def test_migration_0018_images_and_illustration_runs(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Étape 27 : une image par leçon (statut contrôlé) ; « illustration » journalisée ; retour
+    arrière propre (les appels « illustration » sont effacés avec la table)."""
+    ids = await create_full_lesson(db)
+    await db.commit()
+    async with engine.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO lesson_images (id, lesson_id, status) VALUES (:id, :lesson, 'to_review')"),
+            {"id": uuid.uuid4(), "lesson": ids["lesson"]},
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO ai_runs (id, stage, provider, model, prompt_version, latency_ms, "
+                "status, warnings, created_at) "
+                "VALUES (:id, 'illustration', 'fake', 'fake', 'v1', 1, 'ok', '[]', now())"
+            ),
+            {"id": uuid.uuid4()},
+        )
+    with pytest.raises(IntegrityError):  # une seule image par leçon, statut connu
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("INSERT INTO lesson_images (id, lesson_id, status) VALUES (:id, :lesson, 'bizarre')"),
+                {"id": uuid.uuid4(), "lesson": ids["lesson"]},
+            )
+    await run_alembic("downgrade", "0017")
+    async with engine.connect() as conn:
+        left = (
+            await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'illustration'"))
+        ).scalar()
+    assert left == 0
+    await run_alembic("upgrade", "head")

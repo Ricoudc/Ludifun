@@ -64,6 +64,14 @@ services:
       # LUDIFUN_WEB_SEARCH_URL=http://recherche:8080 (moteur « recherche » ci-dessous).
       LUDIFUN_WEB_SEARCH_URL: ${LUDIFUN_WEB_SEARCH_URL:-}
       LUDIFUN_WEB_SOURCES: ${LUDIFUN_WEB_SOURCES:-}
+      # Image des leçons (étape 27), facultative : moteur stable-diffusion.cpp (« sdcpp ») ou
+      # ComfyUI (« comfyui ») sur ce PC, installé par scripts/windows/installer-images.ps1.
+      # Exemple : LUDIFUN_IMAGE_ENGINE=sdcpp et LUDIFUN_IMAGE_URL=http://host.docker.internal:7860
+      LUDIFUN_IMAGE_ENGINE: ${LUDIFUN_IMAGE_ENGINE:-none}
+      LUDIFUN_IMAGE_URL: ${LUDIFUN_IMAGE_URL:-}
+      LUDIFUN_IMAGE_MODEL: ${LUDIFUN_IMAGE_MODEL:-}
+    volumes:
+      - images:/app/data/images  # images des leçons : jamais les photos, qui ne sont pas gardées
     ports:
       - "8000:8000"
     extra_hosts:
@@ -92,3 +100,4 @@ services:
 
 volumes:
   pgdata:
+  images:

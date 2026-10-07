@@ -9,6 +9,7 @@ from app.api.v1 import (
     figures,
     goals,
     lesson_content,
+    lesson_images,
     lessons,
     rewards,
     sessions,
@@ -23,6 +24,7 @@ router.include_router(feedback.router)
 router.include_router(figures.router)
 router.include_router(goals.router)
 router.include_router(lesson_content.router)
+router.include_router(lesson_images.router)
 router.include_router(lessons.router)
 router.include_router(rewards.router)
 router.include_router(sessions.router)

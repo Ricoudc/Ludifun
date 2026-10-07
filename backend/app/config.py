@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     # « recherche » : http://recherche:8080) ; vide = désactivée. Sites autorisés, séparés par des
     # virgules (vide = liste par défaut : Vikidia, Lumni, Éduscol, Sésamath, Wikipédia…).
     web_search_url: str | None = None
+    # Images des leçons (étape 27) : moteur sur le PC (sdcpp = stable-diffusion.cpp, comfyui),
+    # « fake » pour les tests, « none » sans images. Les images attendent la validation du parent.
+    image_engine: Literal["none", "fake", "sdcpp", "comfyui"] = "none"
+    image_url: str | None = None  # par exemple http://host.docker.internal:7860
+    image_model: str | None = None
+    media_dir: str = "data/images"  # images générées (jamais de photo d'enfant)
     web_sources: str = ""
     # Chiffrement des clés d'IA des familles ; à défaut, dérivé de LUDIFUN_JWT_SECRET.
     secrets_key: SecretStr | None = None

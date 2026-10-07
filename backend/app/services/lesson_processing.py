@@ -7,12 +7,13 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 
+from app.ai.imagegen.factory import image_engine_for
 from app.ai.ports import LLMProvider, OcrProvider, PageImage
 from app.config import Settings
 from app.db.base import Database
-from app.db.models import Child, Lesson
+from app.db.models import Child, Lesson, LessonImage
 from app.domain.activities.registry import ActivityRegistry
-from app.services import reading_check, sourced_help
+from app.services import illustration, reading_check, sourced_help
 from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
 from app.services.lesson_store import save_pipeline_result
 from app.services.live_calls import LIVE
@@ -79,6 +80,45 @@ async def process_lesson(
         await sourced_help.prepare(database, llm, settings, lesson_id)
     except Exception:
         logger.exception("Leçon %s : aide sourcée non préparée", lesson_id)
+    await prepare_image(database, llm, settings, lesson_id)
+
+
+async def prepare_image(
+    database: Database, llm: LLMProvider, settings: Settings, lesson_id: uuid.UUID, remark: str | None = None
+) -> None:
+    """Image de la leçon (étape 27), après tout le reste : la leçon est déjà prête, l'enfant
+    peut réviser pendant que l'image se prépare ; elle attendra la validation du parent."""
+    if image_engine_for(settings) is None:
+        return
+    try:
+        async with database.sessionmaker() as session:
+            lesson = await session.get(Lesson, lesson_id)
+            if lesson is None or lesson.status != "ready":
+                return
+            await illustration.start(session, lesson_id, remark)
+            await session.commit()
+    except Exception:
+        logger.exception("Leçon %s : image non préparée", lesson_id)
+        return
+    await draw_image(database, llm, settings, lesson_id)
+
+
+async def draw_image(database: Database, llm: LLMProvider, settings: Settings, lesson_id: uuid.UUID) -> None:
+    """Dessine l'image déjà marquée « en préparation » ; un échec ne touche jamais la leçon."""
+    engine = image_engine_for(settings)
+    if engine is None:
+        return
+    try:
+        await illustration.illustrate(database, llm, engine, settings, lesson_id)
+    except Exception:  # un bug ne doit laisser ni la leçon ni l'image « en préparation »
+        logger.exception("Leçon %s : image non préparée", lesson_id)
+        async with database.sessionmaker() as session:
+            await session.execute(
+                update(LessonImage)
+                .where(LessonImage.lesson_id == lesson_id, LessonImage.status == "generating")
+                .values(status="failed", error="erreur inattendue")
+            )
+            await session.commit()
 
 
 IN_PROGRESS = ("uploaded", "reading", "analyzing", "generating")

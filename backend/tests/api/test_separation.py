@@ -12,6 +12,7 @@ from httpx import AsyncClient
 
 from tests.api.helpers import add_child, auth, link_device, register
 
+LESSON = "00000000-0000-4000-8000-000000000001"
 PARENT_ROUTES = [
     ("GET", "/v1/parent", None),
     ("DELETE", "/v1/parent", None),
@@ -22,6 +23,12 @@ PARENT_ROUTES = [
     ("POST", "/v1/children/{child}/link-codes", None),
     ("GET", "/v1/children/{child}/devices", None),
     ("DELETE", "/v1/children/{child}/devices/{device}", None),
+    # Image d'une leçon (étape 27) : voir, valider, refuser, refaire.
+    ("GET", "/v1/children/{child}/lessons/" + LESSON + "/image", None),
+    ("GET", "/v1/children/{child}/lessons/" + LESSON + "/image/file", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/approve", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/reject", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/redo", {}),
 ]
 CHILD_SPECIFIC = [route for route in PARENT_ROUTES if "{child}" in route[1]]
 

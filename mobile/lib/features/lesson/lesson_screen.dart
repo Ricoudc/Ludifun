@@ -13,6 +13,7 @@ import '../../models/lesson.dart';
 import '../../models/session.dart';
 import '../../models/subject.dart';
 import '../home/home_providers.dart';
+import '../parent/lesson_image_card.dart' show imageBytesProvider;
 
 final lessonProvider = FutureProvider.autoDispose.family<Lesson, String>(
   (ref, id) => ref.watch(apiProvider).lesson(id),
@@ -157,6 +158,7 @@ class _Summary extends ConsumerWidget {
         const SizedBox(height: 6),
         Text(lesson.title ?? 'Ta leçon', style: theme.headlineMedium),
         const SizedBox(height: 16),
+        if (lesson.image case final image?) _LessonPicture(image),
         if (revision?.objective ?? lesson.objective case final objective?)
           Text('🎯 Objectif : $objective', style: const TextStyle(fontSize: 17)),
         const SizedBox(height: 6),
@@ -227,4 +229,32 @@ class _Summary extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Image validée par le parent ; absente ou illisible, la leçon s'affiche sans elle.
+class _LessonPicture extends ConsumerWidget {
+  const _LessonPicture(this.image);
+
+  final LessonIllustration image;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) =>
+      switch (ref.watch(imageBytesProvider(image.url))) {
+        AsyncData(:final value) => Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 280),
+              child: Image.memory(
+                value,
+                semanticLabel: image.alt,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const SizedBox(),
+              ),
+            ),
+          ),
+        ),
+        _ => const SizedBox(),
+      };
 }

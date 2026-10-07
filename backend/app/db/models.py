@@ -55,7 +55,7 @@ ERROR_TYPES = (
     "statement",
 )
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
-AI_STAGES = ("ocr", "analysis", "material", "evaluation", "sources")
+AI_STAGES = ("ocr", "analysis", "material", "evaluation", "sources", "illustration")
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
 BADGE_CODES = (  # app.domain.rewards.BadgeCode
@@ -315,6 +315,38 @@ class Lesson(Base):
         CheckConstraint("page_count BETWEEN 1 AND 6", name="page_count"),
         Index("ix_lessons_child_recent", "child_id", text("created_at DESC")),
     )
+
+
+IMAGE_STATUSES = ("generating", "to_review", "approved", "rejected", "failed")  # domain.illustration
+
+
+class LessonImage(Base):
+    """Image d'une leçon (étape 27), générée sur le PC puis validée par le parent avant que
+    l'enfant la voie. Une seule par leçon : la refaire remplace la précédente. Le fichier est dans
+    `LUDIFUN_MEDIA_DIR` ; ce n'est jamais une photo d'enfant ni de cahier."""
+
+    __tablename__ = "lesson_images"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    file_name: Mapped[str | None] = mapped_column(Text)
+    media_type: Mapped[str | None] = mapped_column(Text)
+    alt: Mapped[str | None] = mapped_column(Text)  # description pour le parent
+    prompt: Mapped[str | None] = mapped_column(Text)  # prompt envoyé au moteur (anglais)
+    remark: Mapped[str | None] = mapped_column(Text)  # remarque du parent pour la refaire
+    engine: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    error: Mapped[str | None] = mapped_column(Text)  # technique, sans texte de leçon
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (CheckConstraint(_in("status", IMAGE_STATUSES), name="status"),)
 
 
 class LessonPage(Base):

@@ -19,6 +19,7 @@ from app.ai.ports import LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.schemas import (
     AnalysisOutput,
     EvaluationOutput,
+    IllustrationOutput,
     MaterialBatchOutput,
     OcrPage,
     OcrResult,
@@ -189,6 +190,11 @@ class FakeProvider:
             return evaluation_output(input)
         if stage == "sources":
             return sources_output(input)
+        if stage == "illustration":
+            return IllustrationOutput(
+                scene="Three children planting a small tree in a sunny school garden",
+                alt="Trois enfants plantent un petit arbre dans le jardin de l'école.",
+            )
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

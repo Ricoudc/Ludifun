@@ -281,6 +281,16 @@ class SourceQuote(BaseModel):
     text: str = Field(description="Phrase recopiée mot pour mot depuis cet extrait.")
 
 
+class IllustrationOutput(BaseModel):
+    """Étape 27 : la scène qui illustre la leçon ; le code construit seul le prompt d'image."""
+
+    scene: str | None = Field(
+        description="En anglais, une scène simple et concrète à dessiner (sans texte ni chiffres), "
+        "ou null si rien ne s'illustre bien."
+    )
+    alt: str | None = Field(description="En français, une phrase qui décrit l'image pour le parent.")
+
+
 class SourcedAnswerOutput(BaseModel):
     """Étape 24 : réponse expliquée à partir des extraits fournis, avec ses citations."""
 
