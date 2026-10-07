@@ -497,3 +497,19 @@ async def test_a_slow_gpu_is_reported(caplog: pytest.LogCaptureFixture) -> None:
     assert any("2 jeton(s)/s" in r.getMessage() for r in caplog.records if r.name == "ludifun.ai")
     with pytest.raises(AIError, match="2 jeton"):
         await llm.structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
+
+
+async def test_qwen3_reasoning_is_not_the_answer() -> None:
+    """qwen3-vl (variante « thinking ») écrit parfois son raisonnement avant le JSON."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        content = '<think>La page parle de fractions…\n{"faux": 1}</think>\n{"text": "Les fractions"}'
+        return httpx.Response(200, json={"message": {"content": content}, "done_reason": "stop"})
+
+    llm = OllamaProvider(
+        "http://x:11434",
+        {**MODELS, "analysis": "qwen3-vl:8b"},
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    result = await llm.structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
+    assert result.output.text == "Les fractions"

@@ -10,6 +10,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 import time
 import weakref
 from collections.abc import Mapping
@@ -275,11 +276,17 @@ class OllamaProvider:
                 f"> contexte de {self.num_ctx} (augmentez LUDIFUN_OLLAMA_NUM_CTX)"
             )
         content = (data.get("message") or {}).get("content")
+        if isinstance(content, str):
+            # Modèles « qui réfléchissent » (Qwen3) : le raisonnement n'est pas la réponse.
+            content = _THINKING.sub("", content)
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
         return content, data, latency_ms
 
 
+# Raisonnement écrit avant la réponse par certains modèles (Qwen3, Qwen3-VL « thinking ») quand
+# Ollama ne le sépare pas lui-même dans `message.thinking`.
+_THINKING = re.compile(r"<think>.*?</think>\s*", re.DOTALL)
 SLOW_SPEED = 10  # jetons/s : une carte graphique de 8 Go en fait environ 40 avec qwen2.5vl:7b
 
 
@@ -297,7 +304,7 @@ def _slow(speed: float) -> str:
         f"Ollama n'écrit que {speed:.0f} jeton(s)/s (environ 40 attendus sur la carte graphique) "
         "alors que le modèle est sur la carte : sa mémoire déborde dans la mémoire partagée de "
         "Windows, ou Ollama a changé de version. Redémarrez le PC, puis vérifiez avec "
-        "« ollama run qwen2.5vl:7b --verbose » (ligne eval rate)"
+        "« ollama run <modèle> --verbose » (ligne eval rate)"
     )
 
 
