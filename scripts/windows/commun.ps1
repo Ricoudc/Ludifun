@@ -352,3 +352,50 @@ function Afficher-Telephone {
     }
     Write-Host '  Dans Ludifun : « Serveur de test » en bas du premier écran → saisir l''adresse → Tester → Enregistrer.'
 }
+
+# --- Moteur d'images (étape 27, facultatif) ---------------------------------------------
+
+$PortImages = 7860
+
+function Moteur-Images-Repond {
+    try {
+        Invoke-RestMethod -Uri "http://127.0.0.1:$PortImages/sdapi/v1/samplers" -TimeoutSec 3 | Out-Null
+        return $true
+    } catch { return $false }
+}
+
+# Lance sd-server en arrière-plan, sur ce PC seulement (127.0.0.1). Les paramètres du modèle sont
+# relus sur le disque à chaque image (« --params-backend disk ») : la carte graphique est rendue
+# à Ollama dès l'image finie. Un échec n'empêche pas Ludifun de démarrer : pas d'image, c'est tout.
+function Demarrer-Moteur-Images($valeurs) {
+    if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -ne 'sdcpp' -or -not $valeurs['LUDIFUN_IMAGE_DIR']) { return }
+    if (Moteur-Images-Repond) { Ok 'Moteur d''images déjà lancé'; return }
+    $dossier = $valeurs['LUDIFUN_IMAGE_DIR']
+    $exe = Get-ChildItem (Join-Path $dossier 'programme') -Recurse -Filter 'sd-server.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $modele = Join-Path $dossier 'modeles\sdxl_lightning_4step.safetensors'
+    $vae = Join-Path $dossier 'modeles\sdxl_vae.safetensors'
+    if (-not $exe -or -not (Test-Path $modele)) {
+        Write-Host "Moteur d'images incomplet dans $dossier : relance Installer-Images-Ludifun.bat." -ForegroundColor Yellow
+        return
+    }
+    $aide = (& $exe.FullName -h 2>&1 | Out-String)
+    $arguments = @('-m', "`"$modele`"", '--listen-ip', '127.0.0.1', '--listen-port', "$PortImages")
+    if (Test-Path $vae) { $arguments += @('--vae', "`"$vae`"") }
+    if ($aide -match '--params-backend') { $arguments += @('--params-backend', 'disk') }
+    elseif ($aide -match '--offload-to-cpu') { $arguments += '--offload-to-cpu' }
+    if ($aide -match '--vae-tiling') { $arguments += '--vae-tiling' }
+    Etape 'Lancement du moteur d''images…'
+    Start-Process -FilePath $exe.FullName -ArgumentList $arguments -WorkingDirectory $exe.DirectoryName -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $dossier 'moteur-images.log') -RedirectStandardError (Join-Path $dossier 'moteur-images-erreurs.log')
+    for ($i = 0; $i -lt 60; $i++) {
+        Start-Sleep -Seconds 2
+        if (Moteur-Images-Repond) { Ok "Moteur d'images prêt (port $PortImages)"; return }
+        if (-not (Get-Process -Name 'sd-server' -ErrorAction SilentlyContinue)) { break }
+    }
+    Write-Host "Le moteur d'images ne répond pas : voir $(Join-Path $dossier 'moteur-images-erreurs.log'). Ludifun marche sans images." -ForegroundColor Yellow
+}
+
+function Arreter-Moteur-Images {
+    $processus = Get-Process -Name 'sd-server' -ErrorAction SilentlyContinue
+    if ($processus) { $processus | Stop-Process -Force; Ok 'Moteur d''images arrêté' }
+}

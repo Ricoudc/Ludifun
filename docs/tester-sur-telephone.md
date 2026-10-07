@@ -22,7 +22,8 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 |---|---|
 | `Demarrer-Ludifun.bat` | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
 | `Changer-IA-Ludifun.bat` | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
-| `Arreter-Ludifun.bat` | arrêter le serveur (les données sont gardées) |
+| `Installer-Images-Ludifun.bat` | facultatif : installe le moteur d'images (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) pour illustrer chaque leçon d'une image ; voir « Image de la leçon » ci-dessous |
+| `Arreter-Ludifun.bat` | arrêter le serveur et le moteur d'images (les données sont gardées) |
 | `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
 | `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
 | `Rapport-Ludifun.bat` | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
@@ -144,6 +145,28 @@ LUDIFUN_AI_DAILY_BUDGET_USD=5
 
 puis relancez `docker compose up -d` et vérifiez `"ai":"claude"` sur `/health/ready`. Les photos sont alors lues et analysées pour de vrai
 (quelques secondes à quelques dizaines de secondes par leçon, avec un coût par analyse).
+
+### Image de la leçon (facultatif)
+
+Ludifun peut dessiner une image pour chaque leçon, sur le PC, avec la même carte graphique
+qu'Ollama, **l'un après l'autre** : la leçon est d'abord analysée, puis Ollama est mis en pause
+le temps de l'image (quelques dizaines de secondes à quelques minutes). L'image est
+**facultative** (aucune question n'en dépend) et **l'enfant ne la voit qu'une fois validée par
+le parent**.
+
+1. Double-cliquez sur `Installer-Images-Ludifun.bat` : choisissez le dossier (de préférence sur
+   un SSD, 8 Go libres), le script télécharge le programme et le modèle (le téléchargement
+   reprend là où il s'est arrêté si on le relance), règle `.env` et redémarre le serveur.
+2. `Demarrer-Ludifun.bat` lance ensuite le moteur d'images avec le serveur, en arrière-plan ;
+   `Arreter-Ludifun.bat` l'arrête.
+3. Dans l'application, **espace parent → l'enfant → la leçon → questions de la leçon** : la
+   carte « Image de la leçon » montre l'image à valider. **Valider** : l'enfant la voit avec sa
+   leçon. **Refuser** : il ne la voit pas. **Refaire** : une nouvelle image, en précisant si
+   besoin ce qui ne va pas (« un arbre en automne plutôt »). Pour une leçon déjà analysée :
+   « Créer une image ».
+
+Si le moteur ne répond pas, la leçon reste complète, sans image ; `Rapport-Ludifun.bat` montre
+la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 
 ## En cas de problème
 

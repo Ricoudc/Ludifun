@@ -18,7 +18,7 @@ try {
 
 Section 'Réglages (.env, sans les clés)'
 $reglages = Lire-Env
-foreach ($cle in 'LUDIFUN_AI_PROVIDER', 'LUDIFUN_AI_MODEL', 'LUDIFUN_OLLAMA_BASE_URL', 'LUDIFUN_AI_BASE_URL', 'LUDIFUN_AI_DAILY_BUDGET_USD', 'LUDIFUN_OLLAMA_NUM_CTX', 'COMPOSE_PROFILES', 'LUDIFUN_WEB_SEARCH_URL', 'LUDIFUN_WEB_SOURCES') {
+foreach ($cle in 'LUDIFUN_AI_PROVIDER', 'LUDIFUN_AI_MODEL', 'LUDIFUN_OLLAMA_BASE_URL', 'LUDIFUN_AI_BASE_URL', 'LUDIFUN_AI_DAILY_BUDGET_USD', 'LUDIFUN_OLLAMA_NUM_CTX', 'COMPOSE_PROFILES', 'LUDIFUN_WEB_SEARCH_URL', 'LUDIFUN_WEB_SOURCES', 'LUDIFUN_IMAGE_ENGINE', 'LUDIFUN_IMAGE_URL', 'LUDIFUN_IMAGE_DIR') {
     if ($reglages[$cle]) { Ajouter "$cle=$($reglages[$cle])" }
 }
 
@@ -50,6 +50,15 @@ if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
     if ($conseils.Count -eq 0) { Ajouter "Vérification de « $modele » : lit les images, tient dans la carte graphique" }
     else { Ajouter 'À corriger :'; Ajouter ($conseils | ForEach-Object { "  - $_" }) }
 }
+
+Section 'Moteur d''images'
+if ($reglages['LUDIFUN_IMAGE_ENGINE'] -eq 'sdcpp') {
+    if (Moteur-Images-Repond) { Ajouter "répond sur le port $PortImages" } else { Ajouter 'ne répond pas' }
+    foreach ($nom in 'moteur-images.log', 'moteur-images-erreurs.log') {
+        $journal = Join-Path $reglages['LUDIFUN_IMAGE_DIR'] $nom
+        if (Test-Path $journal) { Ajouter "$($nom) (fin) :"; Ajouter (Get-Content $journal -Tail 25 -Encoding UTF8) }
+    }
+} else { Ajouter 'pas installé (facultatif : Installer-Images-Ludifun.bat)' }
 
 Section 'Journal du serveur (IA et erreurs)'
 if (Docker-Pret) {

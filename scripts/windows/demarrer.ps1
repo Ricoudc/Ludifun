@@ -11,6 +11,7 @@ if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
     if (-not $modele) { $modele = 'qwen2.5vl:7b' }
     Verifier-Ollama $modele (Adresse-Ollama $reglages)
 }
+Demarrer-Moteur-Images $reglages
 
 Etape 'Démarrage du serveur (la première fois, ou après une mise à jour : plusieurs minutes)…'
 Arreter-Anciennes-Copies

@@ -2,6 +2,7 @@
 . (Join-Path $PSScriptRoot 'commun.ps1')
 
 Titre 'Arrêt de Ludifun'
+Arreter-Moteur-Images
 if (-not (Docker-Pret)) { Ok 'Docker est déjà arrêté : rien à faire.'; Attendre-Fermeture; exit 0 }
 & docker compose down
 if ($LASTEXITCODE -ne 0) { Echec 'L''arrêt n''a pas fonctionné.' }
