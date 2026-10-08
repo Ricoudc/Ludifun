@@ -91,6 +91,10 @@ class ChildDashboardScreen extends ConsumerWidget {
                 0 => 'Aides demandées',
                 final n => 'Aides demandées ($n cette semaine)',
               }, () => context.go(Routes.childHelp(childId))),
+              _Shortcut(Icons.outlined_flag, switch (board.value?.reportsToSee ?? 0) {
+                0 => 'Questions signalées',
+                final n => 'Questions signalées ($n à voir)',
+              }, () => context.go(Routes.childReports(childId))),
               _Shortcut(
                 Icons.flag_outlined,
                 'Objectifs et contrôles',

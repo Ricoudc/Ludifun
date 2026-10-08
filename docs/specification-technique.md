@@ -890,6 +890,22 @@ différentes (dans la même case, « 0,5 » et « 2/4 » restent permis). Ils so
 du matériel (`validation.py`, raison enregistrée) et, pour les leçons analysées avant, au moment
 de jouer (`equivalence.consistent`, appelé par `lesson_store.load_units`).
 
+### 5.23 L'enfant signale une question (octobre 2026)
+
+L'IA se trompera parfois. Sous chaque correction, « 🚩 Signaler un problème » : l'enfant choisit
+une raison (« Ma réponse était juste », « Je ne comprends pas la question », « Il y a une erreur
+dans la question »), sans rien écrire (pas de texte libre : ni prénom ni donnée personnelle
+glissée). `POST /v1/sessions/{s}/items/{i}/report` (enfant, une fois par question, un nouvel
+appui change la raison ; `question_reports`, migration 0023). Ni la note ni la progression ne
+changent : c'est le parent qui juge.
+
+Parent : `GET /v1/children/{c}/question-reports` (par pages) donne la raison, la question telle
+que l'enfant l'a vue, sa réponse et celle retenue par Ludifun ; `POST
+…/question-reports/{id}/seen` la marque vue. Écran « Questions signalées » (raccourci du tableau
+de bord avec le nombre à voir, `DashboardOut.reports_to_see`, champ facultatif), avec un lien vers
+les questions de la leçon pour corriger ou retirer la question (§5 étape 25). L'export des données
+de l'enfant contient les signalements.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

@@ -231,6 +231,34 @@ void main() {
     expect(find.text('🎉 Révision terminée !'), findsOneWidget);
   });
 
+  testWidgets('🚩 l\'enfant signale une question après la correction', (tester) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    server.on('POST /v1/sessions/s1/items/i1/report', (_) => (200, <String, Object?>{}));
+    await open(tester, 's1');
+    await tapAndSettle(tester, '1789');
+    expect(find.text('Continuer'), findsOneWidget);
+    await tester.ensureVisible(find.text('Signaler un problème'));
+    await tapAndSettle(tester, 'Signaler un problème');
+    expect(find.text('Qu\'est-ce qui ne va pas ?'), findsOneWidget);
+    await shot(tester, 's07_signaler');
+    await tapAndSettle(tester, '✅ Ma réponse était juste');
+
+    final sent = server.requests.where((r) => r.path.endsWith('/report')).toList();
+    expect(sent, hasLength(1));
+    expect(sent.single.data, {'reason': 'right_answer'});
+    expect(find.text('Merci ! Ton parent va regarder cette question.'), findsOneWidget);
+    // Une seule fois par question.
+    expect(find.text('Question signalée'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextButton>(
+            find.ancestor(of: find.text('Question signalée'), matching: find.byType(TextButton)),
+          )
+          .onPressed,
+      isNull,
+    );
+  });
+
   testWidgets('« Je n\'ai pas compris » : une aide à la fois, la réponse en dernier', (
     tester,
   ) async {

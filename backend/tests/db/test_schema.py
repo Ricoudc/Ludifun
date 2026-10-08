@@ -477,3 +477,31 @@ async def test_migration_0022_help_requests(engine: AsyncEngine, db: AsyncSessio
         await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "level": 2, "kind": "reminder"})
         await conn.execute(text("DELETE FROM session_items"))
         assert (await conn.execute(text("SELECT count(*) FROM help_requests"))).scalar() == 0
+
+
+async def test_migration_0023_question_reports(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Questions signalées : une raison connue, une seule fois par question ; supprimer la séance
+    les supprime ; retour arrière : la table disparaît, les séances restent."""
+    await create_full_lesson(db)
+    await db.commit()
+    item = await db.scalar(select(SessionItem.id).limit(1))
+    await db.commit()  # sans transaction ouverte : le retour arrière de la migration attendrait
+    insert = text("INSERT INTO question_reports (id, session_item_id, reason) VALUES (:id, :item, :reason)")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "reason": "unclear"})
+    for reason in ("unclear", "c'est nul"):  # deuxième signalement, raison inconnue
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "reason": reason})
+    async with engine.connect() as conn:
+        row = (await conn.execute(text("SELECT reported_at, seen_at FROM question_reports"))).one()
+    assert row.reported_at is not None and row.seen_at is None
+    await run_alembic("downgrade", "0022")
+    async with engine.connect() as conn:
+        assert (await conn.execute(text("SELECT to_regclass('question_reports')"))).scalar() is None
+        assert (await conn.execute(text("SELECT count(*) FROM session_items"))).scalar() == 1
+    await run_alembic("upgrade", "head")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "reason": "right_answer"})
+        await conn.execute(text("DELETE FROM session_items"))
+        assert (await conn.execute(text("SELECT count(*) FROM question_reports"))).scalar() == 0

@@ -409,6 +409,20 @@ class LudifunApi {
         return HelpRequestsPage.fromJson(r.data!);
       });
 
+  /// Questions signalées par l'enfant (🚩), de la plus récente à la plus ancienne.
+  Future<QuestionReportsPage> questionReports(String childId, {int limit = 20, String? before}) =>
+      _call(() async {
+        final r = await _dio.get<Json>(
+          '/v1/children/$childId/question-reports',
+          queryParameters: {'limit': limit, 'before': ?before},
+        );
+        return QuestionReportsPage.fromJson(r.data!);
+      });
+
+  /// Le parent a regardé la question signalée.
+  Future<void> markReportSeen(String childId, String reportId) =>
+      _call(() => _dio.post<void>('/v1/children/$childId/question-reports/$reportId/seen'));
+
   Future<List<Child>> children() => _call(() async {
     final r = await _dio.get<List<dynamic>>('/v1/children');
     return [for (final child in r.data!) Child.fromJson(child as Json)];
@@ -578,6 +592,14 @@ class LudifunApi {
     final r = await _dio.post<Json>('/v1/sessions/$sessionId/items/$itemId/help');
     return HelpStep.fromJson(r.data!);
   });
+
+  /// 🚩 L'enfant signale la question ; le parent la verra. Ne change ni la note ni la progression.
+  Future<void> reportQuestion(String sessionId, String itemId, ReportReason reason) => _call(
+    () => _dio.post<void>(
+      '/v1/sessions/$sessionId/items/$itemId/report',
+      data: {'reason': reason.code},
+    ),
+  );
 
   /// Reprise des erreurs, après la dernière activité principale (liste vide s'il n'y en a pas).
   /// `bonusOffer` : proposer « encore 3 défis ? » (séance réussie et rapide, sans reprise).

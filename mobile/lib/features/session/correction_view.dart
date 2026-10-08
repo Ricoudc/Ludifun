@@ -15,6 +15,7 @@ class CorrectionView extends StatelessWidget {
     required this.correction,
     required this.onContinue,
     this.onPause,
+    this.report,
     super.key,
   });
 
@@ -24,6 +25,9 @@ class CorrectionView extends StatelessWidget {
 
   /// « Faire une pause » : la séance reste reprenable depuis l'accueil.
   final VoidCallback? onPause;
+
+  /// « 🚩 Signaler un problème » (absent dans les tests des jeux seuls).
+  final Widget? report;
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +125,7 @@ class CorrectionView extends StatelessWidget {
           const SizedBox(height: 12),
           OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
         ],
+        if (report case final report?) ...[const SizedBox(height: 8), Center(child: report)],
       ],
     );
   }

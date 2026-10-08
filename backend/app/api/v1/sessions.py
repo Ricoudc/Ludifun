@@ -4,7 +4,8 @@ import uuid
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from app import clock
@@ -19,13 +20,15 @@ from app.api.v1.schemas_learning import (
     EngagementHintOut,
     HelpOut,
     KnowledgeResultOut,
+    QuestionReportedOut,
+    QuestionReportIn,
     ReplayOut,
     ReportOut,
     SessionCreate,
     SessionItemOut,
     SessionOut,
 )
-from app.db.models import Attempt, Child, RevisionSession, SessionItem
+from app.db.models import Attempt, Child, QuestionReport, RevisionSession, SessionItem
 from app.domain import instructions
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.activities.registry import default_registry
@@ -245,6 +248,29 @@ async def get_help(
         lines=step.lines,
         last=step.last,
     )
+
+
+@router.post("/sessions/{session_id}/items/{item_id}/report")
+async def report_question(
+    session_id: uuid.UUID, item_id: uuid.UUID, body: QuestionReportIn, child: ChildInScope, db: DbSession
+) -> QuestionReportedOut:
+    """🚩 L'enfant signale une question (avant ou après sa réponse, même séance finie) : le
+    parent la voit. Une seule fois par question ; un nouvel appui change la raison. La note et la
+    progression ne changent pas : c'est le parent qui regarde et corrige la question s'il le faut."""
+    revision = await session_of_child(db, child, session_id)
+    item = await item_of_session(db, revision, item_id)
+    stored = await db.scalar(
+        insert(QuestionReport)
+        .values(session_item_id=item.id, reason=body.reason)
+        .on_conflict_do_update(
+            index_elements=[QuestionReport.session_item_id],
+            set_={"reason": body.reason, "reported_at": func.now(), "seen_at": None},
+        )
+        .returning(QuestionReport.reported_at)
+    )
+    await db.commit()
+    assert stored is not None
+    return QuestionReportedOut(reason=body.reason, reported_at=stored)
 
 
 @router.post("/sessions/{session_id}/replay")

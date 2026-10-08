@@ -162,6 +162,12 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
             .where(db.SessionItem.session_id == revision.id)
             .order_by(db.HelpRequest.requested_at, db.HelpRequest.level)
         )
+        reports = await session.execute(
+            select(db.SessionItem.activity_type, db.QuestionReport)
+            .join(db.QuestionReport, db.QuestionReport.session_item_id == db.SessionItem.id)
+            .where(db.SessionItem.session_id == revision.id)
+            .order_by(db.QuestionReport.reported_at)
+        )
         out.append(
             {
                 "id": str(revision.id),
@@ -193,6 +199,16 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
                         "kind": request.kind,
                     }
                     for activity, request in helps
+                ],
+                # 🚩 Questions signalées : la raison choisie, et si le parent les a vues.
+                "question_reports": [
+                    {
+                        "activity": activity,
+                        "reported_at": _iso(report.reported_at),
+                        "reason": report.reason,
+                        "seen_at": _iso(report.seen_at),
+                    }
+                    for activity, report in reports
                 ],
             }
         )

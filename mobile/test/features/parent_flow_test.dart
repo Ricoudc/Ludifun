@@ -1467,6 +1467,58 @@ void main() {
     expect(find.text('Voir les aides plus anciennes'), findsNothing);
   });
 
+  testWidgets('le parent voit les questions signalées par Emma et les marque vues', (tester) async {
+    Map<String, Object?> report(String id, String reason, String outcome, {String? given}) => {
+      'id': id,
+      'reported_at': '2026-09-23T15:42:00Z',
+      'reason': reason,
+      'reason_label': '?',
+      'seen': false,
+      'lesson_id': 'l2',
+      'lesson_title': 'Les fractions',
+      'subject': 'math',
+      'activity_type': 'FILL_BLANK',
+      'notions': ['Numérateur'],
+      'question': 'Dans 3/4, le numérateur est ___.',
+      'given': given,
+      'expected': '3',
+      'outcome': outcome,
+    };
+    server
+      ..on('GET /v1/children/c1/dashboard', (_) => (200, {...dashboard, 'reports_to_see': 2}))
+      ..on(
+        'GET /v1/children/c1/question-reports',
+        (_) => (
+          200,
+          {
+            'reports': [
+              report('q1', 'right_answer', 'wrong', given: 'trois'),
+              report('q2', 'unclear', 'unanswered'),
+            ],
+            'next_before': null,
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/question-reports/q1/seen', (_) => (204, null));
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Questions signalées (2 à voir)'));
+
+    expect(find.text('Questions signalées d\'Emma'), findsOneWidget);
+    await shot(tester, 'p12_signalements', height: 1400);
+    expect(find.text('✅ Ma réponse était juste'), findsOneWidget);
+    expect(find.text('Sa réponse : trois'), findsOneWidget);
+    expect(find.text('Ludifun l\'a compté faux.'), findsOneWidget);
+    expect(find.text('🤔 Je ne comprends pas la question'), findsOneWidget);
+    expect(find.text('Signalée avant de répondre.'), findsOneWidget);
+    expect(find.text('Réponse retenue : 3'), findsNWidgets(2));
+
+    await tap(tester, find.text('Marquer comme vu').first);
+    expect(server.routes, contains('POST /v1/children/c1/question-reports/q1/seen'));
+    expect(find.text('✓ Vu'), findsOneWidget);
+    expect(find.text('Marquer comme vu'), findsOneWidget);
+  });
+
   testWidgets('objectifs : temps par jour, matière, contrôle et son plan', (tester) async {
     final patches = <Object?>[];
     var exams = <Map<String, Object?>>[

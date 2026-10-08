@@ -147,6 +147,7 @@ class Dashboard {
     required this.thisWeek,
     required this.lessonsAddedThisWeek,
     this.helpThisWeek = 0,
+    this.reportsToSee = 0,
     required this.activities,
     required this.subjects,
     required this.toStrengthen,
@@ -159,6 +160,7 @@ class Dashboard {
     thisWeek: WeekStats.fromJson(json['this_week'] as Json),
     lessonsAddedThisWeek: json['lessons_added_this_week'] as int,
     helpThisWeek: json['help_this_week'] as int? ?? 0,
+    reportsToSee: json['reports_to_see'] as int? ?? 0,
     activities: (json['activities_this_week'] as Json).cast<String, int>(),
     subjects: [for (final s in json['subjects'] as List<dynamic>) SubjectStats.fromJson(s as Json)],
     toStrengthen: [
@@ -188,6 +190,9 @@ class Dashboard {
 
   /// Questions où l'enfant a touché « Je n'ai pas compris » cette semaine.
   final int helpThisWeek;
+
+  /// Questions signalées par l'enfant (🚩), pas encore vues.
+  final int reportsToSee;
   final Map<String, int> activities;
   final List<SubjectStats> subjects;
   final List<WeakNotion> toStrengthen;
@@ -554,6 +559,98 @@ class HelpRequestsPage {
   );
 
   final List<HelpRequest> requests;
+
+  /// Curseur de la page suivante, `null` à la fin.
+  final String? nextBefore;
+}
+
+/// Raison choisie par l'enfant en signalant une question (🚩), rien d'écrit par lui.
+enum ReportReason {
+  rightAnswer('right_answer', '✅ Ma réponse était juste'),
+  unclear('unclear', '🤔 Je ne comprends pas la question'),
+  wrongQuestion('wrong_question', '⚠️ Il y a une erreur dans la question');
+
+  const ReportReason(this.code, this.label);
+
+  final String code;
+  final String label;
+
+  static ReportReason? of(String? code) => values.where((r) => r.code == code).firstOrNull;
+}
+
+/// Une question signalée par l'enfant : la raison, sa réponse, celle retenue par Ludifun.
+class QuestionReport {
+  const QuestionReport({
+    required this.id,
+    required this.reportedAt,
+    required this.reasonLabel,
+    required this.seen,
+    required this.lessonId,
+    required this.notions,
+    required this.question,
+    required this.outcome,
+    this.lessonTitle,
+    this.subject,
+    this.given,
+    this.expected,
+  });
+
+  factory QuestionReport.fromJson(Json json) => QuestionReport(
+    id: json['id'] as String,
+    reportedAt: DateTime.parse(json['reported_at'] as String),
+    reasonLabel:
+        ReportReason.of(json['reason'] as String?)?.label ?? json['reason_label'] as String,
+    seen: json['seen'] as bool? ?? false,
+    lessonId: json['lesson_id'] as String,
+    lessonTitle: json['lesson_title'] as String?,
+    subject: json['subject'] as String?,
+    notions: [for (final n in json['notions'] as List<dynamic>) n as String],
+    question: json['question'] as String,
+    given: json['given'] as String?,
+    expected: json['expected'] as String?,
+    outcome: HelpOutcome.values.asNameMap()[json['outcome']] ?? HelpOutcome.unanswered,
+  );
+
+  final String id;
+  final DateTime reportedAt;
+  final String reasonLabel;
+  final bool seen;
+  final String lessonId;
+  final String? lessonTitle;
+  final String? subject;
+  final List<String> notions;
+  final String question;
+
+  /// Absente : signalée avant de répondre.
+  final String? given;
+  final String? expected;
+  final HelpOutcome outcome;
+
+  QuestionReport markedSeen() => QuestionReport(
+    id: id,
+    reportedAt: reportedAt,
+    reasonLabel: reasonLabel,
+    seen: true,
+    lessonId: lessonId,
+    lessonTitle: lessonTitle,
+    subject: subject,
+    notions: notions,
+    question: question,
+    given: given,
+    expected: expected,
+    outcome: outcome,
+  );
+}
+
+class QuestionReportsPage {
+  const QuestionReportsPage({required this.reports, this.nextBefore});
+
+  factory QuestionReportsPage.fromJson(Json json) => QuestionReportsPage(
+    reports: [for (final r in json['reports'] as List<dynamic>) QuestionReport.fromJson(r as Json)],
+    nextBefore: json['next_before'] as String?,
+  );
+
+  final List<QuestionReport> reports;
 
   /// Curseur de la page suivante, `null` à la fin.
   final String? nextBefore;

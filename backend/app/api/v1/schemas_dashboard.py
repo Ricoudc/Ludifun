@@ -62,6 +62,7 @@ class DashboardOut(BaseModel):
     this_week: WeekOut
     lessons_added_this_week: int
     help_this_week: int = Field(0, description="Questions où l'enfant a demandé de l'aide cette semaine.")
+    reports_to_see: int = Field(0, description="Questions signalées par l'enfant (🚩), pas encore vues.")
     activities_this_week: dict[str, int]
     subjects: list[SubjectOut]
     to_strengthen: list[WeakNotionOut] = Field(
@@ -141,6 +142,36 @@ class HelpRequestOut(BaseModel):
 
 class HelpRequestsOut(BaseModel):
     help_requests: list[HelpRequestOut]
+    next_before: datetime | None
+
+
+ReportReason = Literal["right_answer", "unclear", "wrong_question"]
+Outcome = Literal["right", "partial", "wrong", "unanswered"]
+
+
+class QuestionReportOut(BaseModel):
+    """Une question signalée par l'enfant (🚩)."""
+
+    id: uuid.UUID
+    reported_at: datetime
+    reason: ReportReason
+    reason_label: str = Field(description="« Ma réponse était juste »…, tel que l'enfant l'a choisi.")
+    seen: bool = Field(description="Le parent l'a marquée comme vue.")
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity_type: str
+    notions: list[str]
+    question: str
+    given: str | None = Field(
+        description="La réponse de l'enfant ; absente s'il a signalé avant de répondre."
+    )
+    expected: str | None = Field(description="La bonne réponse retenue par Ludifun.")
+    outcome: Outcome
+
+
+class QuestionReportsOut(BaseModel):
+    reports: list[QuestionReportOut]
     next_before: datetime | None
 
 

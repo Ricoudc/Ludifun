@@ -618,6 +618,30 @@ class HelpRequest(Base):
     )
 
 
+# « Ma réponse était juste », « Je ne comprends pas la question », « Il y a une erreur ».
+REPORT_REASONS = ("right_answer", "unclear", "wrong_question")
+
+
+class QuestionReport(Base):
+    """Une question que l'enfant a signalée (🚩) : le parent la voit, la corrige s'il le faut
+    (écran des questions de la leçon) et la marque comme vue. Rien d'écrit par l'enfant : une
+    raison choisie dans une liste. Ne change jamais la progression."""
+
+    __tablename__ = "question_reports"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("session_items.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    reported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (CheckConstraint(_in("reason", REPORT_REASONS), name="reason"),)
+
+
 class AttemptEvidence(Base):
     """Une ligne par notion couverte par une tentative (§9.3)."""
 

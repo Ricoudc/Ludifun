@@ -2,10 +2,10 @@
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, cast
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
@@ -28,7 +28,11 @@ from app.api.v1.schemas_dashboard import (
     MistakesOut,
     NotionProgressOut,
     NotionResultOut,
+    Outcome,
+    QuestionReportOut,
+    QuestionReportsOut,
     RecurringErrorOut,
+    ReportReason,
     SessionActivityOut,
     SessionDecisionOut,
     SessionDetailOut,
@@ -81,6 +85,7 @@ async def get_dashboard(
         this_week=week_out(board.this_week),
         lessons_added_this_week=board.lessons_added_this_week,
         help_this_week=board.help_this_week,
+        reports_to_see=board.reports_to_see,
         activities_this_week=board.activities,
         subjects=[
             SubjectOut(subject=s.subject, mastery=s.mastery, color=s.color, notions=s.notions)
@@ -197,6 +202,87 @@ async def get_help_requests(
         for row in rows
     ]
     return HelpRequestsOut(help_requests=out, next_before=rows[-1].asked_at if len(rows) == limit else None)
+
+
+REPORT_LABELS = {
+    "right_answer": "Ma réponse était juste",
+    "unclear": "Je ne comprends pas la question",
+    "wrong_question": "Il y a une erreur dans la question",
+}
+
+
+def _outcome(score: float | None) -> Outcome:
+    if score is None:
+        return "unanswered"
+    return "right" if score >= 1 else "partial" if score > 0 else "wrong"
+
+
+@router.get("/children/{child_id}/question-reports")
+async def get_question_reports(
+    child_id: uuid.UUID,
+    parent: CurrentParent,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    before: Annotated[
+        datetime | None, Query(description="Curseur : `next_before` de la page précédente")
+    ] = None,
+) -> QuestionReportsOut:
+    """Questions signalées par l'enfant (🚩), de la plus récente à la plus ancienne : la raison
+    choisie, la question telle qu'il l'a vue, sa réponse et celle retenue par Ludifun."""
+    child = await own_child(db, parent, child_id)
+    rows = await dashboard.question_reports(db, child.id, limit, before)
+    registry = default_registry()
+    out = []
+    for row in rows:
+        described = (
+            mistakes_domain.describe(registry, row.activity, row.response)
+            if row.response is not None
+            else None
+        )
+        out.append(
+            QuestionReportOut(
+                id=row.id,
+                reported_at=row.reported_at,
+                reason=cast(ReportReason, row.reason),
+                reason_label=REPORT_LABELS[row.reason],
+                seen=row.seen_at is not None,
+                lesson_id=row.lesson_id,
+                lesson_title=row.lesson_title,
+                subject=row.subject,
+                activity_type=row.activity.type,
+                notions=row.notions,
+                question=mistakes_domain.question_of(row.activity),
+                given=described.given if described else None,
+                expected=described.expected if described else _display(row.activity.solution),
+                outcome=_outcome(row.score),
+            )
+        )
+    return QuestionReportsOut(reports=out, next_before=rows[-1].reported_at if len(rows) == limit else None)
+
+
+def _display(solution: dict[str, object]) -> str | None:
+    value = solution.get("display")
+    return str(value) if value is not None else None
+
+
+@router.post("/children/{child_id}/question-reports/{report_id}/seen", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_report_seen(
+    child_id: uuid.UUID, report_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> Response:
+    """Le parent a regardé la question signalée (et l'a corrigée s'il le fallait)."""
+    child = await own_child(db, parent, child_id)
+    report = await db.scalar(
+        select(db_models.QuestionReport)
+        .join(db_models.SessionItem, db_models.SessionItem.id == db_models.QuestionReport.session_item_id)
+        .join(db_models.RevisionSession, db_models.RevisionSession.id == db_models.SessionItem.session_id)
+        .where(db_models.QuestionReport.id == report_id, db_models.RevisionSession.child_id == child.id)
+    )
+    if report is None:
+        raise ApiError(404, "report_not_found", "Signalement introuvable.")
+    if report.seen_at is None:
+        report.seen_at = clock.now()
+        await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/children/{child_id}/history")

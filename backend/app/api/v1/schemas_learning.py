@@ -252,6 +252,25 @@ class HelpOut(BaseModel):
     last: bool = Field(description="Plus d'aide après celle-ci.")
 
 
+ReportReason = Literal["right_answer", "unclear", "wrong_question"]
+
+
+class QuestionReportIn(BaseModel):
+    """🚩 Signaler la question : une raison choisie dans la liste, rien d'écrit par l'enfant."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    reason: ReportReason = Field(
+        description="right_answer « Ma réponse était juste », unclear « Je ne comprends pas la "
+        "question », wrong_question « Il y a une erreur dans la question »."
+    )
+
+
+class QuestionReportedOut(BaseModel):
+    reason: ReportReason
+    reported_at: datetime
+
+
 class ReplayOut(BaseModel):
     items: list[SessionItemOut]
     bonus_offer: bool = Field(False, description="Proposer « encore 3 défis ? » (séance réussie et rapide).")

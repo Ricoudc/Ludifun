@@ -12,6 +12,7 @@ import 'activities/activity_registry.dart';
 import 'activities/common.dart';
 import 'correction_view.dart';
 import 'help_sheet.dart';
+import 'report_question.dart';
 import 'session_controller.dart';
 
 /// Écrans 5 (jeu), 6 (correction) et 7 (bilan), dans une seule route.
@@ -156,6 +157,11 @@ class SessionScreen extends ConsumerWidget {
                 item: item,
                 correction: state.correction!,
                 onContinue: controller.next,
+                report: ReportQuestionButton(
+                  key: ValueKey(item.id),
+                  sessionId: sessionId,
+                  itemId: item.id,
+                ),
                 onPause: () {
                   refreshHome(ref);
                   context.go(Routes.childHome);

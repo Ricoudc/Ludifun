@@ -131,6 +131,7 @@ class Dashboard:
     error_types: list[ErrorCount] = field(default_factory=list)  # les plus fréquentes d'abord
     recurring_errors: list[RecurringNotion] = field(default_factory=list)
     help_this_week: int = 0  # questions où l'enfant a demandé de l'aide cette semaine
+    reports_to_see: int = 0  # questions signalées par l'enfant, pas encore vues par le parent
 
 
 def trend_of(weeks: list[WeekStats]) -> Trend | None:
@@ -231,6 +232,7 @@ async def build_dashboard(
     )
     return Dashboard(
         help_this_week=help_this_week or 0,
+        reports_to_see=await reports_to_see(session, child_id),
         error_types=error_types,
         recurring_errors=recurring,
         this_week=closed[-1],
@@ -647,3 +649,84 @@ async def help_requests(
             )
         )
     return rows
+
+
+@dataclass(frozen=True)
+class ReportRow:
+    """Une question signalée par l'enfant (🚩) : la raison, la question, sa réponse s'il en a donné."""
+
+    id: uuid.UUID
+    reported_at: datetime
+    reason: str
+    seen_at: datetime | None
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity: BuiltActivity
+    notions: list[str]
+    response: dict[str, Any] | None  # None : signalée avant de répondre
+    score: float | None
+
+
+async def question_reports(
+    session: AsyncSession, child_id: uuid.UUID, limit: int, before: datetime | None
+) -> list[ReportRow]:
+    """Questions signalées par l'enfant, de la plus récente à la plus ancienne."""
+    query = (
+        select(db.QuestionReport, db.SessionItem, db.Lesson, db.Attempt)
+        .join(db.SessionItem, db.SessionItem.id == db.QuestionReport.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .join(db.Lesson, db.Lesson.id == db.RevisionSession.lesson_id)
+        .outerjoin(db.Attempt, db.Attempt.session_item_id == db.SessionItem.id)
+        .where(db.RevisionSession.child_id == child_id)
+        .order_by(db.QuestionReport.reported_at.desc())
+        .limit(limit)
+    )
+    if before is not None:
+        query = query.where(db.QuestionReport.reported_at < before)
+    found = (await session.execute(query)).all()
+    ids = {k for _, item, _, _ in found for k in item.knowledge_ids}
+    knowledge = {
+        row.id: (row.key, row.label)
+        for row in await session.execute(
+            select(db.KnowledgeItem.id, db.KnowledgeItem.key, db.KnowledgeItem.label).where(
+                db.KnowledgeItem.id.in_(ids)
+            )
+        )
+    }
+    rows = []
+    for report, item, lesson, attempt in found:
+        known = [knowledge[k] for k in item.knowledge_ids if k in knowledge]
+        rows.append(
+            ReportRow(
+                id=report.id,
+                reported_at=report.reported_at,
+                reason=report.reason,
+                seen_at=report.seen_at,
+                lesson_id=lesson.id,
+                lesson_title=lesson.title,
+                subject=lesson.subject,
+                activity=BuiltActivity(
+                    type=ActivityCode(item.activity_type),
+                    difficulty=item.difficulty,
+                    knowledge_ids=[key for key, _ in known],
+                    payload=item.payload,
+                    solution=item.solution,
+                ),
+                notions=[label for _, label in known],
+                response=attempt.response if attempt is not None else None,
+                score=float(attempt.score) if attempt is not None else None,
+            )
+        )
+    return rows
+
+
+async def reports_to_see(session: AsyncSession, child_id: uuid.UUID) -> int:
+    """Questions signalées que le parent n'a pas encore marquées comme vues."""
+    count = await session.scalar(
+        select(func.count(db.QuestionReport.id))
+        .join(db.SessionItem, db.SessionItem.id == db.QuestionReport.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(db.RevisionSession.child_id == child_id, db.QuestionReport.seen_at.is_(None))
+    )
+    return count or 0
