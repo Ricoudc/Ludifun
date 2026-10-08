@@ -286,3 +286,40 @@ async def test_recurring_error_reaches_the_parent(
         "Confond avec une autre notion",
         "Presque : une faute ou un détail",
     }
+
+
+async def test_the_parent_sees_when_help_was_asked(
+    client: AsyncClient,
+    db: AsyncSession,
+    fake_llm: FakeProvider,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    """Chaque appui sur « Je n'ai pas compris » est noté avec son heure ; le parent voit la
+    question, les aides vues, et si l'enfant a réussi ensuite. Un autre parent ne voit rien."""
+    family, lesson = await fractions(client, fake_llm)
+    token, parent = family["device"], auth(family["parent"])
+    url = f"/v1/children/{family['child']['id']}/help-requests"
+    assert (await client.get(url, headers=parent)).json() == {"help_requests": [], "next_before": None}
+
+    session = await start(client, token, lesson["id"])
+    item = next(i for i in session["items"] if i["help_available"])
+    help_url = f"/v1/sessions/{session['id']}/items/{item['id']}/help"
+    for _ in range(2):
+        assert (await client.post(help_url, headers=auth(token))).status_code == 200
+
+    asked = (await client.get(url, headers=parent)).json()["help_requests"]
+    assert len(asked) == 1 and asked[0]["outcome"] == "unanswered"
+    first = asked[0]
+    assert first["question"] and first["notions"] and first["lesson_title"] == "Les fractions"
+    assert [s["level"] for s in first["steps"]] == sorted(s["level"] for s in first["steps"])
+    assert len(first["steps"]) == 2 and first["steps"][0]["title"] == "💡 Un indice"
+    assert first["asked_at"] == first["steps"][0]["at"]
+
+    await play(client, db, token, session["id"], [item], lambda _: True)
+    answered = (await client.get(url, headers=parent)).json()["help_requests"][0]
+    assert answered["outcome"] == "right"
+    board = (await client.get(f"/v1/children/{family['child']['id']}/dashboard", headers=parent)).json()
+    assert board["help_this_week"] == 1
+
+    other = await family_with_device(client, "autre@example.fr")
+    assert (await client.get(url, headers=auth(other["parent"]))).status_code == 404

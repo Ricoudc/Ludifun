@@ -130,6 +130,7 @@ class Dashboard:
     activities: dict[str, int]  # activités réalisées cette semaine, par type
     error_types: list[ErrorCount] = field(default_factory=list)  # les plus fréquentes d'abord
     recurring_errors: list[RecurringNotion] = field(default_factory=list)
+    help_this_week: int = 0  # questions où l'enfant a demandé de l'aide cette semaine
 
 
 def trend_of(weeks: list[WeekStats]) -> Trend | None:
@@ -219,7 +220,17 @@ async def build_dashboard(
     )
     due_now = sum(1 for mastery, _, _ in rows if mastery.next_review_at <= now)
     error_types, recurring = await error_summary(session, child_id, now)
+    help_this_week = await session.scalar(
+        select(func.count(func.distinct(db.HelpRequest.session_item_id)))
+        .join(db.SessionItem, db.SessionItem.id == db.HelpRequest.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(
+            db.RevisionSession.child_id == child_id,
+            db.HelpRequest.requested_at >= local_midnight(current, tz),
+        )
+    )
     return Dashboard(
+        help_this_week=help_this_week or 0,
         error_types=error_types,
         recurring_errors=recurring,
         this_week=closed[-1],
@@ -541,6 +552,98 @@ async def mistakes(
                 response=attempt.response,
                 score=float(attempt.score),
                 notions=[label for _, label in known],
+            )
+        )
+    return rows
+
+
+@dataclass(frozen=True)
+class HelpRow:
+    """Une question où l'enfant a demandé de l'aide : quand, les aides vues, et la suite."""
+
+    asked_at: datetime  # premier appui sur « Je n'ai pas compris »
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity: BuiltActivity
+    notions: list[str]
+    steps: list[tuple[int, str, datetime]]  # (niveau, type d'aide, heure), dans l'ordre
+    score: float | None  # None : pas (encore) répondu
+
+
+async def help_requests(
+    session: AsyncSession, child_id: uuid.UUID, limit: int, before: datetime | None
+) -> list[HelpRow]:
+    """Questions où l'enfant a demandé de l'aide, de la plus récente à la plus ancienne."""
+    first = func.min(db.HelpRequest.requested_at).label("first")
+    asked = (
+        select(db.HelpRequest.session_item_id, first)
+        .join(db.SessionItem, db.SessionItem.id == db.HelpRequest.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(db.RevisionSession.child_id == child_id)
+        .group_by(db.HelpRequest.session_item_id)
+    )
+    if before is not None:
+        asked = asked.having(first < before)
+    found = (await session.execute(asked.order_by(first.desc()).limit(limit))).all()
+    if not found:
+        return []
+    item_ids = [row.session_item_id for row in found]
+    items = {
+        item.id: (item, lesson)
+        for item, lesson in await session.execute(
+            select(db.SessionItem, db.Lesson)
+            .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+            .join(db.Lesson, db.Lesson.id == db.RevisionSession.lesson_id)
+            .where(db.SessionItem.id.in_(item_ids))
+        )
+    }
+    steps: dict[uuid.UUID, list[tuple[int, str, datetime]]] = defaultdict(list)
+    for request in await session.scalars(
+        select(db.HelpRequest)
+        .where(db.HelpRequest.session_item_id.in_(item_ids))
+        .order_by(db.HelpRequest.requested_at, db.HelpRequest.level)
+    ):
+        steps[request.session_item_id].append((request.level, request.kind, request.requested_at))
+    scores = {
+        item_id: float(score)
+        for item_id, score in await session.execute(
+            select(db.Attempt.session_item_id, db.Attempt.score).where(
+                db.Attempt.session_item_id.in_(item_ids)
+            )
+        )
+    }
+    knowledge_ids = {k for item, _ in items.values() for k in item.knowledge_ids}
+    knowledge = {
+        row.id: (row.key, row.label)
+        for row in await session.execute(
+            select(db.KnowledgeItem.id, db.KnowledgeItem.key, db.KnowledgeItem.label).where(
+                db.KnowledgeItem.id.in_(knowledge_ids)
+            )
+        )
+    }
+    rows = []
+    for item_id, asked_at in found:
+        if item_id not in items:
+            continue
+        item, lesson = items[item_id]
+        known = [knowledge[k] for k in item.knowledge_ids if k in knowledge]
+        rows.append(
+            HelpRow(
+                asked_at=asked_at,
+                lesson_id=lesson.id,
+                lesson_title=lesson.title,
+                subject=lesson.subject,
+                activity=BuiltActivity(
+                    type=ActivityCode(item.activity_type),
+                    difficulty=item.difficulty,
+                    knowledge_ids=[key for key, _ in known],
+                    payload=item.payload,
+                    solution=item.solution,
+                ),
+                notions=[label for _, label in known],
+                steps=steps[item_id],
+                score=scores.get(item_id),
             )
         )
     return rows

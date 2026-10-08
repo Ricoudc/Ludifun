@@ -184,3 +184,22 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
         case _:
             return None
     return Mistake(question=question, given=given, expected=expected)
+
+
+def question_of(activity: BuiltActivity) -> str:
+    """La question telle que l'enfant l'a vue, sans sa réponse (aides demandées, §16)."""
+    payload, code = activity.payload, activity.type
+    match code:
+        case ActivityCode.FILL_BLANK:
+            return str(payload.get("text", ""))
+        case ActivityCode.WORD_FLASH:
+            return f"Mot éclair : écrire « {payload.get('word', '?')} » de mémoire"
+        case ActivityCode.DICTATION:
+            return "Dictée : écrire le mot entendu à voix haute"
+        case ActivityCode.SCRAMBLE:
+            return "Lettres mélangées : " + " ".join(_texts(payload.get("letters")).values())
+        case ActivityCode.FLASHCARD:
+            return str(payload.get("front", ""))
+        case ActivityCode.UNJUMBLE:
+            return "Démêler : " + " / ".join(_texts(payload.get("words")).values())
+    return str(payload.get("prompt") or payload.get("statement") or QUESTION_OF.get(code, code.value))

@@ -16,6 +16,9 @@ from app.api.v1.children import own_child
 from app.api.v1.schemas_dashboard import (
     DashboardOut,
     ErrorCountOut,
+    HelpRequestOut,
+    HelpRequestsOut,
+    HelpStepOut,
     HistoryEntryOut,
     HistoryOut,
     LessonProgressOut,
@@ -40,6 +43,8 @@ from app.domain import mistakes as mistakes_domain
 from app.domain.activities.registry import default_registry
 from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
+from app.domain.help import TITLES as HELP_TITLES
+from app.domain.help import HelpKind
 from app.domain.knowledge import SkillVerb
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
@@ -75,6 +80,7 @@ async def get_dashboard(
         timezone=settings.family_timezone,
         this_week=week_out(board.this_week),
         lessons_added_this_week=board.lessons_added_this_week,
+        help_this_week=board.help_this_week,
         activities_this_week=board.activities,
         subjects=[
             SubjectOut(subject=s.subject, mastery=s.mastery, color=s.color, notions=s.notions)
@@ -151,6 +157,46 @@ async def get_mistakes(
             )
         )
     return MistakesOut(mistakes=out, next_before=rows[-1].answered_at if len(rows) == limit else None)
+
+
+@router.get("/children/{child_id}/help-requests")
+async def get_help_requests(
+    child_id: uuid.UUID,
+    parent: CurrentParent,
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+    before: Annotated[
+        datetime | None, Query(description="Curseur : `next_before` de la page précédente")
+    ] = None,
+) -> HelpRequestsOut:
+    """Quand l'enfant a demandé de l'aide (« Je n'ai pas compris »), de la plus récente à la plus
+    ancienne : la question, les aides vues avec leur heure, et s'il a réussi ensuite."""
+    child = await own_child(db, parent, child_id)
+    rows = await dashboard.help_requests(db, child.id, limit, before)
+    out = [
+        HelpRequestOut(
+            asked_at=row.asked_at,
+            lesson_id=row.lesson_id,
+            lesson_title=row.lesson_title,
+            subject=row.subject,
+            activity_type=row.activity.type,
+            notions=row.notions,
+            question=mistakes_domain.question_of(row.activity),
+            steps=[
+                HelpStepOut(level=level, kind=kind, title=HELP_TITLES[HelpKind(kind)], at=at)
+                for level, kind, at in row.steps
+            ],
+            outcome="unanswered"
+            if row.score is None
+            else "right"
+            if row.score >= 1
+            else "partial"
+            if row.score > 0
+            else "wrong",
+        )
+        for row in rows
+    ]
+    return HelpRequestsOut(help_requests=out, next_before=rows[-1].asked_at if len(rows) == limit else None)
 
 
 @router.get("/children/{child_id}/history")

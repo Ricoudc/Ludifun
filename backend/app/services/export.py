@@ -156,6 +156,12 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
             .where(db.SessionItem.session_id == revision.id, db.AttemptEvidence.error_type.is_not(None))
         ):
             errors.setdefault(attempt_id, []).append(error_type)
+        helps = await session.execute(
+            select(db.SessionItem.activity_type, db.HelpRequest)
+            .join(db.HelpRequest, db.HelpRequest.session_item_id == db.SessionItem.id)
+            .where(db.SessionItem.session_id == revision.id)
+            .order_by(db.HelpRequest.requested_at, db.HelpRequest.level)
+        )
         out.append(
             {
                 "id": str(revision.id),
@@ -177,6 +183,16 @@ async def _sessions(session: AsyncSession, child_id: uuid.UUID) -> list[dict[str
                         "error_types": errors.get(attempt.id, []),
                     }
                     for activity, help_level, attempt in answers
+                ],
+                # « Je n'ai pas compris » : chaque aide demandée, avec son heure.
+                "help_requests": [
+                    {
+                        "activity": activity,
+                        "requested_at": _iso(request.requested_at),
+                        "level": request.level,
+                        "kind": request.kind,
+                    }
+                    for activity, request in helps
                 ],
             }
         )

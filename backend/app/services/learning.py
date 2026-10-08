@@ -450,6 +450,8 @@ async def request_help(
     if stored and stored.get("text") and stored.get("sources"):
         external = ExternalHelp(str(stored["text"]), str(stored["sources"][0]["site"]))
     step = next_help(unit, activity, item.help_level, external)
+    if step.level > item.help_level:  # une aide de plus : le parent voit quand elle a été demandée
+        session.add(db.HelpRequest(session_item_id=item.id, level=step.level, kind=step.kind.value))
     item.help_level = step.level
     return step
 

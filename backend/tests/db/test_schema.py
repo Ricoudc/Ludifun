@@ -447,3 +447,33 @@ async def test_migration_0021_lesson_resources(engine: AsyncEngine, db: AsyncSes
         lessons = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
     assert exists is None and lessons == 1
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0022_help_requests(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Aides demandées avec leur heure : niveau 1 à 5 et type connu ; supprimer la séance les
+    supprime ; retour arrière : la table disparaît, le niveau d'aide des activités reste."""
+    await create_full_lesson(db)
+    await db.commit()
+    item = await db.scalar(select(SessionItem.id).limit(1))
+    await db.commit()  # sans transaction ouverte : le retour arrière de la migration attendrait
+    insert = text(
+        "INSERT INTO help_requests (id, session_item_id, level, kind) VALUES (:id, :item, :level, :kind)"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "level": 1, "kind": "hint"})
+    for level, kind in ((0, "hint"), (6, "answer"), (2, "devinette")):
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "level": level, "kind": kind})
+    async with engine.connect() as conn:
+        at = (await conn.execute(text("SELECT requested_at FROM help_requests"))).scalar()
+    assert at is not None  # l'heure est notée sans qu'on la donne
+    await run_alembic("downgrade", "0021")
+    async with engine.connect() as conn:
+        assert (await conn.execute(text("SELECT to_regclass('help_requests')"))).scalar() is None
+        assert (await conn.execute(text("SELECT count(*) FROM session_items"))).scalar() == 1
+    await run_alembic("upgrade", "head")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "level": 2, "kind": "reminder"})
+        await conn.execute(text("DELETE FROM session_items"))
+        assert (await conn.execute(text("SELECT count(*) FROM help_requests"))).scalar() == 0

@@ -22,6 +22,7 @@ PARENT_ROUTES = [
     ("DELETE", "/v1/children/{child}", None),
     ("POST", "/v1/children/{child}/link-codes", None),
     ("GET", "/v1/children/{child}/devices", None),
+    ("GET", "/v1/children/{child}/help-requests", None),
     ("DELETE", "/v1/children/{child}/devices/{device}", None),
     # Image d'une leçon (étape 27) : voir, valider, refuser, refaire.
     ("GET", "/v1/children/{child}/lessons/" + LESSON + "/image", None),

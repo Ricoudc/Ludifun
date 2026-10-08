@@ -61,6 +61,7 @@ class DashboardOut(BaseModel):
     timezone: str
     this_week: WeekOut
     lessons_added_this_week: int
+    help_this_week: int = Field(0, description="Questions où l'enfant a demandé de l'aide cette semaine.")
     activities_this_week: dict[str, int]
     subjects: list[SubjectOut]
     to_strengthen: list[WeakNotionOut] = Field(
@@ -113,6 +114,34 @@ class MistakeOut(BaseModel):
     given: str = Field(description="La réponse de l'enfant (une ligne par élément raté).")
     expected: str = Field(description="La bonne réponse.")
     partial: bool = Field(description="Réponse en partie juste.")
+
+
+class HelpStepOut(BaseModel):
+    level: int = Field(description="1 indice … 5 la réponse.")
+    kind: str = Field(description="hint, reminder, example, steps, answer, sourced.")
+    title: str = Field(description="« 💡 Un indice », « ✅ La réponse »…")
+    at: datetime
+
+
+class HelpRequestOut(BaseModel):
+    """Une question où l'enfant a touché « Je n'ai pas compris » : quand, les aides vues, la suite."""
+
+    asked_at: datetime = Field(description="Premier appui sur « Je n'ai pas compris ».")
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    subject: str | None
+    activity_type: str
+    notions: list[str]
+    question: str
+    steps: list[HelpStepOut]
+    outcome: Literal["right", "partial", "wrong", "unanswered"] = Field(
+        description="Réponse donnée après l'aide : juste, en partie, fausse, ou pas de réponse."
+    )
+
+
+class HelpRequestsOut(BaseModel):
+    help_requests: list[HelpRequestOut]
+    next_before: datetime | None
 
 
 class MistakesOut(BaseModel):

@@ -593,6 +593,31 @@ class Attempt(Base):
     __table_args__ = (CheckConstraint("score BETWEEN 0 AND 1", name="score"),)
 
 
+HELP_KINDS = ("hint", "reminder", "example", "steps", "answer", "sourced")  # domain.help.HelpKind
+
+
+class HelpRequest(Base):
+    """Un appui sur « Je n'ai pas compris » (ou « Encore de l'aide ») : quand, et l'aide montrée.
+    Le parent voit quand l'enfant a demandé de l'aide, sur quelle question, et la suite."""
+
+    __tablename__ = "help_requests"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("session_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    level: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("level BETWEEN 1 AND 5", name="level"),
+        CheckConstraint(_in("kind", HELP_KINDS), name="kind"),
+    )
+
+
 class AttemptEvidence(Base):
     """Une ligne par notion couverte par une tentative (§9.3)."""
 
