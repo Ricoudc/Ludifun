@@ -15,12 +15,14 @@ from app.api.errors import ApiError
 from app.api.v1.children import own_child
 from app.api.v1.lessons import ensure_ai_budget
 from app.db import models as db_models
+from app.domain.duplicates import deduplicate
 from app.domain.instructions import instruction
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, LessonAnalysis
+from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis
 from app.domain.material_view import material_blocks
 from app.domain.text import clean_markup
 from app.services.ai_settings import AiResolver
 from app.services.lesson_pipeline import LessonPipeline
+from app.services.lesson_store import load_units
 
 router = APIRouter(tags=["espace parent"])
 
@@ -200,9 +202,16 @@ async def rework_notion(
             "L'IA n'a pas proposé de meilleure version (ou elle n'a pas passé les contrôles). "
             "Les questions actuelles restent ; vous pouvez réessayer ou préciser votre remarque.",
         )
-    material_row.material = validated.material.model_dump(mode="json")
+    # Rien de ce que l'enfant voit déjà dans les autres notions de la leçon.
+    others = [(u.id, u.material) for u in (await load_units(db, lesson)).units if u.id != row.key]
+    kept = deduplicate(
+        [(row.key, validated.material)],
+        lambda _, material: bool(registry.single_options(KnowledgeUnit(item=item, material=material))),
+        already=others,
+    )[row.key]
+    material_row.material = kept.material.model_dump(mode="json")
     material_row.rejected = [
-        {"element": f"{row.key}.{r.element}", "reason": r.reason} for r in validated.rejected
+        {"element": f"{row.key}.{r.element}", "reason": r.reason} for r in validated.rejected + kept.removed
     ]
     material_row.prompt_version = PROMPT_VERSIONS["material"]
     await db.commit()

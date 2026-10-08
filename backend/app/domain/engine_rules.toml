@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.2.0"
+version = "1.3.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -53,3 +53,12 @@ daily_xp_cap = 150              # au-delà, l'XP du jour n'augmente plus
 # Images des notions concrètes (étape 28, 1.2.0), pour les jeux « Image et mot » et « Quelle
 # image ? » : chaque image occupe la carte graphique une à deux minutes, puis attend le parent.
 per_lesson = 4
+
+[material]
+# Fin de l'analyse (1.3.0) : deux longs exercices (8 mots importants ou plus) qui partagent cette
+# part de leurs mots importants, et les mêmes nombres, sont le même ; le second est retiré.
+similar_ratio = 0.85
+# Exercices tirés des sites de confiance (si le parent l'a permis) : notions concernées, et
+# questions gardées au plus par notion.
+sourced_notions = 3
+sourced_per_notion = 2

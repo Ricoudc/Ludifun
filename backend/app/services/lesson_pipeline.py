@@ -34,6 +34,7 @@ from app.ai.ports import (
 from app.ai.schemas import AnalysisOutput, MaterialBatchOutput, OcrPage, OcrResult
 from app.domain import instructions
 from app.domain.activities.registry import ActivityRegistry
+from app.domain.duplicates import deduplicate
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit, LessonAnalysis
 from app.domain.ocr_review import Uncertain, select_uncertain
 from app.domain.understanding import required_levels
@@ -302,6 +303,9 @@ class LessonPipeline:
                 else:
                     validated[item.id] = retried[item.id]
 
+        validated, duplicates = self._deduplicate(items, validated)
+        result.rejected += duplicates
+
         units, rejected = [], []
         for item in items:
             if item.id not in validated:
@@ -329,6 +333,27 @@ class LessonPipeline:
         if material_runs and rate > REJECTION_WARNING_RATE:
             material_runs[-1].warnings.append(f"taux de rejet du matériel élevé : {rate:.0%}")
         return units
+
+    def _deduplicate(
+        self, items: list[KnowledgeItem], validated: dict[str, MaterialValidation]
+    ) -> tuple[dict[str, MaterialValidation], list[Rejection]]:
+        """Fin de l'analyse : les exercices en double sont retirés, entre notions comprises (la
+        plus importante garde le sien), sans jamais laisser une notion sans activité."""
+        by_id = {i.id: i for i in items}
+        order = sorted((i for i in items if i.id in validated), key=lambda i: -i.importance)
+        cleaned = deduplicate(
+            [(i.id, validated[i.id].material) for i in order],
+            lambda notion, material: bool(
+                self.registry.single_options(KnowledgeUnit(item=by_id[notion], material=material))
+            ),
+        )
+        removed = [Rejection(f"{n}.{r.element}", r.reason) for n, c in cleaned.items() for r in c.removed]
+        if removed:
+            logger.info("IA : exercices : %d exercice(s) en double retiré(s)", len(removed))
+        return {
+            notion: MaterialValidation(cleaned[notion].material, v.rejected) if notion in cleaned else v
+            for notion, v in validated.items()
+        }, removed
 
     async def _material(
         self,

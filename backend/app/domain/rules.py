@@ -68,6 +68,12 @@ class RewardRules(_Section):
     daily_xp_cap: int = Field(ge=0)
 
 
+class MaterialRules(_Section):
+    similar_ratio: float = Field(gt=0.5, le=1)
+    sourced_notions: int = Field(ge=0, le=10)
+    sourced_per_notion: int = Field(ge=0, le=5)
+
+
 class PictureRules(_Section):
     per_lesson: int = Field(ge=0, le=8)
 
@@ -81,6 +87,7 @@ class EngineRules(_Section):
     bonus: BonusRules
     rewards: RewardRules
     pictures: PictureRules
+    material: MaterialRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:
