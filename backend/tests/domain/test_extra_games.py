@@ -146,3 +146,37 @@ def test_new_games_appear_in_review_sessions(history: ReferenceLesson, registry:
     due = {u.id: Mastery(60, 1, now - timedelta(days=1), now - timedelta(days=2)) for u in units}
     seen = {i.activity.type for seed in range(40) for i in composer.compose(units, due, now, seed=seed).items}
     assert {ActivityCode.UNJUMBLE, ActivityCode.FIND_MATCH, ActivityCode.WHEEL, ActivityCode.BOX} <= seen
+
+
+@pytest.mark.parametrize(
+    ("sentence", "answers"),
+    [
+        # Cas réel (téléphone, octobre 2026) : « 8 + 7 = 15 » était refusé.
+        ("7 + 8 = 15", {"8 + 7 = 15": True, "15 = 7 + 8": True, "7 = 8 + 15": False, "8 = 7 + 15": False}),
+        ("15 - 8 = 7", {"15 - 7 = 8": True, "7 = 15 - 8": True, "8 - 15 = 7": False}),
+        ("3 × 4 = 12", {"4 × 3 = 12": True, "12 = 4 × 3": True, "3 = 4 × 12": False}),
+        (
+            "La somme de 7 et 8 est 15",
+            {"La somme de 8 et 7 est 15": True, "La somme de 15 et 8 est 7": False},
+        ),
+    ],
+)
+def test_unjumble_accepts_every_true_order_of_a_calculation(
+    history: ReferenceLesson, registry: ActivityRegistry, sentence: str, answers: dict[str, bool]
+) -> None:
+    """Un calcul s'écrit dans plusieurs ordres justes (l'addition et la multiplication sont
+    commutatives) ; un ordre faux, même avec les mêmes nombres, reste faux."""
+    unit = next(iter(history.units.values()))
+    unit = unit.model_copy(
+        update={"material": unit.material.model_copy(update={"true_statements": [sentence]})}
+    )
+    game = registry.get(ActivityCode.UNJUMBLE)
+    activity = game.build([unit], 2, random.Random(1))
+    assert activity.solution["sentence"] == sentence
+    ids = {text: id_ for id_, text in activity.solution["words"].items()}
+    for answer, right in answers.items():
+        grade = game.grade(activity, {"order": [ids[word] for word in answer.split()]})
+        assert (grade.score == 1.0) is right, answer
+    # Le mélange proposé n'est jamais déjà une écriture juste.
+    shuffled = [w["text"] for w in activity.payload["words"]]
+    assert game.grade(activity, {"order": [ids[w] for w in shuffled]}).score < 1

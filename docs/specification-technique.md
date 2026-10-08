@@ -647,7 +647,7 @@ construits sur le matériel déjà validé (aucun appel à l'IA en plus) :
 
 | Jeu | Code | Notions | Matériel | Réponse |
 |---|---|---|---|---|
-| Démêler | `UNJUMBLE` (difficulté 2, jeu visuel) | 1 | une affirmation vraie ou la phrase à retenir, 4 à 10 mots | `{order:[id…]}` ; chaque mot à sa place compte (au plus 0,9 si la phrase n'est pas entière) |
+| Démêler | `UNJUMBLE` (difficulté 2, jeu visuel) | 1 | une affirmation vraie ou la phrase à retenir, 4 à 10 mots | `{order:[id…]}` ; chaque mot à sa place compte (au plus 0,9 si la phrase n'est pas entière). Un calcul a plusieurs écritures justes : « 8 + 7 = 15 », « 15 = 7 + 8 » valent « 7 + 8 = 15 » (le code calcule, `domain/arithmetic.py`), « la somme de 8 et 7 » vaut « la somme de 7 et 8 » ; les signes comptent (« 7 = 8 + 15 » est faux) |
 | Trouver la correspondance | `FIND_MATCH` (2) | 3 à 6 | `pair` | `{answers:[[indice, réponse]…]}` ; un indice à la fois, la réponse choisie disparaît |
 | Roue aléatoire | `WHEEL` (1) | 3 à 6 | QCM le plus facile, sinon vrai/faux | `{answers:[{id, choice_id}]}` ; trois tours, trois cases différentes |
 | Ouvrir la boîte | `BOX` (1) | 4 à 6 | idem | idem ; une boîte par notion, ouvertes dans l'ordre choisi par l'enfant |
