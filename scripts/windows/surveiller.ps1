@@ -19,6 +19,26 @@ function Noter([string]$texte, [string]$couleur = 'Gray') {
     Write-Host $ligne -ForegroundColor $couleur
 }
 
+# Les programmes qui occupent la mémoire de la carte graphique : si elle est déjà prise avant
+# qu'Ollama charge son modèle, le modèle déborde dans la mémoire du PC (6 jetons/s au lieu de 40).
+function Occupants-Carte {
+    try {
+        $compteurs = Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUProcessMemory -ErrorAction Stop
+    } catch { return 'non disponible' }
+    $parProgramme = $compteurs | Where-Object { $_.Name -match '^pid_(\d+)_' } |
+        Group-Object { [int]($_.Name -replace '^pid_(\d+)_.*$', '$1') } |
+        ForEach-Object {
+            $id = [int]$_.Name
+            $nom = (Get-Process -Id $id -ErrorAction SilentlyContinue).ProcessName
+            if (-not $nom) { $nom = "processus $id" }
+            [pscustomobject]@{ Nom = $nom; Octets = ($_.Group | Measure-Object DedicatedUsage -Sum).Sum }
+        } |
+        Group-Object Nom | ForEach-Object { [pscustomobject]@{ Nom = $_.Name; Octets = ($_.Group | Measure-Object Octets -Sum).Sum } } |
+        Where-Object { $_.Octets -ge 100MB } | Sort-Object Octets -Descending | Select-Object -First 8
+    if (-not $parProgramme) { return 'aucun programme au-dessus de 100 Mo' }
+    return ($parProgramme | ForEach-Object { "$($_.Nom) $([math]::Round($_.Octets / 1GB, 1)) Go" }) -join ' · '
+}
+
 $reglages = Lire-Env
 $ollama = (Adresse-Ollama $reglages).TrimEnd('/')
 Noter "Surveillance du $(Get-Date -Format 'yyyy-MM-dd')"
@@ -29,6 +49,8 @@ try {
     foreach ($carte in Get-CimInstance Win32_VideoController) { Noter "Carte graphique : $($carte.Name) (pilote $($carte.DriverVersion))" }
 } catch { }
 try { Noter "Ollama $((Invoke-RestMethod -Uri "$ollama/api/version" -TimeoutSec 5).version) à $ollama" } catch { Noter "Ollama ne répond pas à $ollama" 'Red' }
+
+Noter "Carte graphique occupée par : $(Occupants-Carte)"
 
 Write-Host ''
 Write-Host 'Fais ton essai sur le téléphone maintenant (photo de la leçon, séance…).' -ForegroundColor Green
@@ -123,6 +145,7 @@ while ($true) {
 }
 
 Lire-Journal
+Noter "Carte graphique occupée par : $(Occupants-Carte)"
 Noter 'Fin de la surveillance'
 try {
     $reponse = Invoke-WebRequest -Uri 'http://localhost:8000/suivi/rapport.txt' -UseBasicParsing -TimeoutSec 15

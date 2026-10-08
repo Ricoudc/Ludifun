@@ -339,8 +339,9 @@ def _slow(speed: float) -> str:
     return (
         f"Ollama n'écrit que {speed:.0f} jeton(s)/s (environ 40 attendus sur la carte graphique) "
         "alors que le modèle est sur la carte : sa mémoire déborde dans la mémoire partagée de "
-        "Windows, ou Ollama a changé de version. Redémarrez le PC, puis vérifiez avec "
-        "« ollama run <modèle> --verbose » (ligne eval rate)"
+        "Windows, ou Ollama a changé de version. Fermez ce qui occupe la carte graphique "
+        "(navigateur avec vidéo, jeu ; Surveiller-Ludifun.bat dit quels programmes), "
+        "redémarrez le PC, puis vérifiez avec « ollama run <modèle> --verbose » (ligne eval rate)"
     )
 
 
