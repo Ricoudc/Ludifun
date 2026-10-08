@@ -20,6 +20,8 @@ QUESTION_OF: dict[ActivityCode, str] = {
     ActivityCode.MEMORY: "Memory : retrouver les paires",
     ActivityCode.FIND_MATCH: "Trouver la correspondance",
     ActivityCode.RANDOM_CARDS: "Cartes aléatoires",
+    ActivityCode.PICTURE_MATCH: "Image et mot",
+    ActivityCode.PICTURE_FIND: "Quelle image ?",
 }
 
 
@@ -144,6 +146,19 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
                 ]
             )
             expected = _lines([f"{clues.get(d['id'], '?')} → {d['expected']}" for d in wrong])
+        case ActivityCode.PICTURE_MATCH:
+            # Le parent ne voit pas les images ici : seulement le mot choisi pour chacune.
+            words = _texts(payload.get("words"))
+            chosen = dict(response.get("pairs", []))
+            question = "Image et mot : relier chaque image à son mot"
+            given = _lines(
+                [f"{d['text']} → {words.get(chosen.get(d['id'], ''), 'pas reliée')}" for d in wrong]
+            )
+            expected = _lines([f"{d['text']} → {d['expected']}" for d in wrong])
+        case ActivityCode.PICTURE_FIND:
+            question = "Quelle image ? : toucher l'image qui montre chaque phrase"
+            given = _lines([f"« {d['text']} » : mauvaise image" for d in wrong])
+            expected = _lines([f"« {d['text']} » : {d['expected']}" for d in wrong])
         case ActivityCode.WHEEL | ActivityCode.BOX:
             questions = {
                 q["id"]: q for q in payload.get("spins") or payload.get("boxes") or [] if isinstance(q, dict)

@@ -34,12 +34,13 @@ EXTRA_CODES = {
     ActivityCode.BOX,
     ActivityCode.RANDOM_CARDS,
 }  # étape 26
+PICTURE_CODES = {ActivityCode.PICTURE_MATCH, ActivityCode.PICTURE_FIND}  # étape 28
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
     assert (
         set(registry.codes)
-        == V1_CODES | GRAPHIC_CODES | FIGURE_CODES | SPELLING_CODES | EXTRA_CODES
+        == V1_CODES | GRAPHIC_CODES | FIGURE_CODES | SPELLING_CODES | EXTRA_CODES | PICTURE_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

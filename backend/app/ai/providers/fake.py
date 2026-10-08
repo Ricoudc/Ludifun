@@ -23,6 +23,7 @@ from app.ai.schemas import (
     MaterialBatchOutput,
     OcrPage,
     OcrResult,
+    PictureProposal,
     SourcedAnswerOutput,
     SourceQuote,
 )
@@ -31,6 +32,14 @@ from app.domain.activities.open_question import point_found
 REFERENCE_LESSONS = Path(__file__).resolve().parents[3] / "reference_lessons"
 DEMO_LESSON = REFERENCE_LESSONS / "history_cm1_revolution.json"
 _NOTIONS = re.compile(r"<notions>(.*?)</notions>", re.DOTALL)
+_REFS = re.compile(r"^- (N\d+) :", re.MULTILINE)
+_TARGET = re.compile(r"<cible>\s*(\S+)\s*</cible>")
+# Une scène par notion illustrée (les trois premières), toutes différentes.
+FAKE_PICTURES = (
+    ("A red apple on a wooden table", "Une pomme rouge sur une table."),
+    ("A small blue sailing boat on a calm lake", "Un petit bateau bleu sur un lac."),
+    ("A tall green tree alone in a meadow", "Un grand arbre vert dans un pré."),
+)
 
 
 @dataclass(frozen=True)
@@ -138,6 +147,30 @@ def evaluation_output(input: str) -> EvaluationOutput:
     )
 
 
+def illustration_output(input: str) -> IllustrationOutput:
+    """Image de la leçon et images des trois premières notions ; avec une cible, elle seule."""
+    refs = _REFS.findall(input)
+    target = _TARGET.search(input)
+    cover = IllustrationOutput(
+        useful=True,
+        why="La leçon parle de choses que l'on voit.",
+        scene="Three children planting a small tree in a sunny school garden",
+        alt="Trois enfants plantent un petit arbre dans le jardin de l'école.",
+    )
+    pictures = [
+        PictureProposal(notion=ref, scene=scene, alt=alt)
+        for ref, (scene, alt) in zip(refs, FAKE_PICTURES, strict=False)
+    ]
+    if target is None:
+        return cover.model_copy(update={"pictures": pictures})
+    if target.group(1) == "lecon":
+        return cover
+    scene, alt = FAKE_PICTURES[refs.index(target.group(1)) % len(FAKE_PICTURES)]
+    return IllustrationOutput(
+        useful=True, pictures=[PictureProposal(notion=target.group(1), scene=scene, alt=alt)]
+    )
+
+
 class FakeProvider:
     name = "fake"
 
@@ -191,10 +224,7 @@ class FakeProvider:
         if stage == "sources":
             return sources_output(input)
         if stage == "illustration":
-            return IllustrationOutput(
-                scene="Three children planting a small tree in a sunny school garden",
-                alt="Trois enfants plantent un petit arbre dans le jardin de l'école.",
-            )
+            return illustration_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

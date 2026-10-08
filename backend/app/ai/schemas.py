@@ -281,14 +281,31 @@ class SourceQuote(BaseModel):
     text: str = Field(description="Phrase recopiée mot pour mot depuis cet extrait.")
 
 
-class IllustrationOutput(BaseModel):
-    """Étape 27 : la scène qui illustre la leçon ; le code construit seul le prompt d'image."""
+class PictureProposal(BaseModel):
+    """Étape 28 : l'image d'une notion concrète, pour les jeux « apprendre par l'image »."""
 
-    scene: str | None = Field(
-        description="En anglais, une scène simple et concrète à dessiner (sans texte ni chiffres), "
-        "ou null si rien ne s'illustre bien."
+    notion: str | None = Field(None, description="La notion montrée : N1, N2…")
+    scene: str | None = Field(None, description="En anglais, UNE chose concrète, bien reconnaissable.")
+    alt: str | None = Field(None, description="En français, ce que montre l'image, pour le parent.")
+
+
+class IllustrationOutput(BaseModel):
+    """Étapes 27 et 28 : une image aide-t-elle, et lesquelles ; le code construit seul les prompts
+    d'image. `useful` et `pictures` (prompt v2) sont facultatifs : une réponse v1 reste lisible."""
+
+    useful: bool | None = Field(
+        None, description="Une image aide-t-elle vraiment à retenir la leçon ? Dans le doute, non."
     )
-    alt: str | None = Field(description="En français, une phrase qui décrit l'image pour le parent.")
+    why: str | None = Field(None, description="En français, pourquoi, en une phrase pour le parent.")
+    scene: str | None = Field(
+        None,
+        description="En anglais, une scène simple et concrète à dessiner (sans texte ni chiffres), "
+        "ou null si rien ne s'illustre bien.",
+    )
+    alt: str | None = Field(None, description="En français, une phrase qui décrit l'image pour le parent.")
+    pictures: list[PictureProposal] = Field(
+        default_factory=list, description="Images des notions concrètes, 4 au plus."
+    )
 
 
 class SourcedAnswerOutput(BaseModel):

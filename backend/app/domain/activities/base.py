@@ -45,6 +45,9 @@ class ActivityCode(StrEnum):
     WHEEL = "WHEEL"  # roue aléatoire : la roue choisit la question
     BOX = "BOX"  # ouvrir la boîte : chaque boîte cache une question
     RANDOM_CARDS = "RANDOM_CARDS"  # cartes aléatoires : cartes mémoire tirées au hasard
+    # Apprendre par l'image (étape 28) : images des notions validées par le parent.
+    PICTURE_MATCH = "PICTURE_MATCH"  # image et mot : relier chaque image à son mot
+    PICTURE_FIND = "PICTURE_FIND"  # quelle image ? : une phrase, toucher l'image qui la montre
 
 
 Result = Literal["correct", "partial", "incorrect"]

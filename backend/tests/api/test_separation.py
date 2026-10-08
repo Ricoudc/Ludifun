@@ -29,6 +29,11 @@ PARENT_ROUTES = [
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/approve", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/reject", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/image/redo", {}),
+    ("GET", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/file", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/approve", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/reject", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/redo", {}),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/prepare", None),
 ]
 CHILD_SPECIFIC = [route for route in PARENT_ROUTES if "{child}" in route[1]]
 

@@ -146,6 +146,23 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
     lesson.status, lesson.failure_reason = "ready", None
 
 
+def picture_url(lesson_id: uuid.UUID, image_id: uuid.UUID) -> str:
+    """Adresse d'une image validée, pour l'enfant (`GET /v1/lessons/{id}/images/{image_id}`)."""
+    return f"/v1/lessons/{lesson_id}/images/{image_id}"
+
+
+async def approved_pictures(session: AsyncSession, lesson_id: uuid.UUID) -> dict[uuid.UUID, str]:
+    """Images des notions validées par le parent (étape 28) : notion → adresse."""
+    rows = await session.execute(
+        select(db.LessonImage.knowledge_id, db.LessonImage.id).where(
+            db.LessonImage.lesson_id == lesson_id,
+            db.LessonImage.knowledge_id.is_not(None),
+            db.LessonImage.status == "approved",
+        )
+    )
+    return {knowledge_id: picture_url(lesson_id, image_id) for knowledge_id, image_id in rows if knowledge_id}
+
+
 async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
     rows = (
         await session.execute(
@@ -155,6 +172,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             .order_by(db.KnowledgeItem.position)
         )
     ).all()
+    pictures = await approved_pictures(session, lesson.id)
     units, key_to_id, required = [], {}, {}
     for item, material in rows:
         domain_item = KnowledgeItem(
@@ -168,7 +186,11 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             relations=item.relations,
         )
         units.append(
-            KnowledgeUnit(item=domain_item, material=KnowledgeMaterial.model_validate(material.material))
+            KnowledgeUnit(
+                item=domain_item,
+                material=KnowledgeMaterial.model_validate(material.material),
+                picture=pictures.get(item.id),
+            )
         )
         key_to_id[item.key] = item.id
         required[item.key] = frozenset(item.required_levels)

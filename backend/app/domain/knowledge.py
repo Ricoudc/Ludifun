@@ -344,6 +344,9 @@ class KnowledgeUnit(_Model):
 
     item: KnowledgeItem
     material: KnowledgeMaterial
+    # Image qui montre la notion, validée par le parent (étape 28) : son adresse, opaque pour le
+    # domaine. Absente le plus souvent : les jeux en images ne sont proposés qu'avec elle.
+    picture: str | None = None
 
     @model_validator(mode="after")
     def _same_knowledge(self) -> "KnowledgeUnit":

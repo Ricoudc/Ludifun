@@ -293,7 +293,11 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
         ]
     if lesson.status == "ready":
         approved = await db.scalar(
-            select(LessonImage).where(LessonImage.lesson_id == lesson.id, LessonImage.status == "approved")
+            select(LessonImage).where(
+                LessonImage.lesson_id == lesson.id,
+                LessonImage.knowledge_id.is_(None),
+                LessonImage.status == "approved",
+            )
         )
         if approved is not None:
             out.image = LessonIllustrationOut(url=f"/v1/lessons/{lesson.id}/image", alt=approved.alt)
@@ -316,6 +320,7 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
                     level=levels[units.key_to_id[u.id]].level,
                     source_excerpt=u.item.source_excerpt,
                     source_page=source_page(pages, u.item.source_excerpt),
+                    image=u.picture,
                 )
                 for u in units.units
             ),

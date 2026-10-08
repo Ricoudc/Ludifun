@@ -19,7 +19,7 @@ PROMPT_VERSIONS: dict[Stage, str] = {
     "material": "v9",
     "evaluation": "v1",
     "sources": "v1",
-    "illustration": "v1",
+    "illustration": "v2",
 }
 
 

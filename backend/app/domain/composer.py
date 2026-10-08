@@ -77,9 +77,10 @@ INTERMEDIATE = frozenset(
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les
 # notions sont sur une même figure, sinon l'association ; ensuite au choix carte, association,
 # frise chronologique ou memory (étape 21), trouver la correspondance, roue, boîtes ou cartes
-# aléatoires (étape 26), pour varier.
+# aléatoires (étape 26), jeux en images (étape 28), pour varier.
 PUZZLES = (
     (ActivityCode.MAP, 2),
+    (ActivityCode.PICTURE_MATCH, 1),
     (ActivityCode.MATCH, 2),
     (ActivityCode.TIMELINE, 2),
     (ActivityCode.MEMORY, 1),
@@ -87,8 +88,11 @@ PUZZLES = (
     (ActivityCode.WHEEL, 1),
     (ActivityCode.BOX, 1),
     (ActivityCode.RANDOM_CARDS, 2),
+    (ActivityCode.PICTURE_FIND, 2),
 )
-FIRST_PUZZLES = frozenset({ActivityCode.MAP, ActivityCode.MATCH})
+# Première séance : la carte, sinon les images des notions validées par le parent (étape 28),
+# sinon l'association.
+FIRST_PUZZLES = frozenset({ActivityCode.MAP, ActivityCode.PICTURE_MATCH, ActivityCode.MATCH})
 
 
 # Pour une notion : difficultés préférées (dans l'ordre) et formats autorisés (None = tous).

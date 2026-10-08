@@ -372,3 +372,31 @@ async def test_migration_0018_images_and_illustration_runs(engine: AsyncEngine, 
         ).scalar()
     assert left == 0
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0019_pictures_of_notions(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Étape 28 : une image pour la leçon et une par notion (pas deux) ; statut « pas utile » ;
+    supprimer la notion supprime son image ; retour arrière : seule l'image de la leçon reste."""
+    ids = await create_full_lesson(db)
+    await db.commit()
+    insert = text(
+        "INSERT INTO lesson_images (id, lesson_id, knowledge_id, status) VALUES (:id, :lesson, :k, :s)"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(
+            insert, {"id": uuid.uuid4(), "lesson": ids["lesson"], "k": None, "s": "not_needed"}
+        )
+        await conn.execute(
+            insert, {"id": uuid.uuid4(), "lesson": ids["lesson"], "k": ids["knowledge"], "s": "to_review"}
+        )
+    for knowledge in (None, ids["knowledge"]):  # deuxième image de la leçon ou de la notion : refusée
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.execute(
+                    insert, {"id": uuid.uuid4(), "lesson": ids["lesson"], "k": knowledge, "s": "to_review"}
+                )
+    await run_alembic("downgrade", "0018")
+    async with engine.connect() as conn:
+        left = (await conn.execute(text("SELECT count(*) FROM lesson_images"))).scalar()
+    assert left == 0  # la notion et le « pas utile » n'existaient pas avant
+    await run_alembic("upgrade", "head")

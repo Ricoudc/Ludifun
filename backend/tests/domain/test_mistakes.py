@@ -32,6 +32,12 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
     for code in (ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE, ActivityCode.DICTATION):
         game = registry.get(code)
         built.append(game.build([unit], min(game.difficulties), random.Random(3)))
+    # Jeux en images : seulement avec des images validées par le parent (étape 28).
+    units = list(load_lesson(LESSON_FILES[0]).units.values())[:3]
+    with_pictures = [u.model_copy(update={"picture": f"/img/{i}"}) for i, u in enumerate(units)]
+    for code in (ActivityCode.PICTURE_MATCH, ActivityCode.PICTURE_FIND):
+        game = registry.get(code)
+        built.append(game.build(with_pictures, min(game.difficulties), random.Random(3)))
     return built
 
 

@@ -6,20 +6,29 @@ pour des enfants, aucune demande de texte dans l'image), puis construit seul le 
 Ludifun, âge de l'enfant, format carré, texte interdit. Une proposition refusée ne produit pas
 d'image : la leçon, elle, reste entière.
 
-L'image est facultative et décorative : aucune question n'en dépend. Elle n'est montrée à
-l'enfant qu'une fois validée par le parent (statuts ci-dessous).
+L'image est facultative : l'IA dit d'abord si une image aide vraiment à retenir la leçon
+(une leçon de conjugaison ou de calcul mental s'en passe très bien) ; sinon, rien n'est dessiné
+et le parent le voit (« pas utile »), libre d'en demander une quand même. Les notions concrètes
+(un volcan, une chenille, un château fort) peuvent avoir chacune leur image : elles servent aux
+jeux « apprendre par l'image » (étape 28). Toute image n'est montrée à l'enfant qu'une fois
+validée par le parent (statuts ci-dessous).
 """
 
 import re
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from app.domain.knowledge import Grade
+from app.domain.rules import RULES
 
 SCENE_MAX = 300  # caractères : une scène simple, que le modèle d'image peut suivre
 ALT_MAX = 200
 SIZE = 1024  # carré ; SDXL est entraîné à cette taille
 REMARK_MAX = 300
+# Images des notions dessinées par leçon (le temps de la carte graphique) : engine_rules.toml.
+PICTURES_PER_LESSON = RULES.pictures.per_lesson
+NOT_NEEDED_DEFAULT = "une image n'aiderait pas à retenir cette leçon"
 
 
 class ImageStatus(StrEnum):
@@ -28,6 +37,7 @@ class ImageStatus(StrEnum):
     APPROVED = "approved"  # validée : l'enfant la voit
     REJECTED = "rejected"  # refusée par le parent (il peut demander de la refaire)
     FAILED = "failed"  # moteur absent, scène refusée par les contrôles…
+    NOT_NEEDED = "not_needed"  # l'IA juge qu'une image n'aiderait pas (le parent peut insister)
 
 
 AGES: dict[Grade, int] = {
@@ -42,6 +52,8 @@ AGES: dict[Grade, int] = {
     Grade.TROISIEME: 14,
 }
 
+# Image d'une notion, pour les jeux : un seul sujet, bien reconnaissable.
+SINGLE_SUBJECT = "one single clear main subject in the center, easy to recognize"
 STYLE = (
     "children's educational book illustration, soft flat colors, clean simple shapes, "
     "friendly and calm, plain light background, high quality"
@@ -105,12 +117,62 @@ def age_of(grade: str | None) -> int:
         return 9
 
 
-def build_prompt(scene: Scene, grade: str | None) -> ImagePrompt:
-    """Le prompt d'image : la scène, puis le style et les règles de Ludifun, toujours les mêmes."""
+def build_prompt(scene: Scene, grade: str | None, single_subject: bool = False) -> ImagePrompt:
+    """Le prompt d'image : la scène, puis le style et les règles de Ludifun, toujours les mêmes.
+    Image d'une notion (`single_subject`) : un seul sujet, au centre, pour qu'on le reconnaisse."""
+    style = f"{SINGLE_SUBJECT}, {STYLE}" if single_subject else STYLE
     return ImagePrompt(
-        prompt=f"{scene.description}. {STYLE}, made for a {age_of(grade)}-year-old child, no text",
+        prompt=f"{scene.description}. {style}, made for a {age_of(grade)}-year-old child, no text",
         negative=NEGATIVE,
     )
+
+
+@dataclass(frozen=True)
+class ProposedPicture:
+    notion: str | None  # référence de la notion donnée à l'IA (N1, N2…)
+    scene: str | None
+    alt: str | None
+
+
+@dataclass(frozen=True)
+class IllustrationPlan:
+    """Ce que le code retient de la proposition de l'IA."""
+
+    cover: Scene | None  # image de la leçon
+    cover_issue: str  # pourquoi pas d'image de la leçon ("" s'il y en a une)
+    cover_needed: bool  # False : une image n'aiderait pas (statut « pas utile »)
+    pictures: dict[str, Scene] = field(default_factory=dict)  # notion → scène
+    refused: dict[str, str] = field(default_factory=dict)  # notion → raison du refus
+
+
+def plan_illustrations(
+    useful: bool | None,
+    why: str | None,
+    scene: str | None,
+    alt: str | None,
+    proposed: Sequence[ProposedPicture],
+    notions: Sequence[str],
+    limit: int = PICTURES_PER_LESSON,
+) -> IllustrationPlan:
+    """Contrôle la proposition : image de la leçon seulement si elle aide (`useful`), au plus
+    `limit` images de notions, chacune pour une notion de la leçon, une seule fois."""
+    cover: Scene | None = None
+    if useful is False:
+        cover_issue = " ".join((why or "").split())[:ALT_MAX] or NOT_NEEDED_DEFAULT
+    else:
+        cover, cover_issue = validate_scene(scene, alt)
+    pictures: dict[str, Scene] = {}
+    refused: dict[str, str] = {}
+    for picture in proposed:
+        notion = picture.notion or ""
+        if notion not in notions or notion in pictures or len(pictures) >= limit:
+            continue
+        checked, reason = validate_scene(picture.scene, picture.alt)
+        if checked is None:
+            refused[notion] = reason
+        else:
+            pictures[notion] = checked
+    return IllustrationPlan(cover, cover_issue, useful is not False, pictures, refused)
 
 
 def clean_remark(remark: str | None) -> str | None:

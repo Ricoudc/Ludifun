@@ -32,6 +32,10 @@ class KnowledgeOut(BaseModel):
         None, description="« Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient (§116)."
     )
     source_page: int | None = Field(None, description="Page de la leçon (1, 2…) où se trouve la phrase.")
+    image: str | None = Field(
+        None,
+        description="Image qui montre la notion, validée par le parent (GET avec le jeton de l'appareil).",
+    )
 
 
 class SkillOut(BaseModel):

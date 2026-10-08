@@ -68,6 +68,10 @@ class RewardRules(_Section):
     daily_xp_cap: int = Field(ge=0)
 
 
+class PictureRules(_Section):
+    per_lesson: int = Field(ge=0, le=8)
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -76,6 +80,7 @@ class EngineRules(_Section):
     adaptation: AdaptationRules
     bonus: BonusRules
     rewards: RewardRules
+    pictures: PictureRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

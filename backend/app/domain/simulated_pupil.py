@@ -57,6 +57,32 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                     for question, answer in s["expected"].items()
                 ]
             }
+        case ActivityCode.PICTURE_MATCH:
+            words = sorted(set(s["expected"].values()))
+            return {
+                "pairs": [
+                    [
+                        picture,
+                        word
+                        if knows(s["knowledge_by_picture"][picture])
+                        else words[(words.index(word) + 1) % len(words)],
+                    ]
+                    for picture, word in s["expected"].items()
+                ]
+            }
+        case ActivityCode.PICTURE_FIND:
+            pictures = sorted(set(s["expected"].values()))
+            return {
+                "answers": [
+                    [
+                        clue,
+                        picture
+                        if knows(s["knowledge_by_clue"][clue])
+                        else pictures[(pictures.index(picture) + 1) % len(pictures)],
+                    ]
+                    for clue, picture in s["expected"].items()
+                ]
+            }
         case ActivityCode.RANDOM_CARDS:
             return {"cards": [{"id": c, "knew": knows(k)} for c, k in s["knowledge_by_card"].items()]}
         case ActivityCode.OPEN_QUESTION:

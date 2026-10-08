@@ -125,6 +125,16 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Tire une carte, essaie de te souvenir, puis retourne-la pour vérifier.",
         "Tire une carte, récite la réponse, retourne-la et sois honnête.",
     ),
+    ActivityCode.PICTURE_MATCH: (
+        "Regarde l'image. Touche-la, puis touche son mot.",
+        "Touche une image, puis le mot de la leçon qu'elle montre.",
+        "Associe chaque image au terme de la leçon qu'elle illustre.",
+    ),
+    ActivityCode.PICTURE_FIND: (
+        "Lis la phrase. Touche la bonne image.",
+        "Lis la phrase à retenir, puis touche l'image qui la montre.",
+        "Lis chaque énoncé et désigne l'image qui l'illustre.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",

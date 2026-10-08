@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import ColumnElement, select, update
 
 from app.ai.imagegen.factory import image_engine_for
 from app.ai.ports import LLMProvider, OcrProvider, PageImage
@@ -104,21 +104,38 @@ async def prepare_image(
 
 
 async def draw_image(database: Database, llm: LLMProvider, settings: Settings, lesson_id: uuid.UUID) -> None:
-    """Dessine l'image déjà marquée « en préparation » ; un échec ne touche jamais la leçon."""
+    """Images de la leçon (celle de la leçon déjà « en préparation ») ; un échec ne touche
+    jamais la leçon."""
     engine = image_engine_for(settings)
     if engine is None:
         return
     try:
-        await illustration.illustrate(database, llm, engine, settings, lesson_id)
-    except Exception:  # un bug ne doit laisser ni la leçon ni l'image « en préparation »
-        logger.exception("Leçon %s : image non préparée", lesson_id)
-        async with database.sessionmaker() as session:
-            await session.execute(
-                update(LessonImage)
-                .where(LessonImage.lesson_id == lesson_id, LessonImage.status == "generating")
-                .values(status="failed", error="erreur inattendue")
-            )
-            await session.commit()
+        await illustration.illustrate_lesson(database, llm, engine, settings, lesson_id)
+    except Exception:  # un bug ne doit laisser ni la leçon ni une image « en préparation »
+        logger.exception("Leçon %s : images non préparées", lesson_id)
+        await _unstick(database, LessonImage.lesson_id == lesson_id)
+
+
+async def redraw_image(database: Database, llm: LLMProvider, settings: Settings, image_id: uuid.UUID) -> None:
+    """Refait une image à la demande du parent (déjà « en préparation »)."""
+    engine = image_engine_for(settings)
+    if engine is None:
+        return
+    try:
+        await illustration.illustrate_one(database, llm, engine, settings, image_id)
+    except Exception:
+        logger.exception("Image %s non refaite", image_id)
+        await _unstick(database, LessonImage.id == image_id)
+
+
+async def _unstick(database: Database, which: ColumnElement[bool]) -> None:
+    async with database.sessionmaker() as session:
+        await session.execute(
+            update(LessonImage)
+            .where(which, LessonImage.status == "generating")
+            .values(status="failed", error="erreur inattendue")
+        )
+        await session.commit()
 
 
 IN_PROGRESS = ("uploaded", "reading", "analyzing", "generating")

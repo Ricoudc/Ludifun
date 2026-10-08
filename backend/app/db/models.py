@@ -317,19 +317,30 @@ class Lesson(Base):
     )
 
 
-IMAGE_STATUSES = ("generating", "to_review", "approved", "rejected", "failed")  # domain.illustration
+IMAGE_STATUSES = (  # domain.illustration
+    "generating",
+    "to_review",
+    "approved",
+    "rejected",
+    "failed",
+    "not_needed",
+)
 
 
 class LessonImage(Base):
-    """Image d'une leçon (étape 27), générée sur le PC puis validée par le parent avant que
-    l'enfant la voie. Une seule par leçon : la refaire remplace la précédente. Le fichier est dans
+    """Image d'une leçon (étape 27) ou d'une de ses notions (étape 28), générée sur le PC puis
+    validée par le parent avant que l'enfant la voie. Une seule pour la leçon (`knowledge_id`
+    vide) et une par notion : la refaire remplace la précédente. Le fichier est dans
     `LUDIFUN_MEDIA_DIR` ; ce n'est jamais une photo d'enfant ni de cahier."""
 
     __tablename__ = "lesson_images"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     lesson_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, unique=True
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False
+    )
+    knowledge_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE")
     )
     status: Mapped[str] = mapped_column(Text, nullable=False)
     file_name: Mapped[str | None] = mapped_column(Text)
@@ -340,13 +351,26 @@ class LessonImage(Base):
     engine: Mapped[str | None] = mapped_column(Text)
     model: Mapped[str | None] = mapped_column(Text)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
-    error: Mapped[str | None] = mapped_column(Text)  # technique, sans texte de leçon
+    # Raison d'un échec, ou pourquoi une image n'aiderait pas (« pas utile ») : pour le parent,
+    # jamais écrite dans les journaux.
+    error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _created_at()
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )
 
-    __table_args__ = (CheckConstraint(_in("status", IMAGE_STATUSES), name="status"),)
+    __table_args__ = (
+        CheckConstraint(_in("status", IMAGE_STATUSES), name="status"),
+        Index(
+            "uq_lesson_images_cover", "lesson_id", unique=True, postgresql_where=text("knowledge_id IS NULL")
+        ),
+        Index(
+            "uq_lesson_images_knowledge",
+            "knowledge_id",
+            unique=True,
+            postgresql_where=text("knowledge_id IS NOT NULL"),
+        ),
+    )
 
 
 class LessonPage(Base):
