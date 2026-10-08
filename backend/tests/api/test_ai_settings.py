@@ -5,9 +5,10 @@ import uuid
 from typing import Any
 
 import httpx
+import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +19,7 @@ from app.ai.providers.fake import FakeProvider
 from app.config import Settings
 from app.db.models import AiRun, FamilyAiProvider
 from app.services.ai_settings import decrypt
-from tests.api.helpers import auth, family_with_device, upload_lesson
+from tests.api.helpers import PHOTO, auth, family_with_device, upload_lesson
 
 
 class NamedFake(FakeProvider):
@@ -72,6 +73,7 @@ async def test_parent_chooses_ollama_for_the_family(
         "model": "gemma3:12b",
         "base_url": "http://localhost:11434",
         "key_hint": None,
+        "key_lost": False,
     }
 
     # Les leçons de l'enfant passent par l'IA de la famille.
@@ -129,6 +131,7 @@ async def test_each_ai_keeps_its_own_key(app: FastAPI, client: AsyncClient, db: 
         "model": "claude-sonnet-5",
         "base_url": None,
         "key_hint": "…1234",
+        "key_lost": False,
     }
     assert [(s["provider"], s["key_hint"]) for s in back["saved"]] == [
         ("ollama", None),
@@ -294,3 +297,32 @@ async def test_fallback_on_another_family_ai_when_allowed(
     assert all(r.warnings and r.warnings[0].startswith("repli") for r in runs)
     # Le réglage reste tant que le parent ne le change pas.
     assert (await put(client, parent, {"provider": "ollama"}))["fallback"] is True
+
+
+async def test_a_key_lost_with_the_server_secret_is_asked_again(
+    app: FastAPI, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ludifun réinstallé dans un autre dossier (nouveau secret, même base) : la clé de la
+    famille ne se lit plus. L'analyse n'est pas lancée avec une IA sans clé (erreur brute) :
+    l'enfant est prévenu, le parent voit qu'il faut coller la clé de nouveau."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def use_secret(secret: str) -> None:  # secret tiré au hasard dans le .env de chaque dossier
+        settings: Settings = app.state.settings.model_copy(update={"secrets_key": SecretStr(secret)})
+        app.state.settings = app.state.ai_resolver.settings = settings
+        app.state.ai_resolver.forget()
+
+    use_secret("ancien-dossier-" + "a" * 32)
+    family = await family_with_device(client)
+    await put(client, family["parent"], {"provider": "claude", "api_key": "sk-ant-secret-1234"})
+    use_secret("nouveau-dossier-" + "b" * 32)
+
+    shown = (await client.get("/v1/parent/ai", headers=auth(family["parent"]))).json()
+    assert shown["family"]["key_lost"] is True and shown["family"]["key_hint"] is None
+    files = [("pages", ("page.jpg", PHOTO, "image/jpeg"))]
+    r = await client.post("/v1/lessons", files=files, headers=auth(family["device"]))
+    assert r.status_code == 503 and r.json()["error"]["code"] == "ai_not_configured", r.text
+
+    # La clé collée de nouveau : tout repart.
+    again = await put(client, family["parent"], {"provider": "claude", "api_key": "sk-ant-secret-5678"})
+    assert again["family"]["key_lost"] is False and again["family"]["key_hint"] == "…5678"

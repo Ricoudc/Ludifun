@@ -245,6 +245,7 @@ class _AiFormState extends ConsumerState<_AiForm> {
     final lines = [
       if (_settings.family?.provider == provider.code) '✔ IA active',
       if (saved?.keyHint case final hint?) '🔑 Clé enregistrée $hint',
+      if (saved?.keyLost ?? false) '⚠️ Clé à coller de nouveau',
       if (provider.code == _code && provider.note.isNotEmpty) provider.note,
     ];
     return lines.isEmpty ? null : Text(lines.join('\n'));
@@ -421,9 +422,14 @@ class _AiFormState extends ConsumerState<_AiForm> {
             enableSuggestions: false,
             decoration: InputDecoration(
               labelText: p.needsKey ? 'Clé d\'API' : 'Clé d\'API (si le service en demande une)',
-              helperText: _saved?.keyHint == null
-                  ? null
-                  : 'Clé enregistrée ${_saved!.keyHint} : laissez vide pour la garder.',
+              helperText: switch (_saved) {
+                FamilyAi(keyLost: true) =>
+                  'La clé enregistrée ne se lit plus (Ludifun a été réinstallé dans un autre '
+                      'dossier) : collez-la de nouveau, puis enregistrez.',
+                FamilyAi(keyHint: final hint?) =>
+                  'Clé enregistrée $hint : laissez vide pour la garder.',
+                _ => null,
+              },
             ),
           ),
           if (p.keyUrl.isNotEmpty)

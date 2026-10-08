@@ -79,8 +79,23 @@ def decrypt(settings: Settings, token: bytes) -> str | None:
     try:
         return _fernet(settings).decrypt(token).decode()
     except InvalidToken:
-        logger.warning("Clé d'IA d'une famille illisible : le secret du serveur a changé.")
+        logger.warning(
+            "Clé d'IA d'une famille illisible : le secret du serveur a changé (Ludifun lancé depuis un "
+            "autre dossier ?). Le parent doit la coller de nouveau (Mon compte → Intelligence artificielle)."
+        )
         return None
+
+
+def key_lost(settings: Settings, token: bytes | None) -> bool:
+    """Vrai si une clé est enregistrée mais ne se déchiffre plus (secret du serveur changé :
+    Ludifun réinstallé dans un autre dossier, par exemple)."""
+    if not token:
+        return False
+    try:
+        _fernet(settings).decrypt(token)
+    except InvalidToken:
+        return True
+    return False
 
 
 def hint(key: str) -> str:

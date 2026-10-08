@@ -50,13 +50,20 @@ class AiProvider {
 }
 
 class FamilyAi {
-  const FamilyAi({required this.provider, this.model, this.baseUrl, this.keyHint});
+  const FamilyAi({
+    required this.provider,
+    this.model,
+    this.baseUrl,
+    this.keyHint,
+    this.keyLost = false,
+  });
 
   factory FamilyAi.fromJson(Json json) => FamilyAi(
     provider: json['provider'] as String,
     model: json['model'] as String?,
     baseUrl: json['base_url'] as String?,
     keyHint: json['key_hint'] as String?,
+    keyLost: json['key_lost'] as bool? ?? false,
   );
 
   final String provider;
@@ -65,6 +72,9 @@ class FamilyAi {
 
   /// Fin de la clé enregistrée (« …a1b2 ») ; la clé elle-même ne revient jamais.
   final String? keyHint;
+
+  /// Clé enregistrée devenue illisible (Ludifun réinstallé dans un autre dossier) : à recoller.
+  final bool keyLost;
 }
 
 class AiSettings {

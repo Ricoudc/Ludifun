@@ -38,7 +38,9 @@ chaque appel à l'IA : l'étape, le modèle, depuis combien de temps, les durée
 les dernières erreurs. Pratique pour comparer Ollama, Gemini et Claude.
 
 La clé d'API est enregistrée dans le fichier `.env` du dossier : il reste sur le PC et n'est
-jamais envoyé sur GitHub. La dépense d'IA est plafonnée à 5 $ par jour
+jamais envoyé sur GitHub. Une copie est gardée dans `%LOCALAPPDATA%\Ludifun\reglages.env` : un
+nouveau dossier (ZIP téléchargé à nouveau) reprend la même IA, la même clé et les mêmes secrets,
+sans lesquels les clés d'IA enregistrées dans l'application ne se liraient plus. La dépense d'IA est plafonnée à 5 $ par jour
 (`LUDIFUN_AI_DAILY_BUDGET_USD` dans `.env`). Pour vérifier quelle IA est active, ouvrez
 <http://localhost:8000/health/ready> : le nom de l'IA (`"ai":"claude"`, `"mistral"`…) ou `"ai":"fake"` pour l'IA factice.
 
@@ -190,6 +192,7 @@ la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 | « modèle Ollama absent » | `ollama pull qwen2.5vl:7b` (ou le modèle choisi) dans un terminal. |
 | Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Changer-IA-Ludifun.bat`). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
 | Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Voir-les-erreurs-Ludifun.bat` montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
+| « Clé d'IA d'une famille illisible : le secret du serveur a changé » dans le journal ; l'enfant voit « L'IA choisie par tes parents n'est pas prête » | Ludifun a été lancé depuis un autre dossier, avec un nouveau `.env` (secrets différents) : la base garde la clé chiffrée avec l'ancien secret. Dans l'application : espace parent → Mon compte → Intelligence artificielle, collez la clé de nouveau (« ⚠️ Clé à coller de nouveau ») et enregistrez. Ou recopiez le `.env` de l'ancien dossier puis relancez `Demarrer-Ludifun.bat`. Depuis octobre 2026, les réglages sont repris d'un dossier à l'autre. |
 | `port is already allocated` au démarrage | Un autre serveur occupe le port (souvent une autre copie de Ludifun, par exemple un ZIP téléchargé à nouveau). `Demarrer-Ludifun.bat` arrête maintenant les autres copies et n'utilise plus le port 5432 ; gardez un seul dossier de Ludifun. Si le port 8000 est pris par un autre logiciel, fermez-le. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |
 | L'outil de démonstration refuse | Le compte existe déjà : ajoutez `--replace`. |

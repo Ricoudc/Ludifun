@@ -48,6 +48,10 @@ class FamilyAiOut(BaseModel):
     model: str | None
     base_url: str | None
     key_hint: str | None = Field(description="Fin de la clé enregistrée (« …a1b2 ») ; jamais la clé.")
+    key_lost: bool = Field(
+        False,
+        description="Clé enregistrée devenue illisible (secret du serveur changé) : à coller de nouveau.",
+    )
 
 
 class AiSettingsOut(BaseModel):
@@ -150,7 +154,10 @@ async def settings_out(
             provider=row.provider,  # contrainte en base : un nom connu
             model=row.model,
             base_url=row.base_url,
-            key_hint=row.key_hint,
+            key_hint=None
+            if (lost := ai_settings.key_lost(settings, row.api_key_encrypted))
+            else row.key_hint,
+            key_lost=lost,
         )
         for name, row in rows.items()
     }

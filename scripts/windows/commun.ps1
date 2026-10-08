@@ -4,6 +4,10 @@
 $ErrorActionPreference = 'Continue'
 $Racine = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $FichierEnv = Join-Path $Racine '.env'
+# Copie des réglages dans le profil Windows : un nouveau dossier de Ludifun (ZIP téléchargé à
+# nouveau) reprend la même IA, la même clé et surtout les mêmes secrets. Sans eux, la base
+# (gardée par Docker) ne pourrait plus lire les clés d'IA enregistrées par les familles.
+$EnvCommun = Join-Path $env:LOCALAPPDATA 'Ludifun\reglages.env'
 $UrlSante = 'http://localhost:8000/health/ready'
 Set-Location $Racine
 # Les scripts n'ont pas besoin d'accéder à la base depuis Windows : un port peu utilisé évite le
@@ -82,7 +86,12 @@ function Ecrire-Env($valeurs) {
     $lignes = @('# Réglages locaux de Ludifun : ce fichier reste sur ce PC (jamais envoyé sur GitHub).')
     foreach ($cle in $valeurs.Keys) { $lignes += "$cle=$($valeurs[$cle])" }
     # UTF-8 sans BOM : Docker Compose lit mal un fichier qui commence par un BOM.
-    [System.IO.File]::WriteAllLines($FichierEnv, [string[]]$lignes, (New-Object System.Text.UTF8Encoding($false)))
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllLines($FichierEnv, [string[]]$lignes, $utf8)
+    try {
+        New-Item -ItemType Directory -Force -Path (Split-Path $EnvCommun) | Out-Null
+        [System.IO.File]::WriteAllLines($EnvCommun, [string[]]$lignes, $utf8)
+    } catch { }
 }
 
 $Fournisseurs = @(
@@ -143,10 +152,26 @@ function Adresse-Ollama($valeurs) {
 
 # Ce qui empêche le modèle de bien marcher : il ne lit pas les photos, il est trop gros pour la
 # carte graphique (tout passe par le processeur : un quart d'heure par leçon), contexte absent.
+function Conseils-Ollama-Injoignable([string]$url) {
+    $conseils = @("Ollama ne répond pas à $url")
+    $local = $url -match '//(localhost|127\.0\.0\.1|host\.docker\.internal)[:/]'
+    $repondIci = $false
+    try { Invoke-RestMethod -Uri 'http://localhost:11434/api/tags' -TimeoutSec 3 | Out-Null; $repondIci = $true } catch { }
+    if (-not $local -and $repondIci) {
+        $conseils += 'Ollama tourne sur ce PC : Changer-IA-Ludifun.bat, choisis Ollama et garde l''adresse proposée (http://host.docker.internal:11434).'
+    } elseif (-not $repondIci -and (Get-Command ollama -ErrorAction SilentlyContinue)) {
+        $conseils += 'Ollama est installé mais pas lancé : ouvre Ollama (menu Démarrer), attends l''icône du lama près de l''horloge, puis réessaie.'
+    }
+    if (-not $local) {
+        $conseils += 'Si Ollama est sur un autre PC : sur ce PC-là, setx OLLAMA_HOST 0.0.0.0 puis relancer Ollama, et autoriser le port 11434 dans le pare-feu.'
+    }
+    return $conseils
+}
+
 function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
     $conseils = @()
     $base = $url.TrimEnd('/')
-    try { $tags = Invoke-RestMethod -Uri "$base/api/tags" -TimeoutSec 5 } catch { return @("Ollama ne répond pas à $url") }
+    try { $tags = Invoke-RestMethod -Uri "$base/api/tags" -TimeoutSec 5 } catch { return (Conseils-Ollama-Injoignable $url) }
     $entree = $tags.models | Where-Object { $_.name -eq $modele -or $_.name -eq "$($modele):latest" } | Select-Object -First 1
     if (-not $entree) { return @("« $modele » n'est pas installé : ollama pull $modele") }
     $go = [math]::Round($entree.size / 1GB, 1)
@@ -294,14 +319,26 @@ function Secret-Aleatoire {
 }
 
 function Assurer-Env {
+    # Nouveau dossier : les réglages de la copie précédente de Ludifun sont repris.
+    if (-not (Test-Path $FichierEnv) -and (Test-Path $EnvCommun)) {
+        Copy-Item $EnvCommun $FichierEnv
+        Ok 'Réglages repris de la copie précédente de Ludifun (IA, clé, secrets).'
+    }
     $valeurs = Lire-Env
     if (-not $valeurs['LUDIFUN_AI_PROVIDER']) { Choisir-IA }
     # Secrets propres à ce PC (connexions des parents, clés d'IA chiffrées) : tirés une fois pour
     # toutes. Les clés d'IA déjà enregistrées sont rechiffrées au démarrage du serveur.
     $valeurs = Lire-Env
+    $communs = [ordered]@{}
+    if (Test-Path $EnvCommun) {
+        foreach ($ligne in Get-Content $EnvCommun -Encoding UTF8) {
+            if ($ligne -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$') { $communs[$Matches[1]] = $Matches[2].Trim() }
+        }
+    }
     $ajout = $false
     foreach ($nom in 'LUDIFUN_JWT_SECRET', 'LUDIFUN_SECRETS_KEY') {
-        if (-not $valeurs[$nom]) { $valeurs[$nom] = Secret-Aleatoire; $ajout = $true }
+        # Les secrets déjà tirés sur ce PC d'abord : un nouveau secret rendrait les clés illisibles.
+        if (-not $valeurs[$nom]) { $valeurs[$nom] = if ($communs[$nom]) { $communs[$nom] } else { Secret-Aleatoire }; $ajout = $true }
     }
     if ($ajout) {
         Ecrire-Env $valeurs

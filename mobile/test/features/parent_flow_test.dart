@@ -817,6 +817,48 @@ void main() {
     );
   }
 
+  testWidgets('clé d\'IA illisible après une réinstallation : le parent la recolle', (
+    tester,
+  ) async {
+    const claude = {
+      'provider': 'claude',
+      'model': null,
+      'base_url': null,
+      'key_hint': null,
+      'key_lost': true,
+    };
+    server.on(
+      'GET /v1/parent/ai',
+      (_) => (
+        200,
+        {
+          'family': claude,
+          'saved': [claude],
+          'server_provider': 'ollama',
+          'providers': [
+            {
+              'code': 'claude',
+              'label': 'Claude (Anthropic)',
+              'note': '',
+              'needs_key': true,
+              'custom_url': false,
+              'default_url': null,
+              'default_model': 'claude-opus-5',
+              'key_url': 'https://console.anthropic.com',
+              'recommended': false,
+              'available': true,
+            },
+          ],
+        },
+      ),
+    );
+    final container = await launch(tester);
+    await go(tester, container, Routes.aiSettings);
+    expect(find.textContaining('⚠️ Clé à coller de nouveau'), findsOneWidget);
+    expect(find.textContaining('La clé enregistrée ne se lit plus'), findsOneWidget);
+    expect(find.textContaining('🔑 Clé enregistrée'), findsNothing);
+  });
+
   testWidgets('une IA qui ne fonctionne pas : prévenu avant d\'enregistrer', (tester) async {
     final saved = <Object?>[];
     server

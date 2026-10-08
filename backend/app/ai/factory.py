@@ -89,6 +89,16 @@ def _key(settings: Settings, given: str | None) -> str:
     return key
 
 
+def _family_key(settings: Settings, given: str | None) -> str:
+    """Clé de l'IA choisie par une famille (sinon celle du serveur). Sans clé, l'IA n'est pas
+    construite : une analyse lancée sans clé échouerait plus loin avec une erreur brute (clé
+    devenue illisible après un changement du secret du serveur, par exemple)."""
+    key = _key(settings, given)
+    if not key:
+        raise AiConfigError("clé d'API manquante ou illisible : collez-la de nouveau dans l'espace parent")
+    return key
+
+
 def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider:
     if choice is not None:
         update: dict[str, object] = {"ai_provider": choice.provider, "ai_base_url": choice.base_url or None}
@@ -110,8 +120,8 @@ def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider
             settings.ai_base_url or settings.ollama_base_url, models, settings.ollama_num_ctx
         )
     if provider == "claude":
-        key = _key(settings, api_key)
-        client = anthropic.AsyncAnthropic(api_key=key) if api_key else None
+        key = _family_key(settings, api_key) if choice is not None else _key(settings, api_key)
+        client = anthropic.AsyncAnthropic(api_key=key) if key else None
         return ClaudeProvider(
             models=models,
             efforts={
@@ -128,7 +138,9 @@ def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider
     base_url = settings.ai_base_url or PRESETS[provider].base_url
     if not base_url:
         raise AiConfigError("adresse manquante : l'adresse de l'API compatible OpenAI (LUDIFUN_AI_BASE_URL)")
-    return OpenAICompatibleProvider(provider, base_url, _key(settings, api_key), models)
+    needs_key = choice is not None and provider != "compatible" and PRESETS[provider].key_env
+    key = _family_key(settings, api_key) if needs_key else _key(settings, api_key)
+    return OpenAICompatibleProvider(provider, base_url, key, models)
 
 
 def build_providers(settings: Settings, choice: AiChoice | None = None) -> tuple[OcrProvider, LLMProvider]:
