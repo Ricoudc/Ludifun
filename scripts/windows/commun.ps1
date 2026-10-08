@@ -399,3 +399,30 @@ function Arreter-Moteur-Images {
     $processus = Get-Process -Name 'sd-server' -ErrorAction SilentlyContinue
     if ($processus) { $processus | Stop-Process -Force; Ok 'Moteur d''images arrêté' }
 }
+
+# --- Recherche sur les sites éducatifs (étapes 24 et 29, facultative) --------------------
+
+$UrlRecherche = 'http://recherche:8080'
+
+function Recherche-Active($valeurs) {
+    return [bool]$valeurs['LUDIFUN_WEB_SEARCH_URL'] -and (($valeurs['COMPOSE_PROFILES'] -split ',') -contains 'recherche')
+}
+
+# Le moteur SearXNG tourne dans Docker (profil « recherche ») ; Ludifun ne lit que les sites
+# autorisés (Vikidia, Lumni, Éduscol…). Chaque parent l'autorise ensuite dans l'application.
+function Regler-Recherche($valeurs, [bool]$active) {
+    $profils = @(($valeurs['COMPOSE_PROFILES'] -split ',') | Where-Object { $_ -and $_ -ne 'recherche' })
+    if ($active) {
+        $profils += 'recherche'
+        $valeurs['LUDIFUN_WEB_SEARCH_URL'] = $UrlRecherche
+    } else {
+        $valeurs.Remove('LUDIFUN_WEB_SEARCH_URL')
+    }
+    if ($profils.Count) { $valeurs['COMPOSE_PROFILES'] = $profils -join ',' } else { $valeurs.Remove('COMPOSE_PROFILES') }
+    Ecrire-Env $valeurs
+}
+
+function Expliquer-Recherche {
+    Write-Host 'Dans l''application : espace parent → Mon compte → Intelligence artificielle →'
+    Write-Host '« 📚 Utiliser des sites éducatifs de confiance » (chaque famille décide pour elle).'
+}

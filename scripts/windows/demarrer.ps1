@@ -13,6 +13,18 @@ if ($reglages['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
 }
 Demarrer-Moteur-Images $reglages
 
+# Une fois : proposer la recherche sur les sites éducatifs (explications et exercices sourcés).
+$marqueRecherche = Join-Path $Racine '.ludifun-recherche'
+if (-not (Recherche-Active $reglages) -and -not (Test-Path $marqueRecherche)) {
+    Write-Host ''
+    Write-Host 'Ludifun peut chercher sur des sites éducatifs de confiance (Vikidia, Lumni, Éduscol…) :'
+    Write-Host 'explications avec leur source et questions d''entraînement en plus de la leçon.'
+    Write-Host 'Seule la notion part sur Internet, jamais le prénom de l''enfant ni sa photo.'
+    $oui = Read-Host 'L''activer sur ce PC ? (O/N, conseillé : O)'
+    if ($oui -match '^[oOyY]') { Regler-Recherche $reglages $true; Ok 'Recherche activée'; $reglages = Lire-Env }
+    Set-Content -Path $marqueRecherche -Value 'question posée'
+}
+
 Etape 'Démarrage du serveur (la première fois, ou après une mise à jour : plusieurs minutes)…'
 Arreter-Anciennes-Copies
 & docker compose up -d --build
@@ -39,4 +51,5 @@ Write-Host 'Parent : crée ton compte dans l''appli (« Je suis un parent »), o
 Write-Host '         parent.demo@example.fr / demo-ludifun-2026'
 Write-Host 'Enfant : dans l''espace parent, ouvre l''enfant → « Lier un appareil » pour avoir un code.'
 Write-Host 'IA    : l''espace parent → Mon compte → « Intelligence artificielle » (Ollama conseillé).'
+if (Recherche-Active (Lire-Env)) { Expliquer-Recherche }
 Attendre-Fermeture

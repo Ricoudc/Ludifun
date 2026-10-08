@@ -491,20 +491,22 @@ class _AiFormState extends ConsumerState<_AiForm> {
             ),
           ),
         ],
-        if (_settings.webSourcesAvailable) ...[
-          const SizedBox(height: 16),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _settings.webSources,
-            onChanged: _busy ? null : _setWebSources,
-            title: const Text('📚 Chercher des explications sur des sites éducatifs'),
-            subtitle: const Text(
-              'Quand la leçon ne donne pas d\'exemple, « Je n\'ai pas compris » propose une '
-              'explication tirée de Vikidia, Lumni, Éduscol… avec sa source. Seule la notion part '
-              'sur Internet, jamais le prénom de l\'enfant ni sa photo.',
-            ),
+        const SizedBox(height: 16),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: _settings.webSourcesAvailable && _settings.webSources,
+          onChanged: _busy || !_settings.webSourcesAvailable ? null : _setWebSources,
+          title: const Text('📚 Utiliser des sites éducatifs de confiance'),
+          subtitle: Text(
+            _settings.webSourcesAvailable
+                ? 'Vikidia, Lumni, Éduscol… : « Je n\'ai pas compris » propose une explication '
+                      'avec sa source, et des questions d\'entraînement s\'ajoutent à la leçon '
+                      '(« D\'après … »). Seule la notion part sur Internet, jamais le prénom de '
+                      'l\'enfant ni sa photo.'
+                : 'Pas encore possible : le serveur n\'a pas de moteur de recherche. Sur le PC '
+                      'du serveur, double-cliquez sur Activer-Recherche-Ludifun.bat, puis revenez ici.',
           ),
-        ],
+        ),
         if (family != null) ...[
           const SizedBox(height: 12),
           TextButton(

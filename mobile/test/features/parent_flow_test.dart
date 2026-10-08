@@ -679,8 +679,8 @@ void main() {
       {'provider': 'ollama', 'base_url': 'http://localhost:11434'},
     ]);
     expect(find.text('✅ Ollama répond, « qwen2.5vl:7b » est installé.'), findsOneWidget);
-    // Serveur sans moteur de recherche : la recherche de sources n'est pas proposée (étape 24).
-    expect(find.textContaining('sites éducatifs'), findsNothing);
+    // Serveur sans moteur de recherche : l'interrupteur dit comment l'installer (étape 24).
+    expect(find.textContaining('Activer-Recherche-Ludifun.bat'), findsOneWidget);
 
     // Choisir un autre modèle le vérifie aussitôt ; l'enregistrement n'en refait pas un.
     await tap(tester, find.widgetWithText(ActionChip, 'llama3:8b'));
@@ -745,59 +745,70 @@ void main() {
     expect(find.text('Collez la clé : la vérification se lancera toute seule.'), findsOneWidget);
   });
 
-  testWidgets('étape 24 : le parent permet les explications de sites éducatifs', (tester) async {
-    var webSources = false;
-    const available = true;
-    Map<String, Object?> settings() => {
-      'family': null,
-      'saved': <Object>[],
-      'server_provider': 'fake',
-      'web_sources': webSources,
-      'web_sources_available': available,
-      'providers': [
-        {
-          'code': 'fake',
-          'label': 'Démonstration (sans IA)',
-          'note': '',
-          'needs_key': false,
-          'custom_url': false,
-          'default_url': null,
-          'default_model': null,
-          'key_url': '',
-          'recommended': true,
-          'available': true,
-        },
-      ],
-    };
-    final sent = <Object?>[];
-    server
-      ..on('GET /v1/parent/ai', (_) => (200, settings()))
-      ..on(
-        'POST /v1/parent/ai/test',
-        (_) => (200, {'ok': true, 'message': 'OK', 'models': <Object>[]}),
-      )
-      ..on('PUT /v1/parent/ai/sources', (r) {
-        sent.add(r.data);
-        webSources = (r.data as Map<String, dynamic>)['enabled'] as bool;
-        return (200, settings());
-      });
-    final title = find.widgetWithText(
-      SwitchListTile,
-      '📚 Chercher des explications sur des sites éducatifs',
+  for (final available in [true, false]) {
+    testWidgets(
+      'étape 24 : le parent permet les sites éducatifs (moteur de recherche : $available)',
+      (tester) async {
+        var webSources = false;
+        Map<String, Object?> settings() => {
+          'family': null,
+          'saved': <Object>[],
+          'server_provider': 'fake',
+          'web_sources': webSources,
+          'web_sources_available': available,
+          'providers': [
+            {
+              'code': 'fake',
+              'label': 'Démonstration (sans IA)',
+              'note': '',
+              'needs_key': false,
+              'custom_url': false,
+              'default_url': null,
+              'default_model': null,
+              'key_url': '',
+              'recommended': true,
+              'available': true,
+            },
+          ],
+        };
+        final sent = <Object?>[];
+        server
+          ..on('GET /v1/parent/ai', (_) => (200, settings()))
+          ..on(
+            'POST /v1/parent/ai/test',
+            (_) => (200, {'ok': true, 'message': 'OK', 'models': <Object>[]}),
+          )
+          ..on('PUT /v1/parent/ai/sources', (r) {
+            sent.add(r.data);
+            webSources = (r.data as Map<String, dynamic>)['enabled'] as bool;
+            return (200, settings());
+          });
+        final title = find.widgetWithText(
+          SwitchListTile,
+          '📚 Utiliser des sites éducatifs de confiance',
+        );
+        await launch(tester);
+        await tap(tester, find.byTooltip('Mon compte'));
+        await tap(tester, find.text('Intelligence artificielle'));
+        await tester.ensureVisible(title);
+        expect(tester.widget<SwitchListTile>(title).value, isFalse);
+        if (!available) {
+          // Pas de moteur de recherche sur le serveur : l'interrupteur dit comment l'installer.
+          expect(tester.widget<SwitchListTile>(title).onChanged, isNull);
+          expect(find.textContaining('Activer-Recherche-Ludifun.bat'), findsOneWidget);
+          return;
+        }
+        expect(find.textContaining('des questions d\'entraînement s\'ajoutent'), findsOneWidget);
+        expect(find.textContaining('jamais le prénom de l\'enfant ni sa photo'), findsOneWidget);
+        await tester.tap(title);
+        await tester.pumpAndSettle();
+        expect(sent, [
+          {'enabled': true},
+        ]);
+        expect(tester.widget<SwitchListTile>(title).value, isTrue);
+      },
     );
-    await launch(tester);
-    await tap(tester, find.byTooltip('Mon compte'));
-    await tap(tester, find.text('Intelligence artificielle'));
-    await tester.ensureVisible(title);
-    expect(tester.widget<SwitchListTile>(title).value, isFalse);
-    expect(find.textContaining('jamais le prénom de l\'enfant ni sa photo'), findsOneWidget);
-    await tester.tap(title);
-    await tester.pumpAndSettle();
-    expect(sent, [
-      {'enabled': true},
-    ]);
-    expect(tester.widget<SwitchListTile>(title).value, isTrue);
-  });
+  }
 
   testWidgets('une IA qui ne fonctionne pas : prévenu avant d\'enregistrer', (tester) async {
     final saved = <Object?>[];
