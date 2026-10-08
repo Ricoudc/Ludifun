@@ -35,7 +35,7 @@ from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, NothingToReview
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
-from app.domain.text import clean_markup, strip_markup
+from app.domain.text import display_text
 from app.services import ai_budget, goals, learning, rewards
 from app.services.answer_evaluation import AnswerEvaluator
 
@@ -60,18 +60,19 @@ def attempt_summary(attempt: Attempt | None) -> AttemptSummary | None:
 
 def item_out(item: SessionItem, attempt: Attempt | None = None, grade: str | None = None) -> SessionItemOut:
     return SessionItemOut(
-        instruction=instructions.instruction(item.activity_type, grade),
+        instruction=display_text(instructions.instruction(item.activity_type, grade)),
         help_available=item.activity_type not in MULTI_KNOWLEDGE,
         help_level=item.help_level,
-        intro=item.intro,
+        intro=display_text(item.intro),
         id=item.id,
         position=item.position,
         block=item.block,
         type=item.activity_type,
         difficulty=item.difficulty,
         knowledge_ids=item.knowledge_ids,
-        # Jamais la solution ; sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage.
-        payload=clean_markup(item.payload),
+        # Jamais la solution ; sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage,
+        # avec la typographie française (« ? » jamais seul en début de ligne).
+        payload=display_text(item.payload),
         attempt=attempt_summary(attempt),
     )
 
@@ -212,10 +213,10 @@ async def submit_attempt(
         item_id=item.id,
         result=grade.result,
         score=grade.score,
-        correct_answer=strip_markup(grade.correct_answer),
-        tip=grade.tip and strip_markup(grade.tip),
-        explanation=grade.explanation and strip_markup(grade.explanation),
-        details=clean_markup(grade.details),
+        correct_answer=display_text(grade.correct_answer),
+        tip=grade.tip and display_text(grade.tip),
+        explanation=grade.explanation and display_text(grade.explanation),
+        details=display_text(grade.details),
         inserted_items=[item_out(i, grade=child.grade) for i in adaptation.inserted],
         engagement_hint=hint,
     )
@@ -244,8 +245,8 @@ async def get_help(
         level=step.level,
         kind=step.kind.value,
         title=step.title,
-        text=step.text,
-        lines=step.lines,
+        text=display_text(step.text),
+        lines=display_text(step.lines),
         last=step.last,
     )
 

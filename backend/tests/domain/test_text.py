@@ -5,6 +5,8 @@ from app.domain.text import (
     compatible_natures,
     contains_words,
     damerau_levenshtein,
+    display_text,
+    french_spacing,
     fuzzy_contains,
     matches_with_typos,
     nature,
@@ -96,3 +98,28 @@ def test_a_multiplication_table_is_found_whatever_the_sign() -> None:
         assert fuzzy_contains(table, excerpt), excerpt
     assert not fuzzy_contains(table, "7 × 6 = 42")
     assert normalize("Max a 3 ans") == "max a 3 ans"
+
+
+@pytest.mark.parametrize(
+    "text, shown",
+    [
+        ("Quelle année ?", "Quelle année ?"),  # espace fine insécable devant ? ! ;
+        ("Bravo !", "Bravo !"),
+        ("À retenir : la règle", "À retenir : la règle"),  # insécable devant :
+        ("« Le chat »", "« Le chat »"),
+        ("12 : 3 = 4", "12 : 3 = 4"),
+        ("Pourquoi?", "Pourquoi?"),  # rien n'est ajouté
+        ("https://fr.vikidia.org", "https://fr.vikidia.org"),
+    ],
+)
+def test_french_spacing(text: str, shown: str) -> None:
+    assert french_spacing(text) == shown
+
+
+def test_display_text_cleans_a_whole_payload() -> None:
+    payload = {"prompt": "Le <b>3</b>e siècle ?", "choices": [{"id": "a", "text": "Oui !"}], "n": 3}
+    assert display_text(payload) == {
+        "prompt": "Le 3e siècle ?",
+        "choices": [{"id": "a", "text": "Oui !"}],
+        "n": 3,
+    }

@@ -4,6 +4,7 @@ from httpx import AsyncClient
 
 from app.ai.providers.fake import FakeProvider
 from app.domain.instructions import instruction, writing_rules
+from app.domain.text import display_text
 from tests.api.helpers import add_child, auth, link_device, register, upload_lesson
 
 
@@ -23,4 +24,4 @@ async def test_instructions_follow_the_child_grade(client: AsyncClient, fake_llm
         ).json()
         assert session["items"]
         for item in session["items"]:
-            assert item["instruction"] == instruction(item["type"], grade)
+            assert item["instruction"] == display_text(instruction(item["type"], grade))

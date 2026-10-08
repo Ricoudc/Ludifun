@@ -50,6 +50,35 @@ def clean_markup(value: Any) -> Any:
     return value
 
 
+# Typographie française : « ? », « ! », « ; » et « » » jamais seuls en début de ligne. L'espace
+# déjà écrite devant devient insécable (fine devant ! ? ;), rien n'est ajouté ni retiré.
+_BEFORE_THIN = re.compile(r"[ \u00a0\u202f]+(?=[!?;])")
+_BEFORE_COLON = re.compile(r"[ \u00a0\u202f]+(?=[:»])")
+_AFTER_GUILLEMET = re.compile(r"(?<=«)[ \u00a0\u202f]+")
+
+
+def french_spacing(text: str) -> str:
+    """« Quelle année ? » → l'espace devant « ? » insécable, pour l'affichage seulement : la
+    leçon et les réponses enregistrées gardent leur texte."""
+    if not any(c in text for c in "!?;:«»"):
+        return text
+    text = _BEFORE_THIN.sub("\u202f", text)
+    text = _BEFORE_COLON.sub("\u00a0", text)
+    return _AFTER_GUILLEMET.sub("\u00a0", text)
+
+
+def display_text(value: Any) -> Any:
+    """Ce que voit l'enfant : sans balises (`clean_markup`), avec la typographie française, sur
+    toutes les chaînes d'une structure JSON."""
+    if isinstance(value, str):
+        return french_spacing(strip_markup(value))
+    if isinstance(value, dict):
+        return {key: display_text(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [display_text(item) for item in value]
+    return value
+
+
 def strip_accents(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", text)
     return "".join(c for c in decomposed if not unicodedata.combining(c))

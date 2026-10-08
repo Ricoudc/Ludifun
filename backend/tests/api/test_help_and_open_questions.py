@@ -183,7 +183,7 @@ async def test_open_question_graded_by_the_ai(
     assert r.status_code == 200, r.text
     correction = r.json()
     assert correction["result"] == "incorrect" and correction["score"] == 0.33
-    assert correction["explanation"] == "C'est un début : relis la correction."  # retour de l'évaluateur
+    assert correction["explanation"] == "C'est un début\u00a0: relis la correction."  # retour de l'évaluateur
     assert [d["found"] for d in correction["details"]] == [True, False, False]
     assert correction["correct_answer"].startswith("Les deux fractions ont le même dénominateur")
     run = await db.scalar(select(AiRun).where(AiRun.stage == "evaluation"))

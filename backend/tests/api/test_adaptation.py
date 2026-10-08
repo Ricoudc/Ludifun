@@ -68,7 +68,7 @@ async def test_two_failures_trigger_a_remediation(
     assert inserted_after is not None and len(remediations) == 2
     assert {tuple(r["knowledge_ids"]) for r in remediations} == {(str(etats_generaux),)}
     assert {r["block"] for r in remediations} == {"remediation"}
-    assert remediations[0]["intro"].startswith("📖 Rappel : ") and remediations[1]["intro"] is None
+    assert remediations[0]["intro"].startswith("📖 Rappel\u00a0: ") and remediations[1]["intro"] is None
     ordered = (await client.get(f"/v1/sessions/{session['id']}", headers=auth(token))).json()["items"]
     ids = [i["id"] for i in ordered]
     after = ids.index(inserted_after["id"])

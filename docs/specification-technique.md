@@ -917,6 +917,14 @@ voix (le mot n'est jamais lu en plus). Sans voix française, un message demande 
 lire. Rien n'est envoyé au serveur : la lecture se fait sur le téléphone. Proposé à toutes les
 classes (un grand peut s'en servir, ou l'ignorer).
 
+### 5.25 Typographie française (octobre 2026)
+
+« ? », « ! », « ; », « : » et « » » ne restent plus seuls en début de ligne sur le téléphone :
+l'espace déjà écrite devant devient insécable (fine devant ! ? ;), après « aussi
+(`domain/text.french_spacing`). Appliqué à la sortie de l'API des séances seulement
+(`display_text` : questions, consignes, rappels, corrections, aides) ; la leçon, le matériel et
+les réponses enregistrées gardent leur texte, la correction n'en dépend pas.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
