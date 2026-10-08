@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.domain.equivalence import all_different, same_answer, separate_boxes, statement_truth
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
     ATTRIBUTE_MODELS,
@@ -327,19 +328,24 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
     raw_distractors = raw.get("distractors")
     distractors: list[str] = []
     misconceptions: list[str | None] = []
-    seen = {normalize(answer)}
     for d in raw_distractors if isinstance(raw_distractors, list) else []:
         # Matériel v2 : {"text", "misconception"} ; v1 : le texte seul.
         text = str(d.get("text", "") if isinstance(d, dict) else d).strip()
         kind = d.get("misconception") if isinstance(d, dict) else None
-        if text and normalize(text) not in seen and compatible_natures(answer, text):
-            seen.add(normalize(text))
+        # « 8 + 7 » pour la réponse « 7 + 8 » : deux bonnes réponses, le distracteur est écarté.
+        if (
+            text
+            and not any(same_answer(text, seen) for seen in [answer, *distractors])
+            and compatible_natures(answer, text)
+        ):
             distractors.append(text)
             misconceptions.append(kind if kind in ErrorType else None)
     if answer and stem and contains_words(stem, answer):
         return None, "l'énoncé contient la réponse"
     if len(distractors) < 3:
-        return None, "moins de 3 distracteurs valides (distincts, différents de la réponse, de même nature)"
+        return None, (
+            "moins de 3 distracteurs valides (distincts, de valeur différente de la réponse, de même nature)"
+        )
     try:
         data = {**raw, "distractors": distractors[:3], "misconceptions": misconceptions[:3]}
         if not any(misconceptions[:3]):
@@ -441,6 +447,8 @@ def validate_material(
             rejected.append(Rejection(f"true_statements[{i}]", absent))
         elif is_instruction(text):
             rejected.append(Rejection(f"true_statements[{i}]", INSTRUCTION_REASON))
+        elif statement_truth(text) is False:
+            rejected.append(Rejection(f"true_statements[{i}]", "calcul faux donné pour vrai"))
         else:
             true_statements.append(text)
 
@@ -455,6 +463,8 @@ def validate_material(
             rejected.append(Rejection(f"false_statements[{i}]", absent))
         elif is_instruction(text):
             rejected.append(Rejection(f"false_statements[{i}]", INSTRUCTION_REASON))
+        elif statement_truth(text) is True:
+            rejected.append(Rejection(f"false_statements[{i}]", "calcul juste donné pour faux"))
         elif any(normalize(text) == normalize(t) for t in truths):
             rejected.append(Rejection(f"false_statements[{i}]", "identique à une affirmation vraie"))
         elif any(_without_negation(text) == _without_negation(t) for t in truths):
@@ -576,7 +586,9 @@ def _check_sorting(raw: Any, rejected: list[Rejection]) -> Sorting | None:
         else "il faut 2 à 4 éléments par case"
         if any(not SORTING_MEMBERS[0] <= len(box.members) <= SORTING_MEMBERS[1] for box in boxes)
         else "un élément est dans deux cases, ou deux cases ont le même nom"
-        if len(set(members)) != len(members) or len(names) != len(boxes)
+        if len(set(members)) != len(members)
+        or len(names) != len(boxes)
+        or not separate_boxes([box.members for box in boxes])
         else "un élément porte le nom d'une case (la réponse serait donnée)"
         if names & set(members)
         else None
@@ -600,7 +612,11 @@ def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
         rejected.append(Rejection("sequence", absent))
         return None
     items = [normalize(i) for i in sequence.items]
-    if not SEQUENCE_ITEMS[0] <= len(items) <= SEQUENCE_ITEMS[1] or len(set(items)) != len(items):
+    if (
+        not SEQUENCE_ITEMS[0] <= len(items) <= SEQUENCE_ITEMS[1]
+        or len(set(items)) != len(items)
+        or not all_different(sequence.items)
+    ):
         rejected.append(Rejection("sequence", "il faut 3 à 6 éléments, tous différents"))
         return None
     return sequence

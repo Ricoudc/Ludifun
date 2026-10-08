@@ -30,7 +30,7 @@ def is_number(token: str) -> bool:
     return bool(_NUMBER.match(token.strip()))
 
 
-def _evaluate(tokens: Sequence[str]) -> Fraction | None:
+def evaluate(tokens: Sequence[str]) -> Fraction | None:
     """Valeur de « nombre signe nombre … » ; `None` si ce n'est pas un calcul."""
     if len(tokens) % 2 == 0:
         return None
@@ -70,7 +70,7 @@ def equality_holds(tokens: Sequence[str]) -> bool | None:
     if sum(1 for t in tokens if t.strip() == "=") != 1:
         return None
     middle = [t.strip() for t in tokens].index("=")
-    left, right = _evaluate(tokens[:middle]), _evaluate(tokens[middle + 1 :])
+    left, right = evaluate(tokens[:middle]), evaluate(tokens[middle + 1 :])
     if left is None or right is None:
         return None
     return left == right

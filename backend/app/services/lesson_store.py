@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
 from app.domain.duplicates import deduplicate
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, MaterialQuestion
+from app.domain.equivalence import consistent
+from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, MaterialQuestion, Subject
 from app.domain.mastery import Mastery, lesson_review
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
 from app.domain.validation import Rejection
@@ -190,8 +191,10 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         units.append(
             KnowledgeUnit(
                 item=domain_item,
-                material=KnowledgeMaterial.model_validate(material.material),
+                # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
+                material=consistent(KnowledgeMaterial.model_validate(material.material)),
                 picture=pictures.get(item.id),
+                subject=lesson.subject if lesson.subject in Subject else None,
             )
         )
         key_to_id[item.key] = item.id

@@ -18,6 +18,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.equivalence import separate_boxes
 from app.domain.errors import ErrorType
 from app.domain.knowledge import ClassificationAttributes, KnowledgeType, KnowledgeUnit
 from app.domain.text import normalize
@@ -65,6 +66,7 @@ class Classify(ActivityType):
             and len(members) >= MIN_ITEMS
             and len(set(members)) == len(members)
             and (len(names) == len(categories))
+            and separate_boxes([items for _, items in categories])
         )
 
     def _build(

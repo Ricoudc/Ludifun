@@ -359,6 +359,9 @@ class KnowledgeUnit(_Model):
     # Image qui montre la notion, validée par le parent (étape 28) : son adresse, opaque pour le
     # domaine. Absente le plus souvent : les jeux en images ne sont proposés qu'avec elle.
     picture: str | None = None
+    # Matière de la leçon : en français (et en anglais), l'orthographe est ce qui est appris,
+    # une réponse écrite doit être exacte. Absente : tolérance des petites fautes de frappe.
+    subject: Subject | None = None
 
     @model_validator(mode="after")
     def _same_knowledge(self) -> "KnowledgeUnit":

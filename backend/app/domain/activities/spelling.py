@@ -26,6 +26,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.equivalence import written_match
 from app.domain.errors import written_answer_error
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 
@@ -35,10 +36,8 @@ SCRAMBLE_LETTERS = (3, 12)  # mots assez longs pour un jeu, assez courts pour un
 
 
 def same_spelling(given: str, word: str) -> bool:
-    def clean(text: str) -> str:
-        return " ".join(text.replace("’", "'").split()).casefold()
-
-    return clean(given) == clean(word)
+    """Accents compris ; ni majuscules, ni point final, ni « oe » tapé pour « œ »."""
+    return written_match(given, word, exact_spelling=True)
 
 
 def _word(unit: KnowledgeUnit) -> str:

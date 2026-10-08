@@ -863,6 +863,33 @@ la suite : réussi, en partie, raté malgré l'aide, ou pas de réponse. `Dashbo
 (nouveau champ facultatif) : questions avec aide cette semaine, montrées sur le raccourci
 « Aides demandées » du tableau de bord. L'export des données de l'enfant les contient.
 
+### 5.22 Justesse des corrections (octobre 2026)
+
+Un enfant qui a juste ne doit jamais lire « faux », et une faute ne doit jamais passer pour juste
+(« 8 + 7 = 15 » refusé, signalé par la famille). Règles dans `domain/equivalence.py` :
+
+| Cas | Avant | Maintenant |
+|---|---|---|
+| « 0.50 » pour « 0,5 », « 1000 » pour « 1 000 » | refusé | juste (même valeur) |
+| « 8 + 7 » pour « 7 + 8 », « 4 x 3 » pour « 3 × 4 » | refusé | juste (mêmes nombres, mêmes signes) |
+| « quinze » pour « 15 » (et l'inverse) | refusé | juste, sauf si la consigne dit « en lettres » / « en chiffres », et sauf en français |
+| « 15cm », « 3h30 » | refusé | juste |
+| « en 1788 » pour « en 1789 », « 14 juillet 1798 » | accepté (faute tolérée) | refusé : une faute de frappe ne change jamais un nombre |
+| « 3 » pour « -3 », « 7 - 8 » pour « 7 + 8 » | accepté (signes effacés) | refusé : les signes comptent |
+| Texte à trous en français ou en anglais : « chanter » pour « chanté », « a » pour « à » | accepté | refusé : l'orthographe est ce qui est appris (majuscule, point final et « oe » pour « œ » tolérés) |
+
+La matière vient de la leçon (`KnowledgeUnit.subject`, nouveau champ facultatif) ; une activité
+construite avant ce réglage se corrige comme avant. « 1/2 » pour « 0,5 » reste refusé : l'autre
+écriture est souvent ce qui est demandé.
+
+Questions qui auraient deux bonnes réponses : un distracteur de même valeur que la réponse
+(« 8 + 7 » pour « 7 + 8 », « 1/2 » pour « 0,5 », « 15 » pour « quinze » — mais pas « un » pour
+« une », des articles), une affirmation « fausse » que le calcul dit juste (« 8 + 7 = 15 ») ou
+l'inverse, deux éléments de même valeur à remettre dans l'ordre, à relier ou rangés dans deux cases
+différentes (dans la même case, « 0,5 » et « 2/4 » restent permis). Ils sont écartés au contrôle
+du matériel (`validation.py`, raison enregistrée) et, pour les leçons analysées avant, au moment
+de jouer (`equivalence.consistent`, appelé par `lesson_store.load_units`).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

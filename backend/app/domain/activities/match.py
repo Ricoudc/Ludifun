@@ -12,6 +12,7 @@ from app.domain.activities.base import (
     ResponseModel,
     parse_response,
 )
+from app.domain.equivalence import all_different
 from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
 from app.domain.text import gives_away, normalize
@@ -52,7 +53,13 @@ class Match(ActivityType):
         lefts = {normalize(p.left) for p in pairs}
         rights = {normalize(p.right) for p in pairs}
         # Deux éléments identiques (même d'un côté à l'autre) rendraient l'association ambiguë.
-        return len({u.id for u in units}) == len(units) == len(lefts) == len(rights) and not lefts & rights
+        # « 0,5 » et « 1/2 » à droite : deux bonnes réponses pour la même case.
+        return (
+            len({u.id for u in units}) == len(units) == len(lefts) == len(rights)
+            and not lefts & rights
+            and all_different([p.left for p in pairs])
+            and all_different([p.right for p in pairs])
+        )
 
     def _build(
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random

@@ -19,6 +19,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.equivalence import all_different
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
     DateAttributes,
@@ -120,7 +121,12 @@ class Order(ActivityType):
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
         steps = self._steps(unit)
-        return len(steps) >= MIN_STEPS and len({normalize(s) for s in steps}) == len(steps)
+        # Deux éléments de même valeur (« 0,5 » et « 1/2 ») : deux ordres justes, jeu écarté.
+        return (
+            len(steps) >= MIN_STEPS
+            and len({normalize(s) for s in steps}) == len(steps)
+            and all_different(steps)
+        )
 
     def _build(
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random

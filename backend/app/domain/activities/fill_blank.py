@@ -12,9 +12,12 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.equivalence import any_written_match
 from app.domain.errors import written_answer_error
-from app.domain.knowledge import KnowledgeType, KnowledgeUnit
-from app.domain.text import matches_with_typos
+from app.domain.knowledge import KnowledgeType, KnowledgeUnit, Subject
+
+# Matières où l'orthographe est ce qui est appris : pas de faute tolérée, accents compris.
+EXACT_SUBJECTS = frozenset({Subject.FRENCH, Subject.ENGLISH})
 
 
 class FillBlankResponse(ResponseModel):
@@ -22,7 +25,9 @@ class FillBlankResponse(ResponseModel):
 
 
 class FillBlank(ActivityType):
-    """Texte à trous : accents, casse et petites fautes de frappe tolérés (§9.1)."""
+    """Texte à trous. Accents, casse et petites fautes de frappe tolérés (§9.1), jamais sur un
+    nombre ni un signe ; en français et en anglais, l'orthographe exacte (`app.domain.equivalence`).
+    « 0,5 » vaut « 0.50 », « 8 + 7 » vaut « 7 + 8 », « quinze » vaut « 15 »."""
 
     code = ActivityCode.FILL_BLANK
     knowledge_types = frozenset(
@@ -48,13 +53,20 @@ class FillBlank(ActivityType):
         cloze = unit.material.cloze
         assert cloze is not None
         payload = {"text": cloze.text}
-        solution = {"answers": cloze.answers, "display": cloze.answers[0], **feedback(unit)}
+        solution = {
+            "answers": cloze.answers,
+            "display": cloze.answers[0],
+            "exact_spelling": unit.subject in EXACT_SUBJECTS,
+            **feedback(unit),
+        }
         return payload, solution
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         given = parse_response(FillBlankResponse, response).text
         answers: list[str] = activity.solution["answers"]
-        score = 1.0 if any(matches_with_typos(given, a) for a in answers) else 0.0
+        exact = bool(activity.solution.get("exact_spelling"))  # absent : activité plus ancienne
+        context = str(activity.payload.get("text", ""))
+        score = 1.0 if any_written_match(given, answers, exact_spelling=exact, context=context) else 0.0
         return Grade(
             score=score,
             evidence={activity.knowledge_ids[0]: score},
