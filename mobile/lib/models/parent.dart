@@ -148,6 +148,7 @@ class Dashboard {
     required this.lessonsAddedThisWeek,
     this.helpThisWeek = 0,
     this.reportsToSee = 0,
+    this.summary = const [],
     required this.activities,
     required this.subjects,
     required this.toStrengthen,
@@ -161,6 +162,7 @@ class Dashboard {
     lessonsAddedThisWeek: json['lessons_added_this_week'] as int,
     helpThisWeek: json['help_this_week'] as int? ?? 0,
     reportsToSee: json['reports_to_see'] as int? ?? 0,
+    summary: [for (final line in json['summary'] as List<dynamic>? ?? const []) line as String],
     activities: (json['activities_this_week'] as Json).cast<String, int>(),
     subjects: [for (final s in json['subjects'] as List<dynamic>) SubjectStats.fromJson(s as Json)],
     toStrengthen: [
@@ -193,6 +195,9 @@ class Dashboard {
 
   /// Questions signalées par l'enfant (🚩), pas encore vues.
   final int reportsToSee;
+
+  /// « En bref » : les 7 derniers jours en quelques phrases, la dernière est un conseil.
+  final List<String> summary;
   final Map<String, int> activities;
   final List<SubjectStats> subjects;
   final List<WeakNotion> toStrengthen;

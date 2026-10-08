@@ -925,6 +925,18 @@ l'espace déjà écrite devant devient insécable (fine devant ! ? ;), après «
 (`display_text` : questions, consignes, rappels, corrections, aides) ; la leçon, le matériel et
 les réponses enregistrées gardent leur texte, la correction n'en dépend pas.
 
+### 5.26 « En bref » : les 7 derniers jours pour le parent (octobre 2026)
+
+En tête du tableau de bord, quelques phrases au lieu de chiffres à recouper : jours de révision
+sur 7, séances et minutes (avec l'écart par rapport aux 7 jours d'avant s'il dépasse 5 min),
+notions maîtrisées travaillées cette semaine, la notion la plus fragile, l'erreur qui revient,
+les aides demandées, les questions signalées, puis un conseil (regarder d'abord les questions
+signalées, reprendre l'habitude, faire la mission du jour, une séance courte sur la notion
+fragile, ou ajouter une leçon). Domaine pur `domain/weekly_summary.py` (un compte rendu, aucune
+décision pour l'enfant) ; chiffres dans `services/dashboard.recent_facts` ;
+`DashboardOut.summary` (champ facultatif, liste vide par défaut). Pas d'e-mail pour l'instant :
+il faudrait l'accord du parent (réglage et migration) et une tâche planifiée à la maison.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

@@ -63,6 +63,10 @@ async def test_the_child_reports_a_question_and_the_parent_sees_it(
     assert not any(r["seen"] for r in reports)
     board = (await client.get(f"/v1/children/{child_id}/dashboard", headers=parent)).json()
     assert board["reports_to_see"] == 2
+    # « En bref » le dit aussi, et conseille de commencer par là.
+    assert "🚩 2 questions signalées à regarder." in board["summary"]
+    assert board["summary"][0].startswith("📅 Révisé 1 jour sur 7 : ")
+    assert board["summary"][-1].startswith("👉 Regardez d'abord les questions signalées")
 
     # Le parent l'a regardée : elle reste dans la liste, marquée vue.
     seen = await client.post(f"{url}/{answered['id']}/seen", headers=parent)

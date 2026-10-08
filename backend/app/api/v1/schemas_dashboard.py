@@ -63,6 +63,9 @@ class DashboardOut(BaseModel):
     lessons_added_this_week: int
     help_this_week: int = Field(0, description="Questions où l'enfant a demandé de l'aide cette semaine.")
     reports_to_see: int = Field(0, description="Questions signalées par l'enfant (🚩), pas encore vues.")
+    summary: list[str] = Field(
+        [], description="« En bref » : les 7 derniers jours en quelques phrases, la dernière est un conseil."
+    )
     activities_this_week: dict[str, int]
     subjects: list[SubjectOut]
     to_strengthen: list[WeakNotionOut] = Field(

@@ -17,7 +17,7 @@ Définitions (affichées telles quelles au parent) :
 
 import uuid
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
@@ -27,11 +27,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity
-from app.domain.errors import ErrorOccurrence, ErrorType, recurring_errors
+from app.domain.errors import ERROR_LABELS, ErrorOccurrence, ErrorType, recurring_errors
 from app.domain.knowledge import Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
 from app.domain.state import NotionState, Observation, notion_state
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
+from app.domain.weekly_summary import RecentFacts, weekly_summary
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, to_mastery
 
 ERROR_TYPES_WINDOW = timedelta(days=30)
@@ -132,6 +133,7 @@ class Dashboard:
     recurring_errors: list[RecurringNotion] = field(default_factory=list)
     help_this_week: int = 0  # questions où l'enfant a demandé de l'aide cette semaine
     reports_to_see: int = 0  # questions signalées par l'enfant, pas encore vues par le parent
+    summary: list[str] = field(default_factory=list)  # « En bref » : les 7 derniers jours
 
 
 def trend_of(weeks: list[WeekStats]) -> Trend | None:
@@ -230,19 +232,84 @@ async def build_dashboard(
             db.HelpRequest.requested_at >= local_midnight(current, tz),
         )
     )
+    to_see = await reports_to_see(session, child_id)
+    strengthen = [notion for _, notion in sorted(weak, key=lambda w: w[0])[:5]]
+    mastered = sorted(
+        (
+            (-item.importance, item.label)
+            for mastery, item, _ in rows
+            if mastery.last_practiced_at >= now - RECENT
+            and notion_level(to_mastery(mastery), item.required_levels).level >= MasteryLevel.MASTERED
+        ),
+    )
+    facts = await recent_facts(session, child_id, now, tz)
+    summary = weekly_summary(
+        replace(
+            facts,
+            mastered=[label for _, label in mastered],
+            weak=(strengthen[0].label, strengthen[0].lesson_title) if strengthen else None,
+            recurring=(ERROR_LABELS[recurring[0].error_type], recurring[0].label) if recurring else None,
+            reports_to_see=to_see,
+            reviews_due=due_now,
+        )
+    )
     return Dashboard(
+        summary=summary,
         help_this_week=help_this_week or 0,
-        reports_to_see=await reports_to_see(session, child_id),
+        reports_to_see=to_see,
         error_types=error_types,
         recurring_errors=recurring,
         this_week=closed[-1],
         lessons_added_this_week=lessons_added or 0,
         subjects=subjects,
-        to_strengthen=[notion for _, notion in sorted(weak, key=lambda w: w[0])[:5]],
+        to_strengthen=strengthen,
         due_now=due_now,
         weeks=closed,
         trend=trend_of(closed),
         activities=dict(activities),
+    )
+
+
+RECENT = timedelta(days=7)
+
+
+async def recent_facts(
+    session: AsyncSession, child_id: uuid.UUID, now: datetime, tz: ZoneInfo
+) -> RecentFacts:
+    """Les chiffres des 7 derniers jours (et le temps des 7 jours d'avant), pour « En bref »."""
+    since = now - RECENT
+    days: set[date] = set()
+    seconds = previous = 0.0
+    for created_at, duration_ms in await session.execute(
+        select(db.Attempt.created_at, db.Attempt.duration_ms)
+        .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(db.RevisionSession.child_id == child_id, db.Attempt.created_at >= since - RECENT)
+    ):
+        if created_at >= since:
+            days.add(created_at.astimezone(tz).date())
+            seconds += answer_seconds(duration_ms)
+        else:
+            previous += answer_seconds(duration_ms)
+    sessions = await session.scalar(
+        select(func.count(db.RevisionSession.id)).where(
+            db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status == "completed",
+            db.RevisionSession.completed_at >= since,
+        )
+    )
+    helped = await session.scalar(
+        select(func.count(func.distinct(db.HelpRequest.session_item_id)))
+        .join(db.SessionItem, db.SessionItem.id == db.HelpRequest.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(db.RevisionSession.child_id == child_id, db.HelpRequest.requested_at >= since)
+    )
+    return RecentFacts(
+        days_active=len(days),
+        sessions=sessions or 0,
+        minutes=round(seconds / 60),
+        previous_minutes=round(previous / 60),
+        help_questions=helped or 0,
     )
 
 

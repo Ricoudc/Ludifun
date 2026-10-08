@@ -86,6 +86,7 @@ async def get_dashboard(
         lessons_added_this_week=board.lessons_added_this_week,
         help_this_week=board.help_this_week,
         reports_to_see=board.reports_to_see,
+        summary=board.summary,
         activities_this_week=board.activities,
         subjects=[
             SubjectOut(subject=s.subject, mastery=s.mastery, color=s.color, notions=s.notions)

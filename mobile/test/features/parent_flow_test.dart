@@ -1467,6 +1467,43 @@ void main() {
     expect(find.text('Voir les aides plus anciennes'), findsNothing);
   });
 
+  testWidgets('« En bref » : les 7 derniers jours d\'Emma en tête du tableau de bord', (
+    tester,
+  ) async {
+    server.on(
+      'GET /v1/children/c1/dashboard',
+      (_) => (
+        200,
+        {
+          ...dashboard,
+          'summary': [
+            '📅 Révisé 4 jours sur 7 : 6 séances, 52 min.',
+            '🟠 À renforcer : Simplifier une fraction (Les fractions).',
+            '👉 Une séance courte sur « Simplifier une fraction » l\'aiderait.',
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    expect(find.text('En bref · 7 derniers jours'), findsOneWidget);
+    expect(find.text('📅 Révisé 4 jours sur 7 : 6 séances, 52 min.'), findsOneWidget);
+    expect(
+      find.text('👉 Une séance courte sur « Simplifier une fraction » l\'aiderait.'),
+      findsOneWidget,
+    );
+    await shot(tester, 'p03_en_bref');
+  });
+
+  testWidgets('sans « En bref » (serveur plus ancien) : le tableau de bord reste le même', (
+    tester,
+  ) async {
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    expect(find.text('En bref · 7 derniers jours'), findsNothing);
+    expect(find.text('Cette semaine'), findsOneWidget);
+  });
+
   testWidgets('le parent voit les questions signalées par Emma et les marque vues', (tester) async {
     Map<String, Object?> report(String id, String reason, String outcome, {String? given}) => {
       'id': id,

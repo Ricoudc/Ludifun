@@ -140,6 +140,34 @@ class ChildDashboardScreen extends ConsumerWidget {
       child: Text(title, style: theme.titleLarge),
     );
     return [
+      if (board.summary.isNotEmpty) ...[
+        Card(
+          color: LudiColors.primary.withValues(alpha: 0.06),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('En bref · 7 derniers jours', style: theme.titleMedium),
+                const SizedBox(height: 8),
+                for (final line in board.summary)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(
+                      line,
+                      style: TextStyle(
+                        fontSize: 16,
+                        height: 1.3,
+                        fontWeight: line.startsWith('👉') ? FontWeight.w600 : null,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
       Text('Cette semaine', style: theme.titleLarge),
       const SizedBox(height: 12),
       Row(
