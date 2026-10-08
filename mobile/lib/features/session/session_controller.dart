@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
+import '../../core/offline.dart';
 import '../../core/session.dart';
 import '../../models/session.dart';
 import '../home/home_providers.dart';
@@ -20,6 +21,9 @@ enum Phase {
   completing,
   report,
   finished,
+
+  /// Séance jouée sans Internet jusqu'au bout : corrigée au retour du réseau.
+  savedOffline,
   error,
 }
 
@@ -31,9 +35,13 @@ class SessionState {
     this.correction,
     this.report,
     this.error,
+    this.offline = false,
   });
 
   final Phase phase;
+
+  /// Sans Internet : séance téléchargée, réponses gardées sur le téléphone.
+  final bool offline;
 
   /// Activités principales puis reprise des erreurs, dans l'ordre.
   final List<SessionItem> items;
@@ -108,6 +116,7 @@ class SessionState {
     Correction? correction,
     Report? report,
     String? error,
+    bool? offline,
   }) => SessionState(
     phase: phase ?? this.phase,
     items: items ?? this.items,
@@ -115,6 +124,7 @@ class SessionState {
     correction: correction,
     report: report ?? this.report,
     error: error,
+    offline: offline ?? this.offline,
   );
 }
 
@@ -139,7 +149,12 @@ class SessionController extends Notifier<SessionState> {
 
   Future<void> load() async {
     state = state.copyWith(phase: Phase.loading);
+    final offline = ref.read(offlineSessionsProvider);
     try {
+      // Des réponses données sans Internet attendent : elles partent d'abord.
+      if (!await offline.sendAnswers(sessionId)) {
+        throw const ApiException('network', 'Pas de connexion.');
+      }
       final session = await ref.read(apiProvider).session(sessionId);
       if (session.status != 'active') {
         state = state.copyWith(phase: Phase.finished, items: session.items);
@@ -147,11 +162,64 @@ class SessionController extends Notifier<SessionState> {
       }
       final items = [...session.items]..sort((a, b) => a.position.compareTo(b.position));
       _replayRequested = items.any((i) => i.block == Block.replay);
-      state = state.copyWith(items: items);
+      state = state.copyWith(items: items, offline: false);
       await _advance();
     } on ApiException catch (error) {
+      if (isOfflineError(error) && await _loadOffline()) return;
       _fail(error);
     }
+  }
+
+  /// Sans Internet : la séance téléchargée, sans les réponses déjà données.
+  Future<bool> _loadOffline() async {
+    final pack = await ref.read(offlineSessionsProvider).pack(sessionId);
+    if (pack == null) return false;
+    if (pack.finished) {
+      state = state.copyWith(phase: Phase.savedOffline, offline: true);
+      return true;
+    }
+    final given = {for (final a in pack.answers) a.itemId};
+    final items = [
+      for (final item in [...pack.session.items]..sort((a, b) => a.position.compareTo(b.position)))
+        given.contains(item.id) && !item.answered ? item.answeredWith(AttemptResult.skipped) : item,
+    ];
+    state = state.copyWith(items: items, offline: true);
+    await _advanceOffline();
+    return true;
+  }
+
+  Future<void> _advanceOffline() async {
+    final next = state.items
+        .where((i) => !i.answered && playableOffline(i) && activityRegistry.containsKey(i.type))
+        .firstOrNull;
+    if (next == null) {
+      await ref.read(offlineSessionsProvider).finish(sessionId);
+      state = state.copyWith(phase: Phase.savedOffline);
+      return;
+    }
+    _shownAt = ref.read(stopwatchProvider)();
+    state = state.copyWith(phase: Phase.question, current: next);
+  }
+
+  /// Réponse gardée sur le téléphone ; le serveur la corrigera au retour du réseau.
+  Future<void> _keepOffline(
+    SessionItem item,
+    Map<String, Object?> response,
+    int? durationMs,
+  ) async {
+    await ref
+        .read(offlineSessionsProvider)
+        .record(
+          sessionId,
+          PendingAnswer(
+            itemId: item.id,
+            response: response,
+            durationMs: durationMs,
+            answeredAt: ref.read(nowForOfflineProvider)(),
+          ),
+        );
+    state = state.copyWith(items: _mark(item, AttemptResult.skipped), offline: true);
+    await _advanceOffline();
   }
 
   /// Réponse de l'enfant à l'activité affichée.
@@ -163,6 +231,7 @@ class SessionController extends Notifier<SessionState> {
     final durationMs = shownAt == null
         ? null
         : ref.read(stopwatchProvider)().difference(shownAt).inMilliseconds.clamp(0, 3600000);
+    if (state.offline) return _keepOffline(item, response, durationMs);
     try {
       final correction = await ref
           .read(apiProvider)
@@ -182,6 +251,11 @@ class SessionController extends Notifier<SessionState> {
       );
     } on ApiException catch (error) {
       if (error.code == 'already_answered') return load(); // double envoi : on se recale
+      // Le réseau tombe pendant une séance téléchargée : la suite se joue sans Internet.
+      if (isOfflineError(error) &&
+          await ref.read(offlineSessionsProvider).pack(sessionId) != null) {
+        return _keepOffline(item, response, durationMs);
+      }
       _fail(error);
     }
   }
@@ -233,6 +307,7 @@ class SessionController extends Notifier<SessionState> {
     state = state.copyWith(phase: Phase.completing);
     try {
       final report = await ref.read(apiProvider).complete(sessionId);
+      await ref.read(offlineSessionsProvider).forget(sessionId); // terminée : plus à garder
       state = state.copyWith(phase: Phase.report, report: report);
       ref
         ..invalidate(lessonsProvider)

@@ -5,7 +5,7 @@ import uuid
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 from app.api.v1.schemas_rewards import RewardsOut
 from app.domain.knowledge import Grade, SkillVerb
@@ -211,6 +211,11 @@ class AttemptIn(BaseModel):
     item_id: uuid.UUID
     response: dict[str, Any]
     duration_ms: int | None = Field(None, ge=0, le=3_600_000)
+    answered_at: AwareDatetime | None = Field(
+        None,
+        description="Séance jouée hors connexion : l'heure de la réponse sur le téléphone, envoyée "
+        "au retour du réseau (ramenée entre le début de la séance et maintenant).",
+    )
 
     @field_validator("response")
     @classmethod

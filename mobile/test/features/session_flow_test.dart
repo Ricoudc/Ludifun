@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/app.dart';
 import 'package:ludifun/app/router.dart';
+import 'package:ludifun/core/offline.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/session/session_controller.dart';
 
@@ -25,15 +26,16 @@ void main() {
       ..on('GET /v1/lessons', (_) => (200, <Object>[]));
   });
 
-  Future<void> open(WidgetTester tester, String sessionId) async {
+  Future<void> open(WidgetTester tester, String sessionId, {OfflineStore? offline}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ...overridesFor(server, MemoryCredentialStore(child)),
+          ...overridesFor(server, MemoryCredentialStore(child), null, offline),
           stopwatchProvider.overrideWithValue(() => clock),
+          nowForOfflineProvider.overrideWithValue(() => clock),
         ],
         retry: noRetry,
         child: const LudifunApp(),
@@ -467,6 +469,60 @@ void main() {
     await tapAndSettle(tester, '1789');
     expect(find.text('✅ Bravo !'), findsOneWidget);
     expect(backend.items.single.answer, {'choice_id': 'b'});
+  });
+  testWidgets('📴 séance gardée, jouée sans Internet, corrigée au retour du réseau', (
+    tester,
+  ) async {
+    final backend = FakeSessionBackend(server, 's1', [trueFalse('i1'), mcq('i2')]);
+    final store = MemoryOfflineStore()
+      ..packs = [
+        OfflinePack(
+          sessionJson: backend.sessionJson(),
+          lessonTitle: 'La Révolution française',
+          downloadedAt: clock,
+        ),
+      ];
+    server.offline = true;
+    await open(tester, 's1', offline: store);
+
+    // Sans Internet : la séance téléchargée se joue, sans correction ni aide.
+    expect(find.textContaining('📴 Sans Internet'), findsOneWidget);
+    expect(find.text('❓ Je n\'ai pas compris'), findsNothing);
+    await tapAndSettle(tester, '❌ Faux');
+    expect(find.text('Continuer'), findsNothing); // pas de correction : question suivante
+    await tapAndSettle(tester, '1789');
+    expect(find.textContaining('Bravo, tu as fini ta séance'), findsOneWidget);
+    expect(store.packs.single.answers.map((a) => a.itemId), ['i1', 'i2']);
+    expect(store.packs.single.finished, isTrue);
+    expect(backend.items.every((i) => i.answer == null), isTrue); // rien n'est parti
+
+    // Retour du réseau : l'accueil envoie les réponses, puis montre le bilan.
+    server.offline = false;
+    await tapAndSettle(tester, 'Retour à l\'accueil');
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Ta séance « La Révolution française » est corrigée'),
+      findsOneWidget,
+    );
+    expect(backend.items.every((i) => i.answer != null), isTrue);
+    final sent = server.requests.where((r) => r.path.endsWith('/attempts')).toList();
+    expect(sent.map((r) => (r.data as Map)['answered_at']), everyElement(isNotNull));
+    expect(server.routes, contains('POST /v1/sessions/s1/complete'));
+    expect(store.packs, isEmpty);
+  });
+
+  testWidgets('📴 le réseau tombe pendant une séance gardée : la suite se joue sans Internet', (
+    tester,
+  ) async {
+    final backend = FakeSessionBackend(server, 's1', [trueFalse('i1'), mcq('i2')]);
+    final store = MemoryOfflineStore()
+      ..packs = [OfflinePack(sessionJson: backend.sessionJson(), downloadedAt: clock)];
+    await open(tester, 's1', offline: store);
+    expect(find.textContaining('📴 Sans Internet'), findsNothing); // en ligne : comme d'habitude
+    server.offline = true;
+    await tapAndSettle(tester, '❌ Faux');
+    expect(find.textContaining('📴 Sans Internet'), findsOneWidget);
+    expect(store.packs.single.answers.single.itemId, 'i1');
   });
 }
 

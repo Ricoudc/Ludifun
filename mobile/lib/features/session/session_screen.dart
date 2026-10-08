@@ -117,6 +117,20 @@ class SessionScreen extends ConsumerWidget {
               Phase.question || Phase.submitting when item != null => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (state.offline) ...[
+                    const Card(
+                      color: Color(0xFFFFF3E0),
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Text(
+                          '📴 Sans Internet : tes réponses sont gardées, elles seront corrigées '
+                          'quand tu retrouveras le réseau.',
+                          style: TextStyle(fontSize: 15),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (state.missionStep case (final step, final steps, final label)) ...[
                     Text(
                       '🚀 Étape $step / $steps · $label',
@@ -144,7 +158,7 @@ class SessionScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if (item.helpAvailable && state.phase == Phase.question) ...[
+                  if (item.helpAvailable && state.phase == Phase.question && !state.offline) ...[
                     const SizedBox(height: 12),
                     TextButton(
                       onPressed: () => showHelp(context, sessionId, item.id),
@@ -201,6 +215,23 @@ class SessionScreen extends ConsumerWidget {
                 onRate: (rating) => ref
                     .read(apiProvider)
                     .sendFeedback(rating: rating, screen: 'report', sessionId: sessionId),
+              ),
+              Phase.savedOffline => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '📴 Bravo, tu as fini ta séance !\n\nElle est gardée sur ton téléphone : elle '
+                    'sera corrigée dès que tu retrouveras Internet, et tu verras ton bilan sur '
+                    'l\'accueil.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 19, height: 1.35),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    onPressed: () => _leave(context, ref, state),
+                    child: const Text('Retour à l\'accueil'),
+                  ),
+                ],
               ),
               Phase.error => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

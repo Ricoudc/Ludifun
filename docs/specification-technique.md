@@ -48,7 +48,7 @@ ont été mises à jour depuis.
 | §69-§70 | Sécurité, RGPD (effacement, export, consentement, minimisation) | ✅ côté code ; reste l'hébergement et les documents (README) | V1 §16 |
 | §71 | Conservation des photos | ✅ mode temporaire uniquement (jamais stockées) | voir arbitrage A3 |
 | §73 | Pas de publicité | ✅ | |
-| §88 | Hors connexion | 🔮 | |
+| §88 | Hors connexion | 🟡 séances gardées sur le téléphone, jouées sans Internet, corrigées au retour du réseau (§5.30) ; l'analyse d'une leçon reste en ligne | `mobile/lib/core/offline.dart` |
 | §90-§91 | Observabilité, coûts IA | ✅ `ai_runs` (jetons, latence, statut), plafond journalier | `services/ai_budget.py` |
 | §93 | Tests fonctionnels et IA | ✅ ; 🟡 tests pédagogiques sur vraies leçons (étape 5 en attente) | `tools/evaluate.py` |
 
@@ -999,6 +999,26 @@ gardé (comme le texte d'une leçon).
   `POST …/next-step`, `…/attempts`, `…/solution`. Parent : `GET /v1/children/{c}/homework`
   (étapes utilisées, essais, « réussi seul »). Table `homework` (migration 0024), export RGPD.
 - N'agit pas sur la maîtrise des notions : un devoir n'est pas rattaché à une leçon.
+
+### 5.30 Séance sans Internet (octobre 2026, CDC §88)
+
+Version minimale : l'enfant **garde** une séance sur le téléphone (bouton « Garder pour jouer
+sans Internet » sur la leçon), la joue sans réseau, et elle est **corrigée par le serveur** au
+retour du réseau. Rien n'est corrigé sur le téléphone : les solutions ne quittent jamais le
+serveur, comme en ligne.
+
+- **Téléphone** (`core/offline.dart`) : au plus 3 séances gardées (stockage chiffré de
+  l'appareil) ; chaque réponse est mise de côté avec son heure. Les activités qui chargent une
+  image (carte, coloriage, images) sont sautées hors connexion ; l'aide « Je n'ai pas compris »
+  est cachée. Si le réseau tombe pendant une séance gardée, la suite se joue sans Internet.
+- **Retour du réseau** : à l'ouverture de l'accueil (ou de la séance), les réponses partent dans
+  l'ordre, puis le bilan est demandé pour une séance finie ; l'accueil affiche « Ta séance « … »
+  est corrigée : x / 10 ». Une séance terminée ou abandonnée ailleurs est oubliée.
+- **Serveur** : `POST /v1/sessions/{id}/attempts` accepte un champ facultatif `answered_at`
+  (l'heure de la réponse sur le téléphone), ramené entre le début de la séance et maintenant ;
+  la maîtrise et les révisions sont calculées comme pour une réponse en ligne. Aucune migration.
+- Non fait : analyser une leçon hors connexion (l'IA est sur le serveur), les activités à
+  images, la correction immédiate pendant la séance hors connexion.
 
 ---
 

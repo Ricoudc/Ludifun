@@ -15,7 +15,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import clock
-from app.db.models import KnowledgeItem, KnowledgeMastery, SessionItem
+from app.db.models import Attempt, KnowledgeItem, KnowledgeMastery, RevisionSession, SessionItem
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.composer import fingerprint
 from app.domain.simulated_pupil import Knows, respond
@@ -260,3 +260,47 @@ async def test_redoing_a_lesson_asks_other_questions(
     assert second["id"] != first["id"]
     again = [f for f in asked(second) if f in set(asked(first))]
     assert len(again) <= len(second["items"]) // 3, again
+
+
+async def test_answers_played_offline_keep_their_time(
+    client: AsyncClient, db: AsyncSession, now: list[datetime]
+) -> None:
+    """Séance téléchargée, jouée sans réseau : les réponses arrivent plus tard avec leur heure,
+    ramenée entre le début de la séance et maintenant (horloge du téléphone fausse)."""
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    started = now[0]
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    items = [i for i in session["items"] if i["type"] in ("MCQ", "TRUE_FALSE")][:3]
+    url = f"/v1/sessions/{session['id']}/attempts"
+    now[0] = started + timedelta(days=1)  # retour du réseau le lendemain
+    moments = [
+        started + timedelta(minutes=5),  # pendant la séance
+        started + timedelta(days=3),  # dans le futur : ramenée à maintenant
+        started - timedelta(days=1),  # avant la séance : ramenée au début
+    ]
+    for item, moment in zip(items, moments, strict=True):
+        response = {"choice_id": "a"} if item["type"] == "MCQ" else {"value": True}
+        r = await client.post(
+            url,
+            json={"item_id": item["id"], "response": response, "answered_at": moment.isoformat()},
+            headers=auth(token),
+        )
+        assert r.status_code == 200, r.text
+    stored = {
+        str(a.session_item_id): a.created_at
+        for a in await db.scalars(
+            select(Attempt).where(Attempt.session_item_id.in_([i["id"] for i in items]))
+        )
+    }
+    session_start = await db.get(RevisionSession, uuid.UUID(session["id"]))
+    assert session_start is not None
+    assert stored[items[0]["id"]] == moments[0]
+    assert stored[items[1]["id"]] == now[0]
+    assert stored[items[2]["id"]] == session_start.started_at
+    naive = await client.post(
+        url,
+        json={"item_id": session["items"][-1]["id"], "response": {}, "answered_at": "2026-10-08T10:00:00"},
+        headers=auth(token),
+    )
+    assert naive.status_code == 422  # une heure sans fuseau est refusée

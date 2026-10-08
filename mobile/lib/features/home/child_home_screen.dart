@@ -7,6 +7,7 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/offline.dart';
 import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
 import '../../models/lesson.dart';
@@ -42,6 +43,7 @@ class ChildHomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
             ] else
               const SizedBox(height: 8),
+            const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
             OutlinedButton.icon(
@@ -265,6 +267,89 @@ class _LessonRow extends ConsumerWidget {
         onTap: () => _open(context, ref),
         // Seule une leçon ratée se retire ici ; les autres, c'est le parent qui les supprime.
         onLongPress: lesson.status == LessonStatus.failed ? () => _delete(context, ref) : null,
+      ),
+    );
+  }
+}
+
+/// Séances gardées pour jouer sans Internet : à jouer, ou en attente d'envoi. À l'ouverture de
+/// l'accueil, les réponses en attente partent ; le bilan des séances finies est annoncé.
+class OfflineSessionsCard extends ConsumerStatefulWidget {
+  const OfflineSessionsCard({super.key});
+
+  @override
+  ConsumerState<OfflineSessionsCard> createState() => _OfflineSessionsCardState();
+}
+
+class _OfflineSessionsCardState extends ConsumerState<OfflineSessionsCard> {
+  List<SyncedSession> _synced = const [];
+  bool _syncing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(_sync);
+  }
+
+  Future<void> _sync() async {
+    if (_syncing) return;
+    _syncing = true;
+    try {
+      final synced = await ref.read(offlineSessionsProvider).sync();
+      if (!mounted || synced.isEmpty) return;
+      setState(() => _synced = [..._synced, ...synced]);
+      refreshHome(ref);
+    } finally {
+      _syncing = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Les leçons arrivent : Internet est là, ce qui attend part (l'accueil reste ouvert sous la
+    // séance, il n'est pas reconstruit au retour).
+    ref.listen(lessonsProvider, (_, next) {
+      if (next.hasValue && !next.isLoading) Future.microtask(_sync);
+    });
+    final packs = ref.watch(offlinePacksProvider).value ?? const <OfflinePack>[];
+    if (packs.isEmpty && _synced.isEmpty) return const SizedBox();
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final done in _synced)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '✅ Ta séance « ${done.lessonTitle ?? 'sans Internet'} » est corrigée : '
+                  '${score(done.scoreOn10)} / 10',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                ),
+              ),
+            if (packs.isNotEmpty) ...[
+              Text('📴 Pour jouer sans Internet', style: Theme.of(context).textTheme.titleMedium),
+              for (final pack in packs)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(pack.lessonTitle ?? 'Séance gardée'),
+                  subtitle: Text(
+                    pack.finished
+                        ? 'Finie : sera corrigée au retour d\'Internet'
+                        : pack.answers.isEmpty
+                        ? 'Prête à jouer'
+                        : '${pack.answers.length} réponse(s) gardée(s), à finir',
+                  ),
+                  trailing: pack.finished
+                      ? const Icon(Icons.cloud_upload_outlined)
+                      : const Icon(Icons.play_arrow),
+                  onTap: pack.finished ? _sync : () => context.go(Routes.session(pack.sessionId)),
+                ),
+            ],
+          ],
+        ),
       ),
     );
   }

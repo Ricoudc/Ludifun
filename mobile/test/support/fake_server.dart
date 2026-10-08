@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:ludifun/core/offline.dart';
 import 'package:ludifun/core/api/ludifun_api.dart';
 import 'package:ludifun/core/link_opener.dart';
 import 'package:ludifun/core/session.dart';
@@ -31,6 +32,9 @@ class FakeServer implements HttpClientAdapter {
     this.headers[route] = headers;
   }
 
+  /// Plus de réseau : chaque requête échoue comme sans Internet.
+  bool offline = false;
+
   List<String> get routes => [for (final r in requests) '${r.method} ${r.path}'];
 
   static Reply error(int status, String code, String message) => (
@@ -47,6 +51,9 @@ class FakeServer implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (offline) {
+      throw DioException(requestOptions: options, type: DioExceptionType.connectionError);
+    }
     final chunks = requestStream == null ? const <Uint8List>[] : await requestStream.toList();
     bodies.add(Uint8List.fromList([for (final chunk in chunks) ...chunk]));
     final route = '${options.method} ${options.path}';
@@ -100,11 +107,17 @@ class FakeLinkOpener implements LinkOpener {
   }
 }
 
-List<Override> overridesFor(FakeServer server, CredentialStore store, [LinkOpener? links]) => [
+List<Override> overridesFor(
+  FakeServer server,
+  CredentialStore store, [
+  LinkOpener? links,
+  OfflineStore? offline,
+]) => [
   credentialStoreProvider.overrideWithValue(store),
   linkOpenerProvider.overrideWithValue(links ?? FakeLinkOpener()),
   bareDioProvider.overrideWithValue(buildDio('http://api.test')..httpClientAdapter = server),
   resourcePageProvider.overrideWithValue(const FakeResourcePage()),
+  offlineStoreProvider.overrideWithValue(offline ?? MemoryOfflineStore()),
 ];
 
 Duration? noRetry(int _, Object _) => null;

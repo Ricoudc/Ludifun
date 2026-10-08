@@ -635,6 +635,12 @@ class LudifunApi {
     return RevisionSession.fromJson(r.data!);
   });
 
+  /// La séance telle que le serveur l'envoie, pour la garder sur le téléphone (hors connexion).
+  Future<Json> sessionData(String id) => _call(() async {
+    final r = await _dio.get<Json>('/v1/sessions/$id');
+    return r.data!;
+  });
+
   Future<RevisionSession> session(String id) => _call(() async {
     final r = await _dio.get<Json>('/v1/sessions/$id');
     return RevisionSession.fromJson(r.data!);
@@ -646,10 +652,17 @@ class LudifunApi {
     String itemId,
     Map<String, Object?> response, {
     int? durationMs,
+    DateTime? answeredAt,
   }) => _call(() async {
     final r = await _dio.post<Json>(
       '/v1/sessions/$sessionId/attempts',
-      data: {'item_id': itemId, 'response': response, 'duration_ms': ?durationMs},
+      data: {
+        'item_id': itemId,
+        'response': response,
+        'duration_ms': ?durationMs,
+        // Séance jouée hors connexion : l'heure de la réponse sur le téléphone.
+        'answered_at': ?answeredAt?.toUtc().toIso8601String(),
+      },
     );
     return Correction.fromJson(r.data!);
   });

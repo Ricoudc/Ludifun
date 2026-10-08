@@ -9,6 +9,7 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/offline.dart';
 import '../../core/session.dart';
 import '../../models/lesson.dart';
 import '../../models/session.dart';
@@ -26,6 +27,18 @@ final lessonSessionProvider = FutureProvider.autoDispose.family<RevisionSession?
   ref,
   lessonId,
 ) async {
+  // Une séance gardée pour jouer sans Internet est reprise : en commencer une autre l'abandonnerait.
+  final offline = ref.read(offlineSessionsProvider);
+  if (await offline.forLesson(lessonId) case final pack?) {
+    try {
+      final kept = await ref.watch(apiProvider).session(pack.sessionId);
+      if (kept.status == 'active') return kept;
+      await offline.forget(pack.sessionId); // terminée ailleurs
+    } on ApiException catch (error) {
+      if (isOfflineError(error)) return pack.session;
+      rethrow;
+    }
+  }
   try {
     return await ref.watch(apiProvider).startSession(lessonId);
   } on ApiException catch (error) {
@@ -233,6 +246,8 @@ class _Summary extends ConsumerWidget {
               onPressed: () => context.go(Routes.session(s.id)),
               child: const Text('Commencer la révision'),
             ),
+            const SizedBox(height: 8),
+            _KeepOffline(sessionId: s.id, lessonTitle: lesson.title),
           ],
           AsyncData(value: null) => [
             Text(
@@ -316,4 +331,47 @@ class _ResourceTile extends ConsumerWidget {
       ref.invalidate(lessonProvider(lessonId)); // meilleur score à jour
     },
   );
+}
+
+/// « Garder pour jouer sans Internet » : la séance reste sur le téléphone ; les réponses
+/// seront corrigées au retour du réseau.
+class _KeepOffline extends ConsumerStatefulWidget {
+  const _KeepOffline({required this.sessionId, this.lessonTitle});
+
+  final String sessionId;
+  final String? lessonTitle;
+
+  @override
+  ConsumerState<_KeepOffline> createState() => _KeepOfflineState();
+}
+
+class _KeepOfflineState extends ConsumerState<_KeepOffline> {
+  bool _busy = false;
+
+  Future<void> _keep() async {
+    setState(() => _busy = true);
+    String message;
+    try {
+      await ref
+          .read(offlineSessionsProvider)
+          .download(widget.sessionId, lessonTitle: widget.lessonTitle);
+      message = 'Séance gardée : tu pourras la jouer sans Internet, depuis l\'accueil.';
+    } on ApiException catch (error) {
+      message = error.message;
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kept =
+        ref.watch(offlinePacksProvider).value?.any((p) => p.sessionId == widget.sessionId) ?? false;
+    return TextButton.icon(
+      onPressed: kept || _busy ? null : _keep,
+      icon: Icon(kept ? Icons.offline_pin : Icons.download_for_offline_outlined),
+      label: Text(kept ? 'Gardée pour jouer sans Internet' : 'Garder pour jouer sans Internet'),
+    );
+  }
 }

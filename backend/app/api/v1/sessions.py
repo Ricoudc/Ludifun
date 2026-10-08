@@ -178,9 +178,13 @@ async def submit_attempt(
         if item.activity_type == ActivityCode.OPEN_QUESTION
         else None
     )
+    # Hors connexion : l'heure de la réponse, ramenée entre le début de la séance et maintenant
+    # (une horloge de téléphone fausse ne place rien dans le futur ni avant la séance).
+    now = clock.now()
+    answered = min(now, max(body.answered_at, revision.started_at)) if body.answered_at else now
     try:
         grade = await learning.answer(
-            db, revision, item, body.response, body.duration_ms, registry, clock.now(), evaluator
+            db, revision, item, body.response, body.duration_ms, registry, answered, evaluator
         )
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc

@@ -133,6 +133,9 @@ Un appareil sert **un seul espace**. Pour tester les deux :
   recopier), suivre les étapes, essayer des réponses ; la correction guidée n'arrive qu'après
   deux essais faux. Le parent voit l'aide utilisée dans *Aide aux devoirs*. Avec Ollama, la
   préparation peut prendre une à deux minutes.
+- **Sans Internet** : sur une leçon, touchez « Garder pour jouer sans Internet », coupez le
+  Wi-Fi (mode avion), ouvrez la leçon et jouez la séance : un bandeau 📴 le dit, les réponses
+  sont gardées. Remettez le Wi-Fi et revenez à l'accueil : « Ta séance … est corrigée ».
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 
