@@ -88,6 +88,7 @@ class _DictationViewState extends State<DictationView> {
         Prompt(
           widget.payload['prompt'] as String? ?? 'Écoute le mot, puis écris-le.',
           label: '🎧 Dictée',
+          listen: false,
         ),
         const SizedBox(height: 8),
         Text(

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/speech.dart';
 
 /// Comment jouer, dit au niveau de la classe de l'enfant (envoyé par le serveur, étape 25).
 /// Absent (serveur plus ancien) : chaque jeu garde sa consigne habituelle.
@@ -16,12 +19,26 @@ class ActivityInstruction extends InheritedWidget {
   bool updateShouldNotify(ActivityInstruction oldWidget) => oldWidget.text != text;
 }
 
-/// Consigne ou question, en grand.
+/// Consigne ou question, en grand, avec « 🔊 » pour l'entendre (enfant qui lit encore mal).
 class Prompt extends StatelessWidget {
-  const Prompt(this.text, {this.label, this.passage, this.source, super.key});
+  const Prompt(
+    this.text, {
+    this.label,
+    this.passage,
+    this.source,
+    this.alsoRead = const [],
+    this.listen = true,
+    super.key,
+  });
 
   final String text;
   final String? label;
+
+  /// Lu après la question : les choix d'un QCM (« A : … »).
+  final List<String> alsoRead;
+
+  /// `false` pour la dictée, qui a sa propre voix (le mot ne doit pas être lu deux fois).
+  final bool listen;
 
   /// Passage de la leçon à relire avant la question : l'enfant n'a plus la fiche.
   final String? passage;
@@ -55,10 +72,24 @@ class Prompt extends StatelessWidget {
         ),
         const SizedBox(height: 12),
       ],
-      Text(
-        text,
-        style: Theme.of(context).textTheme.headlineSmall
-            ?.copyWith(fontWeight: FontWeight.w700, height: 1.3),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700, height: 1.3),
+            ),
+          ),
+          if (listen)
+            ListenButton([
+              label ?? ActivityInstruction.of(context) ?? '',
+              passage ?? '',
+              text,
+              ...alsoRead,
+            ]),
+        ],
       ),
       if (source case final site? when site.isNotEmpty) ...[
         const SizedBox(height: 6),
@@ -68,6 +99,78 @@ class Prompt extends StatelessWidget {
         ),
       ],
     ],
+  );
+}
+
+/// Le texte tel qu'il est lu à voix haute : sans émojis, un trou « ___ » devient une pause.
+String spokenText(Iterable<String> parts) => parts
+    .map(
+      (part) => part
+          .replaceAll(RegExp(r'_{2,}'), '…')
+          .replaceAll(
+            RegExp(r'[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]', unicode: true),
+            '',
+          )
+          .trim(),
+    )
+    .where((part) => part.isNotEmpty)
+    .map((part) => RegExp(r'[.!?…:]$').hasMatch(part) ? part : '$part.')
+    .join(' ');
+
+/// « 🔊 » : lit la consigne et la question avec la voix française du téléphone.
+class ListenButton extends StatefulWidget {
+  const ListenButton(this.parts, {super.key});
+
+  /// Remplacé dans les tests.
+  static Speaker Function() speakerFactory = PhoneSpeaker.new;
+
+  final List<String> parts;
+
+  @override
+  State<ListenButton> createState() => _ListenButtonState();
+}
+
+class _ListenButtonState extends State<ListenButton> {
+  Speaker? _speaker;
+  bool _speaking = false;
+  bool _noVoice = false;
+
+  @override
+  void dispose() {
+    if (_speaker case final speaker?) unawaited(speaker.stop());
+    super.dispose();
+  }
+
+  Future<void> _listen() async {
+    final speaker = _speaker ??= ListenButton.speakerFactory();
+    if (_speaking) {
+      await speaker.stop();
+      if (mounted) setState(() => _speaking = false);
+      return;
+    }
+    setState(() => _speaking = true);
+    final ok = await speaker.speak(spokenText(widget.parts));
+    if (!mounted) return;
+    setState(() {
+      _speaking = false;
+      _noVoice = !ok;
+    });
+    if (!ok) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        const SnackBar(
+          content: Text('Ce téléphone n\'a pas de voix française : demande à un adulte de lire.'),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: _speaking ? 'Arrêter' : 'Écouter',
+    iconSize: 30,
+    color: _noVoice ? Colors.black26 : LudiColors.primary,
+    onPressed: _listen,
+    icon: Icon(_speaking ? Icons.stop_circle_outlined : Icons.record_voice_over_outlined),
   );
 }
 

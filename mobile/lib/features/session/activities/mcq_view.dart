@@ -47,6 +47,10 @@ class _McqViewState extends State<McqView> {
           label: ActivityInstruction.of(context),
           passage: widget.payload['passage'] as String?,
           source: widget.payload['source'] as String?,
+          alsoRead: [
+            for (final (i, choice) in choices.indexed)
+              '${_letters[i % _letters.length]} : ${choice.text}',
+          ],
         ),
         const SizedBox(height: 24),
         for (final (i, choice) in choices.indexed) ...[

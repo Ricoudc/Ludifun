@@ -906,6 +906,17 @@ de bord avec le nombre à voir, `DashboardOut.reports_to_see`, champ facultatif)
 les questions de la leçon pour corriger ou retirer la question (§5 étape 25). L'export des données
 de l'enfant contient les signalements.
 
+### 5.24 La question lue à voix haute (octobre 2026)
+
+Un enfant de CP ou de CE1 qui lit encore mal se perd dans les consignes. Un bouton « 🔊 » à côté
+de chaque question (`Prompt`, texte à trous, carte mémoire) lit, avec la voix française du
+téléphone (celle de la dictée, `core/speech.dart`) : la consigne adaptée à la classe, le passage
+à relire, la question, puis les choix d'un QCM (« A : … »). Les émojis ne sont pas lus, un trou
+« ___ » devient une pause. La carte mémoire ne lit que la face visible ; la dictée garde sa propre
+voix (le mot n'est jamais lu en plus). Sans voix française, un message demande à un adulte de
+lire. Rien n'est envoyé au serveur : la lecture se fait sur le téléphone. Proposé à toutes les
+classes (un grand peut s'en servir, ou l'ignorer).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

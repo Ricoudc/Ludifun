@@ -53,22 +53,30 @@ class _FillBlankViewState extends State<FillBlankView> {
           style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
         ),
         const SizedBox(height: 8),
-        Text.rich(
-          TextSpan(
-            style: style,
-            children: [
-              TextSpan(text: before),
-              TextSpan(
-                text: typed.isEmpty ? ' ______ ' : ' $typed ',
-                style: const TextStyle(
-                  color: LudiColors.primary,
-                  decoration: TextDecoration.underline,
-                  decorationThickness: 2,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: style,
+                  children: [
+                    TextSpan(text: before),
+                    TextSpan(
+                      text: typed.isEmpty ? ' ______ ' : ' $typed ',
+                      style: const TextStyle(
+                        color: LudiColors.primary,
+                        decoration: TextDecoration.underline,
+                        decorationThickness: 2,
+                      ),
+                    ),
+                    TextSpan(text: after),
+                  ],
                 ),
               ),
-              TextSpan(text: after),
-            ],
-          ),
+            ),
+            ListenButton([ActivityInstruction.of(context) ?? 'Complète la phrase', text]),
+          ],
         ),
         if (widget.payload['hint'] case final String hint) ...[
           const SizedBox(height: 8),

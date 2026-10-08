@@ -118,6 +118,14 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 - avec un seul téléphone : pour changer d'espace, *Paramètres Android → Applications → Ludifun →
   Stockage → Effacer les données*, puis ressaisir l'adresse du serveur.
 
+À vérifier pendant une séance de l'enfant (ce que les tests automatiques ne peuvent pas faire) :
+
+- **🔊 à côté de la question** : le téléphone lit la consigne, la question et les choix avec sa
+  voix française. Sans voix française installée (*Paramètres Android → Gestion globale →
+  Synthèse vocale*), un message le dit ; la dictée a besoin de la même voix.
+- **« Signaler un problème »** sous une correction : la question apparaît chez le parent,
+  *Questions signalées*.
+
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 
 **Le plus simple : Ollama**, gratuit, sur l'ordinateur. Rien ne sort de la maison.

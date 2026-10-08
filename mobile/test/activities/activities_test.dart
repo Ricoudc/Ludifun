@@ -105,6 +105,43 @@ void main() {
     expect(find.text('Dans ce passage, que porte le Petit Chaperon rouge ?'), findsOneWidget);
   });
 
+  testWidgets('🔊 la consigne, la question et les choix lus à voix haute', (tester) async {
+    final speaker = FakeSpeaker();
+    ListenButton.speakerFactory = () => speaker;
+    addTearDown(() => ListenButton.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'MCQ', {
+      'prompt': 'Combien font 7 + 8 ? 🤔',
+      'choices': [
+        {'id': 'a', 'text': '15'},
+        {'id': 'b', 'text': '16'},
+      ],
+    }, instruction: 'Touche la bonne réponse');
+    await tester.tap(find.byTooltip('Écouter'));
+    await tester.pumpAndSettle();
+    expect(speaker.said, ['Touche la bonne réponse. Combien font 7 + 8 ? A : 15. B : 16.']);
+    expect(sent, isEmpty); // écouter ne répond pas
+  });
+
+  testWidgets('🔊 sans voix française : on le dit, et un trou se lit comme une pause', (
+    tester,
+  ) async {
+    final speaker = FakeSpeaker(voice: false);
+    ListenButton.speakerFactory = () => speaker;
+    addTearDown(() => ListenButton.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'FILL_BLANK', {'text': 'La Révolution commence en ___.'});
+    await tester.tap(find.byTooltip('Écouter'));
+    await tester.pumpAndSettle();
+    expect(speaker.said.single, endsWith('La Révolution commence en ….'));
+    expect(
+      find.text('Ce téléphone n\'a pas de voix française : demande à un adulte de lire.'),
+      findsOneWidget,
+    );
+  });
+
+  test('texte lu : sans émojis, ponctuation ajoutée', () {
+    expect(spokenText(['🗺️ Carte', '', 'Où est Paris ?']), 'Carte. Où est Paris ?');
+  });
+
   testWidgets('démêler : toucher les mots dans l\'ordre', (tester) async {
     await show(tester, 'UNJUMBLE', {
       'prompt': 'Remets les mots dans l\'ordre.',

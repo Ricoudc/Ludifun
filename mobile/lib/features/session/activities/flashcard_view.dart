@@ -32,11 +32,23 @@ class _FlashcardViewState extends State<FlashcardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          _flipped
-              ? 'Le savais-tu ?'
-              : ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                _flipped
+                    ? 'Le savais-tu ?'
+                    : ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
+              ),
+            ),
+            // La face visible seulement : jamais le verso avant de retourner la carte.
+            ListenButton([
+              if (!_flipped)
+                ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
+              face,
+            ], key: ValueKey(_flipped)),
+          ],
         ),
         const SizedBox(height: 12),
         GestureDetector(
