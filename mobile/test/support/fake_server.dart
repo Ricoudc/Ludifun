@@ -8,6 +8,9 @@ import 'package:ludifun/core/api/ludifun_api.dart';
 import 'package:ludifun/core/link_opener.dart';
 import 'package:ludifun/core/session.dart';
 import 'package:ludifun/core/storage/credentials.dart';
+import 'package:ludifun/features/lesson/resource_screen.dart';
+
+import 'fakes.dart';
 
 typedef Reply = (int status, Object? body);
 typedef Handler = FutureOr<Reply> Function(RequestOptions request);
@@ -101,6 +104,7 @@ List<Override> overridesFor(FakeServer server, CredentialStore store, [LinkOpene
   credentialStoreProvider.overrideWithValue(store),
   linkOpenerProvider.overrideWithValue(links ?? FakeLinkOpener()),
   bareDioProvider.overrideWithValue(buildDio('http://api.test')..httpClientAdapter = server),
+  resourcePageProvider.overrideWithValue(const FakeResourcePage()),
 ];
 
 Duration? noRetry(int _, Object _) => null;

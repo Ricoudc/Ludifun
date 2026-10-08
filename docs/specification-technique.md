@@ -801,6 +801,52 @@ question, correction « D'après … : « phrase » », et bloc « 📚 Question
 confiance » dans les questions de la leçon côté parent. Une correction demandée par le parent
 garde ces questions.
 
+### 5.20 S'entraîner autrement : MathALÉA, Vikidia, Lumni dans l'application (étape 30)
+
+Demande de la famille : proposer des exercices des sites de confiance comme autre façon de
+réviser, **tout dans l'application**. Ce qui est permis par chaque site décide de la forme :
+
+| Site | Licence | Ce que fait Ludifun |
+|---|---|---|
+| MathALÉA (Coopmaths) | logiciel libre AGPL | utilisé comme service : catalogue public (`referentiel2022.json`) lu une fois par jour ; exercices **interactifs** de la classe (CM1 à 3e) qui partagent un mot non générique avec la leçon de maths, ouverts dans la visionneuse en vue élève (`v=eleve`, 5 questions) ; le score de fin est récupéré. Rien n'est copié dans le dépôt |
+| Vikidia | CC BY-SA 3.0 | quiz trouvés par l'API du wiki : la page du quiz est proposée, et ses questions à choix (une bonne réponse, au moins trois mauvaises) qui parlent d'une notion rejoignent le matériel, avec source et licence (attribution affichée dans la correction et chez le parent) |
+| Lumni | droits réservés (France Télévisions) | rien n'est copié : vidéos, quiz et articles trouvés par le moteur de recherche du serveur (limité à lumni.fr), seulement **regardés** dans la visionneuse |
+| maxetom.com | site commercial, conditions non vérifiées | non intégré : site injoignable depuis l'environnement de développement, droits de réutilisation inconnus, publicité et vie privée des enfants à vérifier. Possible plus tard en simple visionneuse si ses conditions le permettent |
+
+**Conditions.** Le parent a permis les sites éducatifs de confiance (même réglage que §5.14) et le
+serveur n'a pas désactivé les ressources (`LUDIFUN_RESOURCES`, activé par défaut ; le réglage
+« sites de confiance » est donc proposé même sans moteur de recherche : MathALÉA et Vikidia n'en
+ont pas besoin, Lumni si). Seuls le titre de la leçon et les noms des notions partent vers ces
+sites, jamais le prénom, la photo ni le texte de la leçon.
+
+**Serveur.** `domain/resources.py` (pur : choix MathALÉA, lecture des quiz, reconnaissance des
+pages Lumni, adresse limitée au site de chaque fournisseur), `services/external_resources.py`
+(en arrière-plan après l'analyse, après les exercices sourcés ; un site injoignable n'apporte
+simplement rien, la leçon n'est jamais touchée), table `lesson_resources` (migration 0021 : site,
+type, titre, adresse unique par leçon, ordre, masquée, essais, meilleur score). Au plus 3
+ressources par site et par leçon. Les questions Vikidia passent les contrôles des questions de la
+leçon et le contrôle des doublons (§5.19).
+
+**API.** `LessonOut.resources` (nouveau champ facultatif : ressources non masquées, avec licence et
+meilleur score). Enfant : `POST /v1/lessons/{l}/resources/{r}/result` (`correct` ≤ `total` ≤ 100 ;
+le meilleur score est gardé ; il ne change **pas** la maîtrise : l'exercice n'est pas corrigé par
+Ludifun). Parent : `GET /v1/children/{c}/lessons/{l}/resources` (toutes, avec essais et
+`available`), `POST …/resources/{r}/hide`, `…/show`, `POST …/resources/prepare` (202 ; 409
+`resources_not_allowed` sans l'accord du parent).
+
+**Application.** Écran de la leçon : « 🌐 Pour s'entraîner autrement » ; chaque ressource s'ouvre
+dans une visionneuse intégrée (`webview_flutter`) qui **reste sur le site** : une page d'un autre
+site n'est pas ouverte (message à l'enfant), seul https est accepté ; la source et la licence sont
+écrites sous la page. Le score MathALÉA arrive par `postMessage` (`mathalea:score` ou l'ancien
+`nbBonnesReponses`), transmis par un canal JavaScript, envoyé une seule fois par score. Un site ou
+un type inconnu de l'application est sauté. Parent (questions de la leçon) : carte « Pour
+s'entraîner autrement » : liste, essais, meilleur score, interrupteur pour masquer, aperçu (sans
+score), « Chercher des ressources ».
+
+**Pas encore vérifié** : les vrais sites (catalogue MathALÉA actuel, API Vikidia, résultats Lumni),
+la vue web sur un vrai téléphone, l'envoi du score par la version en ligne de MathALÉA (le
+message a été lu dans la copie de 2023 du code publié sur GitHub).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

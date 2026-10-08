@@ -1144,6 +1144,89 @@ void main() {
     expect(server.routes, contains('GET /v1/children/c1/lessons/l2/image/file'));
   });
 
+  testWidgets('étape 30 : ressources des sites de confiance, masquer, regarder, chercher', (
+    tester,
+  ) async {
+    var hidden = false;
+    var searches = 0;
+    Map<String, Object?> exercise() => {
+      'id': 'r1',
+      'provider': 'mathalea',
+      'kind': 'exercise',
+      'title': 'Opérations simples avec des fractions',
+      'url': 'https://coopmaths.fr/alea/?uuid=f0f0f&v=eleve',
+      'licence': 'MathALÉA, Coopmaths (logiciel libre AGPL)',
+      'best': {'correct': 4, 'total': 5},
+      'hidden': hidden,
+      'attempts': 2,
+      'last_done_at': '2026-09-23T15:00:00Z',
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'text': null,
+            'notions': <Object?>[],
+          },
+        ),
+      )
+      ..on(
+        'GET /v1/children/c1/lessons/l2/resources',
+        (_) => (
+          200,
+          {
+            'available': true,
+            'resources': [exercise()],
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/lessons/l2/resources/r1/hide', (_) {
+        hidden = true;
+        return (200, exercise());
+      })
+      ..on('POST /v1/children/c1/lessons/l2/resources/prepare', (_) {
+        searches++;
+        return (202, {'available': true, 'resources': <Object?>[]});
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+
+    expect(find.text('Pour s\'entraîner autrement'), findsOneWidget);
+    expect(find.text('Opérations simples avec des fractions'), findsOneWidget);
+    expect(find.text('Exercice noté · MathALÉA · 2 essai(s) · meilleur score 4/5'), findsOneWidget);
+
+    // Masquer : l'enfant ne la voit plus.
+    await tap(tester, find.byType(Switch));
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/resources/r1/hide'));
+    expect(
+      find.text('Exercice noté · MathALÉA · masquée · 2 essai(s) · meilleur score 4/5'),
+      findsOneWidget,
+    );
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // Le parent regarde l'exercice dans l'application : aucun score n'est envoyé pour lui.
+    await tap(tester, find.text('Opérations simples avec des fractions'));
+    expect(find.text('Page : https://coopmaths.fr/alea/?uuid=f0f0f&v=eleve'), findsOneWidget);
+    await tester.tap(find.text('Finir l\'exercice'));
+    await tester.pumpAndSettle();
+    expect(server.routes.where((r) => r.endsWith('/result')), isEmpty);
+    await tap(tester, find.byType(BackButton));
+
+    // Chercher de nouveau : la liste est relue un peu plus tard.
+    final reads = server.routes.where((r) => r.endsWith('/l2/resources')).length;
+    await tap(tester, find.text('Chercher des ressources'));
+    expect(searches, 1);
+    await tester.pump(const Duration(seconds: 41));
+    await tester.pumpAndSettle();
+    expect(server.routes.where((r) => r.endsWith('/l2/resources')).length, greaterThan(reads + 1));
+  });
+
   testWidgets('étape 28 : images des notions, « pas utile », préparer et tout valider', (
     tester,
   ) async {

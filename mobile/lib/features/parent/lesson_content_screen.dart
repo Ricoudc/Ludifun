@@ -10,6 +10,7 @@ import '../../core/api/api_exception.dart';
 import '../../core/session.dart';
 import '../../models/parent.dart';
 import 'lesson_image_card.dart';
+import 'lesson_resources_card.dart';
 
 final lessonContentProvider = FutureProvider.autoDispose.family<LessonContent, (String, String)>(
   (ref, ids) => ref.watch(apiProvider).lessonContent(ids.$1, ids.$2),
@@ -52,6 +53,7 @@ class LessonContentScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             LessonImageCard(childId: childId, lessonId: lessonId),
+            LessonResourcesCard(childId: childId, lessonId: lessonId),
             if (value.text case final text?)
               Card(
                 margin: const EdgeInsets.only(bottom: 12),

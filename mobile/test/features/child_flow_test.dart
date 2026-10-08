@@ -293,6 +293,69 @@ void main() {
     expect(find.text('Question 1 / 1'), findsOneWidget);
   });
 
+  testWidgets('étape 30 : exercice MathALÉA ouvert dans l\'application, score envoyé une fois', (
+    tester,
+  ) async {
+    Map<String, Object?> resource(String id, String provider, String kind, String url) => {
+      'id': id,
+      'provider': provider,
+      'kind': kind,
+      'title': 'Ressource $id',
+      'url': url,
+      'licence': 'Licence de $provider',
+      'best': null,
+    };
+    final lesson = lessonJson('ready')
+      ..['resources'] = [
+        resource('r1', 'mathalea', 'exercise', 'https://coopmaths.fr/alea/?uuid=f0f0f&v=eleve'),
+        resource('r2', 'lumni', 'video', 'https://www.lumni.fr/video/la-revolution'),
+        // Site inconnu de cette version, ou adresse hors du site : jamais montrés.
+        resource('r3', 'youtube', 'video', 'https://www.youtube.com/watch?v=x'),
+        resource('r4', 'vikidia', 'quiz', 'https://vikidia.org.example.com/quiz'),
+      ];
+    final sent = <Object?>[];
+    server
+      ..on('GET /v1/lessons/l1', (_) => (200, lesson))
+      ..on('POST /v1/lessons/l1/sessions', (_) => (201, session))
+      ..on('POST /v1/lessons/l1/resources/r1/result', (r) {
+        sent.add(r.data);
+        return (200, {...resource('r1', 'mathalea', 'exercise', ''), 'best': r.data});
+      });
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go(Routes.lesson('l1'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('🌐 Pour s\'entraîner autrement :'), findsOneWidget);
+    expect(find.text('Ressource r1'), findsOneWidget);
+    expect(find.text('Vidéo · Lumni'), findsOneWidget);
+    expect(find.text('Ressource r3'), findsNothing);
+    expect(find.text('Ressource r4'), findsNothing);
+
+    await tester.ensureVisible(find.text('Ressource r1'));
+    await tester.tap(find.text('Ressource r1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Page : https://coopmaths.fr/alea/?uuid=f0f0f&v=eleve'), findsOneWidget);
+    expect(find.text('Source : Licence de mathalea'), findsOneWidget);
+
+    // Fin de l'exercice : le score part une seule fois, même si la page le renvoie.
+    await tester.tap(find.text('Finir l\'exercice'));
+    await tester.pumpAndSettle();
+    expect(sent, [
+      {'correct': 4, 'total': 5},
+    ]);
+    expect(find.text('👍 Score gardé : 4/5'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    // Un lien vers un autre site n'est pas ouvert.
+    await tester.tap(find.text('Lien externe'));
+    await tester.pump();
+    expect(
+      find.text('Ce lien mène à un autre site (publicite.example.com) : il n\'est pas ouvert.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('« Ce n\'est pas moi » : l\'appareil rend son jeton', (tester) async {
     final store = MemoryCredentialStore();
     server

@@ -14,6 +14,7 @@ import '../../models/lesson.dart';
 import '../../models/session.dart';
 import '../../models/subject.dart';
 import '../home/home_providers.dart';
+import 'resource_screen.dart';
 
 final lessonProvider = FutureProvider.autoDispose.family<Lesson, String>(
   (ref, id) => ref.watch(apiProvider).lesson(id),
@@ -214,6 +215,12 @@ class _Summary extends ConsumerWidget {
             trailing: LevelStars(knowledge.level),
             onTap: () => _showStatement(context, knowledge),
           ),
+        if (lesson.resources.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('🌐 Pour s\'entraîner autrement :', style: theme.titleLarge),
+          const SizedBox(height: 4),
+          for (final resource in lesson.resources) _ResourceTile(lesson.id, resource),
+        ],
         const SizedBox(height: 24),
         ...switch (session) {
           AsyncData(value: final s?) => [
@@ -276,4 +283,33 @@ class _LessonPicture extends ConsumerWidget {
         ),
         _ => const SizedBox(),
       };
+}
+
+/// Exercice, quiz ou vidéo d'un site de confiance (étape 30), ouvert dans l'application.
+class _ResourceTile extends ConsumerWidget {
+  const _ResourceTile(this.lessonId, this.resource);
+
+  final String lessonId;
+  final LessonResource resource;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    dense: true,
+    leading: Text(resource.provider.emoji, style: const TextStyle(fontSize: 26)),
+    title: Text(resource.title, style: const TextStyle(fontSize: 18)),
+    subtitle: Text(
+      '${resource.kind.label} · ${resource.provider.label}'
+      '${resource.best == null ? '' : ' · meilleur score ${resource.best}'}',
+    ),
+    trailing: const Icon(Icons.chevron_right),
+    onTap: () async {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ResourceScreen(resource: resource, lessonId: lessonId),
+        ),
+      );
+      ref.invalidate(lessonProvider(lessonId)); // meilleur score à jour
+    },
+  );
 }

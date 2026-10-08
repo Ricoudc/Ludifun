@@ -1,5 +1,8 @@
 import 'account.dart';
 import 'level.dart';
+import 'resource.dart';
+
+export 'resource.dart';
 
 /// Formats de l'API des leçons, de la mission du jour et des séances (§11).
 
@@ -148,6 +151,7 @@ class Lesson extends LessonSummary {
     this.canRetry = false,
     this.diagnostics,
     this.image,
+    this.resources = const [],
   });
 
   factory Lesson.fromJson(Json json) {
@@ -191,8 +195,12 @@ class Lesson extends LessonSummary {
         final Json i => LessonIllustration.fromJson(i),
         _ => null,
       },
+      resources: LessonResource.listFromJson(json['resources']),
     );
   }
+
+  /// Exercices, quiz et vidéos des sites de confiance (étape 30), que le parent n'a pas masqués.
+  final List<LessonResource> resources;
 
   /// Image validée par le parent (facultative : aucune question n'en dépend).
   final LessonIllustration? image;

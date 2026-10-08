@@ -351,6 +351,30 @@ class LudifunApi {
     data: {'remark': ?remark},
   );
 
+  /// Ressources des sites de confiance d'une leçon, avec les essais de l'enfant (étape 30).
+  Future<LessonResources> lessonResources(String childId, String lessonId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/lessons/$lessonId/resources');
+    return LessonResources.fromJson(r.data!);
+  });
+
+  /// Masquée, l'enfant ne la voit plus ; affichée de nouveau, si.
+  Future<void> setResourceHidden(
+    String childId,
+    String lessonId,
+    String resourceId, {
+    required bool hidden,
+  }) => _call(() async {
+    await _dio.post<Json>(
+      '/v1/children/$childId/lessons/$lessonId/resources/$resourceId/${hidden ? 'hide' : 'show'}',
+    );
+  });
+
+  /// Cherche (de nouveau) les ressources, en arrière-plan : relire la liste ensuite.
+  Future<LessonResources> prepareResources(String childId, String lessonId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/resources/prepare');
+    return LessonResources.fromJson(r.data!);
+  });
+
   /// L'IA dit si des images aident, puis elles sont dessinées (leçon déjà analysée).
   Future<LessonImage> prepareImages(String childId, String lessonId) =>
       _imageDecision('/v1/children/$childId/lessons/$lessonId/images/prepare');
@@ -431,6 +455,22 @@ class LudifunApi {
   Future<Lesson> lesson(String id, {String? childId}) => _call(() async {
     final r = await _dio.get<Json>('/v1/lessons/$id', queryParameters: _forChild(childId));
     return Lesson.fromJson(r.data!);
+  });
+
+  /// Score d'un exercice noté, à la fin ; le serveur garde le meilleur pour le parent.
+  Future<ResourceScore?> postResourceResult(
+    String lessonId,
+    String resourceId,
+    ResourceScore score,
+  ) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/lessons/$lessonId/resources/$resourceId/result',
+      data: score.toJson(),
+    );
+    return switch (r.data?['best']) {
+      final Json best => ResourceScore.fromJson(best),
+      _ => null,
+    };
   });
 
   /// Écran 2 : pages déjà compressées (JPEG), dans l'ordre.

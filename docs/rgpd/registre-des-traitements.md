@@ -32,7 +32,7 @@
 | Personnes concernées | enfants du CP à la 3e (6 à 15 ans) |
 | Données | prénom ou pseudo, classe, avatar ; texte des leçons (photos non conservées), notions, réponses, résultats, niveaux, types d'erreurs, temps de révision, XP et badges (sans classement entre enfants) ; objectifs fixés par le parent ; appareils liés (nom, dates) |
 | Données exclues | nom de famille, date de naissance, e-mail, voix, localisation, identifiants publicitaires |
-| Destinataires | le parent (tableau de bord, export) ; sous-traitants : hébergeur, Anthropic (texte et photos des leçons, réponses rédigées, sans prénom) |
+| Destinataires | le parent (tableau de bord, export) ; sous-traitants : hébergeur, Anthropic (texte et photos des leçons, réponses rédigées, sans prénom) ; si le parent permet les sites éducatifs de confiance : titre de la leçon et noms des notions envoyés aux sites (Vikidia, catalogue MathALÉA, moteur de recherche du serveur), et l'appareil de l'enfant ouvre directement coopmaths.fr, vikidia.org ou lumni.fr dans l'application (adresse IP, cookies de ces sites ; À COMPLÉTER : vérifier leurs politiques) |
 | Transfert hors UE | Anthropic (États-Unis) : clauses contractuelles types, DPA ; À COMPLÉTER : vérifier la certification Data Privacy Framework au moment de la signature |
 | Durée | jusqu'à la suppression par le parent (leçon, profil, compte), ou 12 mois d'inactivité du compte ; photos : effacées dès la lecture |
 | Droits | accès et portabilité (export JSON dans l'application), effacement (dans l'application), rectification (profil), retrait du consentement (suppression du profil) |

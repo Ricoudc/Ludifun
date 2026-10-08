@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:ludifun/features/capture/image_compressor.dart';
+import 'package:ludifun/features/lesson/resource_screen.dart';
+import 'package:ludifun/models/resource.dart';
 
 /// Image PNG valide de 1 × 1 pixel.
 final tinyPng = base64Decode(
@@ -53,4 +56,38 @@ class FakeCompressor implements ImageCompressor {
   @override
   Future<Uint8List> compress(Uint8List original) async =>
       Uint8List.fromList([...utf8.encode('jpeg:'), ...original.take(4)]);
+}
+
+/// Visionneuse simulée : la page affiche son adresse ; « Finir l'exercice » envoie le message
+/// de score de MathALÉA (deux fois, comme la vraie page peut le faire) ; « Lien externe » tente
+/// d'ouvrir un autre site.
+class FakeResourcePage implements ResourcePageBuilder {
+  const FakeResourcePage();
+
+  static const scoreMessage =
+      '{"action":"mathalea:score","resultsByExercice":'
+      '[{"numberOfPoints":4,"numberOfQuestions":5,"uuid":"f0f0f"}]}';
+
+  @override
+  Widget build(
+    LessonResource resource, {
+    required ValueChanged<ResourceScore> onScore,
+    required ValueChanged<Uri> onBlocked,
+  }) => Column(
+    children: [
+      Text('Page : ${resource.url}'),
+      TextButton(
+        onPressed: () {
+          for (var i = 0; i < 2; i++) {
+            if (scoreFromMessage(scoreMessage) case final score?) onScore(score);
+          }
+        },
+        child: const Text('Finir l\'exercice'),
+      ),
+      TextButton(
+        onPressed: () => onBlocked(Uri.parse('https://publicite.example.com/jeu')),
+        child: const Text('Lien externe'),
+      ),
+    ],
+  );
 }
