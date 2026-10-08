@@ -12,9 +12,11 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit
+from app.domain.duplicates import deduplicate
+from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, MaterialQuestion
 from app.domain.mastery import Mastery, lesson_review
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
+from app.domain.validation import Rejection
 from app.services.lesson_pipeline import PipelineResult
 
 
@@ -297,3 +299,39 @@ def review_state(lesson: LessonUnits, masteries: dict[str, Mastery], now: dateti
     )
     due = review.next_review_at is not None and review.next_review_at <= now
     return ReviewState(review.next_review_at, review.mastered, due)
+
+
+async def add_questions(
+    session: AsyncSession, lesson_id: uuid.UUID, notion: str, questions: list[MaterialQuestion]
+) -> tuple[int, list[Rejection]]:
+    """Ajoute des questions au matériel **actuel** d'une notion, sans ce que la leçon a déjà.
+
+    Les tâches de fond (questions des sites de confiance, quiz Vikidia) appellent l'IA ou
+    Internet pendant plusieurs minutes : le matériel est donc relu et verrouillé au moment
+    d'écrire, pour ne jamais écraser une correction demandée par le parent entre-temps. Rend le
+    nombre de questions ajoutées et celles écartées (doublons) ; l'appelant valide la transaction."""
+    rows = (
+        await session.execute(
+            select(db.KnowledgeItem.key, db.KnowledgeMaterial)
+            .join(db.KnowledgeMaterial, db.KnowledgeMaterial.knowledge_id == db.KnowledgeItem.id)
+            .where(db.KnowledgeItem.lesson_id == lesson_id)
+            .order_by(db.KnowledgeItem.position)
+            .with_for_update(of=db.KnowledgeMaterial)
+            .execution_options(populate_existing=True)
+        )
+    ).all()
+    current = {key: row for key, row in rows}
+    if notion not in current:  # notion supprimée entre-temps
+        return 0, []
+    material = KnowledgeMaterial.model_validate(current[notion].material)
+    # Seules les nouvelles questions sont comparées (à toute la leçon, cette notion comprise) :
+    # rien de ce qui est déjà enregistré n'est retiré.
+    already = [(key, KnowledgeMaterial.model_validate(row.material)) for key, row in rows]
+    candidate = material.model_copy(update={"questions": questions})
+    checked = deduplicate([(notion, candidate)], lambda _, __: True, already=already)[notion]
+    new = checked.material.questions
+    if new:
+        current[notion].material = material.model_copy(
+            update={"questions": [*material.questions, *new]}
+        ).model_dump(mode="json")
+    return len(new), [r for r in checked.removed if r.element.startswith("questions[")]

@@ -224,7 +224,11 @@ class LessonPipeline:
             run.warnings.insert(0, note)
             raise _Failed(FailureReason.NOT_A_LESSON)
         if text is None and self.reading_check is not None:
-            result.review = await self.reading_check(result.ocr, analysis)
+            try:
+                result.review = await self.reading_check(result.ocr, analysis)
+            except Exception:  # vérification facultative : elle ne fait jamais échouer l'analyse
+                logger.exception("Vérification des dates impossible")
+                result.review = []
             if result.review:
                 return  # une date lue probablement de travers : l'enfant vérifie, puis on reprend
 

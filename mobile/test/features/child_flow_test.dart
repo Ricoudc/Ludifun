@@ -12,6 +12,7 @@ import 'package:ludifun/features/home/home_providers.dart';
 import '../support/fake_server.dart';
 import '../support/fake_session.dart';
 import '../support/fakes.dart';
+import '../support/screenshots.dart';
 
 const child = ChildCredentials(deviceToken: 'ldf_d_x', childId: 'c1', displayName: 'Emma');
 final now = DateTime(2026, 9, 23, 17);
@@ -170,10 +171,12 @@ void main() {
     final container = await launch(tester, store);
 
     // Écran 0 : code, puis « C'est toi, Emma ? ».
+    await shot(tester, 'e00_depart');
     await tester.tap(find.text('Je suis un enfant'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '482731');
     await tester.pumpAndSettle();
+    await shot(tester, 'e01_code');
     expect(find.text('C\'est toi, Emma ?'), findsOneWidget);
     expect(store.credentials, isA<NoCredentials>());
     await tester.tap(find.text('Oui, c\'est moi !'));
@@ -183,12 +186,14 @@ void main() {
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
     expect(find.text('🎉 Tout est à jour ! Photographie une nouvelle leçon.'), findsOneWidget);
     expect(find.text('Photographie ta première leçon !'), findsOneWidget);
+    await shot(tester, 'e02_accueil_vide');
 
     // Écran 2 : deux pages de la galerie et une photo, puis la photo passe en premier.
     await tester.tap(find.text('Nouvelle leçon'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Pose le cahier à plat'), findsOneWidget);
     expect(find.textContaining('sans ton nom ni ton visage'), findsOneWidget);
+    await shot(tester, 'e03_photo_vide');
     await tester.tap(find.text('Ajouter depuis la galerie'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Prendre une photo'));
@@ -203,6 +208,7 @@ void main() {
     capture.move(2, 0);
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('Page 3'), findsOneWidget);
+    await shot(tester, 'e04_photos');
 
     // Envoi : pages compressées sur le téléphone, dans l'ordre choisi.
     var polls = 0;
@@ -238,6 +244,7 @@ void main() {
     // Écran 3 : les étapes s'enchaînent, chacune visible au moins 800 ms.
     await advance(tester, const Duration(milliseconds: 500));
     expect(find.text('Lecture de ta leçon…'), findsOneWidget);
+    await shot(tester, 'e05_analyse');
     expect(find.byIcon(Icons.check_circle), findsNothing);
     final waited = await advanceUntil(tester, find.text('C\'est prêt ! 🎉'));
     expect(waited, greaterThanOrEqualTo(const Duration(milliseconds: 1900))); // 3 × 800 ms
@@ -330,12 +337,14 @@ void main() {
     expect(find.text('Vidéo · Lumni'), findsOneWidget);
     expect(find.text('Ressource r3'), findsNothing);
     expect(find.text('Ressource r4'), findsNothing);
+    await shot(tester, 'e08_lecon_ressources', height: 1600);
 
     await tester.ensureVisible(find.text('Ressource r1'));
     await tester.tap(find.text('Ressource r1'));
     await tester.pumpAndSettle();
     expect(find.text('Page : https://coopmaths.fr/alea/?uuid=f0f0f&v=eleve'), findsOneWidget);
     expect(find.text('Source : Licence de mathalea'), findsOneWidget);
+    await shot(tester, 'e09_visionneuse');
 
     // Fin de l'exercice : le score part une seule fois, même si la page le renvoie.
     await tester.tap(find.text('Finir l\'exercice'));
@@ -408,6 +417,7 @@ void main() {
     expect(find.text('maîtrisée ✓'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
 
+    await shot(tester, 'e10_accueil_mission', height: 1300);
     // Une photo ratée se retire par un appui long ; une leçon analysée, seul le parent la supprime.
     final failed = find.ancestor(of: find.text('Réessayer'), matching: find.byType(ListTile));
     await tester.ensureVisible(failed);
@@ -719,6 +729,7 @@ void main() {
     expect(find.text('📅 Contrôle de fractions vendredi'), findsOneWidget);
     expect(find.text('Exercices ciblés sur ce qui est fragile'), findsOneWidget);
     expect(find.text('📐 Les fractions · ⏱️ 12 min'), findsOneWidget);
+    await shot(tester, 'e11_accueil_controle');
   });
 
   testWidgets('étape 20 : XP, niveau, série et badges sur l\'accueil', (tester) async {
@@ -752,6 +763,7 @@ void main() {
     expect(find.text('⭐ 160 XP · Niveau 2'), findsOneWidget);
     expect(find.text('🔥 Série : 4 jours'), findsOneWidget);
     expect(find.bySemanticsLabel(RegExp('Encore 140 XP avant le niveau 3')), findsOneWidget);
+    await shot(tester, 'e12_accueil_xp');
 
     await tester.tap(find.text('🏅 Mes badges (1)'));
     await tester.pumpAndSettle();
@@ -761,6 +773,7 @@ void main() {
     // Un badge pas encore gagné dit comment l'obtenir.
     expect(find.text('Réussis une notion qui te posait problème.'), findsOneWidget);
     expect(find.text('🔒'), findsOneWidget);
+    await shot(tester, 'e13_badges');
     expect(container.read(routerProvider).state.matchedLocation, Routes.badges);
   });
 
@@ -794,5 +807,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('🎉 Tout est à jour pour cette leçon ! Reviens demain.'), findsOneWidget);
     expect(find.text('Commencer la révision'), findsNothing);
+    await shot(tester, 'e14_lecon_a_jour');
   });
 }

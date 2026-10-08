@@ -125,7 +125,13 @@ class _MatchViewState extends State<MatchView> {
         ActivityInstruction.of(context) ?? 'Relie chaque élément à sa réponse',
         style: Theme.of(context).textTheme.titleLarge,
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: 6),
+      // Le geste, dit une fois : sans lui, rien ne distingue la colonne des réponses.
+      const Text(
+        'Touche un mot à gauche, puis sa réponse à droite.',
+        style: TextStyle(fontSize: 16, color: Colors.black54),
+      ),
+      const SizedBox(height: 12),
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

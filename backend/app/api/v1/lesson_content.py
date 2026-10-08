@@ -202,6 +202,13 @@ async def rework_notion(
             "L'IA n'a pas proposé de meilleure version (ou elle n'a pas passé les contrôles). "
             "Les questions actuelles restent ; vous pouvez réessayer ou préciser votre remarque.",
         )
+    # L'IA a pu prendre plusieurs minutes : le matériel est relu (et verrouillé) pour garder les
+    # questions des sites ajoutées entre-temps en arrière-plan.
+    material_row = await db.get(
+        db_models.KnowledgeMaterial, knowledge_id, with_for_update=True, populate_existing=True
+    )
+    if material_row is None:
+        raise ApiError(404, "notion_not_found", "Notion introuvable.")
     # Les questions tirées des sites de confiance (étape 29) restent ; rien de ce que l'enfant
     # voit déjà dans les autres notions de la leçon.
     sourced = [q for q in KnowledgeMaterial.model_validate(material_row.material).questions if q.source]

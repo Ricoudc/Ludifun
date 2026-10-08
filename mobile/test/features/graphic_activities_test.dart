@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/screenshots.dart';
+
 import 'package:ludifun/features/session/activities/activity_registry.dart';
 import 'package:ludifun/features/session/activities/memory_view.dart';
 import 'package:ludifun/models/account.dart';
@@ -18,6 +21,7 @@ void main() {
         ),
       ),
     );
+    await shot(tester, 'a_$type');
     return sent;
   }
 

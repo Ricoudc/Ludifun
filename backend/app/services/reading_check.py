@@ -26,8 +26,16 @@ PAGES = 3  # pages lues par notion
 
 def for_settings(settings: Settings, database: Database) -> ReadingCheck:
     assert settings.web_search_url is not None
-    library = Library(database)
-    return make_reading_check(WebSources(settings.web_search_url, settings.web_sites, library=library))
+    search_url = settings.web_search_url
+
+    async def check(ocr: OcrResult, analysis: LessonAnalysis) -> list[Uncertain]:
+        web = WebSources(search_url, settings.web_sites, library=Library(database))
+        try:
+            return await make_reading_check(web)(ocr, analysis)
+        finally:
+            await web.aclose()
+
+    return check
 
 
 def make_reading_check(web: WebSources) -> ReadingCheck:

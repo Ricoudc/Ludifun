@@ -99,6 +99,10 @@ class WebSources:
             timeout=TIMEOUT_S, headers={"User-Agent": USER_AGENT}, follow_redirects=False
         )
 
+    async def aclose(self) -> None:
+        """Ferme les connexions (à appeler quand la recherche est finie)."""
+        await self._client.aclose()
+
     async def search(self, question: str, limit: int = MAX_PAGES) -> list[SearchResult]:
         """Résultats des sites autorisés : d'abord une recherche libre, puis, s'il en manque,
         une recherche limitée à chaque site, dans l'ordre de préférence."""
@@ -130,7 +134,12 @@ class WebSources:
             raise SearchUnavailable("le moteur refuse le format json (search.formats dans settings.yml)")
         if response.status_code != 200:
             raise SearchUnavailable(f"moteur de recherche : erreur {response.status_code}")
-        results = response.json().get("results", [])
+        try:
+            results = response.json().get("results", [])
+        except (ValueError, AttributeError) as exc:
+            raise SearchUnavailable("le moteur de recherche a répondu autre chose que du json") from exc
+        if not isinstance(results, list):
+            raise SearchUnavailable("réponse du moteur de recherche inattendue")
         return [
             SearchResult(str(r["url"]), str(r.get("title") or ""))
             for r in results
@@ -152,10 +161,11 @@ class WebSources:
                     if len(body) > MAX_PAGE_BYTES:
                         return None
                 encoding = response.encoding or "utf-8"
-        except httpx.HTTPError as exc:
+            text = body.decode(encoding, errors="replace")
+        except (httpx.HTTPError, LookupError) as exc:  # LookupError : jeu de caractères inconnu
             logger.info("Page illisible %s : %s", url, type(exc).__name__)
             return None
-        return page_text(body.decode(encoding, errors="replace"))
+        return page_text(text)
 
     async def pages(self, question: str, limit: int = MAX_PAGES) -> list[tuple[str, str, str]]:
         """(adresse, titre, texte) des pages trouvées. Avec une bibliothèque : chaque page lue y

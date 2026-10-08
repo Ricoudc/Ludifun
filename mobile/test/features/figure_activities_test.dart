@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/screenshots.dart';
+
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
 import 'package:ludifun/features/session/activities/figure_canvas.dart';
@@ -138,6 +141,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await shot(tester, 'a_$type');
     return sent;
   }
 

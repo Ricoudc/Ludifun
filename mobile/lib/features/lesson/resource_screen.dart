@@ -85,7 +85,9 @@ class _WebResourcePageState extends State<_WebResourcePage> {
           onProgress: (progress) {
             if (mounted) setState(() => _progress = progress);
           },
-          onPageFinished: (_) => _controller.runJavaScript(_listenToScores),
+          // Page déjà quittée, ou JavaScript refusé : la page s'affiche, sans score.
+          onPageFinished: (_) =>
+              _controller.runJavaScript(_listenToScores).catchError((Object _) {}),
         ),
       )
       ..loadRequest(widget.resource.url);

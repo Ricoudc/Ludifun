@@ -10,13 +10,14 @@ import 'common.dart';
 /// Jeux de l'étape 26 : démêler, trouver la correspondance, roue aléatoire, ouvrir la boîte,
 /// cartes aléatoires. Le hasard (case de la roue, ordre des cartes) est décidé par le serveur.
 
+/// Ni vert ni rouge (« juste » et « faux » de la correction) : aucune réponse ne semble soufflée.
 const _colors = [
   LudiColors.primary,
   LudiColors.accent,
-  LudiColors.mastered,
   Color(0xFF1E88E5),
-  Color(0xFFD81B60),
+  Color(0xFF8E24AA),
   Color(0xFF6D4C41),
+  Color(0xFF546E7A),
 ];
 
 /// Étiquette de mot ou de réponse, à toucher.

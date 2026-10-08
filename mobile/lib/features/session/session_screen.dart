@@ -100,6 +100,13 @@ class SessionScreen extends ConsumerWidget {
                 )
               : null,
         ),
+        bottomNavigationBar: state.phase == Phase.report && state.report != null
+            ? ReportActions(
+                report: state.report!,
+                onReviewErrors: () => _reviewErrors(context, ref),
+                onDone: () => _leave(context, ref, state),
+              )
+            : null,
         body: CenteredBody(
           top: _playing(state) || state.phase == Phase.report,
           children: [
@@ -185,8 +192,6 @@ class SessionScreen extends ConsumerWidget {
               ),
               Phase.report when state.report != null => ReportView(
                 report: state.report!,
-                onReviewErrors: () => _reviewErrors(context, ref),
-                onDone: () => _leave(context, ref, state),
                 onRate: (rating) => ref
                     .read(apiProvider)
                     .sendFeedback(rating: rating, screen: 'report', sessionId: sessionId),

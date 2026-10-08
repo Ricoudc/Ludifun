@@ -2,13 +2,15 @@
 l'analyse si le parent l'a permis ; l'enfant les ouvre dans l'application et envoie son score ;
 le parent les voit toutes et peut en masquer. Les sites sont simulés : aucun appel à Internet."""
 
+import asyncio
+import uuid
 from typing import Any
 
 import httpx
 import pytest
 from fastapi import FastAPI
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
@@ -184,3 +186,29 @@ async def test_another_family_cannot_touch_the_resources(client: AsyncClient, tr
         headers=auth(other["device"]),
     )
     assert r.status_code == 404
+
+
+async def test_two_searches_at_once_add_each_resource_once(
+    app: FastAPI, client: AsyncClient, db: AsyncSession, trusted_sites: None
+) -> None:
+    """Deux appuis rapides sur « Chercher des ressources » : deux recherches en même temps,
+    chaque ressource et chaque question de quiz une seule fois, sans erreur."""
+    family = await family_with_device(client)
+    await client.put("/v1/parent/ai/sources", json={"enabled": True}, headers=auth(family["parent"]))
+    lesson = await upload_lesson(client, family["device"])
+    lesson_id = uuid.UUID(lesson["id"])
+    await db.execute(delete(LessonResource))
+    await db.commit()
+    settings = app.state.settings
+    await asyncio.gather(
+        *(external_resources.prepare(app.state.database, settings, lesson_id) for _ in range(2))
+    )
+    rows = list(await db.scalars(select(LessonResource).where(LessonResource.lesson_id == lesson_id)))
+    assert sorted(r.provider for r in rows) == ["lumni", "mathalea", "vikidia"]
+    quiz = [
+        q
+        for m in await db.scalars(select(KnowledgeMaterial))
+        for q in m.material.get("questions", [])
+        if (q.get("source") or {}).get("site") == "fr.vikidia.org"
+    ]
+    assert len(quiz) == 1

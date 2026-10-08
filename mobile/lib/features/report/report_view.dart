@@ -10,17 +10,9 @@ import 'quick_rating.dart';
 
 /// Écran 7 : bilan de la séance.
 class ReportView extends StatelessWidget {
-  const ReportView({
-    required this.report,
-    required this.onReviewErrors,
-    required this.onDone,
-    this.onRate,
-    super.key,
-  });
+  const ReportView({required this.report, this.onRate, super.key});
 
   final Report report;
-  final VoidCallback? onReviewErrors;
-  final VoidCallback onDone;
 
   /// Note rapide de la séance ; sans elle, pas de question.
   final Future<void> Function(int rating)? onRate;
@@ -106,19 +98,58 @@ class ReportView extends StatelessWidget {
           ),
         ],
         if (onRate != null) ...[const SizedBox(height: 24), QuickRating(onRate: onRate!)],
-        const SizedBox(height: 28),
-        if (report.canReviewErrors && onReviewErrors != null) ...[
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: LudiColors.accent),
-            onPressed: onReviewErrors,
-            child: const Text('Revoir mes erreurs'),
-          ),
-          const SizedBox(height: 12),
-        ],
-        OutlinedButton(onPressed: onDone, child: const Text('Terminer')),
+        const SizedBox(height: 8),
       ],
     );
   }
+}
+
+/// Boutons du bilan, toujours visibles en bas de l'écran : l'enfant n'a pas à chercher la suite
+/// sous un bilan qui défile.
+class ReportActions extends StatelessWidget {
+  const ReportActions({
+    required this.report,
+    required this.onReviewErrors,
+    required this.onDone,
+    super.key,
+  });
+
+  final Report report;
+  final VoidCallback? onReviewErrors;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: LudiColors.background,
+    elevation: 6,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (report.canReviewErrors && onReviewErrors != null) ...[
+                  FilledButton(
+                    style: FilledButton.styleFrom(backgroundColor: LudiColors.accent),
+                    onPressed: onReviewErrors,
+                    child: const Text('Revoir mes erreurs'),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                OutlinedButton(onPressed: onDone, child: const Text('Terminer')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _Count extends StatelessWidget {

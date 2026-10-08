@@ -7,6 +7,9 @@ nourrissent les jeux « apprendre par l'image ». Un autre parent ne voit rien ;
 leçon efface les fichiers.
 """
 
+import asyncio
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -17,7 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.fake import FakeProvider
 from app.config import Settings
-from app.db.models import AiRun
+from app.db.models import AiRun, LessonImage
+from app.services.illustration import remove_orphan_files
 from tests.api.helpers import auth, family_with_device, upload_lesson
 
 
@@ -230,3 +234,37 @@ async def test_images_can_be_prepared_for_an_older_lesson(
     state = (await client.get(f"{base}/image", headers=auth(family["parent"]))).json()
     assert state["image"]["status"] == "to_review" and len(state["pictures"]) == 3
     assert len(files(tmp_path)) == 4
+
+
+async def test_cleaning_spares_an_image_being_saved(app: FastAPI, client: AsyncClient, images: Path) -> None:
+    """Le nettoyage (après la suppression d'une autre leçon) n'efface pas une image tout juste
+    écrite dont la ligne existe encore ; un vieux fichier sans ligne, si."""
+    family = await family_with_device(client)
+    await upload_lesson(client, family["device"])
+    async with app.state.database.sessionmaker() as session:
+        row = await session.scalar(select(LessonImage).limit(1))
+        assert row is not None
+        being_saved = images / f"{row.id}-0000abcd.png"
+    being_saved.write_bytes(b"png")
+    forgotten = images / "00000000-0000-4000-8000-00000000dead-0000abcd.png"
+    forgotten.write_bytes(b"png")
+    old = time.time() - 3600
+    os.utime(forgotten, (old, old))
+    before = set(files(images))
+    removed = await remove_orphan_files(app.state.database, app.state.settings)
+    assert removed == 1
+    assert set(files(images)) == before - {forgotten.name}
+
+
+async def test_double_tap_on_prepare_starts_one_image(
+    app: FastAPI, client: AsyncClient, tmp_path: Path
+) -> None:
+    """Leçon analysée sans moteur d'images, puis « Préparer les images » touché plusieurs fois :
+    jamais d'erreur 500 (une seule image de la leçon)."""
+    family = await family_with_device(client)
+    lesson = await upload_lesson(client, family["device"])  # pas encore de moteur : pas d'image
+    settings: Settings = app.state.settings
+    app.state.settings = settings.model_copy(update={"image_engine": "fake", "media_dir": str(tmp_path)})
+    url = f"/v1/children/{family['child']['id']}/lessons/{lesson['id']}/images/prepare"
+    responses = await asyncio.gather(*(client.post(url, headers=auth(family["parent"])) for _ in range(3)))
+    assert all(r.status_code == 202 for r in responses), [r.text for r in responses]

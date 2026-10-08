@@ -61,3 +61,29 @@ async def test_a_date_contradicted_by_sources_is_checked_by_the_child(
     assert r.status_code == 202
     after = (await client.get(f"/v1/lessons/{lesson['id']}", headers=auth(token))).json()
     assert after["status"] == "ready"  # texte vérifié : pas de nouvelle vérification
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        httpx.Response(200, text="<html>Erreur du moteur</html>"),  # pas du JSON
+        httpx.Response(200, json={"results": "rien"}),  # résultats d'une autre forme
+    ],
+)
+async def test_a_broken_search_engine_never_breaks_the_analysis(
+    app: FastAPI, client: AsyncClient, monkeypatch: pytest.MonkeyPatch, broken: httpx.Response
+) -> None:
+    """La vérification des dates est facultative : un moteur qui répond de travers la saute,
+    l'analyse de la leçon continue."""
+    settings: Settings = app.state.settings
+    app.state.settings = settings.model_copy(update={"web_search_url": SEARX})
+
+    def fake_web(url: str, sites: Any, library: Any = None) -> WebSources:
+        client = httpx.AsyncClient(transport=httpx.MockTransport(lambda _: broken))
+        return WebSources(url, sites, client=client, library=library)
+
+    monkeypatch.setattr(reading_check, "WebSources", fake_web)
+    family = await family_with_device(client)
+    await client.put("/v1/parent/ai/sources", json={"enabled": True}, headers=auth(family["parent"]))
+    lesson = await upload_lesson(client, family["device"])
+    assert lesson["status"] == "ready", lesson.get("failure_reason")

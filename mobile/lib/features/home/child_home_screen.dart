@@ -219,13 +219,16 @@ class _LessonRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (String title, Widget trailing) = switch (lesson.status) {
+    // Une leçon prête : l'état sous le titre, pour que le titre garde toute la largeur.
+    final (String title, Widget? status, Widget trailing) = switch (lesson.status) {
       LessonStatus.failed => (
         'Leçon non analysée',
+        null,
         const Chip(label: Text('Réessayer'), avatar: Icon(Icons.refresh, size: 18)),
       ),
       LessonStatus.needsReview => (
         'Un mot à vérifier',
+        null,
         const Chip(label: Text('Vérifier'), avatar: Icon(Icons.search, size: 18)),
       ),
       LessonStatus.ready => (
@@ -233,13 +236,16 @@ class _LessonRow extends ConsumerWidget {
         Text(
           reviewLabel(lesson, ref.watch(nowProvider)()),
           style: TextStyle(
+            fontSize: 15,
             color: lesson.mastered && !lesson.due ? LudiColors.mastered : null,
             fontWeight: lesson.due ? FontWeight.w700 : null,
           ),
         ),
+        const Icon(Icons.chevron_right),
       ),
       _ => (
         'Analyse en cours…',
+        null,
         const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
       ),
     };
@@ -248,6 +254,7 @@ class _LessonRow extends ConsumerWidget {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Text(Subjects.emoji(lesson.subject), style: const TextStyle(fontSize: 28)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: status,
         trailing: trailing,
         onTap: () => _open(context, ref),
         // Seule une leçon ratée se retire ici ; les autres, c'est le parent qui les supprime.

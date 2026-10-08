@@ -57,3 +57,9 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# SQLAlchemy asynchrone exécute les requêtes dans des greenlets : sans ce réglage, la mesure de
+# couverture (`pytest --cov`) ne voit pas une grande partie du code des routes et des services.
+concurrency = ["greenlet", "thread"]
+source = ["app"]

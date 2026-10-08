@@ -8,6 +8,7 @@ import 'package:ludifun/features/session/session_controller.dart';
 
 import '../support/fake_server.dart';
 import '../support/fake_session.dart';
+import '../support/screenshots.dart';
 
 const child = ChildCredentials(deviceToken: 'ldf_d_x', childId: 'c1', displayName: 'Emma');
 
@@ -68,6 +69,7 @@ void main() {
     // Écran 5 : première question, compteur des activités principales.
     expect(find.text('Question 1 / 2'), findsOneWidget);
     expect(find.text('Louis XVI réunit les États généraux en 1789.'), findsOneWidget);
+    await shot(tester, 's01_vrai_faux');
     clock = clock.add(const Duration(seconds: 7));
     await tapAndSettle(tester, '❌ Faux');
 
@@ -78,10 +80,12 @@ void main() {
       find.text('💡 Astuce pour retenir : 1789 = début de la Révolution française.'),
       findsOneWidget,
     );
+    await shot(tester, 's02_correction_faux');
     expect(backend.durations, [7000]);
     await tapAndSettle(tester, 'Continuer');
 
     expect(find.text('Question 2 / 2'), findsOneWidget);
+    await shot(tester, 's03_qcm');
     await tapAndSettle(tester, '1789');
     expect(find.text('✅ Bravo !'), findsOneWidget);
     expect(find.textContaining('La bonne réponse est'), findsNothing);
@@ -90,6 +94,7 @@ void main() {
 
     // Reprise des erreurs, avec son propre bandeau.
     expect(find.text('🔄 Reprise des erreurs 1 / 1'), findsOneWidget);
+    await shot(tester, 's04_reprise');
     await tapAndSettle(tester, '1789');
     await tapAndSettle(tester, 'Continuer');
 
@@ -106,6 +111,7 @@ void main() {
     expect(find.text('1789 · maîtrisée'), findsOneWidget);
     expect(find.textContaining('États généraux ·'), findsNothing);
     expect(find.text('📅 Prochaine révision : jeudi 24 septembre'), findsOneWidget);
+    await shot(tester, 's05_bilan');
 
     // Étape 18 : un toucher pour dire si la séance a plu.
     Object? feedback;
@@ -233,6 +239,7 @@ void main() {
     await tapAndSettle(tester, '❓ Je n\'ai pas compris');
     expect(find.text('💡 Un indice'), findsOneWidget);
     expect(find.text('Pense à la prise de la Bastille.'), findsOneWidget);
+    await shot(tester, 's06_aide');
     expect(find.text('✅ La réponse'), findsNothing);
 
     await tapAndSettle(tester, 'Encore de l\'aide');
@@ -287,6 +294,7 @@ void main() {
     });
     await open(tester, 's1');
     expect(find.text('Réponds avec tes mots'), findsOneWidget);
+    await shot(tester, 's07_question_ouverte');
     final validate = find.widgetWithText(FilledButton, 'Valider');
     expect(tester.widget<FilledButton>(validate).onPressed, isNull); // rien d'écrit
     await tester.enterText(find.byType(TextField), 'Elles ont le même dénominateur.');
@@ -341,6 +349,7 @@ void main() {
     await tapAndSettle(tester, '1492'); // deuxième échec
     await tapAndSettle(tester, 'Continuer');
     expect(find.text('📖 Rappel : la Révolution commence en 1789.'), findsOneWidget);
+    await shot(tester, 's08_rappel');
     expect(find.text('Question 3 / 4'), findsOneWidget);
     await tapAndSettle(tester, '✅ Vrai');
     await tapAndSettle(tester, 'Continuer');
@@ -367,6 +376,7 @@ void main() {
     await open(tester, 's1');
     await tapAndSettle(tester, '1492');
     expect(find.text('☕ Tu vas très vite ! On fait une petite pause ?'), findsOneWidget);
+    await shot(tester, 's09_pause');
     await tapAndSettle(tester, 'Faire une pause');
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
   });
@@ -395,6 +405,7 @@ void main() {
       await tapAndSettle(tester, '1789');
       await tapAndSettle(tester, 'Continuer');
       expect(find.text('Tu as été rapide et tu as tout réussi !'), findsOneWidget);
+      await shot(tester, 's10_bonus');
       if (accept) {
         await tapAndSettle(tester, 'Oui, j\'y vais !');
         expect(find.text('🚀 Défi bonus 1 / 1'), findsOneWidget);

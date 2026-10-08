@@ -16,8 +16,9 @@ from app.ai.ports import LLMProvider
 from app.config import Settings
 from app.db import models as db
 from app.db.base import Database
+from app.domain.knowledge import KnowledgeUnit
 from app.domain.sources import SourcedAnswer
-from app.services.lesson_store import load_units
+from app.services.lesson_store import LessonUnits, load_units
 from app.services.library import Library
 from app.services.sourced_answer import SourcedAnswerer
 from app.services.web_sources import SearchUnavailable, WebSources
@@ -72,41 +73,58 @@ async def prepare(
         if not without_example:
             return 0
         assert settings.web_search_url is not None
+        own = web is None
         web = web or WebSources(settings.web_search_url, settings.web_sites, library=Library(database))
-        answerer = SourcedAnswerer(llm)
-        grade = lesson.grade or "CM1"
-        helped = 0
-        for unit in without_example:
-            question = f"{unit.item.label} ({lesson.title})" if lesson.title else unit.item.label
-            try:
-                excerpts = await web.excerpts(question)
-            except SearchUnavailable as exc:
-                logger.warning("Aide sourcée impossible : %s", exc)
-                break
-            if not excerpts:
-                continue
-            done = await answerer.answer(
-                f"Explique simplement « {unit.item.label} » : {unit.item.statement}", grade, excerpts
+        try:
+            return await _help(session, web, llm, lesson, units, without_example)
+        finally:
+            if own:
+                await web.aclose()
+
+
+async def _help(
+    session: Any,
+    web: WebSources,
+    llm: LLMProvider,
+    lesson: db.Lesson,
+    units: LessonUnits,
+    without_example: list[KnowledgeUnit],
+) -> int:
+    lesson_id = lesson.id
+    answerer = SourcedAnswerer(llm)
+    grade = lesson.grade or "CM1"
+    helped = 0
+    for unit in without_example:
+        question = f"{unit.item.label} ({lesson.title})" if lesson.title else unit.item.label
+        try:
+            excerpts = await web.excerpts(question)
+        except SearchUnavailable as exc:
+            logger.warning("Aide sourcée impossible : %s", exc)
+            break
+        if not excerpts:
+            continue
+        done = await answerer.answer(
+            f"Explique simplement « {unit.item.label} » : {unit.item.statement}", grade, excerpts
+        )
+        run = done.run
+        session.add(
+            db.AiRun(
+                lesson_id=lesson_id,
+                stage=run.stage,
+                provider=run.provider,
+                model=run.model,
+                prompt_version=run.prompt_version,
+                input_tokens=run.input_tokens,
+                output_tokens=run.output_tokens,
+                latency_ms=run.latency_ms,
+                status=run.status,
+                warnings=run.warnings[:10],
             )
-            run = done.run
-            session.add(
-                db.AiRun(
-                    lesson_id=lesson_id,
-                    stage=run.stage,
-                    provider=run.provider,
-                    model=run.model,
-                    prompt_version=run.prompt_version,
-                    input_tokens=run.input_tokens,
-                    output_tokens=run.output_tokens,
-                    latency_ms=run.latency_ms,
-                    status=run.status,
-                    warnings=run.warnings[:10],
-                )
-            )
-            if done.answer is not None:
-                row = await session.get(db.KnowledgeItem, units.key_to_id[unit.id])
-                if row is not None:
-                    row.external_help = help_json(done.answer)
-                    helped += 1
-            await session.commit()
-        return helped
+        )
+        if done.answer is not None:
+            row = await session.get(db.KnowledgeItem, units.key_to_id[unit.id])
+            if row is not None:
+                row.external_help = help_json(done.answer)
+                helped += 1
+        await session.commit()
+    return helped

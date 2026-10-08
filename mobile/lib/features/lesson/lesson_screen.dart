@@ -209,7 +209,11 @@ class _Summary extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: SizedBox.square(dimension: 44, child: ApiImage(image)),
               ),
-              null => const Icon(Icons.lightbulb_outline, color: LudiColors.accent),
+              // Même largeur qu'une image : les noms des notions restent alignés.
+              null => const SizedBox.square(
+                dimension: 44,
+                child: Icon(Icons.lightbulb_outline, color: LudiColors.accent),
+              ),
             },
             title: Text(knowledge.label, style: const TextStyle(fontSize: 18)),
             trailing: LevelStars(knowledge.level),

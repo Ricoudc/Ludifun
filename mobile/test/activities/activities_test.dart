@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import '../support/screenshots.dart';
+
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
 import 'package:ludifun/core/speech.dart';
@@ -52,6 +55,7 @@ void main() {
         ),
       ),
     );
+    await shot(tester, 'a_$type');
   }
 
   testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {

@@ -24,12 +24,12 @@ from typing import Any
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.config import Settings
 from app.db import models as db
 from app.db.base import Database
-from app.domain.duplicates import deduplicate
-from app.domain.knowledge import KnowledgeMaterial, QuestionSource
+from app.domain.knowledge import MaterialQuestion, QuestionSource
 from app.domain.resources import (
     LICENCES,
     PER_PROVIDER,
@@ -45,7 +45,7 @@ from app.domain.resources import (
     vikidia_page_url,
 )
 from app.domain.validation import check_question, needs_picture, needs_support
-from app.services.lesson_store import load_units
+from app.services.lesson_store import add_questions, load_units
 from app.services.web_sources import SearchUnavailable, WebSources
 
 logger = logging.getLogger("ludifun.sources")
@@ -150,73 +150,69 @@ async def prepare(
             return 0
         http = client or new_client()
         resources: list[Resource] = []
-
-        # MathALÉA : des exercices notés, de la classe de l'enfant.
+        added: dict[str, list[MaterialQuestion]] = {}
         try:
-            catalogue = await mathalea_catalogue(http, settings)
-            resources += choose_mathalea(catalogue, lesson.subject, lesson.grade, lesson.title, notions)
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("MathALÉA injoignable : %s", type(exc).__name__)
-
-        # Vikidia : les quiz, et leurs questions qui parlent d'une notion de la leçon.
-        materials: dict[str, KnowledgeMaterial] = {u.id: u.material for u in units.units}
-        added: dict[str, list[Any]] = {}
-        try:
-            for title, text in await vikidia_quizzes(http, settings, query):
-                questions = parse_quiz(text)
-                if not questions:
-                    continue
-                url = vikidia_page_url(title)
-                if len([r for r in resources if r.provider is Provider.VIKIDIA]) < PER_PROVIDER:
-                    resources.append(Resource(Provider.VIKIDIA, ResourceKind.QUIZ, title, url))
-                source = QuestionSource(
-                    site="fr.vikidia.org",
-                    url=url,
-                    quote=f"Quiz « {title} »",
-                    licence=LICENCES[Provider.VIKIDIA],
-                )
-                for material in quiz_material(questions, notions):
-                    question, reason = check_question(material.question)
-                    if (
-                        question is None
-                        or reason
-                        or needs_picture(question.stem)
-                        or needs_support(question.stem)
-                    ):
-                        continue
-                    added.setdefault(material.knowledge_id, []).append(
-                        question.model_copy(update={"source": source})
-                    )
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("Vikidia injoignable : %s", type(exc).__name__)
-
-        # Lumni : vidéos et quiz, par le moteur de recherche du serveur.
-        if settings.web_search_url:
-            lumni = web or WebSources(settings.web_search_url, LUMNI_SITES)
+            # MathALÉA : des exercices notés, de la classe de l'enfant.
             try:
-                for result in await lumni.search(f"{query} lumni"):
-                    found = lumni_resource(result.url, result.title)
-                    if found and len([r for r in resources if r.provider is Provider.LUMNI]) < PER_PROVIDER:
-                        resources.append(found)
-            except SearchUnavailable as exc:
-                logger.warning("Lumni : %s", exc)
-        if client is None:
-            await http.aclose()
+                catalogue = await mathalea_catalogue(http, settings)
+                resources += choose_mathalea(catalogue, lesson.subject, lesson.grade, lesson.title, notions)
+            except (httpx.HTTPError, ValueError) as exc:
+                logger.warning("MathALÉA injoignable : %s", type(exc).__name__)
 
-        # Les questions des quiz, sans ce que la leçon a déjà.
+            # Vikidia : les quiz, et leurs questions qui parlent d'une notion de la leçon.
+            try:
+                for title, text in await vikidia_quizzes(http, settings, query):
+                    questions = parse_quiz(text)
+                    if not questions:
+                        continue
+                    url = vikidia_page_url(title)
+                    if len([r for r in resources if r.provider is Provider.VIKIDIA]) < PER_PROVIDER:
+                        resources.append(Resource(Provider.VIKIDIA, ResourceKind.QUIZ, title, url))
+                    source = QuestionSource(
+                        site="fr.vikidia.org",
+                        url=url,
+                        quote=f"Quiz « {title} »",
+                        licence=LICENCES[Provider.VIKIDIA],
+                    )
+                    for material in quiz_material(questions, notions):
+                        question, reason = check_question(material.question)
+                        if (
+                            question is None
+                            or reason
+                            or needs_picture(question.stem)
+                            or needs_support(question.stem)
+                        ):
+                            continue
+                        added.setdefault(material.knowledge_id, []).append(
+                            question.model_copy(update={"source": source})
+                        )
+            except (httpx.HTTPError, ValueError) as exc:
+                logger.warning("Vikidia injoignable : %s", type(exc).__name__)
+
+            # Lumni : vidéos et quiz, par le moteur de recherche du serveur.
+            if settings.web_search_url:
+                lumni = web or WebSources(settings.web_search_url, LUMNI_SITES)
+                try:
+                    for result in await lumni.search(f"{query} lumni"):
+                        found = lumni_resource(result.url, result.title)
+                        if (
+                            found
+                            and len([r for r in resources if r.provider is Provider.LUMNI]) < PER_PROVIDER
+                        ):
+                            resources.append(found)
+                except SearchUnavailable as exc:
+                    logger.warning("Lumni : %s", exc)
+                finally:
+                    if web is None:
+                        await lumni.aclose()
+        finally:
+            if client is None:
+                await http.aclose()
+
+        # Les questions des quiz, sans ce que la leçon a déjà (matériel relu au moment d'écrire).
         kept_questions = 0
-        for notion, questions in added.items():
-            candidate = materials[notion].model_copy(
-                update={"questions": [*materials[notion].questions, *questions]}
-            )
-            others = [(k, m) for k, m in materials.items() if k != notion]
-            kept = deduplicate([(notion, candidate)], lambda _, __: True, already=others)[notion].material
-            new = len(kept.questions) - len(materials[notion].questions)
-            row = await session.get(db.KnowledgeMaterial, units.key_to_id[notion]) if new > 0 else None
-            if row is not None:
-                row.material = kept.model_dump(mode="json")
-                materials[notion] = kept
-                kept_questions += new
+        for notion, proposed in added.items():
+            kept_questions += (await add_questions(session, lesson_id, notion, proposed))[0]
 
         # Les ressources, sans toucher à celles déjà là (masquées par le parent, scores).
         existing = {
@@ -226,9 +222,12 @@ async def prepare(
             )
         }
         new_resources = [r for r in resources if r.url not in existing]
+        added_resources = 0
         for position, resource in enumerate(new_resources, start=len(existing)):
-            session.add(
-                db.LessonResource(
+            # Deux recherches en même temps (double appui) : chaque adresse une seule fois.
+            inserted = await session.scalar(
+                insert(db.LessonResource)
+                .values(
                     lesson_id=lesson_id,
                     provider=resource.provider.value,
                     kind=resource.kind.value,
@@ -236,13 +235,16 @@ async def prepare(
                     url=resource.url,
                     position=position,
                 )
+                .on_conflict_do_nothing(constraint="uq_lesson_resources_lesson_id_url")
+                .returning(db.LessonResource.id)
             )
+            added_resources += inserted is not None
         await session.commit()
-        if new_resources or kept_questions:
+        if added_resources or kept_questions:
             logger.info(
                 "Leçon %s : %d ressource(s) des sites de confiance, %d question(s) de quiz",
                 lesson_id,
-                len(new_resources),
+                added_resources,
                 kept_questions,
             )
-        return len(new_resources)
+        return added_resources

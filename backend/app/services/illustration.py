@@ -359,14 +359,24 @@ def _run(
     )
 
 
-def _delete_except(folder: Path, kept: set[str]) -> int:
+# Une image vient d'être écrite mais pas encore enregistrée en base (fichier `<id de l'image>-…`,
+# ligne encore là) : elle n'est pas orpheline. Celle d'une leçon supprimée l'est tout de suite.
+ORPHAN_MIN_AGE_S = 600
+
+
+def _delete_except(folder: Path, kept: set[str], rows: set[str], min_age_s: float = ORPHAN_MIN_AGE_S) -> int:
     if not folder.is_dir():
         return 0
     removed = 0
+    limit = time.time() - min_age_s
     for path in folder.iterdir():
-        if path.is_file() and path.name not in kept:
-            path.unlink(missing_ok=True)
-            removed += 1
+        if not path.is_file() or path.name in kept:
+            continue
+        in_progress = path.name.split("-", 5)[:5]
+        if "-".join(in_progress) in rows and path.stat().st_mtime >= limit:
+            continue
+        path.unlink(missing_ok=True)
+        removed += 1
     return removed
 
 
@@ -380,8 +390,7 @@ async def remove_orphan_files(database: Database, settings: Settings) -> int:
     """Efface les images dont la leçon a été supprimée (suppression d'une leçon, d'un enfant,
     d'un compte, conservation limitée) : la base les a oubliées, le disque aussi."""
     async with database.sessionmaker() as session:
-        names = await session.scalars(
-            select(db.LessonImage.file_name).where(db.LessonImage.file_name.is_not(None))
-        )
-        kept = {name for name in names if name}
-    return await asyncio.to_thread(_delete_except, Path(settings.media_dir), kept)
+        rows = (await session.execute(select(db.LessonImage.id, db.LessonImage.file_name))).all()
+    kept = {name for _, name in rows if name}
+    ids = {str(image_id) for image_id, _ in rows}
+    return await asyncio.to_thread(_delete_except, Path(settings.media_dir), kept, ids)

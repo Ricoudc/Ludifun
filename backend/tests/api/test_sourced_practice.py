@@ -73,3 +73,40 @@ def internet_text() -> str:
     from tests.api.test_sourced_help import HTML
 
     return HTML
+
+
+async def test_a_correction_made_meanwhile_is_never_overwritten(
+    app: FastAPI, client: AsyncClient, db: AsyncSession, fake_llm: Any, search_engine: None
+) -> None:
+    """La recherche tourne plusieurs minutes en fond (Ollama) ; si le parent fait corriger une
+    notion pendant ce temps, l'ajout des questions des sites se fait sur la version corrigée."""
+    family = await family_with_device(client)
+    await client.put("/v1/parent/ai/sources", json={"enabled": True}, headers=auth(family["parent"]))
+    original = fake_llm.structured
+    marker = {
+        "difficulty": 1,
+        "stem": "Question revue par le parent pendant la recherche ?",
+        "answer": "Oui",
+        "distractors": ["Non", "Peut-être", "Jamais"],
+    }
+
+    corrected = False
+
+    async def parent_meanwhile(*, prompt: Any, **kwargs: Any) -> Any:
+        nonlocal corrected
+        if prompt.stage == "practice" and not corrected:  # pendant le 1er appel : correction ailleurs
+            corrected = True
+            async with app.state.database.sessionmaker() as other:
+                for row in await other.scalars(select(KnowledgeMaterial)):
+                    questions = row.material.get("questions", [])
+                    if marker not in questions:
+                        row.material = {**row.material, "questions": [*questions, marker]}
+                await other.commit()
+        return await original(prompt=prompt, **kwargs)
+
+    fake_llm.structured = parent_meanwhile
+    await upload_lesson(client, family["device"])
+    materials = list(await db.scalars(select(KnowledgeMaterial)))
+    assert sourced_questions(materials)  # les questions des sites sont bien ajoutées…
+    for row in materials:  # … sans effacer la correction du parent
+        assert marker["stem"] in [q["stem"] for q in row.material["questions"]], row.knowledge_id

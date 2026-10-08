@@ -74,6 +74,37 @@ class ChildDashboardScreen extends ConsumerWidget {
               ProgressStrip(progress),
               const SizedBox(height: 16),
             ],
+            // Ce que le parent fait le plus souvent, en haut plutôt qu'au bout de la page.
+            FilledButton.icon(
+              onPressed: () => context.go(Routes.childCapture(childId)),
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: Text('Ajouter une leçon pour $name'),
+            ),
+            const SizedBox(height: 12),
+            _Shortcuts([
+              _Shortcut(
+                Icons.fact_check_outlined,
+                'Voir ses erreurs aux questions',
+                () => context.go(Routes.childMistakes(childId)),
+              ),
+              _Shortcut(
+                Icons.flag_outlined,
+                'Objectifs et contrôles',
+                () => context.go(Routes.childGoals(childId)),
+              ),
+              _Shortcut(
+                Icons.star_outline_rounded,
+                'Compétences par leçon',
+                () => context.go(Routes.childSkills(childId)),
+              ),
+              if (child != null && child.devices == 0)
+                _Shortcut(
+                  Icons.link,
+                  'Lier un appareil',
+                  () => context.go(Routes.childLink(childId)),
+                ),
+            ]),
+            const SizedBox(height: 16),
             LessonsPanel(childId: childId),
             ...switch (board) {
               AsyncData(:final value) => _content(context, value, name),
@@ -87,18 +118,6 @@ class ChildDashboardScreen extends ConsumerWidget {
               _ => [const Center(child: CircularProgressIndicator())],
             },
             const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => context.go(Routes.childCapture(childId)),
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: Text('Ajouter une leçon pour $name'),
-            ),
-            const SizedBox(height: 12),
-            if (child != null && child.devices == 0)
-              OutlinedButton.icon(
-                onPressed: () => context.go(Routes.childLink(childId)),
-                icon: const Icon(Icons.link),
-                label: const Text('Lier un appareil'),
-              ),
           ],
         ),
       ),
@@ -178,24 +197,6 @@ class ChildDashboardScreen extends ConsumerWidget {
           ),
         ],
       ],
-      const SizedBox(height: 8),
-      OutlinedButton.icon(
-        onPressed: () => context.go(Routes.childMistakes(childId)),
-        icon: const Icon(Icons.fact_check_outlined),
-        label: const Text('Voir ses erreurs aux questions'),
-      ),
-      const SizedBox(height: 8),
-      OutlinedButton.icon(
-        onPressed: () => context.go(Routes.childGoals(childId)),
-        icon: const Icon(Icons.flag_outlined),
-        label: const Text('Objectifs et contrôles'),
-      ),
-      const SizedBox(height: 8),
-      OutlinedButton.icon(
-        onPressed: () => context.go(Routes.childSkills(childId)),
-        icon: const Icon(Icons.star_outline_rounded),
-        label: const Text('Compétences par leçon'),
-      ),
       section('Progression'),
       Text(switch (board.trend) {
         'up' => 'Note moyenne par semaine · en progression ↗',
@@ -222,6 +223,60 @@ class ChildDashboardScreen extends ConsumerWidget {
       ],
     ];
   }
+}
+
+/// Raccourcis du tableau de bord, deux par ligne.
+class _Shortcuts extends StatelessWidget {
+  const _Shortcuts(this.items);
+
+  final List<_Shortcut> items;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    children: [
+      for (var i = 0; i < items.length; i += 2)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: items[i]),
+                const SizedBox(width: 8),
+                Expanded(child: i + 1 < items.length ? items[i + 1] : const SizedBox()),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+class _Shortcut extends StatelessWidget {
+  const _Shortcut(this.icon, this.label, this.onTap);
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: LudiColors.primary),
+            const SizedBox(height: 6),
+            Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _Stat extends StatelessWidget {

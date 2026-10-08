@@ -40,8 +40,20 @@ ThemeData buildTheme() {
         textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
       ),
     ),
+    // Boutons secondaires (« Encore de l'aide », « Faire une pause »…) : aussi lisibles que les
+    // principaux pour un enfant de CP.
     outlinedButtonTheme: OutlinedButtonThemeData(
-      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(56), shape: shape),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(56),
+        shape: shape,
+        textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        minimumSize: const Size(48, 48),
+        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -50,6 +62,8 @@ ThemeData buildTheme() {
       margin: EdgeInsets.zero,
     ),
     inputDecorationTheme: InputDecorationTheme(
+      helperMaxLines: 4,
+      errorMaxLines: 4,
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),

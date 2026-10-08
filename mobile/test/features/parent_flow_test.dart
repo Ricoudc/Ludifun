@@ -15,6 +15,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../support/fake_server.dart';
 import '../support/fakes.dart';
+import '../support/screenshots.dart';
 
 const parent = ParentCredentials(accessToken: 'a1', refreshToken: 'r1', email: 'parent@example.fr');
 final now = DateTime.utc(2026, 9, 23, 17);
@@ -181,6 +182,7 @@ void main() {
   ) async {
     await launch(tester);
     expect(find.text('Emma · CM1'), findsOneWidget);
+    await shot(tester, 'p01_accueil_parent');
     await tap(tester, find.text('Emma · CM1'));
 
     // Cette semaine.
@@ -215,6 +217,7 @@ void main() {
     expect(find.text('Confond avec une autre notion · 7'), findsOneWidget);
     expect(find.text('Répond trop vite, au hasard · 2'), findsOneWidget);
     expect(find.text('Note moyenne par semaine · en progression ↗'), findsOneWidget);
+    await shot(tester, 'p02_tableau_de_bord', height: 2600);
     expect(
       find.bySemanticsLabel('Semaine du 21/9 : 4 séances, 37 min, 8,5 / 10 en moyenne'),
       findsOneWidget,
@@ -266,6 +269,7 @@ void main() {
     await tap(tester, find.byTooltip('Historique et réglages'));
     expect(find.text('8,5 / 10'), findsOneWidget);
     expect(find.textContaining('aujourd\'hui à'), findsWidgets);
+    await shot(tester, 'p03_historique');
     expect(find.text('✓ 1789'), findsNWidgets(2));
     expect(find.text('⚠ États généraux'), findsNWidgets(2));
     await tap(tester, find.text('Voir les séances plus anciennes'));
@@ -398,6 +402,7 @@ void main() {
     // Code et QR code, avec le temps restant.
     expect(find.text('482 731'), findsOneWidget);
     expect(find.byType(QrImageView), findsOneWidget);
+    await shot(tester, 'p04_code_liaison');
     final qr = tester.widget<QrImageView>(find.byType(QrImageView));
     expect(qr.semanticsLabel, 'QR code de liaison');
     expect(find.text('Valable encore 10 min 00 s · une seule utilisation'), findsOneWidget);
@@ -488,6 +493,7 @@ void main() {
     expect(find.text('Leçons'), findsOneWidget);
     expect(find.text('⏳ L\'IA la prépare… · touchez pour suivre'), findsOneWidget);
     expect(find.text('Leçon du mercredi 23 septembre'), findsOneWidget);
+    await shot(tester, 'p05_lecons', height: 1600);
     await tap(tester, find.text('Les fractions'));
     expect(find.textContaining('Voici tout ce que l\'enfant verra'), findsOneWidget);
   });
@@ -674,6 +680,7 @@ void main() {
     expect(find.text('Ollama (sur ce PC) · conseillé'), findsOneWidget);
     expect(find.text('Gratuite, rien ne sort de la maison.'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'http://localhost:11434'), findsOneWidget);
+    await shot(tester, 'p06_ia', height: 1800);
     expect(find.text('Vide : qwen2.5vl:7b (conseillé)'), findsOneWidget);
     expect(checked, [
       {'provider': 'ollama', 'base_url': 'http://localhost:11434'},
@@ -964,6 +971,7 @@ void main() {
     expect(find.text('Compétences · Emma'), findsOneWidget);
     expect(find.text('📐 Les fractions'), findsOneWidget);
     expect(find.text('Comparer deux fractions de même dénominateur'), findsOneWidget);
+    await shot(tester, 'p07_competences');
     expect(find.text('En cours d\'acquisition · Appliquer'), findsOneWidget);
     // Notion reliée à aucune compétence : regroupée à part.
     expect(find.text('Autres notions'), findsOneWidget);
@@ -1058,6 +1066,7 @@ void main() {
     );
     await tap(tester, find.text('La leçon, telle que l\'IA l\'a lue'));
     expect(find.text('Une fraction a un numérateur et un dénominateur.'), findsOneWidget);
+    await shot(tester, 'p08_questions_lecon', height: 1800);
 
     await tap(tester, find.text('Demander une correction à l\'IA'));
     expect(
@@ -1346,6 +1355,7 @@ void main() {
     await tap(tester, find.text('Voir ses erreurs aux questions'));
 
     expect(find.text('Erreurs d\'Emma'), findsOneWidget);
+    await shot(tester, 'p09_erreurs');
     expect(ofName('Léo'), 'de Léo');
     expect(find.text('Dans 3/4, quel nombre est le numérateur ?'), findsOneWidget);
     expect(find.text('❌ Sa réponse'), findsOneWidget);
@@ -1426,6 +1436,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('▫️ Vendredi 25 septembre : Mini-contrôle : comme le jour J'), findsOneWidget);
+    await shot(tester, 'p10_objectifs', height: 1800);
     await tap(tester, find.byTooltip('Supprimer ce contrôle'));
     expect(find.textContaining('Ajoutez un contrôle'), findsOneWidget);
 

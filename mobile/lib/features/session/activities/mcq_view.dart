@@ -18,13 +18,15 @@ class McqView extends StatefulWidget {
 
 class _McqViewState extends State<McqView> {
   static const _letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+  // Ni vert ni rouge : ces couleurs disent « juste » et « faux » dans la correction, un enfant
+  // ne doit pas y voir un indice avant de répondre.
   static const _colors = [
     LudiColors.primary,
     LudiColors.accent,
-    LudiColors.mastered,
     Color(0xFF1E88E5),
-    Color(0xFFD81B60),
+    Color(0xFF8E24AA),
     Color(0xFF6D4C41),
+    Color(0xFF546E7A),
   ];
   String? _chosen;
 

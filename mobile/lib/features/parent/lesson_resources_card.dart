@@ -62,6 +62,7 @@ class _LessonResourcesCardState extends ConsumerState<LessonResourcesCard> {
       () => ref.read(apiProvider).prepareResources(_ids.$1, _ids.$2),
       'Recherche lancée sur les sites de confiance : la liste se met à jour dans un instant.',
     );
+    if (!mounted) return;
     for (final delay in resourceRefreshDelays) {
       _refresh.add(Timer(delay, () => ref.invalidate(lessonResourcesProvider(_ids))));
     }
