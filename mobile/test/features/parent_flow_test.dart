@@ -1133,6 +1133,96 @@ void main() {
     expect(server.routes, contains('GET /v1/children/c1/lessons/l2/image/file'));
   });
 
+  testWidgets('étape 28 : images des notions, « pas utile », préparer et tout valider', (
+    tester,
+  ) async {
+    var prepared = false;
+    final approved = <String>{};
+    Map<String, Object?> picture(String id, String label) => {
+      'id': id,
+      'status': approved.contains(id) ? 'approved' : 'to_review',
+      'alt': 'Une image de $label',
+      'remark': null,
+      'error': null,
+      'url': '/v1/children/c1/lessons/l2/images/$id/file',
+      'knowledge_id': 'k-$id',
+      'label': label,
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'text': null,
+            'notions': <Object?>[],
+          },
+        ),
+      )
+      ..on(
+        'GET /v1/children/c1/lessons/l2/image',
+        (_) => (
+          200,
+          {
+            'available': true,
+            'image': prepared
+                ? {
+                    'id': 'cover',
+                    'status': 'not_needed',
+                    'alt': null,
+                    'remark': null,
+                    'error': 'Un calcul ne se dessine pas.',
+                    'url': null,
+                  }
+                : null,
+            'pictures': prepared
+                ? [picture('i1', 'Le volcan'), picture('i2', 'La lave')]
+                : <Object?>[],
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/lessons/l2/images/prepare', (_) {
+        prepared = true;
+        return (202, {'status': 'generating'});
+      })
+      ..on('GET /v1/children/c1/lessons/l2/images/i1/file', (_) => (200, tinyPng))
+      ..on('GET /v1/children/c1/lessons/l2/images/i2/file', (_) => (200, tinyPng));
+    for (final id in ['i1', 'i2']) {
+      server.on('POST /v1/children/c1/lessons/l2/images/$id/approve', (_) {
+        approved.add(id);
+        return (200, picture(id, id));
+      });
+    }
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(find.textContaining('L\'IA ne dessine que si une image aide'), findsOneWidget);
+    await tap(tester, find.text('Préparer les images'));
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/images/prepare'));
+    expect(find.textContaining('l\'IA dit d\'abord si elles aident'), findsOneWidget);
+
+    // L'image de la leçon n'aiderait pas ; les notions concrètes ont la leur, à valider.
+    expect(
+      find.text(
+        'Pas utile pour cette leçon : Un calcul ne se dessine pas.. '
+        'Vous pouvez en demander une quand même.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Créer quand même'), findsOneWidget);
+    expect(find.text('Images pour apprendre'), findsOneWidget);
+    expect(find.text('Le volcan'), findsOneWidget);
+    expect(find.text('La lave'), findsOneWidget);
+    await tap(tester, find.text('Valider les 2 images'));
+    expect(approved, {'i1', 'i2'});
+    expect(
+      find.text('Validée : l\'enfant la voit avec la notion et dans les jeux en images.'),
+      findsNWidgets(2),
+    );
+  });
+
   testWidgets('le parent voit les erreurs d\'Emma aux questions', (tester) async {
     server.on(
       'GET /v1/children/c1/mistakes',

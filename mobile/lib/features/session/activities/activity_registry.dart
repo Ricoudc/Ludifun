@@ -13,6 +13,7 @@ import 'mcq_view.dart';
 import 'memory_view.dart';
 import 'open_question_view.dart';
 import 'order_view.dart';
+import 'picture_views.dart';
 import 'speed_challenge_view.dart';
 import 'spelling_views.dart';
 import 'true_false_view.dart';
@@ -50,6 +51,9 @@ final activityRegistry = <String, ActivityBuilder>{
   'WHEEL': (payload, onSubmit) => WheelView(payload: payload, onSubmit: onSubmit),
   'BOX': (payload, onSubmit) => BoxView(payload: payload, onSubmit: onSubmit),
   'RANDOM_CARDS': (payload, onSubmit) => RandomCardsView(payload: payload, onSubmit: onSubmit),
+  // Apprendre par l'image (étape 28)
+  'PICTURE_MATCH': (payload, onSubmit) => PictureMatchView(payload: payload, onSubmit: onSubmit),
+  'PICTURE_FIND': (payload, onSubmit) => PictureFindView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

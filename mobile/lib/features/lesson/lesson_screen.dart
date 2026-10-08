@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/api_image.dart';
 import '../../app/format.dart';
 import '../../app/level_stars.dart';
 import '../../app/router.dart';
@@ -13,7 +14,6 @@ import '../../models/lesson.dart';
 import '../../models/session.dart';
 import '../../models/subject.dart';
 import '../home/home_providers.dart';
-import '../parent/lesson_image_card.dart' show imageBytesProvider;
 
 final lessonProvider = FutureProvider.autoDispose.family<Lesson, String>(
   (ref, id) => ref.watch(apiProvider).lesson(id),
@@ -108,14 +108,26 @@ class _Summary extends ConsumerWidget {
 
   void _showStatement(BuildContext context, Knowledge knowledge) => showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: knowledge.image != null,
     builder: (context) => SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(knowledge.label, style: Theme.of(context).textTheme.titleLarge),
+            if (knowledge.image case final image?) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox(
+                  height: 180,
+                  width: double.infinity,
+                  child: ApiImage(image, semanticLabel: knowledge.label, fit: BoxFit.contain),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             Text(knowledge.statement, style: const TextStyle(fontSize: 18)),
             if (knowledge.sourceExcerpt case final excerpt?) ...[
@@ -190,7 +202,14 @@ class _Summary extends ConsumerWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             dense: true,
-            leading: const Icon(Icons.lightbulb_outline, color: LudiColors.accent),
+            leading: switch (knowledge.image) {
+              // Image de la notion validée par le parent (étape 28) : on apprend aussi en la voyant.
+              final image? => ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox.square(dimension: 44, child: ApiImage(image)),
+              ),
+              null => const Icon(Icons.lightbulb_outline, color: LudiColors.accent),
+            },
             title: Text(knowledge.label, style: const TextStyle(fontSize: 18)),
             trailing: LevelStars(knowledge.level),
             onTap: () => _showStatement(context, knowledge),

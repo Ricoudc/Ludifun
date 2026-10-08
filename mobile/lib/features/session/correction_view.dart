@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/api_image.dart';
 import '../../app/theme.dart';
 import '../../models/account.dart';
 import '../../models/figure.dart';
@@ -176,6 +177,14 @@ class CorrectionView extends StatelessWidget {
                 color: d['correct'] == true ? LudiColors.mastered : LudiColors.notMastered,
               ),
               const SizedBox(width: 10),
+              // Jeux en images (étape 28) : la bonne image, à côté de sa réponse.
+              if (d['image'] case final String image) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox.square(dimension: 56, child: ApiImage(image)),
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(child: Text(_detailText(d, texts), style: const TextStyle(fontSize: 17))),
             ],
           ),

@@ -70,6 +70,8 @@ Map<String, Object?> lessonJson(
               'type': 'event',
               'source_excerpt': 'En mai 1789, Louis XVI réunit les États généraux à Versailles.',
               'source_page': 2,
+              // Image de la notion validée par le parent (étape 28).
+              'image': '/v1/lessons/l1/images/i2',
             },
           ]
         : <Object>[],
@@ -219,6 +221,7 @@ void main() {
         );
       })
       ..on('GET /v1/lessons/l1/image', (_) => (200, tinyPng))
+      ..on('GET /v1/lessons/l1/images/i2', (_) => (200, tinyPng))
       ..on('POST /v1/lessons/l1/sessions', (_) => (200, session));
     await tester.tap(find.text('Analyser ma leçon'));
     await advance(tester, const Duration(milliseconds: 200));
@@ -257,6 +260,7 @@ void main() {
     await tester.tap(find.text('États généraux'));
     await tester.pumpAndSettle();
     expect(find.text('Louis XVI réunit les États généraux en mai 1789.'), findsOneWidget);
+    expect(server.routes, contains('GET /v1/lessons/l1/images/i2')); // l'image de la notion
     // « Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient (§116).
     expect(
       find.text('Pourquoi cette notion ? C\'est écrit dans ta leçon, page 2 :'),

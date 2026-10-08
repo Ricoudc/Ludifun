@@ -542,12 +542,21 @@ class LessonContent {
   final List<NotionContent> notions;
 }
 
-/// Statuts de l'image d'une leçon (étape 27).
-enum ImageStatus { generating, toReview, approved, rejected, failed }
+/// Statuts d'une image (étapes 27 et 28) ; `notNeeded` : l'IA juge qu'une image n'aiderait pas.
+enum ImageStatus { generating, toReview, approved, rejected, failed, notNeeded }
 
-/// Image d'une leçon, vue par le parent : il la valide avant que l'enfant la voie.
+/// Image d'une leçon ou d'une notion, vue par le parent : il la valide avant que l'enfant la voie.
 class LessonImage {
-  const LessonImage({required this.status, this.alt, this.remark, this.error, this.url});
+  const LessonImage({
+    required this.status,
+    this.alt,
+    this.remark,
+    this.error,
+    this.url,
+    this.id,
+    this.knowledgeId,
+    this.label,
+  });
 
   factory LessonImage.fromJson(Json json) => LessonImage(
     status: switch (json['status']) {
@@ -555,12 +564,16 @@ class LessonImage {
       'to_review' => ImageStatus.toReview,
       'approved' => ImageStatus.approved,
       'rejected' => ImageStatus.rejected,
+      'not_needed' => ImageStatus.notNeeded,
       _ => ImageStatus.failed,
     },
     alt: json['alt'] as String?,
     remark: json['remark'] as String?,
     error: json['error'] as String?,
     url: json['url'] as String?,
+    id: json['id'] as String?,
+    knowledgeId: json['knowledge_id'] as String?,
+    label: json['label'] as String?,
   );
 
   final ImageStatus status;
@@ -570,10 +583,19 @@ class LessonImage {
 
   /// Chemin du fichier sur le serveur (même authentification que l'API).
   final String? url;
+
+  /// Pour les routes `…/images/{id}` ; absent sur un serveur d'avant l'étape 28.
+  final String? id;
+
+  /// La notion montrée et son nom ; absents : l'image de la leçon.
+  final String? knowledgeId;
+  final String? label;
+
+  bool get pending => status == ImageStatus.generating;
 }
 
 class LessonImages {
-  const LessonImages({required this.available, this.image});
+  const LessonImages({required this.available, this.image, this.pictures = const []});
 
   factory LessonImages.fromJson(Json json) => LessonImages(
     available: json['available'] as bool? ?? false,
@@ -581,9 +603,20 @@ class LessonImages {
       final Json i => LessonImage.fromJson(i),
       _ => null,
     },
+    pictures: [
+      for (final p in json['pictures'] as List<dynamic>? ?? const [])
+        LessonImage.fromJson(p as Json),
+    ],
   );
 
   /// Le serveur a un moteur d'images.
   final bool available;
+
+  /// L'image de la leçon.
   final LessonImage? image;
+
+  /// Images des notions, pour les jeux « apprendre par l'image » (étape 28).
+  final List<LessonImage> pictures;
+
+  bool get pending => (image?.pending ?? false) || pictures.any((p) => p.pending);
 }

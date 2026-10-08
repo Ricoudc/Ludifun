@@ -165,6 +165,14 @@ le parent**.
    besoin ce qui ne va pas (« un arbre en automne plutôt »). Pour une leçon déjà analysée :
    « Créer une image ».
 
+L'IA ne dessine que **si une image aide à retenir la leçon** : pour une règle de conjugaison
+ou des tables de multiplication, elle répond « pas utile » (avec la raison) et rien n'est
+dessiné ; « Créer quand même » reste possible. Les notions concrètes (un volcan, une chenille,
+un château fort) ont chacune leur image, dans « Images pour apprendre » : validées (une à une
+ou « Valider les N images »), elles s'affichent avec la notion dans la leçon de l'enfant et
+servent aux jeux **« Image et mot »** et **« Quelle image ? »** (trois images validées au moins).
+Pour une leçon analysée avant l'installation du moteur : « Préparer les images ».
+
 Si le moteur ne répond pas, la leçon reste complète, sans image ; `Rapport-Ludifun.bat` montre
 la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 

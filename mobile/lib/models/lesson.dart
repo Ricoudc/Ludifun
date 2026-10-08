@@ -96,6 +96,7 @@ class Knowledge {
     this.level = 0,
     this.sourceExcerpt,
     this.sourcePage,
+    this.image,
   });
 
   factory Knowledge.fromJson(Json json) => Knowledge(
@@ -106,6 +107,7 @@ class Knowledge {
     level: json['level'] as int? ?? 0,
     sourceExcerpt: json['source_excerpt'] as String?,
     sourcePage: json['source_page'] as int?,
+    image: json['image'] as String?,
   );
 
   final String id;
@@ -119,6 +121,9 @@ class Knowledge {
   /// « Pourquoi cette notion ? » : la phrase de la leçon d'où elle vient, et sa page.
   final String? sourceExcerpt;
   final int? sourcePage;
+
+  /// Image qui montre la notion, validée par le parent (étape 28).
+  final String? image;
 }
 
 class Lesson extends LessonSummary {

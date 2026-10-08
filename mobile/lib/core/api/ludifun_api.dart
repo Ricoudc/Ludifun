@@ -331,6 +331,30 @@ class LudifunApi {
         data: {'remark': ?remark},
       );
 
+  /// Image d'une notion (ou de la leçon) par son identifiant (étape 28).
+  Future<LessonImage> decidePicture(
+    String childId,
+    String lessonId,
+    String imageId, {
+    required bool approve,
+  }) => _imageDecision(
+    '/v1/children/$childId/lessons/$lessonId/images/$imageId/${approve ? 'approve' : 'reject'}',
+  );
+
+  Future<LessonImage> redoPicture(
+    String childId,
+    String lessonId,
+    String imageId, {
+    String? remark,
+  }) => _imageDecision(
+    '/v1/children/$childId/lessons/$lessonId/images/$imageId/redo',
+    data: {'remark': ?remark},
+  );
+
+  /// L'IA dit si des images aident, puis elles sont dessinées (leçon déjà analysée).
+  Future<LessonImage> prepareImages(String childId, String lessonId) =>
+      _imageDecision('/v1/children/$childId/lessons/$lessonId/images/prepare');
+
   Future<LessonImage> _imageDecision(String path, {Json? data}) => _call(() async {
     final r = await _dio.post<Json>(path, data: data);
     return LessonImage.fromJson(r.data!);

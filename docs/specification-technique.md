@@ -719,6 +719,52 @@ Application : carte « Image de la leçon » dans l'écran des questions de la l
 Valider, Refuser, Refaire avec remarque, état relu toutes les 10 s pendant la préparation) ;
 écran de la leçon (enfant) : l'image validée sous le titre, sinon rien.
 
+
+### 5.18 Apprendre par l'image (étape 28)
+
+Demande de la famille : une image seulement **si elle aide à retenir la leçon** (facultative,
+pas forcément nécessaire), et des exercices qui s'en servent.
+
+**Une image aide-t-elle ?** Le prompt `illustration.v2` remplace `v1` (gardé, plus utilisé) :
+l'IA répond d'abord `useful` (et `why`, pour le parent). Ce qui se voit (animaux, plantes,
+paysages, objets, métiers, époques, phénomènes) : oui ; ce qui est abstrait (règle de
+conjugaison, tables, calcul mental, grammaire) : non, et dans le doute non. Le code
+(`domain.illustration.plan_illustrations`) retient la réponse : pas utile → rien n'est dessiné,
+statut `not_needed` avec la raison ; le parent peut en demander une quand même (« Créer quand
+même » : la cible `lecon` est alors donnée à l'IA, qui doit proposer une scène).
+
+**Images des notions.** Dans la même réponse, l'IA propose une scène pour chaque notion qui
+désigne une chose concrète (N1, N2… = notions de la leçon, données entre balises) ; le code
+garde au plus `pictures.per_lesson` images (4, `engine_rules.toml` 1.2.0), une par notion connue,
+chacune contrôlée comme l'image de la leçon, et dessinée avec un seul sujet bien reconnaissable
+au centre. Tout est dessiné à la suite, la carte graphique prise une seule fois. Chaque image
+attend la validation du parent ; refaite, elle reçoit la remarque du parent (cible `N2`).
+
+**Jeux** (seulement avec trois images validées au moins, toutes différentes) :
+
+| Jeu | Code | Notions | Charge utile | Réponse |
+|---|---|---|---|---|
+| Image et mot | `PICTURE_MATCH` (1) | 3 à 5 | `{prompt, pictures:[{id, image}], words:[{id, text}]}` | `{pairs:[[image, mot]…]}` |
+| Quelle image ? | `PICTURE_FIND` (2) | 3 à 5 | `{prompt, pictures:[{id, image}], clues:[{id, text}]}` (phrase à retenir) | `{answers:[[phrase, image]…]}` |
+
+`image` est l'adresse de l'image (`GET /v1/lessons/{id}/images/{image_id}`, jeton de
+l'appareil, image validée seulement) : ni nom de notion ni légende, rien qui donne la réponse.
+La correction renvoie, élément par élément, la bonne image (`details[].image`). Niveau
+sollicité : reconnaître. « Image et mot » passe en tête du jeu de fin de la première séance
+quand il est possible (après la carte) ; ensuite, les deux jeux tournent avec les autres. Une
+image refusée après coup n'est plus servie : la séance déjà composée affiche 🖼️ à sa place.
+
+**Base** : migration 0019, `lesson_images.knowledge_id` (vide : l'image de la leçon ; une par
+notion, supprimée avec elle), statut `not_needed`. La notion porte son image validée dans
+`KnowledgeUnit.picture` (adresse opaque pour le domaine), remplie par `load_units`.
+
+**API** (en plus du §5.17) : `GET …/image` renvoie aussi `pictures` (images des notions avec
+`id`, `knowledge_id`, `label`) ; `GET …/images/{id}/file`, `POST …/images/{id}/approve`,
+`…/reject`, `…/redo` ; `POST …/images/prepare` (202 : pour une leçon analysée avant le moteur
+d'images) ; `LessonOut.knowledge[].image` (validée seulement). Application : carte « Image de la
+leçon » avec « Images pour apprendre » (valider une à une ou toutes), image de chaque notion dans
+la leçon de l'enfant, écrans des deux jeux. Une application plus ancienne saute ces jeux.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

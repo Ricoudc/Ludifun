@@ -70,6 +70,8 @@ const activityLabels = {
   'DICTATION': ('🎧', 'Dictées'),
   'UNJUMBLE': ('🧶', 'Phrases à démêler'),
   'FIND_MATCH': ('🔎', 'Trouver la correspondance'),
+  'PICTURE_MATCH': ('🖼️', 'Image et mot'),
+  'PICTURE_FIND': ('🖼️', 'Quelle image ?'),
   'WHEEL': ('🎡', 'Roues aléatoires'),
   'BOX': ('🎁', 'Boîtes à ouvrir'),
   'RANDOM_CARDS': ('🃏', 'Cartes aléatoires'),
