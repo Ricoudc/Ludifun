@@ -146,6 +146,7 @@ class Dashboard {
     this.recurringErrors = const [],
     required this.thisWeek,
     required this.lessonsAddedThisWeek,
+    this.helpThisWeek = 0,
     required this.activities,
     required this.subjects,
     required this.toStrengthen,
@@ -157,6 +158,7 @@ class Dashboard {
   factory Dashboard.fromJson(Json json) => Dashboard(
     thisWeek: WeekStats.fromJson(json['this_week'] as Json),
     lessonsAddedThisWeek: json['lessons_added_this_week'] as int,
+    helpThisWeek: json['help_this_week'] as int? ?? 0,
     activities: (json['activities_this_week'] as Json).cast<String, int>(),
     subjects: [for (final s in json['subjects'] as List<dynamic>) SubjectStats.fromJson(s as Json)],
     toStrengthen: [
@@ -183,6 +185,9 @@ class Dashboard {
   final List<RecurringError> recurringErrors;
   final WeekStats thisWeek;
   final int lessonsAddedThisWeek;
+
+  /// Questions où l'enfant a touché « Je n'ai pas compris » cette semaine.
+  final int helpThisWeek;
   final Map<String, int> activities;
   final List<SubjectStats> subjects;
   final List<WeakNotion> toStrengthen;
@@ -481,6 +486,74 @@ class MistakesPage {
   );
 
   final List<Mistake> mistakes;
+
+  /// Curseur de la page suivante, `null` à la fin.
+  final String? nextBefore;
+}
+
+/// Une aide vue par l'enfant : « 💡 Un indice » à 17 h 42.
+class HelpStepSeen {
+  const HelpStepSeen({required this.level, required this.title, required this.at});
+
+  factory HelpStepSeen.fromJson(Json json) => HelpStepSeen(
+    level: json['level'] as int,
+    title: json['title'] as String,
+    at: DateTime.parse(json['at'] as String),
+  );
+
+  final int level;
+  final String title;
+  final DateTime at;
+}
+
+/// Ce que l'enfant a fait après l'aide.
+enum HelpOutcome { right, partial, wrong, unanswered }
+
+/// Une question où l'enfant a touché « Je n'ai pas compris » : quand, les aides vues, la suite.
+class HelpRequest {
+  const HelpRequest({
+    required this.askedAt,
+    required this.lessonId,
+    required this.notions,
+    required this.question,
+    required this.steps,
+    required this.outcome,
+    this.lessonTitle,
+    this.subject,
+  });
+
+  factory HelpRequest.fromJson(Json json) => HelpRequest(
+    askedAt: DateTime.parse(json['asked_at'] as String),
+    lessonId: json['lesson_id'] as String,
+    lessonTitle: json['lesson_title'] as String?,
+    subject: json['subject'] as String?,
+    notions: [for (final n in json['notions'] as List<dynamic>) n as String],
+    question: json['question'] as String,
+    steps: [for (final s in json['steps'] as List<dynamic>) HelpStepSeen.fromJson(s as Json)],
+    outcome: HelpOutcome.values.asNameMap()[json['outcome']] ?? HelpOutcome.unanswered,
+  );
+
+  final DateTime askedAt;
+  final String lessonId;
+  final String? lessonTitle;
+  final String? subject;
+  final List<String> notions;
+  final String question;
+  final List<HelpStepSeen> steps;
+  final HelpOutcome outcome;
+}
+
+class HelpRequestsPage {
+  const HelpRequestsPage({required this.requests, this.nextBefore});
+
+  factory HelpRequestsPage.fromJson(Json json) => HelpRequestsPage(
+    requests: [
+      for (final r in json['help_requests'] as List<dynamic>) HelpRequest.fromJson(r as Json),
+    ],
+    nextBefore: json['next_before'] as String?,
+  );
+
+  final List<HelpRequest> requests;
 
   /// Curseur de la page suivante, `null` à la fin.
   final String? nextBefore;

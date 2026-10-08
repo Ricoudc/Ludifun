@@ -851,6 +851,18 @@ score), « Chercher des ressources ».
 la vue web sur un vrai téléphone, l'envoi du score par la version en ligne de MathALÉA (le
 message a été lu dans la copie de 2023 du code publié sur GitHub).
 
+### 5.21 Quand l'enfant a demandé de l'aide (octobre 2026)
+
+Demande de la famille : savoir quand l'enfant a touché « ❓ Je n'ai pas compris ». Chaque aide
+demandée est notée avec son heure, son niveau et son type (`help_requests`, migration 0022 ; les
+aides plus anciennes n'ont pas d'heure, leur niveau reste dans `session_items.help_level`).
+`GET /v1/children/{c}/help-requests` (parent, par pages) : pour chaque question, l'heure du
+premier appui, la leçon, les notions, la question telle que l'enfant l'a vue
+(`domain/mistakes.question_of`), les aides vues avec leur heure (« 💡 Un indice · 15 h 42 »), et
+la suite : réussi, en partie, raté malgré l'aide, ou pas de réponse. `DashboardOut.help_this_week`
+(nouveau champ facultatif) : questions avec aide cette semaine, montrées sur le raccourci
+« Aides demandées » du tableau de bord. L'export des données de l'enfant les contient.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

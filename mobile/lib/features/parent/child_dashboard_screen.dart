@@ -87,6 +87,10 @@ class ChildDashboardScreen extends ConsumerWidget {
                 'Voir ses erreurs aux questions',
                 () => context.go(Routes.childMistakes(childId)),
               ),
+              _Shortcut(Icons.help_outline, switch (board.value?.helpThisWeek ?? 0) {
+                0 => 'Aides demandées',
+                final n => 'Aides demandées ($n cette semaine)',
+              }, () => context.go(Routes.childHelp(childId))),
               _Shortcut(
                 Icons.flag_outlined,
                 'Objectifs et contrôles',

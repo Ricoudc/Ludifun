@@ -1406,6 +1406,67 @@ void main() {
     expect(find.text('Voir les erreurs plus anciennes'), findsNothing);
   });
 
+  testWidgets('le parent voit quand Emma a demandé de l\'aide', (tester) async {
+    Map<String, Object?> step(int level, String title, String at) => {
+      'level': level,
+      'kind': level == 1 ? 'hint' : 'reminder',
+      'title': title,
+      'at': at,
+    };
+    server
+      ..on('GET /v1/children/c1/dashboard', (_) => (200, {...dashboard, 'help_this_week': 2}))
+      ..on(
+        'GET /v1/children/c1/help-requests',
+        (_) => (
+          200,
+          {
+            'help_requests': [
+              {
+                'asked_at': '2026-09-23T15:42:00Z',
+                'lesson_id': 'l2',
+                'lesson_title': 'Les fractions',
+                'subject': 'math',
+                'activity_type': 'MCQ',
+                'notions': ['Numérateur'],
+                'question': 'Dans 3/4, quel nombre est le numérateur ?',
+                'steps': [
+                  step(1, '💡 Un indice', '2026-09-23T15:42:00Z'),
+                  step(2, '📖 Rappel de la leçon', '2026-09-23T15:43:00Z'),
+                ],
+                'outcome': 'right',
+              },
+              {
+                'asked_at': '2026-09-20T08:05:00Z',
+                'lesson_id': 'l1',
+                'lesson_title': 'La Révolution française',
+                'subject': 'history',
+                'activity_type': 'TRUE_FALSE',
+                'notions': ['1789'],
+                'question': 'La Révolution commence en 1789.',
+                'steps': [step(1, '💡 Un indice', '2026-09-20T08:05:00Z')],
+                'outcome': 'unanswered',
+              },
+            ],
+            'next_before': null,
+          },
+        ),
+      );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Aides demandées (2 cette semaine)'));
+
+    expect(find.text('Aides demandées d\'Emma'), findsOneWidget);
+    await shot(tester, 'p11_aides', height: 1400);
+    expect(find.text('❓ aujourd\'hui à 15 h 42'), findsOneWidget);
+    expect(find.text('💡 Un indice · 15 h 42'), findsOneWidget);
+    expect(find.text('📖 Rappel de la leçon · 15 h 43'), findsOneWidget);
+    expect(find.text('✅ Réussi ensuite'), findsOneWidget);
+    // Un jour plus ancien : la date et l'heure.
+    expect(find.text('❓ le 20 septembre à 8 h 05'), findsOneWidget);
+    expect(find.text('⏸️ Pas de réponse (séance arrêtée)'), findsOneWidget);
+    expect(find.text('Voir les aides plus anciennes'), findsNothing);
+  });
+
   testWidgets('objectifs : temps par jour, matière, contrôle et son plan', (tester) async {
     final patches = <Object?>[];
     var exams = <Map<String, Object?>>[

@@ -399,6 +399,16 @@ class LudifunApi {
         return MistakesPage.fromJson(r.data!);
       });
 
+  /// Quand l'enfant a touché « Je n'ai pas compris », de la plus récente à la plus ancienne.
+  Future<HelpRequestsPage> helpRequests(String childId, {int limit = 20, String? before}) =>
+      _call(() async {
+        final r = await _dio.get<Json>(
+          '/v1/children/$childId/help-requests',
+          queryParameters: {'limit': limit, 'before': ?before},
+        );
+        return HelpRequestsPage.fromJson(r.data!);
+      });
+
   Future<List<Child>> children() => _call(() async {
     final r = await _dio.get<List<dynamic>>('/v1/children');
     return [for (final child in r.data!) Child.fromJson(child as Json)];

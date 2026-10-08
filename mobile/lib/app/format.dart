@@ -51,6 +51,18 @@ String longDate(DateTime moment) {
 String score(double value) =>
     value == value.roundToDouble() ? '${value.round()}' : value.toString().replaceAll('.', ',');
 
+/// « 17 h 05 », à l'heure du téléphone.
+String clockTime(DateTime moment) {
+  final local = moment.toLocal();
+  return '${local.hour} h ${local.minute.toString().padLeft(2, '0')}';
+}
+
+/// Comme [when], avec l'heure même pour un jour plus ancien : « le 12 septembre à 17 h 05 ».
+String whenAt(DateTime moment, DateTime now) {
+  final day = when(moment, now);
+  return day.contains(' à ') ? day : '$day à ${clockTime(moment)}';
+}
+
 /// « aujourd'hui à 17 h 05 », « hier à 8 h 30 », « le 12 septembre ».
 String when(DateTime moment, DateTime now) {
   final local = moment.toLocal();
