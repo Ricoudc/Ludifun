@@ -129,6 +129,10 @@ Un appareil sert **un seul espace**. Pour tester les deux :
   Synthèse vocale*), un message le dit ; la dictée a besoin de la même voix.
 - **« Signaler un problème »** sous une correction : la question apparaît chez le parent,
   *Questions signalées*.
+- **« Aide aux devoirs »** sur l'accueil de l'enfant : photographier un exercice (ou le
+  recopier), suivre les étapes, essayer des réponses ; la correction guidée n'arrive qu'après
+  deux essais faux. Le parent voit l'aide utilisée dans *Aide aux devoirs*. Avec Ollama, la
+  préparation peut prendre une à deux minutes.
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 

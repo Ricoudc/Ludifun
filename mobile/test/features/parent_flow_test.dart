@@ -1585,6 +1585,36 @@ void main() {
     );
   });
 
+  testWidgets('aide aux devoirs : le parent voit l\'aide utilisée par Emma', (tester) async {
+    Map<String, Object?> item(String id, String status, int used, int attempts, bool alone) => {
+      'id': id,
+      'created_at': '2026-09-23T15:42:00Z',
+      'status': status,
+      'statement': 'Paul a 24 billes. Il en donne 16. Combien lui en reste-t-il ?',
+      'steps_used': used,
+      'steps_total': 4,
+      'attempts': attempts,
+      'solved_alone': alone,
+    };
+    server.on(
+      'GET /v1/children/c1/homework',
+      (_) => (
+        200,
+        {
+          'homework': [item('h2', 'guided', 4, 2, false), item('h1', 'solved', 0, 1, true)],
+          'next_before': null,
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Aide aux devoirs'));
+    expect(find.text('Devoirs d\'Emma'), findsOneWidget);
+    expect(find.text('✅ Réussi seul'), findsOneWidget);
+    expect(find.text('🧭 Correction guidée après 2 essai(s)'), findsOneWidget);
+    expect(find.text('Coups de pouce : 4 sur 4 · essais : 2'), findsOneWidget);
+  });
+
   testWidgets('le parent voit les questions signalées par Emma et les marque vues', (tester) async {
     Map<String, Object?> report(String id, String reason, String outcome, {String? given}) => {
       'id': id,

@@ -106,6 +106,11 @@ class ChildDashboardScreen extends ConsumerWidget {
                 () => context.go(Routes.childSkills(childId)),
               ),
               _Shortcut(
+                Icons.edit_note,
+                'Aide aux devoirs',
+                () => context.go(Routes.childHomework(childId)),
+              ),
+              _Shortcut(
                 Icons.school_outlined,
                 child == null ? 'Programme de la classe' : 'Programme de ${child.grade}',
                 () => context.go(Routes.childProgramme(childId)),

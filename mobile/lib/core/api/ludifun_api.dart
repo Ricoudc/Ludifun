@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../models/account.dart';
 import '../../models/ai.dart';
 import '../../models/figure.dart';
+import '../../models/homework.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
 import '../../models/programme.dart';
@@ -529,6 +530,65 @@ class LudifunApi {
     );
     return lesson(r.data!['id'] as String, childId: childId);
   });
+
+  /// Mode devoirs : la photo de l'exercice (lue puis oubliée par le serveur).
+  Future<Homework> homeworkFromPhoto(List<Uint8List> pages) => _call(() async {
+    final form = FormData.fromMap({
+      'pages': [
+        for (final (i, page) in pages.indexed)
+          MultipartFile.fromBytes(
+            page,
+            filename: 'exercice${i + 1}.jpg',
+            contentType: DioMediaType('image', 'jpeg'),
+          ),
+      ],
+    });
+    final r = await _dio.post<Json>(
+      '/v1/homework',
+      data: form,
+      options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 2)),
+    );
+    return Homework.fromJson(r.data!);
+  });
+
+  /// Mode devoirs : l'énoncé recopié.
+  Future<Homework> homeworkFromText(String text) => _call(() async {
+    final r = await _dio.post<Json>('/v1/homework/text', data: {'text': text});
+    return Homework.fromJson(r.data!);
+  });
+
+  Future<Homework> homework(String id) => _call(() async {
+    final r = await _dio.get<Json>('/v1/homework/$id');
+    return Homework.fromJson(r.data!);
+  });
+
+  /// Une étape de plus (indice, question, rappel, méthode).
+  Future<Homework> homeworkNextStep(String id) => _call(() async {
+    final r = await _dio.post<Json>('/v1/homework/$id/next-step');
+    return Homework.fromJson(r.data!);
+  });
+
+  /// La réponse de l'enfant, vérifiée par le serveur.
+  Future<Homework> homeworkAttempt(String id, String text) => _call(() async {
+    final r = await _dio.post<Json>('/v1/homework/$id/attempts', data: {'text': text});
+    return Homework.fromJson(r.data!);
+  });
+
+  /// La correction guidée (seulement après plusieurs essais).
+  Future<Homework> homeworkSolution(String id) => _call(() async {
+    final r = await _dio.post<Json>('/v1/homework/$id/solution');
+    return Homework.fromJson(r.data!);
+  });
+
+  /// Parent : les exercices de l'enfant en mode devoirs.
+  Future<HomeworkPage> childHomework(String childId, {int limit = 20, String? before}) =>
+      _call(() async {
+        final r = await _dio.get<Json>(
+          '/v1/children/$childId/homework',
+          queryParameters: {'limit': limit, 'before': ?before},
+        );
+        return HomeworkPage.fromJson(r.data!);
+      });
 
   /// Leçon collée ou tapée : même analyse que pour une photo.
   Future<Lesson> lessonFromText(String text, {String? childId}) => _call(() async {

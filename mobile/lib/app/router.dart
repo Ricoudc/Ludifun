@@ -15,7 +15,10 @@ import '../features/parent/ai_settings_screen.dart';
 import '../features/parent/child_dashboard_screen.dart';
 import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
+import '../features/homework/homework_screen.dart';
+import '../features/homework/homework_start_screen.dart';
 import '../features/parent/child_help_screen.dart';
+import '../features/parent/child_homework_screen.dart';
 import '../features/parent/child_programme_screen.dart';
 import '../features/parent/child_reports_screen.dart';
 import '../features/parent/child_mistakes_screen.dart';
@@ -67,6 +70,9 @@ abstract final class Routes {
   static const capture = '/enfant/photo';
   static const paste = '/enfant/texte';
   static const badges = '/enfant/badges';
+  static const homeworkStart = '/enfant/devoirs';
+  static String homework(String id) => '/enfant/devoirs/$id';
+  static String childHomework(String childId) => '/parent/enfants/$childId/devoirs';
   static String analysis(String lessonId, {String? childId}) =>
       childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
@@ -175,6 +181,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => ChildProgrammeScreen(childId: state.pathParameters['id']!),
               ),
               GoRoute(
+                path: 'devoirs',
+                builder: (_, state) => ChildHomeworkScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
                 path: 'modifier',
                 builder: (_, state) => ChildFormScreen(childId: state.pathParameters['id']),
               ),
@@ -206,6 +216,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'photo', builder: (_, _) => const CaptureScreen()),
           GoRoute(path: 'texte', builder: (_, _) => const TextImportScreen()),
           GoRoute(path: 'badges', builder: (_, _) => const BadgesScreen()),
+          GoRoute(path: 'devoirs', builder: (_, _) => const HomeworkStartScreen()),
+          GoRoute(
+            path: 'devoirs/:id',
+            builder: (_, state) => HomeworkScreen(homeworkId: state.pathParameters['id']!),
+          ),
           GoRoute(
             path: 'analyse/:id',
             builder: (_, state) => AnalysisScreen(lessonId: state.pathParameters['id']!),

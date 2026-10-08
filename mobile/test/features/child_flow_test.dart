@@ -809,4 +809,123 @@ void main() {
     expect(find.text('Commencer la révision'), findsNothing);
     await shot(tester, 'e14_lecon_a_jour');
   });
+
+  Map<String, Object?> homeworkJson({
+    String status = 'ready',
+    int shown = 1,
+    List<(String, bool?)> attempts = const [],
+    bool solutionAvailable = false,
+  }) {
+    const steps = [
+      {
+        'kind': 'task',
+        'title': '🔎 Qu\'est-ce qu\'on cherche ?',
+        'text': 'On cherche combien de billes il reste à Paul.',
+      },
+      {'kind': 'hint', 'title': '💡 Un indice', 'text': 'Paul en a-t-il plus ou moins après ?'},
+      {'kind': 'method', 'title': '🧭 La méthode', 'text': 'Pose la soustraction.'},
+    ];
+    final finished = status == 'solved' || status == 'guided';
+    return {
+      'id': 'h1',
+      'status': status,
+      'statement': 'Paul a 24 billes. Il en donne 16. Combien lui en reste-t-il ?',
+      'answer_kind': status == 'preparing' ? null : 'number',
+      'steps': status == 'preparing' ? <Object>[] : steps.take(shown).toList(),
+      'steps_left': status == 'preparing' ? 0 : steps.length - shown,
+      'attempts': [
+        for (final (text, correct) in attempts) {'text': text, 'correct': correct},
+      ],
+      'solution_available': solutionAvailable,
+      'solution': finished ? ['24 − 16 = 8', 'Il reste 8 billes.'] : null,
+      'answer': finished ? '8' : null,
+      'check': status == 'solved' ? '8 + 16 = 24 : c\'est bon.' : null,
+      'failure_message': null,
+      'created_at': '2026-09-23T15:00:00Z',
+    };
+  }
+
+  testWidgets('aide aux devoirs : étapes une par une, essais, puis correction guidée', (
+    tester,
+  ) async {
+    var attempts = <(String, bool?)>[];
+    var shown = 1;
+    server
+      ..on('POST /v1/homework/text', (r) {
+        expect((r.data as Map)['text'], startsWith('Paul a 24 billes'));
+        return (202, homeworkJson(status: 'preparing'));
+      })
+      ..on('GET /v1/homework/h1', (_) => (200, homeworkJson(shown: shown)))
+      ..on('POST /v1/homework/h1/next-step', (_) => (200, homeworkJson(shown: ++shown)))
+      ..on('POST /v1/homework/h1/attempts', (r) {
+        attempts = [...attempts, ((r.data as Map)['text'] as String, false)];
+        return (
+          200,
+          homeworkJson(shown: shown, attempts: attempts, solutionAvailable: attempts.length >= 2),
+        );
+      })
+      ..on(
+        'POST /v1/homework/h1/solution',
+        (_) => (200, homeworkJson(status: 'guided', shown: 3, attempts: attempts)),
+      );
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Aide aux devoirs'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'Paul a 24 billes. Il en donne 16. Combien lui en reste-t-il ?',
+    );
+    await tester.pump();
+    await tester.tap(find.text('C\'est parti !'));
+    await tester.pumpAndSettle();
+
+    // D'abord « Qu'est-ce qu'on cherche ? » ; pas de correction avant d'avoir essayé.
+    expect(find.text('🔎 Qu\'est-ce qu\'on cherche ?'), findsOneWidget);
+    expect(find.text('💡 Un indice'), findsNothing);
+    expect(find.text('Voir la correction guidée'), findsNothing);
+    await shot(tester, 'e15_devoirs');
+    await tester.tap(find.text('Je veux un indice'));
+    await tester.pumpAndSettle();
+    expect(find.text('Paul en a-t-il plus ou moins après ?'), findsOneWidget);
+
+    for (final wrong in ['40', '10']) {
+      await tester.enterText(find.byType(TextField), wrong);
+      await tester.pump();
+      await tester.ensureVisible(find.text('Vérifier ma réponse'));
+      await tester.tap(find.text('Vérifier ma réponse'));
+      await tester.pumpAndSettle();
+    }
+    expect(find.textContaining('Pas encore !'), findsOneWidget);
+    await tester.ensureVisible(find.text('Voir la correction guidée'));
+    await tester.tap(find.text('Voir la correction guidée'));
+    await tester.pumpAndSettle();
+    expect(find.text('🧭 Correction guidée'), findsOneWidget);
+    expect(find.text('• 24 − 16 = 8'), findsOneWidget);
+    expect(find.text('La réponse : 8', findRichText: true), findsOneWidget);
+    expect(find.text('Vérifier ma réponse'), findsNothing);
+  });
+
+  testWidgets('aide aux devoirs : la photo de l\'exercice, réussi seul', (tester) async {
+    var solved = false;
+    server
+      ..on('POST /v1/homework', (_) => (202, homeworkJson(status: 'preparing')))
+      ..on('GET /v1/homework/h1', (_) => (200, homeworkJson(status: solved ? 'solved' : 'ready')))
+      ..on('POST /v1/homework/h1/attempts', (_) {
+        solved = true;
+        return (200, homeworkJson(status: 'solved', attempts: [('Il reste 8 billes', true)]));
+      });
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Aide aux devoirs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Prendre l\'exercice en photo'));
+    await tester.pumpAndSettle();
+    expect(picker.cameraShots, 1);
+    expect(server.routes, contains('POST /v1/homework'));
+    await tester.enterText(find.byType(TextField), 'Il reste 8 billes');
+    await tester.pump();
+    await tester.tap(find.text('Vérifier ma réponse'));
+    await tester.pumpAndSettle();
+    expect(find.text('🎉 Bravo, c\'est juste !'), findsOneWidget);
+    expect(find.text('✔️ Pour vérifier : 8 + 16 = 24 : c\'est bon.'), findsOneWidget);
+  });
 }

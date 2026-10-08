@@ -49,6 +49,12 @@ class ChildHomeScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_a_photo_outlined),
               label: const Text('Nouvelle leçon', style: TextStyle(fontSize: 18)),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => context.go(Routes.homeworkStart),
+              icon: const Icon(Icons.edit_note),
+              label: const Text('Aide aux devoirs', style: TextStyle(fontSize: 18)),
+            ),
             const SizedBox(height: 28),
             ...switch (lessons) {
               AsyncData(value: final list) when list.isEmpty => [const _EmptyState()],
