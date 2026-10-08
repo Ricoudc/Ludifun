@@ -41,7 +41,11 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
         "📚 Questions tirées des sites de confiance",
         [
             f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}\n"
-            f"D'après {q.source.site} : « {q.source.quote} »"
+            + (
+                f"{q.source.quote} — {q.source.licence}"
+                if q.source.licence
+                else f"D'après {q.source.site} : « {q.source.quote} »"
+            )
             for q in material.questions
             if q.source is not None
         ],

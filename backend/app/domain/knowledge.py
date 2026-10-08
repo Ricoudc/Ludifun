@@ -233,6 +233,7 @@ class QuestionSource(_Model):
     site: NonEmpty
     url: NonEmpty
     quote: NonEmpty
+    licence: str | None = None  # à citer avec la question (CC BY-SA de Vikidia, étape 30)
 
 
 class MaterialQuestion(_Model):

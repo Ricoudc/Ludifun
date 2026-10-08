@@ -109,6 +109,24 @@ class DiagnosticsOut(BaseModel):
     explanation: str | None = Field(None, description="Raison de l'échec, en clair (pour le parent).")
 
 
+class ResourceScoreOut(BaseModel):
+    correct: int
+    total: int
+
+
+class LessonResourceOut(BaseModel):
+    """Ressource d'un site de confiance (étape 30), ouverte dans la visionneuse de l'application,
+    qui ne quitte pas le site (`provider`)."""
+
+    id: uuid.UUID
+    provider: Literal["mathalea", "vikidia", "lumni"]
+    kind: Literal["exercise", "quiz", "video", "article"]
+    title: str
+    url: str
+    licence: str
+    best: ResourceScoreOut | None = Field(None, description="Meilleur score d'un exercice noté.")
+
+
 class LessonIllustrationOut(BaseModel):
     """Image de la leçon validée par le parent (étape 27) ; facultative, décorative."""
 
@@ -132,6 +150,9 @@ class LessonOut(LessonSummaryOut):
     diagnostics: DiagnosticsOut | None = None
     image: LessonIllustrationOut | None = Field(
         None, description="Seulement une image validée par le parent."
+    )
+    resources: list[LessonResourceOut] = Field(
+        [], description="Ressources des sites de confiance (étape 30), sauf celles masquées par le parent."
     )
 
 

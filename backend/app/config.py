@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     image_model: str | None = None
     media_dir: str = "data/images"  # images générées (jamais de photo d'enfant)
     web_sources: str = ""
+    # Ressources des sites de confiance (étape 30), si le parent l'a permis : exercices MathALÉA,
+    # quiz Vikidia, vidéos Lumni (Lumni passe par le moteur de recherche). False : désactivées.
+    resources: bool = True
+    mathalea_catalogue_url: str = (
+        "https://raw.githubusercontent.com/mathalea/mathaleaV3/main/src/json/referentiel2022.json"
+    )
+    vikidia_api_url: str = "https://fr.vikidia.org/w/api.php"
     # Chiffrement des clés d'IA des familles ; à défaut, dérivé de LUDIFUN_JWT_SECRET.
     secrets_key: SecretStr | None = None
     ai_ocr_effort: Effort = "low"

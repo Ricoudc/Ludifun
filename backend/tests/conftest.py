@@ -74,7 +74,7 @@ def make_app(
 ) -> FastAPI:
     llm = llm or FakeProvider()
     return create_app(
-        Settings(database_url=database_url, environment="test"),
+        Settings(database_url=database_url, environment="test", resources=False),
         email_sender=mailer,
         ai=AiProviders(VisionLLMOcr(llm), llm),
     )

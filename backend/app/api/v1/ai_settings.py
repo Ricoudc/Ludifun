@@ -166,7 +166,7 @@ async def settings_out(
         fallback=active.fallback if active is not None else False,
         providers=providers_out(settings),
         web_sources=bool(await db.scalar(select(Family.web_sources).where(Family.id == family_id))),
-        web_sources_available=bool(settings.web_search_url),
+        web_sources_available=bool(settings.web_search_url) or settings.resources,
     )
 
 
@@ -226,7 +226,7 @@ async def put_web_sources(
     """Autorise (ou non) la recherche sur des sites éducatifs pour aider l'enfant (étape 24).
     Seule la notion part sur Internet, jamais le prénom de l'enfant ni sa photo."""
     family_id = await _family(db, parent)
-    if body.enabled and not settings.web_search_url:
+    if body.enabled and not settings.web_search_url and not settings.resources:
         raise ApiError(
             409,
             "web_search_unavailable",

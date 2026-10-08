@@ -373,6 +373,41 @@ class LessonImage(Base):
     )
 
 
+RESOURCE_PROVIDERS = ("mathalea", "vikidia", "lumni")  # domain.resources.Provider
+RESOURCE_KINDS = ("exercise", "quiz", "video", "article")  # domain.resources.ResourceKind
+
+
+class LessonResource(Base):
+    """Ressource d'un site éducatif de confiance proposée avec la leçon (étape 30) : un exercice
+    MathALÉA, un quiz Vikidia, une vidéo Lumni. Rien n'est copié : l'application l'ouvre dans sa
+    visionneuse, limitée au site. Le parent peut la masquer ; le score d'un exercice noté est
+    gardé (pour lui, jamais pour la maîtrise)."""
+
+    __tablename__ = "lesson_resources"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    best_correct: Mapped[int | None] = mapped_column(Integer)
+    best_total: Mapped[int | None] = mapped_column(Integer)
+    last_done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (
+        CheckConstraint(_in("provider", RESOURCE_PROVIDERS), name="provider"),
+        CheckConstraint(_in("kind", RESOURCE_KINDS), name="kind"),
+        UniqueConstraint("lesson_id", "url"),
+    )
+
+
 class LessonPage(Base):
     """Texte OCR d'une page. L'image elle-même n'est jamais stockée."""
 

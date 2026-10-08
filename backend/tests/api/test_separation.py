@@ -34,6 +34,11 @@ PARENT_ROUTES = [
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/reject", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/" + LESSON + "/redo", {}),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/images/prepare", None),
+    # Ressources des sites de confiance (étape 30) : voir, masquer, afficher, chercher.
+    ("GET", "/v1/children/{child}/lessons/" + LESSON + "/resources", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/" + LESSON + "/hide", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/" + LESSON + "/show", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/prepare", None),
 ]
 CHILD_SPECIFIC = [route for route in PARENT_ROUTES if "{child}" in route[1]]
 

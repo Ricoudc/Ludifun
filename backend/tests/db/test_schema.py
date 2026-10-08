@@ -415,3 +415,35 @@ async def test_migration_0020_practice_runs(engine: AsyncEngine) -> None:
         left = (await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'practice'"))).scalar()
     assert left == 0
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0021_lesson_resources(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Étape 30 : les ressources d'une leçon (site et type contrôlés, une adresse une fois) ;
+    retour arrière : la table disparaît, la leçon est gardée."""
+    ids = await create_full_lesson(db)
+    await db.commit()
+    insert = text(
+        "INSERT INTO lesson_resources (id, lesson_id, provider, kind, title, url) "
+        "VALUES (:id, :lesson, :provider, 'exercise', 'Fractions', :url)"
+    )
+    url = "https://coopmaths.fr/alea/?uuid=1"
+    async with engine.begin() as conn:
+        await conn.execute(
+            insert, {"id": uuid.uuid4(), "lesson": ids["lesson"], "provider": "mathalea", "url": url}
+        )
+    for provider, address in (("mathalea", url), ("youtube", "https://youtube.com/x")):
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.execute(
+                    insert,
+                    {"id": uuid.uuid4(), "lesson": ids["lesson"], "provider": provider, "url": address},
+                )
+    async with engine.begin() as conn:
+        row = (await conn.execute(text("SELECT hidden, attempts FROM lesson_resources"))).one()
+        assert tuple(row) == (False, 0)
+    await run_alembic("downgrade", "0020")
+    async with engine.connect() as conn:
+        exists = (await conn.execute(text("SELECT to_regclass('lesson_resources')"))).scalar()
+        lessons = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
+    assert exists is None and lessons == 1
+    await run_alembic("upgrade", "head")

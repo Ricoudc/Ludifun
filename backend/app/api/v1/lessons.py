@@ -23,6 +23,7 @@ from app.api.deps import (
     rate_limit,
 )
 from app.api.errors import ApiError
+from app.api.v1.lesson_resources import visible_resources
 from app.api.v1.schemas_learning import (
     AiStepOut,
     DiagnosticsOut,
@@ -301,6 +302,7 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
         )
         if approved is not None:
             out.image = LessonIllustrationOut(url=f"/v1/lessons/{lesson.id}/image", alt=approved.alt)
+        out.resources = await visible_resources(db, lesson.id)
         units = await load_units(db, lesson)
         pages = list(
             await db.scalars(
