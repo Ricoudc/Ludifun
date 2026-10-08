@@ -790,7 +790,11 @@ sourcée (§5.14) : le parent l'a permis et le serveur a un moteur de recherche 
 après l'aide sourcée et avant les images. Pour les `material.sourced_notions` (3) notions les
 plus importantes : recherche sur les sites autorisés, puis l'IA propose 1 à 3 questions à choix
 sur la notion telle que la leçon l'enseigne, avec d'autres exemples tirés des extraits (données
-entre balises). Le code garde au plus `material.sourced_per_notion` (2) questions par notion,
+entre balises). **Lumni d'abord** (demande de la famille, octobre 2026) : les pages de lumni.fr
+sur le thème de la leçon sont lues en premier, les autres sites seulement si Lumni n'a rien
+d'utile pour la notion ; l'IA écrit ses propres questions (les quiz de Lumni, droits réservés,
+ne sont jamais recopiés ; ils s'ouvrent dans la visionneuse, §5.20), chacune prouvée par une
+courte phrase citée de la page, avec le lien. Le code garde au plus `material.sourced_per_notion` (2) questions par notion,
 chacune seulement si : elle passe les contrôles des questions de la leçon (réponse absente de
 l'énoncé, distracteurs, rien qui renvoie à une page ou une image) ; sa citation figure mot pour
 mot dans l'extrait cité **et contient la bonne réponse** ; elle partage un mot important avec la

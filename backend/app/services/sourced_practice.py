@@ -6,6 +6,11 @@ si le serveur a un moteur de recherche ; en arrière-plan, la leçon est déjà 
 cherche, l'IA propose des questions à partir des extraits, le code ne garde que celles dont la
 citation est vérifiée et contient la réponse (`app.domain.sourced_practice`), puis retire celles
 que la leçon a déjà (`app.domain.duplicates`). Un échec ne touche jamais la leçon.
+
+Lumni d'abord : pour chaque notion, les pages de lumni.fr sur le thème de la leçon sont lues en
+premier ; l'IA y écrit ses propres questions (rien n'est recopié des quiz de Lumni, droits
+réservés), chacune prouvée par une courte phrase citée avec le lien. Sans page Lumni utile, les
+autres sites autorisés (Vikidia, Wikipédia, Éduscol…).
 """
 
 import logging
@@ -21,6 +26,7 @@ from app.db.base import Database
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit
 from app.domain.sourced_practice import NOTIONS, ProposedQuestion, check_practice
 from app.domain.sources import Excerpt
+from app.services.external_resources import LUMNI_SITES
 from app.services.lesson_store import add_questions, load_units
 from app.services.library import Library
 from app.services.sourced_help import web_sources_allowed
@@ -63,15 +69,31 @@ async def prepare(
         assert settings.web_search_url is not None
         own = web is None
         web = web or WebSources(settings.web_search_url, settings.web_sites, library=Library(database))
+        # Lumni d'abord (France Télévisions, sur le thème de la leçon) ; sinon les autres sites.
+        lumni = WebSources(settings.web_search_url, LUMNI_SITES, library=Library(database))
         try:
-            return await _practice(session, web, llm, lesson, chosen)
+            return await _practice(session, (lumni, web), llm, lesson, chosen)
         finally:
+            await lumni.aclose()
             if own:
                 await web.aclose()
 
 
+async def _excerpts(sources: tuple[WebSources, ...], question: str) -> list[Excerpt]:
+    """Les extraits du premier groupe de sites qui en a (Lumni, puis tous les sites autorisés)."""
+    for web in sources:
+        found = await web.excerpts(question)
+        if found:
+            return found
+    return []
+
+
 async def _practice(
-    session: Any, web: WebSources, llm: LLMProvider, lesson: db.Lesson, chosen: list[KnowledgeUnit]
+    session: Any,
+    sources: tuple[WebSources, ...],
+    llm: LLMProvider,
+    lesson: db.Lesson,
+    chosen: list[KnowledgeUnit],
 ) -> int:
     lesson_id = lesson.id
     prompt = Prompt.load("practice")
@@ -80,7 +102,7 @@ async def _practice(
     for unit in chosen:
         question = f"{unit.item.label} ({lesson.title})" if lesson.title else unit.item.label
         try:
-            excerpts = await web.excerpts(question)
+            excerpts = await _excerpts(sources, question)
         except SearchUnavailable as exc:
             logger.warning("Exercices des sources impossibles : %s", exc)
             break

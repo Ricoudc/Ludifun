@@ -15,7 +15,7 @@ from app.db.models import AiRun, KnowledgeMaterial
 from app.services import sourced_help, sourced_practice
 from app.services.web_sources import WebSources
 from tests.api.helpers import auth, family_with_device, upload_lesson
-from tests.api.test_sourced_help import SEARX, internet
+from tests.api.test_sourced_help import PAGE, SEARX, internet
 
 
 @pytest.fixture
@@ -110,3 +110,46 @@ async def test_a_correction_made_meanwhile_is_never_overwritten(
     assert sourced_questions(materials)  # les questions des sites sont bien ajoutées…
     for row in materials:  # … sans effacer la correction du parent
         assert marker["stem"] in [q["stem"] for q in row.material["questions"]], row.knowledge_id
+
+
+LUMNI_PAGE = "https://www.lumni.fr/article/la-revolution-francaise"
+LUMNI_HTML = (
+    "<html><head><title>La Révolution française - Lumni</title></head><body>"
+    "<p>En 1789, les députés du tiers état se proclament Assemblée nationale et prêtent le "
+    "serment du Jeu de paume pour donner une Constitution à la France.</p></body></html>"
+)
+
+
+def internet_with_lumni(request: httpx.Request) -> httpx.Response:
+    if request.url.host == "recherche":
+        results = [{"url": PAGE, "title": "Révolution française"}]
+        if "lumni" in request.url.params.get("q", ""):
+            results.insert(0, {"url": LUMNI_PAGE, "title": "La Révolution française - Lumni"})
+        return httpx.Response(200, json={"results": results})
+    html = LUMNI_HTML if request.url.host == "www.lumni.fr" else internet_text()
+    return httpx.Response(200, text=html, headers={"content-type": "text/html; charset=utf-8"})
+
+
+async def test_lumni_comes_first_for_the_questions(
+    app: FastAPI, client: AsyncClient, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Les questions s'appuient d'abord sur Lumni (thème de la leçon) ; l'IA écrit ses propres
+    questions, chacune prouvée par une phrase citée de la page, avec le lien."""
+    settings: Settings = app.state.settings
+    app.state.settings = settings.model_copy(update={"web_search_url": SEARX})
+
+    def fake_web(url: str, sites: Any, library: Any = None) -> WebSources:
+        client = httpx.AsyncClient(transport=httpx.MockTransport(internet_with_lumni))
+        return WebSources(url, sites, client=client, library=library)
+
+    monkeypatch.setattr(sourced_help, "WebSources", fake_web)
+    monkeypatch.setattr(sourced_practice, "WebSources", fake_web)
+    family = await family_with_device(client)
+    await client.put("/v1/parent/ai/sources", json={"enabled": True}, headers=auth(family["parent"]))
+    await upload_lesson(client, family["device"])
+    added = sourced_questions(list(await db.scalars(select(KnowledgeMaterial))))
+    lumni = [q for q in added if q["source"]["site"] == "www.lumni.fr"]
+    assert lumni, added
+    assert lumni[0]["source"]["url"] == LUMNI_PAGE and lumni[0]["source"]["quote"] in LUMNI_HTML
+    # Une notion dont la page Lumni ne parle pas : les autres sites prennent le relais.
+    assert {q["source"]["site"] for q in added} <= {"www.lumni.fr", "fr.vikidia.org"}
