@@ -952,6 +952,29 @@ réussi ; le serveur redémarré applique les migrations manquantes. `Sauvegarde
 branché sur PostgreSQL (sauvegarde, restauration, fichier abîmé, sauvegarde au schéma 0021) ;
 pas encore sous Windows avec Docker Desktop.
 
+### 5.28 Programme officiel par classe (octobre 2026, CDC §105)
+
+Référentiel `domain/programme.json` (version `2026.10.1`) : Matière → Domaine → Compétence →
+Sous-compétence, du CP à la 3e, en français, mathématiques, histoire, géographie, sciences,
+anglais et EMC (134 sous-compétences). Chaque sous-compétence a un identifiant stable
+(« MA-07 »), ses classes (les programmes sont écrits par cycle, avec des repères par année) et
+ses mots-clés. C'est un **résumé par Ludifun** des programmes publiés sur eduscol (intitulés
+d'histoire-géographie repris des programmes), à faire relire par un enseignant ; on le corrige
+en augmentant `version`, sans changer les identifiants.
+
+Rattachement par le code (`domain/programme.place`, sans IA, le même avec toutes les IA) : la
+sous-compétence de la matière de la leçon et de la classe de l'enfant qui partage le plus de mots
+(titre de la leçon, notion, phrase à retenir) ; à égalité, la première dans l'ordre du
+programme ; sinon une sous-compétence d'une autre classe (leçon revue, ou en avance), sinon
+« hors du résumé ». Rien n'est enregistré : le rattachement se recalcule, et suit les
+corrections du référentiel. Une sous-compétence est **maîtrisée** quand toutes ses notions sont
+au niveau 4 ou plus, **commencée** quand une leçon en parle, **pas encore vue** sinon.
+
+`GET /v1/children/{c}/programme` (parent) ; écran « Programme de CM1 » (raccourci du tableau de
+bord) : par matière, « 5 / 14 vus · 2 maîtrisés », puis domaine par domaine chaque
+sous-compétence avec ✅ 🟠 ⚪ et les notions des leçons avec leur niveau. Plus tard : proposer
+l'IA pour départager quand les mots ne suffisent pas (choix dans la liste, contrôlé par le code).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1147,7 +1170,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 114 | État structuré de l'enfant (reconnaître, se rappeler, appliquer, expliquer, transférer, autonomie) | ✅ | Par notion : score 0-100, boîte, prochaine révision, niveaux validés, et depuis l'étape 23 un taux de réussite par niveau de compréhension (10 dernières réponses) et l'autonomie (part des réussites sans aide), calculés depuis les réponses enregistrées (`app/domain/state.py`) ; visibles par le parent. Reste : l'état par compétence (les compétences sont rattachées aux notions). |
 | 115 | Niveau de confiance et confirmation | 🟡 | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire. Manque une confiance par notion extraite et par correction de question rédigée. |
 | 116 | Chaque connaissance reliée à sa source | ✅ | `source_excerpt` obligatoire, vérifié dans le texte lu ; la page est retrouvée et affichée : « Pourquoi cette notion ? C'est écrit dans ta leçon, page 2 : « … » » (étape 23). |
-| 117 | Sources de vérité distinguées | 🟡 | La leçon est la source des notions ; un apport externe (étape 24) est marqué `SOURCE_EXTERNAL_KNOWLEDGE`, avec ses sources et des citations vérifiées, jamais présenté comme venant de la leçon. Pas encore de référentiel des programmes (§105). |
+| 117 | Sources de vérité distinguées | ✅ | La leçon est la source des notions ; un apport externe (étape 24) est marqué `SOURCE_EXTERNAL_KNOWLEDGE`, avec ses sources et des citations vérifiées, jamais présenté comme venant de la leçon. Référentiel des programmes (§105, §5.28) : résumé versionné, distinct de la leçon, qui range ses notions sans les modifier. Reste : faire relire le résumé par un enseignant. |
 | 118 | Génération à partir d'une spécification (objectif, difficulté…) | 🟡 | Choix différent : l'IA produit une fois, à l'analyse, un matériel validé par notion (questions de 3 difficultés, vrai/faux, textes à trous, paires, aides, questions ouvertes par niveau) ; le moteur construit ensuite chaque activité selon l'objectif et la difficulté. Avantage : aucune séance ne dépend de l'IA. Limite : pas de nouvelle génération ciblée pendant la vie de la leçon. |
 | 119 | Validation structurelle puis pédagogique, régénération, secours | ✅ | Schéma JSON, puis contrôles (§6.4) : réponse dans la leçon, distracteurs plausibles et distincts, pas de double réponse, citation exacte… ; une relance avec les motifs de refus ; les éléments refusés sont écartés, la notion garde les activités qui restent. |
 | 120, 147 | Activités de secours ; repli en cas de panne | ✅ | Les séances n'appellent jamais l'IA. Correction des questions rédigées : repli par mots-clés. Claude : modèle de repli (A9). Étape 23 : si l'IA de la famille ne répond pas (injoignable, trop lente, quota, clé refusée), ses autres IA enregistrées prennent le relais — seulement si le parent l'a permis (les photos partent là où il l'a choisi) ; le repli est noté dans `ai_runs` et visible dans « Voir ce qui se passe ». |

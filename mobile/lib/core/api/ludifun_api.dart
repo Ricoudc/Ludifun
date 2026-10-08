@@ -7,6 +7,7 @@ import '../../models/ai.dart';
 import '../../models/figure.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
+import '../../models/programme.dart';
 import '../../models/rewards.dart';
 import '../../models/session.dart';
 import 'api_exception.dart';
@@ -274,6 +275,12 @@ class LudifunApi {
       queryParameters: {'weeks': weeks},
     );
     return Dashboard.fromJson(r.data!);
+  });
+
+  /// Le programme de la classe de l'enfant, et où en sont les notions de ses leçons (§105).
+  Future<Programme> programme(String childId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/programme');
+    return Programme.fromJson(r.data!);
   });
 
   Future<List<LessonProgress>> childSkills(String childId) => _call(() async {

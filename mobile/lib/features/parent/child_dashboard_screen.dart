@@ -105,6 +105,11 @@ class ChildDashboardScreen extends ConsumerWidget {
                 'Compétences par leçon',
                 () => context.go(Routes.childSkills(childId)),
               ),
+              _Shortcut(
+                Icons.school_outlined,
+                child == null ? 'Programme de la classe' : 'Programme de ${child.grade}',
+                () => context.go(Routes.childProgramme(childId)),
+              ),
               if (child != null && child.devices == 0)
                 _Shortcut(
                   Icons.link,

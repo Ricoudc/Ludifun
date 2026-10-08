@@ -29,6 +29,11 @@ from app.api.v1.schemas_dashboard import (
     NotionProgressOut,
     NotionResultOut,
     Outcome,
+    ProgrammeCompetenceOut,
+    ProgrammeDomainOut,
+    ProgrammeNotionOut,
+    ProgrammeOut,
+    ProgrammeSubjectOut,
     QuestionReportOut,
     QuestionReportsOut,
     RecurringErrorOut,
@@ -38,6 +43,7 @@ from app.api.v1.schemas_dashboard import (
     SessionDetailOut,
     SkillProgressOut,
     SkillsOut,
+    SubCompetenceOut,
     SubjectOut,
     WeakNotionOut,
     WeekOut,
@@ -53,6 +59,7 @@ from app.domain.knowledge import SkillVerb
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
 from app.services import dashboard, export
+from app.services import programme as programme_service
 from app.services.dashboard import WeekStats
 
 router = APIRouter(tags=["espace parent"])
@@ -323,6 +330,56 @@ async def get_history(
 def level_out(level: int) -> LevelOut:
     value = MasteryLevel(level)
     return LevelOut(value=value, label=LEVEL_LABELS[value], color=level_color(value))
+
+
+def _notion_out(n: programme_service.PlacedNotion) -> ProgrammeNotionOut:
+    return ProgrammeNotionOut(
+        label=n.label, lesson_id=n.lesson_id, lesson_title=n.lesson_title, level=level_out(n.level)
+    )
+
+
+def _sub_out(s: programme_service.SubProgress) -> SubCompetenceOut:
+    return SubCompetenceOut(
+        id=s.sub.id,
+        title=s.sub.title,
+        grades=list(s.sub.grades),
+        status=s.status,
+        notions=[_notion_out(n) for n in s.notions],
+    )
+
+
+@router.get("/children/{child_id}/programme")
+async def get_programme(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> ProgrammeOut:
+    """Le programme de la classe de l'enfant, matière par matière : chaque sous-compétence avec
+    les notions de ses leçons qui s'y rattachent (rapprochement fait par le code) et son état."""
+    child = await own_child(db, parent, child_id)
+    progress = await programme_service.programme_progress(db, child)
+    return ProgrammeOut(
+        grade=progress.grade,
+        version=progress.version,
+        source=progress.source,
+        subjects=[
+            ProgrammeSubjectOut(
+                subject=subject.subject,
+                total=subject.total,
+                started=subject.count("started"),
+                mastered=subject.count("mastered"),
+                domains=[
+                    ProgrammeDomainOut(
+                        title=d.title,
+                        competences=[
+                            ProgrammeCompetenceOut(title=c.title, subs=[_sub_out(s) for s in c.subs])
+                            for c in d.competences
+                        ],
+                    )
+                    for d in subject.domains
+                ],
+                elsewhere=[_sub_out(s) for s in subject.elsewhere],
+                unplaced=[_notion_out(n) for n in subject.unplaced],
+            )
+            for subject in progress.subjects
+        ],
+    )
 
 
 @router.get("/children/{child_id}/skills")

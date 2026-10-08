@@ -270,3 +270,52 @@ class SessionDetailOut(BaseModel):
     engine_version: str | None = Field(description="Version des règles du moteur ; null : avant l'étape 23.")
     activities: list[SessionActivityOut]
     decisions: list[SessionDecisionOut] = Field(description="Remédiations, pauses, défis bonus.")
+
+
+class ProgrammeNotionOut(BaseModel):
+    label: str
+    lesson_id: uuid.UUID
+    lesson_title: str | None
+    level: LevelOut
+
+
+class SubCompetenceOut(BaseModel):
+    id: str = Field(description="Identifiant stable dans le référentiel (« MA-07 »).")
+    title: str
+    grades: list[str] = Field(description="Classes où le programme la place.")
+    status: Literal["not_seen", "started", "mastered"] = Field(
+        description="Pas encore vue (aucune leçon), commencée, ou maîtrisée (toutes ses notions au "
+        "niveau 4 ou plus)."
+    )
+    notions: list[ProgrammeNotionOut]
+
+
+class ProgrammeCompetenceOut(BaseModel):
+    title: str
+    subs: list[SubCompetenceOut]
+
+
+class ProgrammeDomainOut(BaseModel):
+    title: str
+    competences: list[ProgrammeCompetenceOut]
+
+
+class ProgrammeSubjectOut(BaseModel):
+    subject: str
+    total: int = Field(description="Sous-compétences du programme de la classe dans cette matière.")
+    started: int
+    mastered: int
+    domains: list[ProgrammeDomainOut]
+    elsewhere: list[SubCompetenceOut] = Field(
+        description="Notions rangées dans le programme d'une autre classe (une leçon revue, ou en avance)."
+    )
+    unplaced: list[ProgrammeNotionOut] = Field(description="Notions que le référentiel ne range nulle part.")
+
+
+class ProgrammeOut(BaseModel):
+    """Le programme de la classe de l'enfant (§105), et où en sont ses notions."""
+
+    grade: str
+    version: str = Field(description="Version du référentiel.")
+    source: str
+    subjects: list[ProgrammeSubjectOut]

@@ -1504,6 +1504,87 @@ void main() {
     expect(find.text('Cette semaine'), findsOneWidget);
   });
 
+  testWidgets('programme de CM1 : maîtrisé, commencé, pas encore vu, autre classe', (tester) async {
+    Map<String, Object?> sub(String id, String title, String status, List<(String, int)> notions) =>
+        {
+          'id': id,
+          'title': title,
+          'grades': ['CM1'],
+          'status': status,
+          'notions': [
+            for (final (label, level) in notions)
+              {
+                'label': label,
+                'lesson_id': 'l1',
+                'lesson_title': 'La Révolution française',
+                'level': {'value': level, 'label': '?', 'color': 'green'},
+              },
+          ],
+        };
+    server.on(
+      'GET /v1/children/c1/programme',
+      (_) => (
+        200,
+        {
+          'grade': 'CM1',
+          'version': '2026.10.1',
+          'source': 'Résumé par Ludifun des programmes',
+          'subjects': [
+            {
+              'subject': 'history',
+              'total': 3,
+              'started': 1,
+              'mastered': 1,
+              'domains': [
+                {
+                  'title': 'Histoire de France et du monde (cycle 3)',
+                  'competences': [
+                    {
+                      'title': 'CM1',
+                      'subs': [
+                        sub('HI-03', 'Et avant la France ?', 'not_seen', []),
+                        sub('HI-04', 'Le temps des rois', 'mastered', [('Louis XIV', 5)]),
+                        sub('HI-05', 'Le temps de la Révolution et de l\'Empire', 'started', [
+                          ('La prise de la Bastille', 3),
+                        ]),
+                      ],
+                    },
+                  ],
+                },
+              ],
+              'elsewhere': [
+                {
+                  ...sub(
+                    'HI-08',
+                    'La France, des guerres mondiales à l\'Union européenne',
+                    'started',
+                    [('Verdun', 2)],
+                  ),
+                  'grades': ['CM2'],
+                },
+              ],
+              'unplaced': <Object?>[],
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Programme de CM1'));
+    expect(find.text('Programme de CM1 · Emma'), findsOneWidget);
+    expect(find.text('2 / 3 vus · 1 maîtrisés'), findsOneWidget);
+    await tap(tester, find.text('Histoire'));
+    await shot(tester, 'p13_programme', height: 1400);
+    expect(find.text('Le temps des rois'), findsOneWidget);
+    expect(find.text('✅'), findsOneWidget);
+    expect(find.text('La prise de la Bastille · En cours d\'acquisition'), findsOneWidget);
+    expect(
+      find.text('La France, des guerres mondiales à l\'Union européenne (programme de CM2)'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('le parent voit les questions signalées par Emma et les marque vues', (tester) async {
     Map<String, Object?> report(String id, String reason, String outcome, {String? given}) => {
       'id': id,

@@ -4,6 +4,7 @@ import '../../core/session.dart';
 import '../../models/account.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
+import '../../models/programme.dart';
 import '../../models/rewards.dart';
 
 final childrenProvider = FutureProvider.autoDispose<List<Child>>(
@@ -32,6 +33,10 @@ final childProgressProvider = FutureProvider.autoDispose.family<Progress, String
 
 final childSkillsProvider = FutureProvider.autoDispose.family<List<LessonProgress>, String>(
   (ref, childId) => ref.watch(apiProvider).childSkills(childId),
+);
+
+final programmeProvider = FutureProvider.autoDispose.family<Programme, String>(
+  (ref, childId) => ref.watch(apiProvider).programme(childId),
 );
 
 final examsProvider = FutureProvider.autoDispose.family<List<Exam>, String>(
