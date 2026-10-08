@@ -27,6 +27,7 @@ if (-not (Recherche-Active $reglages) -and -not (Test-Path $marqueRecherche)) {
 
 Etape 'Démarrage du serveur (la première fois, ou après une mise à jour : plusieurs minutes)…'
 Arreter-Anciennes-Copies
+Sauvegarde-Automatique
 & docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { Echec 'docker compose n''a pas pu démarrer le serveur (voir les messages au-dessus).' }
 $sante = Attendre-Serveur

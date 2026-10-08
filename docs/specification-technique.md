@@ -937,6 +937,21 @@ décision pour l'enfant) ; chiffres dans `services/dashboard.recent_facts` ;
 `DashboardOut.summary` (champ facultatif, liste vide par défaut). Pas d'e-mail pour l'instant :
 il faudrait l'accord du parent (réglage et migration) et une tâche planifiée à la maison.
 
+### 5.27 Sauvegarde et restauration à la maison (octobre 2026)
+
+Sur le PC familial (Docker), l'historique des enfants n'existait que dans le volume
+`ludifun_pgdata`. `scripts/windows/commun.ps1` : `Sauvegarder-Base` (`pg_dump` au format
+personnalisé dans le conteneur, copié par `docker compose cp`, jamais par un tube PowerShell qui
+abîmerait le binaire) vers `%LOCALAPPDATA%\Ludifun\sauvegardes` (14 gardées) ;
+`Sauvegarde-Automatique` au démarrage et à la mise à jour : avant qu'une nouvelle version
+transforme la base (dernière migration du dossier différente de celle notée), sinon une fois par
+jour, sans jamais empêcher le démarrage. `Restaurer-Base` : la sauvegarde est chargée dans une
+base à part (`ludifun_restauration`), la base actuelle n'est remplacée (renommage) que si tout a
+réussi ; le serveur redémarré applique les migrations manquantes. `Sauvegarder-Ludifun.bat`,
+`Restaurer-Ludifun.bat`. Essayé de bout en bout avec PowerShell 7 sous Linux et un faux `docker`
+branché sur PostgreSQL (sauvegarde, restauration, fichier abîmé, sauvegarde au schéma 0021) ;
+pas encore sous Windows avec Docker Desktop.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

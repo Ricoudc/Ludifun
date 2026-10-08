@@ -24,6 +24,8 @@ installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludif
 | `Changer-IA-Ludifun.bat` | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
 | `Installer-Images-Ludifun.bat` | facultatif : installe le moteur d'images (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) pour illustrer chaque leçon d'une image ; voir « Image de la leçon » ci-dessous |
 | `Activer-Recherche-Ludifun.bat` | active (ou désactive) la recherche sur les sites éducatifs de confiance (Vikidia, Lumni, Éduscol, Sésamath, Wikipédia) : moteur de recherche dans Docker, serveur redémarré. Ensuite, dans l'application : espace parent → Mon compte → Intelligence artificielle → « 📚 Utiliser des sites éducatifs de confiance ». Donne les explications sourcées de « Je n'ai pas compris » et des questions d'entraînement « D'après … » pour les leçons analysées ensuite. Le même réglage ajoute « 🌐 Pour s'entraîner autrement » sur l'écran de la leçon : exercices MathALÉA (maths, CM1 à 3e), quiz Vikidia et vidéos Lumni, ouverts dans l'application ; MathALÉA et Vikidia marchent même sans ce moteur de recherche (il suffit d'autoriser les sites dans l'application), Lumni en a besoin. `Demarrer-Ludifun.bat` le propose une fois |
+| `Sauvegarder-Ludifun.bat` | sauvegarder tout de suite les données (comptes, leçons, résultats des enfants) dans `%LOCALAPPDATA%\Ludifun\sauvegardes` ; les 14 plus récentes sont gardées. `Demarrer-Ludifun.bat` et `Mettre-a-jour-Ludifun.bat` en font aussi une **automatiquement** : une par jour, et toujours avant qu'une nouvelle version transforme la base |
+| `Restaurer-Ludifun.bat` | revenir à une sauvegarde choisie dans la liste (taper `OUI` pour confirmer). La base actuelle est d'abord sauvegardée (« avant-restauration ») ; une sauvegarde illisible ne change rien ; une sauvegarde d'une version plus ancienne est mise à jour au redémarrage |
 | `Arreter-Ludifun.bat` | arrêter le serveur et le moteur d'images (les données sont gardées) |
 | `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
 | `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
@@ -40,7 +42,9 @@ les dernières erreurs. Pratique pour comparer Ollama, Gemini et Claude.
 La clé d'API est enregistrée dans le fichier `.env` du dossier : il reste sur le PC et n'est
 jamais envoyé sur GitHub. Une copie est gardée dans `%LOCALAPPDATA%\Ludifun\reglages.env` : un
 nouveau dossier (ZIP téléchargé à nouveau) reprend la même IA, la même clé et les mêmes secrets,
-sans lesquels les clés d'IA enregistrées dans l'application ne se liraient plus. La dépense d'IA est plafonnée à 5 $ par jour
+sans lesquels les clés d'IA enregistrées dans l'application ne se liraient plus. Pour changer de PC
+ou garder une copie à l'abri : copiez tout le dossier `%LOCALAPPDATA%\Ludifun` (sauvegardes et
+`reglages.env`) sur une clé USB. La dépense d'IA est plafonnée à 5 $ par jour
 (`LUDIFUN_AI_DAILY_BUDGET_USD` dans `.env`). Pour vérifier quelle IA est active, ouvrez
 <http://localhost:8000/health/ready> : le nom de l'IA (`"ai":"claude"`, `"mistral"`…) ou `"ai":"fake"` pour l'IA factice.
 

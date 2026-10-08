@@ -463,3 +463,116 @@ function Expliquer-Recherche {
     Write-Host 'Dans l''application : espace parent → Mon compte → Intelligence artificielle →'
     Write-Host '« 📚 Utiliser des sites éducatifs de confiance » (chaque famille décide pour elle).'
 }
+
+# --- Sauvegardes de la base -------------------------------------------------------------
+
+# Hors du dossier de Ludifun, à côté des réglages : un nouveau dossier (ZIP téléchargé à nouveau)
+# les retrouve. Une sauvegarde contient les comptes, les leçons et les résultats des enfants :
+# elle reste sur ce PC (à copier sur une clé USB avec reglages.env pour changer de PC).
+$DossierSauvegardes = Join-Path $env:LOCALAPPDATA 'Ludifun\sauvegardes'
+$SauvegardesGardees = 14
+$MarqueSchema = Join-Path $env:LOCALAPPDATA 'Ludifun\schema.txt'
+
+function Base-Existe {
+    & docker volume inspect ludifun_pgdata *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+function Assurer-Base {
+    & docker compose up -d db *> $null
+    if ($LASTEXITCODE -ne 0) { return $false }
+    for ($i = 0; $i -lt 30; $i++) {
+        & docker compose exec -T db pg_isready -U ludifun -d ludifun *> $null
+        if ($LASTEXITCODE -eq 0) { return $true }
+        Start-Sleep -Seconds 2
+    }
+    return $false
+}
+
+# Les fonctions qui renvoient un résultat envoient l'affichage des commandes à l'écran
+# (`| Out-Host`) : sinon il se mêlerait au résultat.
+
+# Dernière migration de ce dossier : quand elle change (nouvelle version), le serveur va
+# transformer la base au démarrage ; on la sauvegarde avant.
+function Schema-Du-Dossier {
+    $dernier = Get-ChildItem (Join-Path $Racine 'backend\migrations\versions') -Filter '*.py' |
+        Sort-Object Name | Select-Object -Last 1
+    if ($dernier) { return $dernier.BaseName } else { return '' }
+}
+
+function Sauvegarder-Base([string]$raison = 'manuelle') {
+    if (-not (Assurer-Base)) { return $null }
+    New-Item -ItemType Directory -Force -Path $DossierSauvegardes | Out-Null
+    $chemin = Join-Path $DossierSauvegardes "ludifun-$(Get-Date -Format 'yyyy-MM-dd-HHmmss')-$raison.dump"
+    # pg_dump écrit dans le conteneur, puis le fichier est copié tel quel (jamais par un tube
+    # PowerShell, qui abîmerait un fichier binaire). Copie vers un nom relatif : « C: » ne
+    # risque pas d'être pris pour un nom de conteneur.
+    & docker compose exec -T db pg_dump -U ludifun -d ludifun --format=custom --file=/tmp/sauvegarde.dump | Out-Host
+    if ($LASTEXITCODE -ne 0) { return $null }
+    $temporaire = 'sauvegarde-en-cours.tmp'
+    & docker compose cp db:/tmp/sauvegarde.dump $temporaire | Out-Host
+    $copie = $LASTEXITCODE
+    & docker compose exec -T db rm -f /tmp/sauvegarde.dump *> $null
+    if ($copie -ne 0 -or -not (Test-Path $temporaire) -or (Get-Item $temporaire).Length -eq 0) {
+        Remove-Item $temporaire -Force -ErrorAction SilentlyContinue
+        return $null
+    }
+    Move-Item $temporaire $chemin -Force
+    Get-ChildItem $DossierSauvegardes -Filter 'ludifun-*.dump' | Sort-Object LastWriteTime -Descending |
+        Select-Object -Skip $SauvegardesGardees | Remove-Item -Force -ErrorAction SilentlyContinue
+    return $chemin
+}
+
+# Au démarrage : une sauvegarde avant qu'une nouvelle version transforme la base, et sinon une
+# par jour. Une panne ici n'empêche jamais Ludifun de démarrer.
+function Sauvegarde-Automatique {
+    if (-not (Base-Existe)) { return }
+    $schema = Schema-Du-Dossier
+    $connu = if (Test-Path $MarqueSchema) { (Get-Content $MarqueSchema -Raw).Trim() } else { '' }
+    $derniere = Get-ChildItem $DossierSauvegardes -Filter 'ludifun-*.dump' -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $raison = if ($schema -ne $connu) { 'avant-mise-a-jour' }
+        elseif (-not $derniere -or $derniere.LastWriteTime -lt (Get-Date).AddHours(-20)) { 'quotidienne' }
+        else { '' }
+    if (-not $raison) { return }
+    Etape 'Sauvegarde des données des enfants…'
+    $fichier = Sauvegarder-Base $raison
+    if ($fichier) {
+        Ok "Sauvegarde faite : $fichier"
+        New-Item -ItemType Directory -Force -Path (Split-Path $MarqueSchema) | Out-Null
+        Set-Content -Path $MarqueSchema -Value $schema
+    } else {
+        Write-Host 'La sauvegarde n''a pas pu être faite (Ludifun démarre quand même).' -ForegroundColor Yellow
+    }
+}
+
+# Remet une sauvegarde : elle est d'abord chargée dans une base à part ; la base actuelle n'est
+# remplacée que si tout s'est bien passé. Le serveur, redémarré ensuite, met la base à jour si
+# la sauvegarde vient d'une version plus ancienne.
+function Restaurer-Base([string]$chemin) {
+    if (-not (Assurer-Base)) { return 'La base ne démarre pas.' }
+    Copy-Item $chemin 'restauration.tmp' -Force
+    & docker compose cp 'restauration.tmp' db:/tmp/restauration.dump | Out-Host
+    $copie = $LASTEXITCODE
+    Remove-Item 'restauration.tmp' -Force -ErrorAction SilentlyContinue
+    if ($copie -ne 0) { return 'La sauvegarde n''a pas pu être copiée.' }
+    & docker compose stop api *> $null
+    & docker compose exec -T db sh -c 'dropdb -U ludifun --if-exists ludifun_restauration && createdb -U ludifun -O ludifun ludifun_restauration && pg_restore -U ludifun -d ludifun_restauration --no-owner --exit-on-error /tmp/restauration.dump' | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        & docker compose exec -T db sh -c 'dropdb -U ludifun --if-exists ludifun_restauration; rm -f /tmp/restauration.dump' *> $null
+        return 'La sauvegarde est illisible : rien n''a été changé.'
+    }
+    & docker compose exec -T db sh -c 'rm -f /tmp/restauration.dump' *> $null
+    & docker compose exec -T db psql -U ludifun -d postgres -v ON_ERROR_STOP=1 `
+        -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'ludifun' AND pid <> pg_backend_pid();" `
+        -c 'DROP DATABASE IF EXISTS ludifun_avant_restauration;' `
+        -c 'ALTER DATABASE ludifun RENAME TO ludifun_avant_restauration;' `
+        -c 'ALTER DATABASE ludifun_restauration RENAME TO ludifun;' | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        # La base actuelle reprend son nom si elle l'avait perdu.
+        & docker compose exec -T db psql -U ludifun -d postgres -c 'ALTER DATABASE ludifun_avant_restauration RENAME TO ludifun;' *> $null
+        return 'Le remplacement de la base n''a pas fonctionné : rien n''a été changé.'
+    }
+    & docker compose exec -T db dropdb -U ludifun --if-exists ludifun_avant_restauration *> $null
+    return ''
+}

@@ -14,6 +14,7 @@ if ((Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $
 }
 Assurer-Docker
 Arreter-Anciennes-Copies
+Sauvegarde-Automatique
 Etape 'Reconstruction et redémarrage du serveur (quelques minutes)…'
 & docker compose up -d --build
 if ($LASTEXITCODE -ne 0) { Echec 'docker compose n''a pas pu redémarrer le serveur.' }
