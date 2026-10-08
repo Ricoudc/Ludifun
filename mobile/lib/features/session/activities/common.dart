@@ -18,13 +18,16 @@ class ActivityInstruction extends InheritedWidget {
 
 /// Consigne ou question, en grand.
 class Prompt extends StatelessWidget {
-  const Prompt(this.text, {this.label, this.passage, super.key});
+  const Prompt(this.text, {this.label, this.passage, this.source, super.key});
 
   final String text;
   final String? label;
 
   /// Passage de la leçon à relire avant la question : l'enfant n'a plus la fiche.
   final String? passage;
+
+  /// Site de confiance d'où vient la question (étape 29) : jamais confondue avec la leçon.
+  final String? source;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -57,6 +60,13 @@ class Prompt extends StatelessWidget {
         style: Theme.of(context).textTheme.headlineSmall
             ?.copyWith(fontWeight: FontWeight.w700, height: 1.3),
       ),
+      if (source case final site? when site.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        Text(
+          '📚 En plus de ta leçon — d\'après $site',
+          style: const TextStyle(fontSize: 14, color: Colors.black54),
+        ),
+      ],
     ],
   );
 }

@@ -32,6 +32,18 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
         [
             _with_passage(q.passage, f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}")
             for q in sorted(material.questions, key=lambda q: q.difficulty)
+            if q.source is None
+        ],
+        ActivityCode.MCQ,
+    )
+    # Étape 29 : questions tirées d'un site de confiance, avec la phrase qui prouve la réponse.
+    add(
+        "📚 Questions tirées des sites de confiance",
+        [
+            f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}\n"
+            f"D'après {q.source.site} : « {q.source.quote} »"
+            for q in material.questions
+            if q.source is not None
         ],
         ActivityCode.MCQ,
     )

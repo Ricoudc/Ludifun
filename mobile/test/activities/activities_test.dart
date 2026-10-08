@@ -54,6 +54,24 @@ void main() {
     );
   }
 
+  testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {
+    await show(tester, 'MCQ', {
+      'prompt': 'Quel animal vertébré vit dans la mer ?',
+      'source': 'fr.vikidia.org',
+      'choices': [
+        {'id': 'a', 'text': 'La baleine'},
+        {'id': 'b', 'text': 'La méduse'},
+        {'id': 'c', 'text': 'Le ver de terre'},
+        {'id': 'd', 'text': 'L\'escargot'},
+      ],
+    });
+    expect(find.text('📚 En plus de ta leçon — d\'après fr.vikidia.org'), findsOneWidget);
+    await tester.tap(find.text('La baleine'));
+    expect(sent, [
+      {'choice_id': 'a'},
+    ]);
+  });
+
   testWidgets('QCM : un seul choix, envoyé aussitôt', (tester) async {
     await show(tester, 'MCQ', {
       'prompt': 'En quelle année commence la Révolution ?',

@@ -400,3 +400,18 @@ async def test_migration_0019_pictures_of_notions(engine: AsyncEngine, db: Async
         left = (await conn.execute(text("SELECT count(*) FROM lesson_images"))).scalar()
     assert left == 0  # la notion et le « pas utile » n'existaient pas avant
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0020_practice_runs(engine: AsyncEngine) -> None:
+    """Étape 29 : « practice » journalisée ; retour arrière propre (ces appels sont effacés)."""
+    run = text(
+        "INSERT INTO ai_runs (id, stage, provider, model, prompt_version, latency_ms, status, warnings, "
+        "created_at) VALUES (:id, 'practice', 'fake', 'fake', 'v1', 1, 'ok', '[]', now())"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(run, {"id": uuid.uuid4()})
+    await run_alembic("downgrade", "0019")
+    async with engine.connect() as conn:
+        left = (await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'practice'"))).scalar()
+    assert left == 0
+    await run_alembic("upgrade", "head")

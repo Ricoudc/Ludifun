@@ -44,6 +44,7 @@ class _McqViewState extends State<McqView> {
           widget.payload['prompt'] as String,
           label: ActivityInstruction.of(context),
           passage: widget.payload['passage'] as String?,
+          source: widget.payload['source'] as String?,
         ),
         const SizedBox(height: 24),
         for (final (i, choice) in choices.indexed) ...[

@@ -30,7 +30,15 @@ from app.ai.providers.openai_compatible import OpenAICompatibleProvider
 from app.config import AiProviderName, Settings
 
 logger = logging.getLogger("ludifun.ai")
-STAGES: tuple[Stage, ...] = ("ocr", "analysis", "material", "evaluation", "sources", "illustration")
+STAGES: tuple[Stage, ...] = (
+    "ocr",
+    "analysis",
+    "material",
+    "evaluation",
+    "sources",
+    "illustration",
+    "practice",
+)
 
 
 class AiConfigError(ValueError):
@@ -58,6 +66,7 @@ def stage_models(settings: Settings, model: str | None = None) -> dict[Stage, st
         "evaluation": settings.ai_evaluation_model,
         "sources": settings.ai_analysis_model,  # lire des extraits et expliquer : le modèle principal
         "illustration": settings.ai_evaluation_model,  # une scène en une phrase : le modèle rapide
+        "practice": settings.ai_material_model,  # des questions, comme le matériel
     }
     models: dict[Stage, str] = {}
     for stage in STAGES:
@@ -112,6 +121,7 @@ def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider
                 "evaluation": settings.ai_evaluation_effort,
                 "sources": settings.ai_material_effort,
                 "illustration": settings.ai_evaluation_effort,
+                "practice": settings.ai_material_effort,
             },
             client=client,
         )

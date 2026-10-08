@@ -219,7 +219,11 @@ class _ChoiceQuestion extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Prompt(question['prompt'] as String, passage: question['passage'] as String?),
+        Prompt(
+          question['prompt'] as String,
+          passage: question['passage'] as String?,
+          source: question['source'] as String?,
+        ),
         const SizedBox(height: 16),
         for (final (i, c) in choices.indexed) ...[
           AnswerButton(

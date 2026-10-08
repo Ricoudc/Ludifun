@@ -59,6 +59,11 @@ class Mcq(ActivityType):
             "misconceptions": misconceptions,
             **feedback(unit),
         }
+        if question.source is not None:
+            # Question d'un site de confiance (§117) : l'enfant sait d'où elle vient, et la
+            # correction cite la phrase qui prouve la réponse.
+            payload["source"] = question.source.site
+            solution["explanation"] = f"D'après {question.source.site} : « {question.source.quote} »"
         return payload, solution
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:

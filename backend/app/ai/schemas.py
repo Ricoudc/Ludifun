@@ -281,6 +281,23 @@ class SourceQuote(BaseModel):
     text: str = Field(description="Phrase recopiée mot pour mot depuis cet extrait.")
 
 
+class PracticeQuestion(BaseModel):
+    """Étape 29 : une question à choix tirée d'un extrait de site de confiance."""
+
+    stem: str = Field(description="La question, compréhensible sans la page ni la leçon.")
+    answer: str = Field(description="La bonne réponse, présente dans la citation.")
+    distractors: list[str] = Field(description="Trois mauvaises réponses de même nature.")
+    difficulty: int = Field(1, description="1 : reconnaître ; 2 : réfléchir un peu.")
+    source: int = Field(description="Numéro de l'extrait (attribut numero de la balise <source>).")
+    quote: str = Field(description="Phrase de l'extrait, recopiée mot pour mot, qui contient la réponse.")
+
+
+class PracticeOutput(BaseModel):
+    """Étape 29 : questions d'entraînement sur une notion, tirées des extraits fournis."""
+
+    questions: list[PracticeQuestion] = Field(description="1 à 3 questions ; vide si rien ne s'y prête.")
+
+
 class PictureProposal(BaseModel):
     """Étape 28 : l'image d'une notion concrète, pour les jeux « apprendre par l'image »."""
 

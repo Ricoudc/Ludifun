@@ -765,6 +765,42 @@ d'images) ; `LessonOut.knowledge[].image` (validée seulement). Application : ca
 leçon » avec « Images pour apprendre » (valider une à une ou toutes), image de chaque notion dans
 la leçon de l'enfant, écrans des deux jeux. Une application plus ancienne saute ces jeux.
 
+
+### 5.19 Pas deux fois le même exercice ; exercices des sites de confiance (étape 29)
+
+Demande de la famille : à la fin de l'analyse, éviter de créer les mêmes exercices ; créer aussi
+des exercices d'après la leçon et des exemples trouvés sur des sites de confiance.
+
+**Doublons** (`domain/duplicates.py`). L'IA prépare le matériel par lots de notions : deux
+notions proches reçoivent parfois la même question. Après la relance ciblée, le code relit tout
+le matériel de la leçon, la notion la plus importante d'abord, et retire ce que l'enfant verrait
+deux fois : même question et même réponse, même affirmation, même texte à trous, même paire, même
+carte, même question ouverte, dans une notion ou d'une notion à l'autre (raison enregistrée dans
+`lesson.rejected`). La comparaison est mot à mot et prudente : seuls les petits mots (le, un,
+de…), l'ordre des mots et la ponctuation peuvent différer, ou, pour un texte d'au moins
+8 mots importants, une part de mots communs ≥ `material.similar_ratio` (0,85, règles 1.3.0) avec
+les mêmes nombres. Un mot important, un nombre ou une négation de différence font deux exercices
+(« vertébré » / « invertébré », 7 × 8 / 7 × 9) ; dans le doute, l'exercice reste. Jamais au point
+de rendre une notion injouable. Même contrôle quand le parent fait corriger une notion (contre
+les autres notions de la leçon) et pour les questions des sites de confiance.
+
+**Exercices des sites de confiance** (`domain/sourced_practice.py`, `services/sourced_practice.py`,
+étape d'IA `practice`, prompt `practice.v1`, migration 0020). Mêmes conditions que l'aide
+sourcée (§5.14) : le parent l'a permis et le serveur a un moteur de recherche ; en arrière-plan,
+après l'aide sourcée et avant les images. Pour les `material.sourced_notions` (3) notions les
+plus importantes : recherche sur les sites autorisés, puis l'IA propose 1 à 3 questions à choix
+sur la notion telle que la leçon l'enseigne, avec d'autres exemples tirés des extraits (données
+entre balises). Le code garde au plus `material.sourced_per_notion` (2) questions par notion,
+chacune seulement si : elle passe les contrôles des questions de la leçon (réponse absente de
+l'énoncé, distracteurs, rien qui renvoie à une page ou une image) ; sa citation figure mot pour
+mot dans l'extrait cité **et contient la bonne réponse** ; elle partage un mot important avec la
+notion ; elle n'est pas déjà dans la leçon. La question garde sa source
+(`MaterialQuestion.source` : site, adresse, phrase) : charge utile du QCM `source` (nouveau champ
+facultatif, aussi dans la roue et les boîtes), « 📚 En plus de ta leçon — d'après … » sous la
+question, correction « D'après … : « phrase » », et bloc « 📚 Questions tirées des sites de
+confiance » dans les questions de la leçon côté parent. Une correction demandée par le parent
+garde ces questions.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

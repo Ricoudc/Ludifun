@@ -349,6 +349,11 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
         return None, _first_error(exc)
 
 
+def check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
+    """Une question à choix, contrôlée comme celles du matériel (énoncé, réponse, distracteurs)."""
+    return _check_question(raw)
+
+
 def _check_cloze(raw: Any) -> tuple[Cloze | None, str]:
     try:
         cloze = Cloze.model_validate(raw)

@@ -202,10 +202,13 @@ async def rework_notion(
             "L'IA n'a pas proposé de meilleure version (ou elle n'a pas passé les contrôles). "
             "Les questions actuelles restent ; vous pouvez réessayer ou préciser votre remarque.",
         )
-    # Rien de ce que l'enfant voit déjà dans les autres notions de la leçon.
+    # Les questions tirées des sites de confiance (étape 29) restent ; rien de ce que l'enfant
+    # voit déjà dans les autres notions de la leçon.
+    sourced = [q for q in KnowledgeMaterial.model_validate(material_row.material).questions if q.source]
+    new = validated.material.model_copy(update={"questions": [*validated.material.questions, *sourced]})
     others = [(u.id, u.material) for u in (await load_units(db, lesson)).units if u.id != row.key]
     kept = deduplicate(
-        [(row.key, validated.material)],
+        [(row.key, new)],
         lambda _, material: bool(registry.single_options(KnowledgeUnit(item=item, material=material))),
         already=others,
     )[row.key]

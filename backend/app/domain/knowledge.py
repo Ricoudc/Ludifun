@@ -226,6 +226,15 @@ class LessonAnalysis(_Model):
 # --------------------------------------------------------------------------- #
 
 
+class QuestionSource(_Model):
+    """Question tirée d'un site éducatif de confiance (étape 29) : d'où elle vient, et la phrase
+    de la page qui prouve la réponse. Jamais confondue avec la leçon (§117)."""
+
+    site: NonEmpty
+    url: NonEmpty
+    quote: NonEmpty
+
+
 class MaterialQuestion(_Model):
     difficulty: int = Field(ge=1, le=3)
     stem: NonEmpty
@@ -235,6 +244,8 @@ class MaterialQuestion(_Model):
     passage: str | None = Field(default=None, max_length=PASSAGE_MAX_LENGTH)
     # Type d'erreur que révèle chaque distracteur (même ordre), quand l'IA l'a indiqué.
     misconceptions: list[str | None] = Field(default_factory=list)
+    # Absente : question tirée de la leçon. Présente : d'un site de confiance (étape 29).
+    source: QuestionSource | None = None
 
     def misconception_of(self, distractor: str) -> str | None:
         index = self.distractors.index(distractor)

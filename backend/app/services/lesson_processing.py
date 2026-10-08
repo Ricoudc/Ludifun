@@ -13,7 +13,7 @@ from app.config import Settings
 from app.db.base import Database
 from app.db.models import Child, Lesson, LessonImage
 from app.domain.activities.registry import ActivityRegistry
-from app.services import illustration, reading_check, sourced_help
+from app.services import illustration, reading_check, sourced_help, sourced_practice
 from app.services.lesson_pipeline import FailureReason, LessonPipeline, LessonStatus, PipelineResult
 from app.services.lesson_store import save_pipeline_result
 from app.services.live_calls import LIVE
@@ -80,6 +80,10 @@ async def process_lesson(
         await sourced_help.prepare(database, llm, settings, lesson_id)
     except Exception:
         logger.exception("Leçon %s : aide sourcée non préparée", lesson_id)
+    try:  # exercices tirés des sites de confiance (étape 29) : même autorisation du parent
+        await sourced_practice.prepare(database, llm, settings, lesson_id)
+    except Exception:
+        logger.exception("Leçon %s : exercices des sources non préparés", lesson_id)
     await prepare_image(database, llm, settings, lesson_id)
 
 

@@ -24,6 +24,8 @@ from app.ai.schemas import (
     OcrPage,
     OcrResult,
     PictureProposal,
+    PracticeOutput,
+    PracticeQuestion,
     SourcedAnswerOutput,
     SourceQuote,
 )
@@ -128,6 +130,31 @@ def sources_output(input: str) -> SourcedAnswerOutput:
     )
 
 
+def practice_output(input: str) -> PracticeOutput:
+    """Question factice tirée du premier extrait : le plus long mot de sa première phrase est à
+    retrouver ; la phrase est citée mot pour mot (elle contient donc la réponse)."""
+    match = _SOURCE.search(input)
+    if match is None:
+        return PracticeOutput(questions=[])
+    quote = match.group(2).split(". ")[0].strip().rstrip(".") + "."
+    answer = max(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]{6,}", quote), key=len, default="")
+    if not answer:
+        return PracticeOutput(questions=[])
+    stem = "Quel mot manque : « " + quote.replace(answer, "___", 1) + " » ?"
+    return PracticeOutput(
+        questions=[
+            PracticeQuestion(
+                stem=stem,
+                answer=answer,
+                distractors=["fromages", "montagnes", "voitures"],
+                difficulty=1,
+                source=int(match.group(1)),
+                quote=quote,
+            )
+        ]
+    )
+
+
 def evaluation_output(input: str) -> EvaluationOutput:
     """Correction factice, déterministe : les points clés dont les mots sont dans la réponse."""
     points_match, answer_match = _POINTS.search(input), _ANSWER.search(input)
@@ -225,6 +252,8 @@ class FakeProvider:
             return sources_output(input)
         if stage == "illustration":
             return illustration_output(input)
+        if stage == "practice":
+            return practice_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

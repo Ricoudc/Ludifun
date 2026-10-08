@@ -57,6 +57,8 @@ def _question(unit: KnowledgeUnit, rng: random.Random) -> tuple[dict[str, Any], 
         payload: dict[str, Any] = {"prompt": question.stem, "choices": choices}
         if question.passage:
             payload["passage"] = question.passage
+        if question.source is not None:
+            payload["source"] = question.source.site  # question d'un site de confiance (§117)
         return payload, CHOICE_IDS[texts.index(question.answer)], question.answer
     statements = [(s, True) for s in material.true_statements] + [
         (s, False) for s in material.false_statements
