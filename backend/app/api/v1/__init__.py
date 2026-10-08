@@ -8,6 +8,7 @@ from app.api.v1 import (
     feedback,
     figures,
     goals,
+    homework,
     lesson_content,
     lesson_images,
     lesson_resources,
@@ -24,6 +25,7 @@ router.include_router(dashboard.router)
 router.include_router(feedback.router)
 router.include_router(figures.router)
 router.include_router(goals.router)
+router.include_router(homework.router)
 router.include_router(lesson_content.router)
 router.include_router(lesson_images.router)
 router.include_router(lesson_resources.router)

@@ -78,6 +78,10 @@ class PictureRules(_Section):
     per_lesson: int = Field(ge=0, le=8)
 
 
+class HomeworkRules(_Section):
+    attempts_before_solution: int = Field(ge=1, le=10)
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -88,6 +92,7 @@ class EngineRules(_Section):
     rewards: RewardRules
     pictures: PictureRules
     material: MaterialRules
+    homework: HomeworkRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

@@ -19,6 +19,8 @@ from app.ai.ports import LLMResult, PageImage, Prompt, Stage, Usage
 from app.ai.schemas import (
     AnalysisOutput,
     EvaluationOutput,
+    HomeworkOutput,
+    HomeworkStepOutput,
     IllustrationOutput,
     MaterialBatchOutput,
     OcrPage,
@@ -174,6 +176,60 @@ def evaluation_output(input: str) -> EvaluationOutput:
     )
 
 
+_ENONCE = re.compile(r"<enonce>\n(.*?)\n</enonce>", re.DOTALL)
+
+
+def homework_output(input: str) -> HomeworkOutput:
+    """Guidage factice d'un problème à deux nombres : soustraction si l'énoncé parle de donner, de
+    perdre ou de ce qui reste, addition sinon. Une étape donne la réponse : le code doit l'écarter."""
+    match = _ENONCE.search(input)
+    statement = match.group(1) if match else ""
+    numbers = [int(n) for n in re.findall(r"\d+", statement)][:2]
+    if len(numbers) < 2:
+        return HomeworkOutput(
+            task="Explique avec tes mots ce que demande l'exercice.",
+            steps=[
+                HomeworkStepOutput(
+                    kind="hint", text="Relis la consigne et souligne le verbe qui dit quoi faire."
+                ),
+                HomeworkStepOutput(
+                    kind="method", text="Réponds par une phrase qui reprend les mots de la question."
+                ),
+            ],
+            answer="Une phrase qui répond à la question.",
+            answer_kind="open",
+            solution=["On relit la consigne.", "On répond par une phrase complète."],
+            check="Ta phrase répond-elle à la question posée ?",
+        )
+    a, b = numbers
+    takes = re.search(r"donne|perd|reste|mange|enl[eè]ve", statement, re.IGNORECASE) is not None
+    result, sign = (abs(a - b), "−") if takes else (a + b, "+")
+    return HomeworkOutput(
+        task="On cherche combien il y en a à la fin.",
+        steps=[
+            HomeworkStepOutput(kind="hint", text="Est-ce qu'il y en a plus ou moins à la fin qu'au début ?"),
+            HomeworkStepOutput(kind="question", text="Combien y en avait-il au début ?"),
+            HomeworkStepOutput(
+                kind="reminder",
+                text="Quand on enlève, on fait une soustraction."
+                if takes
+                else "Quand on ajoute, on fait une addition.",
+            ),
+            HomeworkStepOutput(
+                kind="method", text=f"Le résultat est {result}."
+            ),  # écartée : elle donne la réponse
+            HomeworkStepOutput(kind="method", text="Pose l'opération avec les deux nombres de l'énoncé."),
+        ],
+        answer=str(result),
+        answer_kind="number",
+        solution=[
+            f"{max(a, b) if takes else a} {sign} {min(a, b) if takes else b} = {result}",
+            f"La réponse est {result}.",
+        ],
+        check="Refais l'opération à l'envers pour vérifier.",
+    )
+
+
 def illustration_output(input: str) -> IllustrationOutput:
     """Image de la leçon et images des trois premières notions ; avec une cible, elle seule."""
     refs = _REFS.findall(input)
@@ -252,6 +308,8 @@ class FakeProvider:
             return sources_output(input)
         if stage == "illustration":
             return illustration_output(input)
+        if stage == "homework":
+            return homework_output(input)
         if stage == "practice":
             return practice_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)

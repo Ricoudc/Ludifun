@@ -55,7 +55,9 @@ ERROR_TYPES = (
     "statement",
 )
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
-AI_STAGES = ("ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice")
+AI_STAGES = (
+    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework"
+)  # fmt: skip
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
 BADGE_CODES = (  # app.domain.rewards.BadgeCode
@@ -769,3 +771,33 @@ class LibraryPage(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (Index(None, "site"),)
+
+
+HOMEWORK_STATUSES = ("preparing", "ready", "solved", "guided", "failed")
+
+
+class Homework(Base):
+    """Mode devoirs (§29, §127) : un exercice de l'enfant, guidé pas à pas. La photo n'est pas
+    gardée ; l'énoncé lu, le plan proposé par l'IA et contrôlé (avec la réponse, jamais envoyée à
+    l'enfant avant la correction guidée), les étapes montrées et les tentatives."""
+
+    __tablename__ = "homework"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)  # photo ou texte
+    statement: Mapped[str | None] = mapped_column(Text)
+    plan: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    steps_shown: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    attempts: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(_in("status", HOMEWORK_STATUSES), name="status"),
+        CheckConstraint("source IN ('photo', 'text')", name="source"),
+    )

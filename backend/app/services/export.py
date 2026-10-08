@@ -113,6 +113,21 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
             )
         ],
         "sessions": await _sessions(session, child.id),
+        # Mode devoirs : l'énoncé lu, les étapes vues et les essais (la photo n'est jamais gardée).
+        "homework": [
+            {
+                "created_at": _iso(h.created_at),
+                "status": h.status,
+                "source": h.source,
+                "statement": h.statement,
+                "steps_shown": h.steps_shown,
+                "attempts": h.attempts,
+                "finished_at": _iso(h.finished_at),
+            }
+            for h in await session.scalars(
+                select(db.Homework).where(db.Homework.child_id == child.id).order_by(db.Homework.created_at)
+            )
+        ],
     }
 
 

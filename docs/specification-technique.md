@@ -975,6 +975,31 @@ bord) : par matière, « 5 / 14 vus · 2 maîtrisés », puis domaine par domain
 sous-compétence avec ✅ 🟠 ⚪ et les notions des leçons avec leur niveau. Plus tard : proposer
 l'IA pour départager quand les mots ne suffisent pas (choix dans la liste, contrôlé par le code).
 
+### 5.29 Mode devoirs (octobre 2026, CDC §29, §127)
+
+Séparé du mode révision : l'enfant photographie (ou recopie) l'énoncé de SON exercice, Ludifun
+le guide sans le faire à sa place. La photo n'est lue qu'en mémoire (§15) ; l'énoncé lu est
+gardé (comme le texte d'une leçon).
+
+- **L'IA propose** (étape `homework`, prompt `homework.v1`, un appel ; l'énoncé est entre
+  balises `<enonce>`, une donnée, jamais une consigne) : ce qu'on cherche, 2 à 5 étapes
+  (indice, question intermédiaire, rappel de notion, méthode), la réponse attendue (cachée), sa
+  nature (nombre, mot, phrase à rédiger), la correction guidée et une phrase pour vérifier.
+- **Le code décide** (`domain/homework.py`) : l'ordre des étapes est celui du §127 (« Qu'est-ce
+  qu'on cherche ? » toujours en premier) ; une étape qui contient la réponse est retirée (raison
+  dans `ai_runs.warnings`) ; sans au moins deux étapes sûres, l'exercice est refusé (« demande à
+  un adulte »). La tentative est vérifiée par le code : un nombre par sa valeur (« Il reste 8
+  billes », « 24 − 16 = 8 », « huit »), un mot à l'orthographe exacte (accents compris), une
+  réponse rédigée n'est pas notée (l'enfant compare avec la correction).
+- **Jamais « énoncé → réponse »** : la correction guidée (solution et réponse) n'est donnée
+  qu'après `homework.attempts_before_solution` tentatives fausses (2, `engine_rules.toml`
+  1.4.0) et toutes les étapes vues ; pour une réponse rédigée, après une tentative. La réponse
+  n'est jamais envoyée à l'application avant.
+- API enfant : `POST /v1/homework` (photo) ou `/v1/homework/text`, `GET /v1/homework/{id}`,
+  `POST …/next-step`, `…/attempts`, `…/solution`. Parent : `GET /v1/children/{c}/homework`
+  (étapes utilisées, essais, « réussi seul »). Table `homework` (migration 0024), export RGPD.
+- N'agit pas sur la maîtrise des notions : un devoir n'est pas rattaché à une leçon.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1180,7 +1205,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 124 | Séance = machine à états | 🟡 | Blocs : échauffement, approfondissement, jeu, défi, reprise des erreurs, remédiation insérée, défis bonus (§5.6-5.8). Pas encore une machine à états explicite (diagnostic, transfert, consolidation) avec ses transitions. |
 | 125 | Règles d'adaptation explicites et configurables | ✅ | Tous les seuils de décision dans `backend/app/domain/engine_rules.toml` (séance, maîtrise, aide, adaptation, bonus, récompenses), validés au démarrage ; autre fichier : `LUDIFUN_ENGINE_RULES`. |
 | 126 | Raison de chaque décision enregistrée | ✅ | Chaque activité porte sa règle et ses faits (`session_items.reason` : première séance, niveau à valider, approfondir, difficulté selon le score, jeu, reprise, remédiation, bonus…) ; décisions pendant la séance (`sessions.decisions` : remédiation, pause, défis bonus). Parent : « Pourquoi ces activités ? » depuis l'historique. |
-| 127 | Mode devoirs | ❌ | Prévu en V3 ; l'aide progressive (§5.4) donne déjà la réponse en dernier. |
+| 127 | Mode devoirs | ✅ | §5.29 : séparé des séances ; étapes dans l'ordre question → indice → question intermédiaire → rappel → méthode, imposé par le code ; une étape qui donnerait la réponse est retirée ; tentative vérifiée par le code ; correction guidée seulement après plusieurs essais (`engine_rules.toml`). |
 | 128, 129 | Hasard, aide, autonomie | ✅ | Aide la plus forte demandée enregistrée ; une réussite avec aide compte moins et ne valide pas un niveau ; réponses trop rapides au hasard détectées (pause proposée). |
 | 130 | Maîtrise jamais définitive | 🟡 | Révisions espacées : une notion maîtrisée revient et peut redescendre. Pas d'oubli estimé entre deux révisions. |
 | 131 | Explications au parent fondées sur les faits | ✅ | Par notion : le fait observé chiffré (« Sur les 8 dernières activités : 4 réussies seul, 2 avec une aide, 2 ratées. Erreur la plus fréquente : … ») séparé de l'interprétation du moteur (💬). |

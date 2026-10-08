@@ -505,3 +505,46 @@ async def test_migration_0023_question_reports(engine: AsyncEngine, db: AsyncSes
         await conn.execute(insert, {"id": uuid.uuid4(), "item": item, "reason": "right_answer"})
         await conn.execute(text("DELETE FROM session_items"))
         assert (await conn.execute(text("SELECT count(*) FROM question_reports"))).scalar() == 0
+
+
+async def test_migration_0024_homework(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Mode devoirs : statut et origine connus ; supprimer l'enfant supprime ses devoirs ;
+    `ai_runs` accepte l'étape `homework` ; retour arrière : table et étape disparaissent."""
+    await create_full_lesson(db)
+    await db.commit()
+    child = await db.scalar(select(Child.id).limit(1))
+    await db.commit()  # sans transaction ouverte : le retour arrière de la migration attendrait
+    insert = text(
+        "INSERT INTO homework (id, child_id, status, source) VALUES (:id, :child, :status, :source)"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(
+            insert, {"id": uuid.uuid4(), "child": child, "status": "preparing", "source": "text"}
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO ai_runs (id, stage, provider, model, prompt_version, latency_ms, status) "
+                "VALUES (:id, 'homework', 'fake', 'fake', 'v1', 1, 'ok')"
+            ),
+            {"id": uuid.uuid4()},
+        )
+    for status, source in (("en cours", "text"), ("ready", "papier")):
+        with pytest.raises(IntegrityError):
+            async with engine.begin() as conn:
+                await conn.execute(
+                    insert, {"id": uuid.uuid4(), "child": child, "status": status, "source": source}
+                )
+    async with engine.connect() as conn:
+        row = (await conn.execute(text("SELECT steps_shown, attempts FROM homework"))).one()
+    assert row.steps_shown == 0 and row.attempts == []
+    await run_alembic("downgrade", "0023")
+    async with engine.connect() as conn:
+        assert (await conn.execute(text("SELECT to_regclass('homework')"))).scalar() is None
+        assert (
+            await conn.execute(text("SELECT count(*) FROM ai_runs WHERE stage = 'homework'"))
+        ).scalar() == 0
+    await run_alembic("upgrade", "head")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "child": child, "status": "ready", "source": "photo"})
+        await conn.execute(text("DELETE FROM children"))
+        assert (await conn.execute(text("SELECT count(*) FROM homework"))).scalar() == 0

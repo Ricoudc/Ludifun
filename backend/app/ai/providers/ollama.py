@@ -55,6 +55,7 @@ MAX_OUTPUT: dict[Stage, int] = {
     "sources": 1500,
     "illustration": 1200,  # l'image de la leçon et jusqu'à 4 images de notions
     "practice": 1500,  # quelques questions et leurs citations
+    "homework": 1500,  # les étapes d'un exercice et sa correction
 }
 # Étapes dont les consignes décrivent déjà chaque champ : le schéma n'est pas recopié en texte
 # (Ollama l'impose de toute façon avec `format`). Pour le matériel, il occupait à lui seul environ

@@ -331,3 +331,25 @@ class SourcedAnswerOutput(BaseModel):
     found: bool = Field(description="true si les extraits contiennent la réponse, sinon false.")
     answer: str = Field(description="Réponse de 1 à 4 phrases, adaptée à la classe, en tutoyant l'enfant.")
     quotes: list[SourceQuote] = Field(description="1 à 3 citations exactes qui justifient la réponse.")
+
+
+class HomeworkStepOutput(BaseModel):
+    kind: Literal["hint", "question", "reminder", "method"] = Field(
+        description="hint : un indice ; question : une question intermédiaire ; reminder : le rappel "
+        "de la notion utile ; method : la méthode, sans faire le calcul."
+    )
+    text: str = Field(description="Une ou deux phrases, en tutoyant l'enfant, sans donner la réponse.")
+
+
+class HomeworkOutput(BaseModel):
+    """Mode devoirs : les étapes pour guider l'enfant ; la réponse reste cachée (§127)."""
+
+    task: str = Field(description="Ce qu'on cherche, redit simplement, sans la réponse.")
+    steps: list[HomeworkStepOutput] = Field(description="2 à 5 étapes, de la plus légère à la plus forte.")
+    answer: str = Field(description="La réponse attendue, courte (« 8 billes »). Jamais montrée d'emblée.")
+    answer_kind: Literal["number", "short", "open"] = Field(
+        description="number : un nombre ; short : un mot ou une courte expression ; "
+        "open : une phrase à rédiger."
+    )
+    solution: list[str] = Field(description="La correction guidée, une ligne par étape du raisonnement.")
+    check: str = Field(description="Une phrase pour vérifier son résultat (« 16 + 8 = 24 : c'est bon »).")
