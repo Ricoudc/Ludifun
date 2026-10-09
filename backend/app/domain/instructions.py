@@ -170,6 +170,21 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Lis chaque phrase et choisis le mot qui convient.",
         "Choisis l'homophone qui convient dans chaque phrase.",
     ),
+    ActivityCode.ALPHA_ORDER: (
+        "Touche les mots dans l'ordre de l'alphabet.",
+        "Range les mots comme dans le dictionnaire : regarde la première lettre, puis la suivante.",
+        "Range les mots dans l'ordre alphabétique.",
+    ),
+    ActivityCode.CLOCK: (
+        "Regarde l'horloge. Touche la bonne heure.",
+        "La petite aiguille montre les heures, la grande les minutes : quelle heure est-il ?",
+        "Lis l'heure indiquée par l'horloge.",
+    ),
+    ActivityCode.MONEY: (
+        "Compte l'argent. Touche la bonne réponse.",
+        "Compte les pièces et les billets, ou touche ceux qu'il faut pour payer juste.",
+        "Compte la somme, ou paie le prix exact.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",

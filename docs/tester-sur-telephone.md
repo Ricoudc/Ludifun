@@ -176,6 +176,8 @@ Un appareil sert **un seul espace**. Pour tester les deux :
   conjugaison, homophones phrase par phrase, chasse aux mots. **Une leçon d'histoire avec des
   dates** : la frise. **Sciences, géographie** : la chasse aux mots sur les catégories de la
   leçon.
+- **Lire l'heure, la monnaie, l'ordre alphabétique** : horloge à aiguilles, pièces et billets
+  (compter, ou payer juste), mots à ranger comme dans le dictionnaire.
 - **Une leçon de maths** : plus aucun jeu de français (mot éclair, lettres mélangées, dictée,
   phrase à remettre dans l'ordre).
 

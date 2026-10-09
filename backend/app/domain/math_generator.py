@@ -46,10 +46,14 @@ class Topic(StrEnum):
     POWER = "puissances"
     EQUATION = "équations"
     PYTHAGORE = "théorème de Pythagore"
+    CLOCK = "lire l'heure"  # jeu « Quelle heure est-il ? » (activité CLOCK), pas de QCM ici
+    MONEY = "monnaie"  # jeu « Pièces et billets » (activité MONEY)
 
 
 # Mots (sans accents) qui désignent chaque thème, et classe à partir de laquelle il est au programme.
 _TOPICS: tuple[tuple[Topic, str, Grade], ...] = (
+    (Topic.CLOCK, r"lire l heure|\bhorloge|\baiguilles?\b|\bpendule|\bheures? et minutes", Grade.CP),
+    (Topic.MONEY, r"monnaie|\beuros?\b|centimes?|pieces? et (de )?billets|rendre la monnaie", Grade.CP),
     (Topic.PYTHAGORE, r"pythagore|hypotenuse", Grade.QUATRIEME),
     (Topic.EQUATION, r"equation|inconnue", Grade.QUATRIEME),
     (Topic.POWER, r"puissance|exposant", Grade.QUATRIEME),
@@ -503,6 +507,8 @@ def generated_questions(
     seen = set(existing)
     found: list[MaterialQuestion] = []
     for topic in topics(item, grade):
+        if topic not in MAKERS:
+            continue  # l'heure et la monnaie se travaillent par des jeux dessinés, pas par QCM
         for difficulty in (1, 2, 3):
             kept = 0
             for question in _drafts(topic, rng, grade, difficulty):

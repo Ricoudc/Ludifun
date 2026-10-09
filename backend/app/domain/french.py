@@ -110,6 +110,7 @@ class FrenchTopic(StrEnum):
     NATURE = "nature des mots"
     NUMBER = "singulier et pluriel"
     GENDER = "masculin et féminin"
+    ALPHABET = "ordre alphabétique"
 
 
 _TOPICS = (
@@ -125,6 +126,7 @@ _TOPICS = (
     ),
     (FrenchTopic.NUMBER, r"\bpluriel|\bsingulier"),
     (FrenchTopic.GENDER, r"\bfeminin|\bmasculin"),
+    (FrenchTopic.ALPHABET, r"ordre alphabetique|\balphabet\b|\bdictionnaire"),
 )
 
 
@@ -344,3 +346,15 @@ LEXICON: dict[FrenchTopic, dict[str, tuple[str, ...]]] = {
         ),
     },
 }
+
+# Mots à ranger dans l'ordre alphabétique : courants, sans trait d'union, tous différents une
+# fois les accents retirés (l'ordre du dictionnaire ne tient pas compte des accents).
+ALPHABET_WORDS = (
+    "abeille", "arbre", "avion", "ballon", "banane", "bateau", "bonbon", "cahier", "camion",
+    "carotte", "chat", "cheval", "citron", "dauphin", "dent", "domino", "école", "éléphant",
+    "étoile", "fleur", "forêt", "fusée", "gâteau", "girafe", "gomme", "hibou", "igloo", "jardin",
+    "journal", "kiwi", "lapin", "livre", "lune", "maison", "montagne", "moto", "nuage", "orange",
+    "ours", "papillon", "pomme", "poule", "quille", "renard", "robot", "rose", "sapin", "soleil",
+    "souris", "tigre", "tortue", "train", "usine", "vache", "vélo", "violon", "wagon", "yaourt",
+    "zèbre",
+)  # fmt: skip

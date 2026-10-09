@@ -25,9 +25,11 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.activities.ordering import grade_order
 from app.domain.equivalence import separate_boxes
 from app.domain.errors import ErrorType
 from app.domain.french import (
+    ALPHABET_WORDS,
     EARLY_PAIRS,
     HOMOPHONES,
     LEXICON,
@@ -287,3 +289,57 @@ class Homophones(ActivityType):
         right = sum(d["correct"] for d in details)
         score = 1.0 if right == len(details) else round(right / len(details) * 0.8, 2)
         return _result(activity, score, ErrorType.CONFUSION, details)
+
+
+# --------------------------------------------------------------------------- #
+# Ordre alphabétique
+# --------------------------------------------------------------------------- #
+
+ALPHA_SIZE = {1: 4, 2: 5, 3: 6}
+
+
+class AlphaOrder(ActivityType):
+    """Ranger des mots dans l'ordre alphabétique (même écran que « remettre dans l'ordre »).
+    Difficulté 1 : premières lettres toutes différentes ; 2 : deux mots commencent par la même
+    lettre ; 3 : deux mots ont les mêmes deux premières lettres."""
+
+    code = ActivityCode.ALPHA_ORDER
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 30
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return FrenchTopic.ALPHABET in _french(unit)
+
+    @staticmethod
+    def _words(difficulty: int, rng: random.Random) -> list[str]:
+        same = {1: 0, 2: 1, 3: 2}[difficulty]  # lettres communes au début d'une paire
+        for _ in range(500):
+            words = rng.sample(ALPHABET_WORDS, ALPHA_SIZE[difficulty])
+            starts = [normalize(w)[: max(1, same)] for w in words]
+            if same == 0 and len(set(starts)) == len(starts):
+                return words
+            if same and len(set(starts)) < len(starts):
+                return words
+        raise ValueError("mots impossibles")  # pragma: no cover
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        words = self._words(difficulty, rng)
+        ordered = sorted(words, key=normalize)
+        ids = [f"s{i}" for i in range(1, len(ordered) + 1)]
+        texts = dict(zip(ids, ordered, strict=True))
+        shuffled = list(ids)
+        while shuffled == ids:
+            rng.shuffle(shuffled)
+        payload = {
+            "prompt": "Range les mots dans l'ordre alphabétique.",
+            "items": [{"id": i, "text": texts[i]} for i in shuffled],
+        }
+        return payload, {"order": ids, "texts": texts, "display": " → ".join(ordered), **feedback(unit)}
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        details, score = grade_order(activity, response)
+        return _result(activity, score, ErrorType.METHOD, details)

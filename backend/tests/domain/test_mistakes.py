@@ -43,6 +43,8 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
         ("Les fractions", ActivityCode.NUMBER_LINE),
         ("Les fractions", ActivityCode.FRACTION_BAR),
         ("L'addition posée", ActivityCode.COLUMN_OP),
+        ("Lire l'heure", ActivityCode.CLOCK),
+        ("La monnaie", ActivityCode.MONEY),
     ):
         game = registry.get(code)
         for difficulty in sorted(game.difficulties):
@@ -52,6 +54,7 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
         ("La nature des mots", ActivityCode.WORD_HUNT),
         ("Le présent des verbes du 1er groupe", ActivityCode.CONJUGATION),
         ("Les homophones a / à", ActivityCode.HOMOPHONE),
+        ("L'ordre alphabétique", ActivityCode.ALPHA_ORDER),
     ):
         game = registry.get(code)
         for difficulty in sorted(game.difficulties):

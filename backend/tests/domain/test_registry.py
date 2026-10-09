@@ -38,6 +38,11 @@ PICTURE_CODES = {ActivityCode.PICTURE_MATCH, ActivityCode.PICTURE_FIND}  # étap
 GEOMETRY_CODES = {ActivityCode.ALIGN}  # figure dessinée par le code
 MATH_CODES = {ActivityCode.NUMBER_LINE, ActivityCode.FRACTION_BAR, ActivityCode.COLUMN_OP}  # calculés
 WORD_CODES = {ActivityCode.WORD_HUNT, ActivityCode.CONJUGATION, ActivityCode.HOMOPHONE}  # toutes matières
+EVERYDAY_CODES = {
+    ActivityCode.ALPHA_ORDER,
+    ActivityCode.CLOCK,
+    ActivityCode.MONEY,
+}  # alphabet, heure, monnaie
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -52,6 +57,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | GEOMETRY_CODES
         | MATH_CODES
         | WORD_CODES
+        | EVERYDAY_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

@@ -13,7 +13,7 @@ from app.domain.activities.find_match import FindMatch
 from app.domain.activities.flashcard import Flashcard
 from app.domain.activities.lucky import Box, RandomCards, Wheel
 from app.domain.activities.match import Match
-from app.domain.activities.math_games import ColumnOperation, FractionBar, NumberLine
+from app.domain.activities.math_games import Clock, ColumnOperation, FractionBar, Money, NumberLine
 from app.domain.activities.mcq import Mcq
 from app.domain.activities.memory import Memory
 from app.domain.activities.open_question import OpenQuestionActivity
@@ -23,7 +23,7 @@ from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.spelling import Dictation, Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
 from app.domain.activities.unjumble import Unjumble
-from app.domain.activities.word_games import Conjugation, Homophones, WordHunt
+from app.domain.activities.word_games import AlphaOrder, Conjugation, Homophones, WordHunt
 from app.domain.knowledge import KnowledgeUnit
 
 
@@ -111,5 +111,8 @@ def default_registry() -> ActivityRegistry:
             WordHunt(),
             Conjugation(),
             Homophones(),
+            AlphaOrder(),
+            Clock(),
+            Money(),
         ]
     )

@@ -3,6 +3,7 @@
 Sert aux tests et à la famille de démonstration (`python -m app.tools.demo_family`).
 """
 
+import itertools
 from collections.abc import Callable
 from typing import Any
 
@@ -132,7 +133,12 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                 for sid, value in s["answers"].items()
             ]
             return {"answers": answers, "elapsed_ms": 20000}
-        case ActivityCode.ORDER:
+        case ActivityCode.CLOCK | ActivityCode.MONEY if "choice_id" in s:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.MONEY:
+            return {"selected": _pay(activity.payload["items"], s["price"] if single_ok else -1)}
+        case ActivityCode.ORDER | ActivityCode.ALPHA_ORDER:
             order = list(s["order"])
             return {"order": order if single_ok else order[1:] + order[:1]}  # tout décalé d'un cran
         case ActivityCode.CLASSIFY:
@@ -186,3 +192,15 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                 ]
             }
     raise ValueError(f"type d'activité inconnu : {activity.type}")
+
+
+def _pay(items: list[dict[str, Any]], price: int) -> list[str]:
+    """Les pièces qui font exactement le prix (le prix vient d'une partie du porte-monnaie) ;
+    prix -1 : tout le porte-monnaie, trop d'argent."""
+    if price < 0:
+        return [i["id"] for i in items]
+    for size in range(1, len(items) + 1):
+        for chosen in itertools.combinations(items, size):
+            if sum(i["value"] for i in chosen) == price:
+                return [i["id"] for i in chosen]
+    return []

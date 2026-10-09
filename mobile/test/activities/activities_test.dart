@@ -6,6 +6,7 @@ import '../support/screenshots.dart';
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
 import 'package:ludifun/features/session/activities/alignment_view.dart';
+import 'package:ludifun/features/session/activities/math_games_views.dart';
 import 'package:ludifun/core/speech.dart';
 import 'package:ludifun/features/session/activities/common.dart';
 import 'package:ludifun/features/session/activities/dictation_view.dart';
@@ -384,6 +385,55 @@ void main() {
         ],
       },
     ]);
+  });
+
+  testWidgets('lire l\'heure : choisir l\'heure de l\'horloge', (tester) async {
+    await show(tester, 'CLOCK', {
+      'prompt': 'Quelle heure est-il ?',
+      'hour': 3,
+      'minute': 15,
+      'choices': [
+        {'id': 'a', 'text': '3 h 15'},
+        {'id': 'b', 'text': '3 h 03'},
+        {'id': 'c', 'text': '4 h 15'},
+        {'id': 'd', 'text': '3 h 45'},
+      ],
+    });
+    await tester.tap(find.text('3 h 15'));
+    await tester.tap(find.text('3 h 45')); // une seule réponse
+    expect(sent, [
+      {'choice_id': 'a'},
+    ]);
+  });
+
+  testWidgets('monnaie : toucher les pièces pour payer juste', (tester) async {
+    await show(tester, 'MONEY', {
+      'prompt': 'Touche les pièces et les billets pour payer 7 €.',
+      'task': 'pay',
+      'items': [
+        {'id': 'm1', 'value': 500},
+        {'id': 'm2', 'value': 200},
+        {'id': 'm3', 'value': 100},
+      ],
+    });
+    for (final id in ['m1', 'm3', 'm2', 'm3']) {
+      await tester.tap(find.byKey(Key('piece-$id')));
+      await tester.pump();
+    }
+    expect(find.text('Tu donnes : 7 €'), findsOneWidget);
+    await tester.tap(find.text('Payer'));
+    expect(sent, [
+      {
+        'selected': ['m1', 'm2'],
+      },
+    ]);
+  });
+
+  test('monnaie : écriture des sommes', () {
+    expect(
+      [moneyLabel(5), moneyLabel(230), moneyLabel(1205), moneyLabel(2000)],
+      ['5 c', '2,30 €', '12,05 €', '20 €'],
+    );
   });
 
   testWidgets('points alignés : oui ou non', (tester) async {

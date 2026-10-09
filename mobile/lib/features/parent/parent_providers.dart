@@ -87,6 +87,9 @@ const activityLabels = {
   'WORD_HUNT': ('🔍', 'Chasses aux mots'),
   'CONJUGATION': ('📝', 'Tableaux de conjugaison'),
   'HOMOPHONE': ('👂', 'Homophones'),
+  'ALPHA_ORDER': ('🔤', 'Ordre alphabétique'),
+  'CLOCK': ('🕒', 'Lire l\'heure'),
+  'MONEY': ('💶', 'Monnaie'),
 };
 
 /// Avatars proposés à la création d'un profil.

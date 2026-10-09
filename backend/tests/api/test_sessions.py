@@ -142,7 +142,9 @@ async def test_full_child_journey(client: AsyncClient, db: AsyncSession, now: li
     assert listed["due"] and not listed["mastered"]
     review = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     assert review["kind"] == "review"
-    assert review["items"][0]["knowledge_ids"] == [etats_generaux]
+    # Dans l'échauffement (une notion jamais vue, s'il en reste une, peut passer devant).
+    warmup = [k for i in review["items"] if i["block"] == "warmup" for k in i["knowledge_ids"]]
+    assert etats_generaux in warmup
 
 
 async def test_nothing_to_review_when_everything_is_mastered(

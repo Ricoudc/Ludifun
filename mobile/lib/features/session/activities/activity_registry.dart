@@ -67,6 +67,9 @@ final activityRegistry = <String, ActivityBuilder>{
   'WORD_HUNT': (payload, onSubmit) => WordHuntView(payload: payload, onSubmit: onSubmit),
   'CONJUGATION': (payload, onSubmit) => ConjugationView(payload: payload, onSubmit: onSubmit),
   'HOMOPHONE': (payload, onSubmit) => HomophoneView(payload: payload, onSubmit: onSubmit),
+  'ALPHA_ORDER': (payload, onSubmit) => OrderView(payload: payload, onSubmit: onSubmit),
+  'CLOCK': (payload, onSubmit) => ClockView(payload: payload, onSubmit: onSubmit),
+  'MONEY': (payload, onSubmit) => MoneyView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

@@ -510,3 +510,237 @@ class _ColumnOperationViewState extends State<ColumnOperationView> {
     );
   }
 }
+
+// --------------------------------------------------------------------------------------------
+// Lire l'heure : `{prompt, hour, minute, choices}` → `{choice_id}`. L'horloge est dessinée ici.
+// --------------------------------------------------------------------------------------------
+
+class ClockView extends StatefulWidget {
+  const ClockView({required this.payload, required this.onSubmit, super.key});
+
+  final Json payload;
+  final ActivitySubmit onSubmit;
+
+  @override
+  State<ClockView> createState() => _ClockViewState();
+}
+
+class _ClockViewState extends State<ClockView> {
+  bool _sent = false;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Prompt(widget.payload['prompt'] as String, label: ActivityInstruction.of(context)),
+      const SizedBox(height: 16),
+      Center(
+        child: SizedBox(
+          width: 240,
+          height: 240,
+          child: CustomPaint(
+            painter: _ClockPainter(
+              (widget.payload['hour'] as num).toInt(),
+              (widget.payload['minute'] as num).toInt(),
+              DefaultTextStyle.of(context).style,
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      _Choices(
+        payload: widget.payload,
+        onChoose: _sent
+            ? null
+            : (id) {
+                if (_sent) return; // deux touches rapides : une seule réponse
+                setState(() => _sent = true);
+                widget.onSubmit({'choice_id': id});
+              },
+      ),
+    ],
+  );
+}
+
+class _ClockPainter extends CustomPainter {
+  _ClockPainter(this.hour, this.minute, this.font);
+
+  final int hour;
+  final int minute;
+  final TextStyle font;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = size.shortestSide / 2 - 4;
+    canvas.drawCircle(center, radius, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..color = Colors.black87
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+    Offset at(double turn, double length) =>
+        center + Offset(math.sin(turn * 2 * math.pi), -math.cos(turn * 2 * math.pi)) * length;
+    for (var tick = 0; tick < 60; tick++) {
+      final big = tick % 5 == 0;
+      canvas.drawLine(
+        at(tick / 60, radius - (big ? 14 : 7)),
+        at(tick / 60, radius - 2),
+        Paint()
+          ..color = Colors.black87
+          ..strokeWidth = big ? 3 : 1,
+      );
+    }
+    for (var n = 1; n <= 12; n++) {
+      final painter = TextPainter(
+        text: TextSpan(
+          text: '$n',
+          style: font.copyWith(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.black87),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      painter.paint(
+        canvas,
+        at(n / 12, radius - 32) - Offset(painter.width / 2, painter.height / 2),
+      );
+    }
+    // La petite aiguille avance entre deux nombres au fil des minutes.
+    final hourTurn = ((hour % 12) + minute / 60) / 12;
+    canvas.drawLine(
+      center,
+      at(hourTurn, radius * 0.5),
+      Paint()
+        ..color = LudiColors.primary
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      center,
+      at(minute / 60, radius - 44), // s'arrête avant les nombres
+      Paint()
+        ..color = LudiColors.accent
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(center, 7, Paint()..color = Colors.black87);
+  }
+
+  @override
+  bool shouldRepaint(_ClockPainter old) => old.hour != hour || old.minute != minute;
+}
+
+// --------------------------------------------------------------------------------------------
+// Monnaie : `{prompt, task:"count"|"pay", items:[{id,value}], choices?}` → `{choice_id}` ou
+// `{selected:[id…]}`. Valeurs en centimes ; pièces rondes, billets rectangulaires.
+// --------------------------------------------------------------------------------------------
+
+String moneyLabel(int cents) {
+  if (cents > 0 && cents < 100) return '$cents c';
+  final euros = cents ~/ 100;
+  final rest = cents % 100;
+  return rest == 0 ? '$euros €' : '$euros,${rest.toString().padLeft(2, '0')} €';
+}
+
+class MoneyView extends StatefulWidget {
+  const MoneyView({required this.payload, required this.onSubmit, super.key});
+
+  final Json payload;
+  final ActivitySubmit onSubmit;
+
+  @override
+  State<MoneyView> createState() => _MoneyViewState();
+}
+
+class _MoneyViewState extends State<MoneyView> {
+  final _selected = <String>{};
+  bool _sent = false;
+
+  bool get _pay => widget.payload['task'] == 'pay';
+
+  void _send(Map<String, Object?> response) {
+    if (_sent) return;
+    setState(() => _sent = true);
+    widget.onSubmit(response);
+  }
+
+  Widget _piece(String id, int value) {
+    final bill = value >= 500;
+    final selected = _selected.contains(id);
+    final color = bill
+        ? const Color(0xFF81C784)
+        : value >= 100
+        ? const Color(0xFFFFD54F)
+        : value >= 10
+        ? const Color(0xFFFFE082)
+        : const Color(0xFFBCAAA4);
+    return GestureDetector(
+      key: Key('piece-$id'),
+      onTap: !_pay || _sent
+          ? null
+          : () => setState(() => selected ? _selected.remove(id) : _selected.add(id)),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: bill ? 110 : 64,
+        height: bill ? 60 : 64,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: color,
+          shape: bill ? BoxShape.rectangle : BoxShape.circle,
+          borderRadius: bill ? BorderRadius.circular(8) : null,
+          border: Border.all(
+            color: selected ? LudiColors.primary : Colors.black54,
+            width: selected ? 5 : 2,
+          ),
+        ),
+        child: Text(
+          moneyLabel(value),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      for (final i in widget.payload['items'] as List<dynamic>)
+        ((i as Json)['id'] as String, (i['value'] as num).toInt()),
+    ];
+    final paid = items.where((i) => _selected.contains(i.$1)).fold<int>(0, (s, i) => s + i.$2);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Prompt(widget.payload['prompt'] as String, label: ActivityInstruction.of(context)),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.center,
+          children: [for (final (id, value) in items) _piece(id, value)],
+        ),
+        const SizedBox(height: 20),
+        if (_pay) ...[
+          Text(
+            'Tu donnes : ${moneyLabel(paid)}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: _selected.isEmpty || _sent
+                ? null
+                : () => _send({'selected': _selected.toList()..sort()}),
+            child: const Text('Payer'),
+          ),
+        ] else
+          _Choices(
+            payload: widget.payload,
+            onChoose: _sent ? null : (id) => _send({'choice_id': id}),
+          ),
+      ],
+    );
+  }
+}

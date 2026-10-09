@@ -130,7 +130,13 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
                     for d in wrong
                 ]
             )
-        case ActivityCode.ORDER | ActivityCode.TIMELINE:
+        case ActivityCode.CLOCK | ActivityCode.MONEY if "choices" in payload:
+            given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.MONEY:
+            values = {i["id"]: i["value"] for i in payload.get("items", []) if isinstance(i, dict)}
+            paid = sum(values.get(str(i), 0) for i in response.get("selected", []))
+            given = f"A payé {paid // 100},{paid % 100:02d} €" if paid % 100 else f"A payé {paid // 100} €"
+        case ActivityCode.ORDER | ActivityCode.TIMELINE | ActivityCode.ALPHA_ORDER:
             items = _texts(payload.get("items"))
             given = " → ".join(items.get(i, "?") for i in response.get("order", []))
         case ActivityCode.CLASSIFY:

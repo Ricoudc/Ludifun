@@ -59,6 +59,9 @@ class ActivityCode(StrEnum):
     WORD_HUNT = "WORD_HUNT"  # chasse aux mots : toucher tous les éléments d'une catégorie
     CONJUGATION = "CONJUGATION"  # conjugaison : compléter le tableau d'un verbe
     HOMOPHONE = "HOMOPHONE"  # homophones : a ou à, et ou est… dans des phrases
+    ALPHA_ORDER = "ALPHA_ORDER"  # ordre alphabétique : ranger des mots
+    CLOCK = "CLOCK"  # lire l'heure sur une horloge à aiguilles
+    MONEY = "MONEY"  # pièces et billets : compter, payer un prix juste
 
 
 Result = Literal["correct", "partial", "incorrect"]

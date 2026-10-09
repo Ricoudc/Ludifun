@@ -1357,6 +1357,17 @@ commençons ; 2e groupe ; être, avoir, aller, faire ; passé composé avec avoi
 tableaux sont vérifiés contre des tableaux recopiés à la main. La correction est donnée phrase
 par phrase ou ligne par ligne. Une erreur de date sur la frise compte comme « ne connaît pas
 encore » pour le parent.
+
+### 5.46 Ordre alphabétique, lire l'heure, monnaie (octobre 2026)
+
+| Jeu | Notion | Ce que fait l'enfant |
+|---|---|---|
+| `ALPHA_ORDER` | français : ordre alphabétique, dictionnaire | ranger 4 à 6 mots (liste du code) comme dans le dictionnaire ; difficulté 2 : deux mots ont la même première lettre, 3 : les mêmes deux premières lettres. Même écran que « remettre dans l'ordre » |
+| `CLOCK` | maths : lire l'heure, horloge | choisir l'heure d'une horloge à aiguilles dessinée par l'application (heures pile, quarts, de 5 en 5 minutes) ; les mauvaises réponses sont les erreurs d'enfants : aiguilles inversées, heure d'à côté, « 3 h 03 » pour 3 h 15 |
+| `MONEY` | maths : monnaie, euros, centimes | compter pièces et billets (euros, puis centimes), ou toucher ceux qu'il faut pour payer un prix juste (porte-monnaie qui permet toujours de payer juste) |
+
+L'heure et la monnaie ne donnent pas de QCM calculés (`math_generator` saute ces thèmes) : elles
+se travaillent par ces jeux dessinés.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

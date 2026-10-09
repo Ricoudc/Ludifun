@@ -507,3 +507,172 @@ class ColumnOperation(ActivityType):
             )
             return _result(activity, 0.0, ErrorType.METHOD, hint)
         return _result(activity, 0.0, ErrorType.CALCULATION)
+
+
+# --------------------------------------------------------------------------- #
+# Lire l'heure
+# --------------------------------------------------------------------------- #
+
+CLOCK_MINUTES = {1: (0,), 2: (0, 15, 30, 45), 3: tuple(range(0, 60, 5))}
+
+
+def clock_text(hour: int, minute: int) -> str:
+    """« 3 h », « 3 h 15 », « 10 h 05 »."""
+    return f"{hour} h" if minute == 0 else f"{hour} h {minute:02d}"
+
+
+class Clock(ActivityType):
+    """Une horloge à aiguilles dessinée par l'application ; l'enfant choisit l'heure qu'elle
+    montre. Difficulté 1 : heures pile ; 2 : et quart, et demie, moins le quart ; 3 : de 5 en 5
+    minutes. Les mauvaises réponses sont les erreurs d'enfants : aiguilles inversées, heure
+    suivante ou précédente (la petite aiguille entre deux nombres), minutes lues comme le
+    nombre montré (« 3 h 03 » pour 3 h 15)."""
+
+    code = ActivityCode.CLOCK
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 15
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return Topic.CLOCK in _topics(unit)
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        for _ in range(50):
+            hour, minute = rng.randint(1, 12), rng.choice(CLOCK_MINUTES[difficulty])
+            answer = clock_text(hour, minute)
+            pointed = minute // 5 or 12  # le nombre que montre la grande aiguille
+            wrong = [
+                (clock_text(pointed, (hour % 12) * 5), ErrorType.CONFUSION),  # aiguilles inversées
+                (clock_text(hour % 12 + 1, minute), ErrorType.READING),
+                (clock_text((hour - 2) % 12 + 1, minute), ErrorType.READING),
+                (clock_text(hour, pointed), ErrorType.METHOD),  # « 3 h 03 »
+                (clock_text(hour, (minute + 30) % 60), ErrorType.CALCULATION),
+            ]
+            choices = _choices(answer, [w for w, _ in wrong], rng)
+            if choices is None:
+                continue
+            listed, answer_id = choices
+            kinds = {w: k.value for w, k in wrong}
+            payload = {
+                "prompt": "Quelle heure est-il ?",
+                "hour": hour,
+                "minute": minute,
+                "choices": listed,
+            }
+            return payload, {
+                "choice_id": answer_id,
+                "misconceptions": {c["id"]: kinds[c["text"]] for c in listed if c["id"] != answer_id},
+                "display": f"Il est {answer}. La petite aiguille montre les heures, la grande les minutes.",
+                **feedback(unit),
+            }
+        raise ValueError("horloge impossible")  # pragma: no cover
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        score, error = _grade_choice(activity, response)
+        return _result(activity, score, error)
+
+
+# --------------------------------------------------------------------------- #
+# Monnaie
+# --------------------------------------------------------------------------- #
+
+# Pièces et billets en centimes.
+COINS_EUROS = (100, 200)
+BILLS = (500, 1000, 2000, 5000)
+COINS_CENTS = (1, 2, 5, 10, 20, 50)
+
+
+def money_text(cents: int) -> str:
+    """« 7 € », « 3,45 € », « 50 c »."""
+    if cents < 100:
+        return f"{cents} c"
+    euros, rest = divmod(cents, 100)
+    return f"{fmt(euros)},{rest:02d} €" if rest else f"{fmt(euros)} €"
+
+
+class SelectedPiecesResponse(ResponseModel):
+    selected: list[str] = Field(max_length=16)
+
+
+class Money(ActivityType):
+    """Pièces et billets dessinés par l'application. Difficulté 1 : compter (euros seulement) ;
+    2 : payer un prix exact en touchant les pièces et billets du porte-monnaie ; 3 : compter
+    avec des centimes."""
+
+    code = ActivityCode.MONEY
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 25
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return Topic.MONEY in _topics(unit)
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        small = _rank(_grade_of(unit)) <= _rank(SchoolGrade.CE1)
+        if difficulty == 2:
+            purse = sorted(rng.choices(COINS_EUROS + BILLS[: 2 if small else 3], k=7), reverse=True)
+            # Le prix : une partie du porte-monnaie, pour qu'il soit toujours payable juste.
+            part = rng.sample(range(len(purse)), rng.randint(2, 4))
+            price = sum(purse[i] for i in part)
+            items = [{"id": f"m{i}", "value": v} for i, v in enumerate(purse, start=1)]
+            payload = {
+                "prompt": f"Touche les pièces et les billets pour payer {money_text(price)}.",
+                "task": "pay",
+                "items": items,
+            }
+            return payload, {
+                "price": price,
+                "display": f"Il fallait payer {money_text(price)} juste, ni plus ni moins.",
+                **feedback(unit),
+            }
+        values: tuple[int, ...] = COINS_EUROS + BILLS[:2] if difficulty == 1 else COINS_CENTS + COINS_EUROS
+        if difficulty == 1 and small:
+            values = (100, 200, 500)
+        for _ in range(50):
+            pieces = sorted(rng.choices(values, k=rng.randint(3, 6)), reverse=True)
+            total = sum(pieces)
+            wrong = [
+                (money_text(total - pieces[0]), ErrorType.READING),  # un billet ou une pièce oubliés
+                (money_text(total - pieces[-1]), ErrorType.READING),
+                (money_text(len(pieces) * 100), ErrorType.METHOD),  # compté les pièces, pas leur valeur
+                (money_text(total + pieces[-1]), ErrorType.CALCULATION),
+                (money_text(total + 100), ErrorType.CALCULATION),
+            ]
+            choices = _choices(money_text(total), [w for w, _ in wrong], rng)
+            if choices is None:
+                continue
+            listed, answer_id = choices
+            kinds = {w: k.value for w, k in wrong}
+            items = [{"id": f"m{i}", "value": v} for i, v in enumerate(pieces, start=1)]
+            payload = {
+                "prompt": "Combien d'argent y a-t-il ?",
+                "task": "count",
+                "items": items,
+                "choices": listed,
+            }
+            return payload, {
+                "choice_id": answer_id,
+                "misconceptions": {c["id"]: kinds[c["text"]] for c in listed if c["id"] != answer_id},
+                "display": " + ".join(money_text(p) for p in pieces) + f" = {money_text(total)}",
+                **feedback(unit),
+            }
+        raise ValueError("monnaie impossible")  # pragma: no cover
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        if activity.payload["task"] == "count":
+            score, error = _grade_choice(activity, response)
+            return _result(activity, score, error)
+        selected = set(parse_response(SelectedPiecesResponse, response).selected)
+        values = {i["id"]: i["value"] for i in activity.payload["items"]}
+        if not selected <= set(values):
+            raise InvalidResponse("pièce inconnue")
+        paid = sum(values[i] for i in selected)
+        price = activity.solution["price"]
+        error = ErrorType.CALCULATION if abs(paid - price) <= 200 else ErrorType.METHOD
+        return _result(activity, 1.0 if paid == price else 0.0, error)

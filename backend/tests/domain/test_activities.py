@@ -60,6 +60,14 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             }
         case ActivityCode.TRUE_FALSE:
             return {"value": not s["value"]}
+        case ActivityCode.CLOCK | ActivityCode.MONEY if "choice_id" in s:
+            return {
+                "choice_id": next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            }
+        case ActivityCode.MONEY:
+            return {"selected": [i["id"] for i in activity.payload["items"]]}
+        case ActivityCode.ALPHA_ORDER:
+            return {"order": list(reversed(s["order"]))}
         case ActivityCode.WORD_HUNT:  # seulement des intrus
             return {
                 "selected": [w["id"] for w in activity.payload["words"] if w["id"] not in s["expected"]][:2]
