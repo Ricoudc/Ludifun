@@ -4,6 +4,7 @@ Ajouter un jeu = écrire une classe `ActivityType` et l'ajouter à `default_regi
 Le composeur, la notation et la mémorisation n'ont pas à changer.
 """
 
+from app.domain.activities.alignment import Alignment
 from app.domain.activities.base import ActivityCode, ActivityType, BuiltActivity
 from app.domain.activities.classify import Classify
 from app.domain.activities.figures import Coloring, MapLocate
@@ -98,5 +99,7 @@ def default_registry() -> ActivityRegistry:
             # Apprendre par l'image (étape 28)
             PictureMatch(),
             PictureFind(),
+            # Géométrie : figure dessinée par le code
+            Alignment(),
         ]
     )

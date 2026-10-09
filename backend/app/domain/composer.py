@@ -50,7 +50,7 @@ TRANSITION_S = 5
 CORRECTION_S = 8
 REPLAY_PROVISION_S = 0.3 * REPLAY_MAX * 20
 
-EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE})
+EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE, ActivityCode.ALIGN})
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
@@ -62,6 +62,7 @@ VISUAL = frozenset(
         ActivityCode.COLORING,
         ActivityCode.SCRAMBLE,
         ActivityCode.UNJUMBLE,
+        ActivityCode.ALIGN,
     }
 )
 INTERMEDIATE = frozenset(
@@ -76,6 +77,7 @@ INTERMEDIATE = frozenset(
         ActivityCode.SCRAMBLE,
         ActivityCode.DICTATION,
         ActivityCode.UNJUMBLE,
+        ActivityCode.ALIGN,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les

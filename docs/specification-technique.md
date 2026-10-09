@@ -1290,6 +1290,29 @@ le fichier APK sont suivies sans lui). Testé sous Linux avec PowerShell 7 contr
 (dépôt privé, redirections, jeton jamais transmis après une redirection, fichiers retirés
 effacés, `.env` gardé, APK téléchargé une seule fois) ; pas encore essayé sous Windows
 (PowerShell 5.1, `robocopy`, DPAPI, raccourci sur le Bureau).
+
+### 5.43 Géométrie : « Points alignés » (octobre 2026)
+
+Une fiche comme « Repérer des alignements » (Maître Lucas, CE1-CE2) se refait sur le téléphone.
+Un générateur d'images ne convient pas : il dessine « à peu près », et trois points presque
+alignés rendraient la correction fausse. La figure est donc **dessinée par le code**
+(`domain/geometry.py`) : des points sur une feuille de 24 × 14 carreaux, à coordonnées entières,
+l'alignement vérifié par le produit en croix ; un point « pas aligné » est à au moins 1,4 carreau
+de la droite, deux points sont à au moins 2,2 carreaux l'un de l'autre, et aucun autre trio n'est
+aligné. Nouvelle activité `ALIGN` (`activities/alignment.py`), proposée pour une notion de maths
+qui parle d'alignement :
+
+- difficulté 1 : « Les 3 points sont-ils alignés ? » → oui / non ;
+- difficulté 2 : « Touche les 4 points (ou clous) alignés » parmi 7 (« Tracer une droite qui
+  passe par 4 points alignés ») ;
+- difficulté 3 : « Touche les points alignés avec les 2 points bleus » parmi 10 (niveau
+  « appliquer »).
+
+Une nouvelle figure à chaque fois ; les points sont nommés A, B, C… pour que la correction dise
+lesquels étaient alignés. Un point oublié ou en trop donne une réponse partielle (erreur de
+méthode pour le parent). L'application dessine la figure (`alignment_view.dart`, clous ou points,
+points touchés entourés) et marche sans connexion ; l'application publiée saute ce type inconnu.
+D'autres figures (symétrie, angles droits, quadrillages) pourront suivre sur le même principe.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

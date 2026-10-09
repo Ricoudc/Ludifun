@@ -165,6 +165,11 @@ Un appareil sert **un seul espace**. Pour tester les deux :
   photographiée avec 2 ou 3 calculs) : la séance dure au moins 5 minutes, avec d'autres calculs
   à la classe de l'enfant ; vérifier que les réponses proposées sont justes et que les nombres
   ne sont ni trop grands ni trop petits pour la classe.
+- **Une fiche de géométrie sur les alignements** (« Repérer des alignements ») : la séance
+  propose « Points alignés » ; vérifier que les points se touchent facilement du doigt, que
+  les clous et les lettres se lisent, et que la correction est juste.
+- **Une leçon de maths** : plus aucun jeu de français (mot éclair, lettres mélangées, dictée,
+  phrase à remettre dans l'ordre).
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 

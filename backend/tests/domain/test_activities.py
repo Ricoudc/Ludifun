@@ -58,6 +58,10 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             }
         case ActivityCode.TRUE_FALSE:
             return {"value": not s["value"]}
+        case ActivityCode.ALIGN if "choice_id" in s:
+            return {"choice_id": "non" if s["choice_id"] == "oui" else "oui"}
+        case ActivityCode.ALIGN:
+            return {"selected": s["expected"][1:]}
         case ActivityCode.FILL_BLANK:
             return {"text": "zzz"}
         case ActivityCode.MATCH:

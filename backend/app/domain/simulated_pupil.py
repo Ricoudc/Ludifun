@@ -85,6 +85,14 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             }
         case ActivityCode.RANDOM_CARDS:
             return {"cards": [{"id": c, "knew": knows(k)} for c, k in s["knowledge_by_card"].items()]}
+        case ActivityCode.ALIGN:
+            if "choice_id" in s:
+                return {
+                    "choice_id": s["choice_id"]
+                    if single_ok
+                    else ("non" if s["choice_id"] == "oui" else "oui")
+                }
+            return {"selected": s["expected"] if single_ok else s["expected"][1:]}  # un point oublié
         case ActivityCode.OPEN_QUESTION:
             return {"text": s["model_answer"] if single_ok else "je ne sais pas"}
         case ActivityCode.MATCH:

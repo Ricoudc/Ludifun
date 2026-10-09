@@ -80,6 +80,7 @@ const activityLabels = {
   'WHEEL': ('🎡', 'Roues aléatoires'),
   'BOX': ('🎁', 'Boîtes à ouvrir'),
   'RANDOM_CARDS': ('🃏', 'Cartes aléatoires'),
+  'ALIGN': ('📐', 'Points alignés'),
 };
 
 /// Avatars proposés à la création d'un profil.

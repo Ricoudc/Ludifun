@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../../models/account.dart';
+import 'alignment_view.dart';
 import 'classify_view.dart';
 import 'coloring_view.dart';
 import 'dictation_view.dart';
@@ -54,6 +55,8 @@ final activityRegistry = <String, ActivityBuilder>{
   // Apprendre par l'image (étape 28)
   'PICTURE_MATCH': (payload, onSubmit) => PictureMatchView(payload: payload, onSubmit: onSubmit),
   'PICTURE_FIND': (payload, onSubmit) => PictureFindView(payload: payload, onSubmit: onSubmit),
+  // Géométrie : figure dessinée à partir des coordonnées du serveur
+  'ALIGN': (payload, onSubmit) => AlignmentView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

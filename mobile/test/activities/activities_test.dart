@@ -5,6 +5,7 @@ import '../support/screenshots.dart';
 
 import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
+import 'package:ludifun/features/session/activities/alignment_view.dart';
 import 'package:ludifun/core/speech.dart';
 import 'package:ludifun/features/session/activities/common.dart';
 import 'package:ludifun/features/session/activities/dictation_view.dart';
@@ -140,6 +141,68 @@ void main() {
 
   test('texte lu : sans émojis, ponctuation ajoutée', () {
     expect(spokenText(['🗺️ Carte', '', 'Où est Paris ?']), 'Carte. Où est Paris ?');
+  });
+
+  testWidgets('points alignés : toucher les points, en retirer un, valider', (tester) async {
+    await show(tester, 'ALIGN', {
+      'prompt': 'Touche les 4 clous alignés.',
+      'task': 'select',
+      'shape': 'nail',
+      'count': 4,
+      'points': [
+        for (final (id, x, y) in [
+          ('A', 2, 2),
+          ('B', 5, 5),
+          ('C', 8, 8),
+          ('D', 11, 11),
+          ('E', 14, 3),
+          ('F', 20, 6),
+          ('G', 18, 12),
+        ])
+          {'id': id, 'x': x, 'y': y, 'color': 'black'},
+      ],
+    });
+    final figure = find.byType(AlignmentFigure);
+    final box = tester.getRect(figure);
+    final scale = box.width / 26;
+    Future<void> touch(int x, int y) async {
+      await tester.tapAt(box.topLeft + Offset((x + 1) * scale, (y + 1) * scale));
+      await tester.pump();
+    }
+
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+    for (final (x, y) in [(2, 2), (5, 5), (14, 3), (8, 8), (11, 11)]) {
+      await touch(x, y);
+    }
+    await touch(14, 3); // E retiré
+    expect(find.text('Points touchés : 4 / 4'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'selected': ['A', 'B', 'C', 'D'],
+      },
+    ]);
+  });
+
+  testWidgets('points alignés : oui ou non', (tester) async {
+    await show(tester, 'ALIGN', {
+      'prompt': 'Les 3 points sont-ils alignés ?',
+      'task': 'yes_no',
+      'points': [
+        {'id': 'A', 'x': 2, 'y': 2, 'color': 'black'},
+        {'id': 'B', 'x': 6, 'y': 4, 'color': 'black'},
+        {'id': 'C', 'x': 10, 'y': 6, 'color': 'black'},
+      ],
+      'choices': [
+        {'id': 'oui', 'text': 'Oui'},
+        {'id': 'non', 'text': 'Non'},
+      ],
+    });
+    await tester.tapAt(tester.getCenter(find.byType(AlignmentFigure))); // la figure ne répond pas
+    await tester.tap(find.text('Oui'));
+    expect(sent, [
+      {'choice_id': 'oui'},
+    ]);
   });
 
   testWidgets('démêler : toucher les mots dans l\'ordre', (tester) async {

@@ -59,6 +59,11 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
     match code:
         case ActivityCode.MCQ:
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.ALIGN if payload.get("task") == "yes_no":
+            given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.ALIGN:
+            touched = sorted(str(p) for p in response.get("selected", []))
+            given = "Points touchés : " + (", ".join(touched) if touched else "aucun")
         case ActivityCode.TRUE_FALSE:
             given = _yes_no(response.get("value"))
         case ActivityCode.FILL_BLANK:

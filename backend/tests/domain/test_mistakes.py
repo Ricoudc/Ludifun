@@ -7,6 +7,7 @@ from app.domain.activities.registry import ActivityRegistry
 from app.domain.mistakes import describe
 from tests.domain.conftest import LESSON_FILES, load_lesson
 from tests.domain.test_activities import wrong_response
+from tests.domain.test_alignment import unit as alignment_unit
 from tests.domain.test_spelling_games import spelling_unit
 
 
@@ -32,6 +33,10 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
     for code in (ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE, ActivityCode.DICTATION):
         game = registry.get(code)
         built.append(game.build([unit], min(game.difficulties), random.Random(3)))
+    # Points alignés : une notion de maths sur l'alignement (aucune leçon de référence n'en a).
+    alignment = registry.get(ActivityCode.ALIGN)
+    for difficulty in sorted(alignment.difficulties):
+        built.append(alignment.build([alignment_unit()], difficulty, random.Random(3)))
     # Jeux en images : seulement avec des images validées par le parent (étape 28).
     units = list(load_lesson(LESSON_FILES[0]).units.values())[:3]
     with_pictures = [u.model_copy(update={"picture": f"/img/{i}"}) for i, u in enumerate(units)]

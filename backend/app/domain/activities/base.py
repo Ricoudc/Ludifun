@@ -49,6 +49,8 @@ class ActivityCode(StrEnum):
     # Apprendre par l'image (étape 28) : images des notions validées par le parent.
     PICTURE_MATCH = "PICTURE_MATCH"  # image et mot : relier chaque image à son mot
     PICTURE_FIND = "PICTURE_FIND"  # quelle image ? : une phrase, toucher l'image qui la montre
+    # Géométrie : figure dessinée par le code.
+    ALIGN = "ALIGN"  # points alignés : oui / non, toucher les points alignés
 
 
 Result = Literal["correct", "partial", "incorrect"]

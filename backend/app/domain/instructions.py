@@ -135,6 +135,11 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Lis la phrase à retenir, puis touche l'image qui la montre.",
         "Lis chaque énoncé et désigne l'image qui l'illustre.",
     ),
+    ActivityCode.ALIGN: (
+        "Regarde les points. Touche ceux qui sont sur une même ligne droite.",
+        "Regarde la figure : touche les points alignés, ou réponds oui ou non.",
+        "Observe la figure et repère les points alignés.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",
