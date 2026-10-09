@@ -587,3 +587,23 @@ async def test_migration_0025_teach(engine: AsyncEngine, db: AsyncSession) -> No
         await conn.execute(insert, {"id": uuid.uuid4(), "status": "finished", **values})
         await conn.execute(text("DELETE FROM lessons"))
         assert (await conn.execute(text("SELECT count(*) FROM teach_sessions"))).scalar() == 0
+
+
+async def test_migration_0026_notion_confidence(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Confiance des notions : les notions déjà analysées gardent une confiance vide (utilisées
+    comme avant) ; une confiance hors de 0-1 est refusée ; retour arrière sans perte."""
+    await create_full_lesson(db)
+    await db.commit()
+    async with engine.connect() as conn:
+        row = (
+            await conn.execute(text("SELECT confidence, doubts, confirmed_at FROM knowledge_items LIMIT 1"))
+        ).one()
+    assert row.confidence is None and row.doubts == [] and row.confirmed_at is None
+    with pytest.raises(IntegrityError):
+        async with engine.begin() as conn:
+            await conn.execute(text("UPDATE knowledge_items SET confidence = 1.5"))
+    await run_alembic("downgrade", "0025")
+    async with engine.connect() as conn:
+        count = (await conn.execute(text("SELECT count(*) FROM knowledge_items"))).scalar()
+        assert count is not None and count > 0
+    await run_alembic("upgrade", "head")

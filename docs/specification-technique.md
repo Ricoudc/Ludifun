@@ -1158,6 +1158,24 @@ dernières réponses de l'enfant **sur cette notion**, toutes séances confondue
 
 L'oubli estimé (§5.32) décide de l'ordre des notions, pas de la difficulté.
 
+### 5.38 Confiance de chaque notion extraite (octobre 2026, CDC §115, règles 1.8.0)
+
+À l'analyse, chaque notion reçoit une confiance de 0 à 1 calculée par le code
+(`domain/confidence.py`, sans IA) à partir de ce qui peut faire douter : page lue en partie
+(× 0,7) ou mal lue (× 0,3), passage cité retrouvé seulement approximativement (× 0,8) ou pas du
+tout (× 0,5), mot illisible (× 0,5), nombre de la notion absent de la leçon (× 0,6 : une date
+peut-être mal lue ou inventée). Les raisons sont gardées pour le parent.
+
+- **Élevée** (≥ `confidence.high`, 0,8) : la notion est utilisée.
+- **Moyenne** : utilisée ; le parent est invité à la comparer au cahier.
+- **Faible** (< `confidence.low`, 0,5) : **pas proposée à l'enfant** tant que le parent ne l'a pas
+  confirmée (toutes les notions douteuses : la leçon reste jouable).
+- Parent : la leçon affiche « ⚠️ 2 notion(s) à vérifier » ; la notion s'ouvre avec ses raisons et
+  « C'est bien ce qui est écrit » (`POST …/notions/{id}/confirm`), sinon « Demander une correction
+  à l'IA » ou reprendre la photo.
+- Migration 0026 : `knowledge_items.confidence`, `doubts`, `confirmed_at` ; les notions analysées
+  avant restent utilisées comme avant.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1351,7 +1369,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | --- | --- | --- | --- |
 | 112.1, 113 | Le LLM propose, le moteur décide ; une génération ratée ne touche pas la progression | ✅ | L'IA ne sert qu'à l'analyse d'une leçon (lecture, notions, matériel) et à la correction des questions rédigées. Maîtrise, niveaux, choix des activités, notation, révisions espacées, remédiation : code déterministe (`app/domain/`), rejouable par la graine de séance. Une analyse invalide fait échouer la leçon sans rien enregistrer. |
 | 114 | État structuré de l'enfant (reconnaître, se rappeler, appliquer, expliquer, transférer, autonomie) | ✅ | Par notion : score 0-100, boîte, prochaine révision, niveaux validés, et depuis l'étape 23 un taux de réussite par niveau de compréhension (10 dernières réponses) et l'autonomie (part des réussites sans aide), calculés depuis les réponses enregistrées (`app/domain/state.py`) ; visibles par le parent. Reste : l'état par compétence (les compétences sont rattachées aux notions). |
-| 115 | Niveau de confiance et confirmation | 🟡 | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire. Manque une confiance par notion extraite et par correction de question rédigée. |
+| 115 | Niveau de confiance et confirmation | ✅ | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire ; confiance de chaque notion extraite, calculée par le code, avec confirmation du parent (§5.38) ; correction d'une réponse rédigée : confiance de l'IA, sous 0,4 corrigée par mots clés. |
 | 116 | Chaque connaissance reliée à sa source | ✅ | `source_excerpt` obligatoire, vérifié dans le texte lu ; la page est retrouvée et affichée : « Pourquoi cette notion ? C'est écrit dans ta leçon, page 2 : « … » » (étape 23). |
 | 117 | Sources de vérité distinguées | ✅ | La leçon est la source des notions ; un apport externe (étape 24) est marqué `SOURCE_EXTERNAL_KNOWLEDGE`, avec ses sources et des citations vérifiées, jamais présenté comme venant de la leçon. Référentiel des programmes (§105, §5.28) : résumé versionné, distinct de la leçon, qui range ses notions sans les modifier. Reste : faire relire le résumé par un enseignant. |
 | 118 | Génération à partir d'une spécification (objectif, difficulté…) | 🟡 | Choix différent : l'IA produit une fois, à l'analyse, un matériel validé par notion (questions de 3 difficultés, vrai/faux, textes à trous, paires, aides, questions ouvertes par niveau) ; le moteur construit ensuite chaque activité selon l'objectif et la difficulté. Avantage : aucune séance ne dépend de l'IA. Limite : pas de nouvelle génération ciblée pendant la vie de la leçon. |

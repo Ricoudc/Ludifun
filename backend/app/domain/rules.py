@@ -91,6 +91,11 @@ class DifficultyRules(_Section):
     window: int = Field(ge=2, le=20)
 
 
+class ConfidenceRules(_Section):
+    high: float = Field(gt=0, le=1)
+    low: float = Field(gt=0, le=1)
+
+
 class TeachRules(_Section):
     follow_ups: int = Field(ge=0, le=5)
     explain_ratio: float = Field(gt=0, le=1)
@@ -109,6 +114,7 @@ class EngineRules(_Section):
     homework: HomeworkRules
     teach: TeachRules
     difficulty: DifficultyRules
+    confidence: ConfidenceRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

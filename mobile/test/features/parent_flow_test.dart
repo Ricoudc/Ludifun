@@ -1124,6 +1124,47 @@ void main() {
     expect(find.text('Dans 3/4, quel est le nombre du haut ?\n✅ 3'), findsOneWidget);
   });
 
+  testWidgets('§115 : une notion mal lue est montrée au parent, qui la confirme', (tester) async {
+    var confirmed = false;
+    Map<String, Object?> notion() => {
+      'knowledge_id': 'n1',
+      'label': 'Numérateur',
+      'statement': 'Le numérateur est le nombre du haut.',
+      'blocks': <Object>[],
+      'confidence': 0.42,
+      'trust': 'low',
+      'doubts': ['la page a été mal lue'],
+      'confirmed': confirmed,
+    };
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'text': null,
+            'notions': [notion()],
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/lessons/l2/notions/n1/confirm', (_) {
+        confirmed = true;
+        return (200, notion());
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    // Ouverte d'emblée, avec la raison du doute.
+    expect(find.text('⚠️ Numérateur'), findsOneWidget);
+    expect(find.text('• la page a été mal lue'), findsOneWidget);
+    await tap(tester, find.text('C\'est bien ce qui est écrit'));
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/notions/n1/confirm'));
+    expect(find.text('⚠️ Numérateur'), findsNothing);
+    expect(find.text('Numérateur'), findsOneWidget);
+  });
+
   testWidgets('étape 27 : le parent valide, refuse et fait refaire l\'image d\'une leçon', (
     tester,
   ) async {

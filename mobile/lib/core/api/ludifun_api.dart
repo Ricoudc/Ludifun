@@ -308,6 +308,15 @@ class LudifunApi {
     return LessonContent.fromJson(r.data!);
   });
 
+  /// « C'est bien ce qui est écrit » : le parent confirme une notion lue avec peu de confiance.
+  Future<NotionContent> confirmNotion(String childId, String lessonId, String knowledgeId) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children/$childId/lessons/$lessonId/notions/$knowledgeId/confirm',
+        );
+        return NotionContent.fromJson(r.data!);
+      });
+
   /// Nouvelle version des questions d'une notion ; l'IA peut prendre une ou deux minutes.
   Future<NotionContent> reworkNotion(
     String childId,

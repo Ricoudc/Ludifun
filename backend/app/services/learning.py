@@ -279,7 +279,9 @@ def compose_with(
 ) -> SessionPlan:
     """« Revoir tes erreurs » : les notions pas encore maîtrisées seulement ; « mini-contrôle » :
     toute la leçon, même ce qui est su. Peut lever NothingToReview."""
-    units = lesson.units
+    # Notions à la confiance faible pas encore confirmées par le parent : pas proposées (§115) ;
+    # toutes douteuses, la leçon reste jouable.
+    units = [u for u in lesson.units if u.id not in lesson.doubtful] or lesson.units
     if options.focus is Focus.ERRORS:
         weak = [
             u

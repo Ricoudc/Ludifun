@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.7.0"
+version = "1.8.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -85,3 +85,9 @@ step_up_after = 3           # réussites d'affilée sans aide au plus haut nivea
 step_down_after = 2         # échecs d'affilée « ne sait pas encore » : on descend
 success = 0.8               # résultat à partir duquel une réponse est réussie
 window = 6                  # réponses regardées par notion
+
+[confidence]
+# Confiance de chaque notion extraite (CDC §115, 1.8.0) : calculée par le code (qualité de la page,
+# passage retrouvé exactement ou non, mot illisible, nombre absent de la leçon).
+high = 0.8                  # au-dessus : la notion est utilisée sans rien demander
+low = 0.5                   # en dessous : pas proposée à l'enfant avant la confirmation du parent

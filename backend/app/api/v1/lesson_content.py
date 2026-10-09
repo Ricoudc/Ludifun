@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
+from app import clock
 from app.ai.factory import AiConfigError
 from app.ai.ports import PROMPT_VERSIONS
 from app.api.deps import AppSettings, CurrentParent, DbSession, Registry, get_ai_resolver
@@ -15,6 +16,7 @@ from app.api.errors import ApiError
 from app.api.v1.children import own_child
 from app.api.v1.lessons import ensure_ai_budget
 from app.db import models as db_models
+from app.domain.confidence import Confidence
 from app.domain.duplicates import deduplicate
 from app.domain.instructions import instruction
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis
@@ -47,6 +49,12 @@ class NotionContentOut(BaseModel):
     label: str
     statement: str
     blocks: list[BlockOut] = Field(description="Tout ce que l'enfant pourra voir, réponses comprises.")
+    confidence: float | None = Field(None, description="Confiance dans la notion lue (§115), 0 à 1.")
+    trust: Literal["high", "medium", "low"] | None = Field(
+        None, description="medium : à vérifier ; low : pas proposée à l'enfant avant confirmation."
+    )
+    doubts: list[str] = Field([], description="Ce qui fait douter de la notion.")
+    confirmed: bool = Field(False, description="Le parent a confirmé la notion.")
 
 
 class LessonContentOut(BaseModel):
@@ -69,10 +77,15 @@ def notion_out(
 ) -> NotionContentOut:
     # Sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage du matériel.
     blocks = material_blocks(KnowledgeMaterial.model_validate(clean_markup(material.material)))
+    confidence = Confidence(item.confidence, tuple(item.doubts)) if item.confidence is not None else None
     return NotionContentOut(
         knowledge_id=item.id,
         label=item.label,
         statement=item.statement,
+        confidence=item.confidence,
+        trust=confidence.trust.value if confidence else None,
+        doubts=item.doubts,
+        confirmed=item.confirmed_at is not None,
         blocks=[
             BlockOut(
                 title=b.title,
@@ -127,6 +140,27 @@ async def get_content(
         text=await lesson_text(db, lesson) or None,
         notions=[notion_out(item, material, child.grade) for item, material in rows.all()],
     )
+
+
+@router.post("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/confirm")
+async def confirm_notion(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, knowledge_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> NotionContentOut:
+    """« C'est bien ce qui est écrit » : une notion lue avec peu de confiance (§115) est confirmée
+    par le parent ; elle est alors proposée à l'enfant comme les autres."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    row = await db.scalar(
+        select(db_models.KnowledgeItem).where(
+            db_models.KnowledgeItem.id == knowledge_id, db_models.KnowledgeItem.lesson_id == lesson.id
+        )
+    )
+    material = await db.get(db_models.KnowledgeMaterial, knowledge_id) if row else None
+    if row is None or material is None:
+        raise ApiError(404, "notion_not_found", "Notion introuvable.")
+    row.confirmed_at = row.confirmed_at or clock.now()
+    await db.commit()
+    return notion_out(row, material, child.grade)
 
 
 @router.post("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/rework")

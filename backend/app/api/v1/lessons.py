@@ -5,7 +5,7 @@ from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Request, Response, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app import clock
 from app.ai.images import detect_media_type, is_heic
@@ -41,7 +41,8 @@ from app.api.v1.schemas_learning import (
     ReviewItemOut,
     SkillOut,
 )
-from app.db.models import AiRun, Child, Lesson, LessonImage, LessonPage, LessonReviewItem
+from app.db.models import AiRun, Child, KnowledgeItem, Lesson, LessonImage, LessonPage, LessonReviewItem
+from app.domain.confidence import HIGH as HIGH_CONFIDENCE
 from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
@@ -121,6 +122,16 @@ async def summary_of(db: DbSession, child: Child, lesson: Lesson) -> LessonSumma
         units = await load_units(db, lesson)
         review = review_state(units, await load_masteries(db, child.id, units), clock.now())
         out.next_review_at, out.due, out.mastered = review.next_review_at, review.due, review.mastered
+        out.notions_to_check = (
+            await db.scalar(
+                select(func.count(KnowledgeItem.id)).where(
+                    KnowledgeItem.lesson_id == lesson.id,
+                    KnowledgeItem.confidence < HIGH_CONFIDENCE,
+                    KnowledgeItem.confirmed_at.is_(None),
+                )
+            )
+            or 0
+        )
     return out
 
 

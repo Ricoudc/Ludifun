@@ -62,6 +62,7 @@ class LessonSummary {
     this.nextReviewAt,
     this.due = false,
     this.mastered = false,
+    this.notionsToCheck = 0,
   });
 
   factory LessonSummary.fromJson(Json json) => LessonSummary(
@@ -77,6 +78,7 @@ class LessonSummary {
     },
     due: json['due'] as bool? ?? false,
     mastered: json['mastered'] as bool? ?? false,
+    notionsToCheck: json['notions_to_check'] as int? ?? 0,
   );
 
   final String id;
@@ -88,6 +90,9 @@ class LessonSummary {
   final DateTime? nextReviewAt;
   final bool due;
   final bool mastered;
+
+  /// Notions lues avec peu de confiance, à vérifier par le parent (§115).
+  final int notionsToCheck;
 }
 
 class Knowledge {

@@ -12,6 +12,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import models as db
+from app.domain.confidence import LOW as LOW_CONFIDENCE
+from app.domain.confidence import notion_confidence
 from app.domain.duplicates import deduplicate
 from app.domain.equivalence import consistent
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, MaterialQuestion, Subject
@@ -27,6 +29,8 @@ class LessonUnits:
     units: list[KnowledgeUnit]
     key_to_id: dict[str, uuid.UUID]
     required: dict[str, frozenset[int]]  # niveaux de compréhension exigés, par notion
+    # Notions à la confiance faible, pas encore confirmées par le parent : pas proposées (§115).
+    doubtful: frozenset[str] = frozenset()
 
     @property
     def id_to_key(self) -> dict[uuid.UUID, str]:
@@ -95,6 +99,7 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
 
     kept = {u.id: u for u in result.units}
     ids: dict[str, uuid.UUID] = {}
+    pages = [(p.quality, p.text) for p in result.ocr.pages] if result.ocr is not None else []
     for position, item in enumerate(analysis.knowledge):
         unit = kept.get(item.id)
         if unit is None:
@@ -111,6 +116,8 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
             source_excerpt=item.source_excerpt,
             position=position,
             required_levels=sorted(result.required_levels.get(item.id, {1})),
+            confidence=(confidence := notion_confidence(item, pages)).value,
+            doubts=list(confidence.reasons),
         )
         session.add(row)
         await session.flush()
@@ -176,7 +183,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         )
     ).all()
     pictures = await approved_pictures(session, lesson.id)
-    units, key_to_id, required = [], {}, {}
+    units, key_to_id, required, doubtful = [], {}, {}, set()
     for item, material in rows:
         domain_item = KnowledgeItem(
             id=item.key,
@@ -199,7 +206,9 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         )
         key_to_id[item.key] = item.id
         required[item.key] = frozenset(item.required_levels)
-    return LessonUnits(lesson, units, key_to_id, required)
+        if item.confidence is not None and item.confidence < LOW_CONFIDENCE and item.confirmed_at is None:
+            doubtful.add(item.key)
+    return LessonUnits(lesson, units, key_to_id, required, frozenset(doubtful))
 
 
 @dataclass(frozen=True)

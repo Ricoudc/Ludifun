@@ -143,11 +143,13 @@ class _NotionCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         shape: const Border(),
-        title: Text(notion.label, style: theme.titleMedium),
+        initiallyExpanded: notion.toCheck,
+        title: Text('${notion.toCheck ? '⚠️ ' : ''}${notion.label}', style: theme.titleMedium),
         subtitle: Text(notion.statement),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (notion.toCheck) _ToCheck(notion, childId: childId, lessonId: lessonId),
           for (final block in notion.blocks) ...[
             const SizedBox(height: 8),
             Text(block.title, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -243,6 +245,66 @@ class _ReworkSheetState extends State<_ReworkSheet> {
                         .pop((_reason!, _comment.text.trim().isEmpty ? null : _comment.text.trim()))
               : null,
           child: const Text('Demander à l\'IA'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Notion lue avec peu de confiance (§115) : pourquoi, et la confirmer d'un geste.
+class _ToCheck extends ConsumerWidget {
+  const _ToCheck(this.notion, {required this.childId, required this.lessonId});
+
+  final NotionContent notion;
+  final String childId;
+  final String lessonId;
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(apiProvider).confirmNotion(childId, lessonId, notion.knowledgeId);
+      ref.invalidate(lessonContentProvider((childId, lessonId)));
+    } on ApiException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Container(
+    margin: const EdgeInsets.only(top: 4, bottom: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.orange.withValues(alpha: 0.1),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          notion.trust == 'low'
+              ? 'Je ne suis pas sûr d\'avoir bien lu cette notion : elle n\'est pas proposée '
+                    'tant que vous ne l\'avez pas vérifiée.'
+              : 'Je ne suis pas tout à fait sûr d\'avoir bien lu cette notion : pouvez-vous '
+                    'la comparer au cahier ?',
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        ),
+        for (final doubt in notion.doubts)
+          Text('• $doubt', style: const TextStyle(fontSize: 14, color: Colors.black54)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            FilledButton(
+              onPressed: () => _confirm(context, ref),
+              child: const Text('C\'est bien ce qui est écrit'),
+            ),
+          ],
+        ),
+        const Text(
+          'Sinon : « Demander une correction à l\'IA » plus bas, ou reprendre la photo.',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
         ),
       ],
     ),

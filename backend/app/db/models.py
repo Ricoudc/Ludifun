@@ -468,10 +468,15 @@ class KnowledgeItem(Base):
     # Explication tirée de sources externes (étape 24b), pour « Je n'ai pas compris » quand la
     # leçon ne donne pas d'exemple : {"text", "sources": [{"site", "url", "title"}], "quotes"}.
     external_help: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Confiance dans la notion extraite (§115), calculée à l'analyse ; NULL : analysée avant.
+    confidence: Mapped[float | None] = mapped_column(REAL)
+    doubts: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # par le parent
 
     __table_args__ = (
         UniqueConstraint("lesson_id", "key"),
         CheckConstraint("importance BETWEEN 1 AND 5", name="importance"),
+        CheckConstraint("confidence BETWEEN 0 AND 1", name="confidence"),
     )
 
 

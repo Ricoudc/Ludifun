@@ -62,6 +62,9 @@ class LessonSummaryOut(BaseModel):
     title: str | None
     created_at: datetime
     next_review_at: datetime | None = None
+    notions_to_check: int = Field(
+        0, description="Notions lues avec une confiance moyenne ou faible, pas encore confirmées (§115)."
+    )
     due: bool = False
     mastered: bool = False
 

@@ -684,6 +684,9 @@ class NotionContent {
     required this.label,
     required this.statement,
     required this.blocks,
+    this.trust,
+    this.doubts = const [],
+    this.confirmed = false,
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
@@ -691,12 +694,23 @@ class NotionContent {
     label: json['label'] as String,
     statement: json['statement'] as String,
     blocks: [for (final b in json['blocks'] as List<dynamic>) ContentBlock.fromJson(b as Json)],
+    trust: json['trust'] as String?,
+    doubts: (json['doubts'] as List<dynamic>? ?? const []).cast<String>(),
+    confirmed: json['confirmed'] as bool? ?? false,
   );
 
   final String knowledgeId;
   final String label;
   final String statement;
   final List<ContentBlock> blocks;
+
+  /// Confiance dans la notion lue (§115) : `high`, `medium` (à vérifier) ou `low` (pas proposée
+  /// à l'enfant avant confirmation) ; `null` pour une leçon analysée avant.
+  final String? trust;
+  final List<String> doubts;
+  final bool confirmed;
+
+  bool get toCheck => !confirmed && (trust == 'medium' || trust == 'low');
 }
 
 class LessonContent {
