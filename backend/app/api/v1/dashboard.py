@@ -43,6 +43,7 @@ from app.api.v1.schemas_dashboard import (
     SessionDecisionOut,
     SessionDetailOut,
     SkillProgressOut,
+    SkillReportOut,
     SkillsOut,
     SubCompetenceOut,
     SubjectOut,
@@ -406,6 +407,15 @@ async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) 
                         importance=skill.importance,
                         level=level_out(skill.level),
                         knowledge_ids=skill.knowledge_ids,
+                        report=SkillReportOut(
+                            status=skill.report.status.value,
+                            summary=skill.report.summary,
+                            facts=skill.report.facts,
+                            weakest=skill.report.weakest,
+                            advice=skill.report.advice,
+                        )
+                        if skill.report is not None
+                        else None,
                     )
                     for skill in lesson.skills
                 ],

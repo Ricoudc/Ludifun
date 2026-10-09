@@ -1491,6 +1491,26 @@ rien ne change dans le moteur ni dans la note) :
 
 Tests : `mobile/test/activities/cheers_test.dart` (étoiles, série, animations réduites),
 `mobile/test/features/session_flow_test.dart` (« point 4 » : étoiles, sons, bouton muet, bilan).
+
+### 5.52 Bilan par compétence pour le parent (octobre 2026)
+
+L'écran « Compétences par leçon » montre, sous chaque compétence et sans la déplier, un bilan
+écrit par le code (`app/domain/skill_report.py`, jamais par l'IA) :
+
+- **statut** tiré du niveau déjà calculé par le moteur (aucun nouveau seuil) : ⚪ pas encore
+  travaillée, 🔴 à travailler (découverte, fragile), 🟠 en bonne voie (en cours d'acquisition),
+  ✅ acquise (maîtrisée ou très bien maîtrisée) ;
+- **chiffres** cumulés sur les dernières activités de ses notions (réussies seul, avec une aide,
+  à moitié, ratées : un fait, séparé de l'interprétation, §131) ;
+- **notion qui freine** : la plus basse ; à égalité, la plus souvent ratée ;
+- **conseil « À la maison »** selon ce que demande la compétence (reconnaître, se rappeler,
+  appliquer, expliquer, réutiliser), complété par l'erreur la plus fréquente si elle revient au
+  moins deux fois (calcul, méthode, lecture trop rapide, consigne, confusion, oubli…). Phrases
+  sans pronom pour désigner l'enfant.
+
+API : `GET /v1/children/{id}/skills`, champ facultatif `report` par compétence
+(`status`, `summary`, `facts`, `weakest`, `advice`). Tests : `tests/domain/test_skill_report.py`,
+`tests/api/test_skills.py`, `mobile/test/features/parent_flow_test.dart`.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

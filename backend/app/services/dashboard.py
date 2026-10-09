@@ -28,8 +28,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.errors import ERROR_LABELS, ErrorOccurrence, ErrorType, recurring_errors
-from app.domain.knowledge import Subject
+from app.domain.knowledge import SkillVerb, Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
+from app.domain.skill_report import SkillNotion, SkillReport, skill_report
 from app.domain.state import NotionState, Observation, notion_state
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
 from app.domain.weekly_summary import RecentFacts, weekly_summary
@@ -382,6 +383,7 @@ class SkillProgress:
     importance: int
     level: MasteryLevel
     knowledge_ids: list[uuid.UUID]
+    report: SkillReport | None = None  # bilan pour le parent (§5.52)
 
 
 @dataclass(frozen=True)
@@ -413,33 +415,39 @@ async def lessons_progress(
     for lesson in lessons:
         units = await load_units(session, lesson)
         levels = notion_levels(units, await load_masteries(session, child_id, units), now)
+        notions = [
+            NotionProgress(
+                units.key_to_id[u.id],
+                u.item.label,
+                u.item.importance,
+                levels[units.key_to_id[u.id]],
+                notion_state(observations.get(units.key_to_id[u.id], [])),
+            )
+            for u in units.units
+        ]
+        by_id = {n.knowledge_id: n for n in notions}
+        progress = []
+        for skill in skills[lesson.id]:
+            level = skill.level(levels)
+            own = [by_id[k] for k in skill.knowledge_ids if k in by_id]
+            report = skill_report(
+                SkillVerb(skill.verb),
+                level,
+                [SkillNotion(n.label, n.level, n.state) for n in own],
+            )
+            progress.append(
+                SkillProgress(
+                    skill.id, skill.label, skill.verb, skill.importance, level, skill.knowledge_ids, report
+                )
+            )
         result.append(
             LessonProgress(
                 lesson_id=lesson.id,
                 title=lesson.title,
                 subject=lesson.subject,
                 created_at=lesson.created_at,
-                skills=[
-                    SkillProgress(
-                        skill.id,
-                        skill.label,
-                        skill.verb,
-                        skill.importance,
-                        skill.level(levels),
-                        skill.knowledge_ids,
-                    )
-                    for skill in skills[lesson.id]
-                ],
-                notions=[
-                    NotionProgress(
-                        units.key_to_id[u.id],
-                        u.item.label,
-                        u.item.importance,
-                        levels[units.key_to_id[u.id]],
-                        notion_state(observations.get(units.key_to_id[u.id], [])),
-                    )
-                    for u in units.units
-                ],
+                skills=progress,
+                notions=notions,
             )
         )
     return result

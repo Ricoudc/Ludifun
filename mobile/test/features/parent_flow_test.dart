@@ -968,6 +968,16 @@ void main() {
                   'importance': 5,
                   'level': level(3, 'En cours d\'acquisition', 'orange'),
                   'knowledge_ids': ['k2', 'k4'],
+                  'report': {
+                    'status': 'in_progress',
+                    'summary': 'En bonne voie : c\'est presque acquis, il reste à consolider.',
+                    'facts':
+                        'Sur les 8 dernières activités de ses notions : 5 réussies seul, 3 ratées.',
+                    'weakest': 'Comparer des fractions',
+                    'advice':
+                        'Proposez un petit exercice où il faut se servir de « Comparer des '
+                        'fractions », sans la leçon.',
+                  },
                 },
               ],
               'notions': [
@@ -1015,6 +1025,16 @@ void main() {
     expect(find.text('Comparer deux fractions de même dénominateur'), findsOneWidget);
     await shot(tester, 'p07_competences');
     expect(find.text('En cours d\'acquisition · Appliquer'), findsOneWidget);
+    // §5.52 : le bilan de la compétence, visible sans déplier.
+    expect(
+      find.text('🟠 En bonne voie : c\'est presque acquis, il reste à consolider.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('📊 Sur les 8 dernières activités de ses notions : 5 réussies seul, 3 ratées.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('💡 À la maison : Proposez un petit exercice'), findsOneWidget);
     // Notion reliée à aucune compétence : regroupée à part.
     expect(find.text('Autres notions'), findsOneWidget);
 

@@ -144,6 +144,7 @@ class _LessonCard extends ConsumerWidget {
                 title: skill.label,
                 subtitle: verbLabels[skill.verb],
                 level: skill.level,
+                report: skill.report,
                 notions: lesson.notionsOf(skill),
               ),
             if (others.isNotEmpty)
@@ -157,11 +158,18 @@ class _LessonCard extends ConsumerWidget {
 
 /// Une compétence (titre, niveau) et ses notions, dépliables.
 class _Group extends StatelessWidget {
-  const _Group({required this.title, required this.notions, this.subtitle, this.level});
+  const _Group({
+    required this.title,
+    required this.notions,
+    this.subtitle,
+    this.level,
+    this.report,
+  });
 
   final String title;
   final String? subtitle;
   final int? level;
+  final SkillReport? report;
   final List<NotionProgress> notions;
 
   @override
@@ -172,16 +180,22 @@ class _Group extends StatelessWidget {
     title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
     subtitle: level == null
         ? null
-        : Row(
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              LevelStars(level!, size: 16),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  '${Levels.label(level!)}${subtitle == null ? '' : ' · $subtitle'}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
+              Row(
+                children: [
+                  LevelStars(level!, size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '${Levels.label(level!)}${subtitle == null ? '' : ' · $subtitle'}',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ),
+                ],
               ),
+              if (report case final report?) _SkillReportBox(report),
             ],
           ),
     children: [
@@ -223,4 +237,37 @@ class NotionFacts extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Bilan de la compétence : où en est l'enfant, ce qui a été observé, et quoi faire à la maison.
+class _SkillReportBox extends StatelessWidget {
+  const _SkillReportBox(this.report);
+
+  final SkillReport report;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${report.emoji} ${report.summary}',
+          style: const TextStyle(fontSize: 15, color: Colors.black87),
+        ),
+        if (report.facts case final facts?)
+          Text('📊 $facts', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        if (report.advice case final advice?)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text('💡 À la maison : $advice', style: const TextStyle(fontSize: 14)),
+          ),
+      ],
+    ),
+  );
 }

@@ -218,6 +218,16 @@ class NotionProgressOut(BaseModel):
     independence: float | None = Field(None, description="Part des réussites obtenues sans aide (§129).")
 
 
+class SkillReportOut(BaseModel):
+    """Bilan de la compétence pour le parent (§5.52), écrit par le code, jamais par l'IA."""
+
+    status: Literal["not_started", "to_work", "in_progress", "acquired"]
+    summary: str = Field(description="Où en est l'enfant, en une phrase.")
+    facts: str | None = Field(None, description="Chiffres cumulés sur ses notions ; null : rien observé.")
+    weakest: str | None = Field(None, description="La notion qui freine ; null si acquise.")
+    advice: str | None = Field(None, description="Quoi faire à la maison ; null si rien à conseiller.")
+
+
 class SkillProgressOut(BaseModel):
     id: uuid.UUID
     label: str
@@ -225,6 +235,7 @@ class SkillProgressOut(BaseModel):
     importance: int
     level: LevelOut
     knowledge_ids: list[uuid.UUID]
+    report: SkillReportOut | None = Field(None, description="Bilan pour le parent (nouveau, facultatif).")
 
 
 class LessonProgressOut(BaseModel):

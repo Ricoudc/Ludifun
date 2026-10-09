@@ -115,6 +115,13 @@ async def test_parent_sees_what_is_missing(
     assert [n["label"] for n in progress["notions"]][:2] == ["Fraction", "Numérateur"]  # ordre de la leçon
     for skill in progress["skills"]:
         assert skill["level"]["label"] and skill["level"]["color"] in ("grey", "red", "orange", "green")
+        # §5.52 : bilan de la compétence pour le parent, écrit par le code.
+        report = skill["report"]
+        assert report["status"] in ("not_started", "to_work", "in_progress", "acquired")
+        assert report["summary"]
+        if report["status"] in ("to_work", "in_progress"):
+            assert report["weakest"] in notions and report["advice"]
+            assert f"« {report['weakest']} »" in report["advice"]
 
     board = (await client.get(f"/v1/children/{child_id}/dashboard", headers=auth(parent))).json()
     weak = {n["label"]: n for n in board["to_strengthen"]}

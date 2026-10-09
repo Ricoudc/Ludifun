@@ -45,6 +45,7 @@ class Skill {
     required this.importance,
     required this.level,
     this.knowledgeIds = const [],
+    this.report,
   });
 
   factory Skill.fromJson(Json json) => Skill(
@@ -61,6 +62,10 @@ class Skill {
     knowledgeIds: [
       for (final k in json['knowledge_ids'] as List<dynamic>? ?? const []) k as String,
     ],
+    report: switch (json['report']) {
+      final Json report => SkillReport.fromJson(report),
+      _ => null,
+    },
   );
 
   final String id;
@@ -69,4 +74,40 @@ class Skill {
   final int importance;
   final int level;
   final List<String> knowledgeIds;
+
+  /// Bilan pour le parent (espace parent seulement ; absent d'un serveur plus ancien).
+  final SkillReport? report;
+}
+
+/// Bilan d'une compétence pour le parent, écrit par le serveur (§5.52).
+class SkillReport {
+  const SkillReport({
+    required this.status,
+    required this.summary,
+    this.facts,
+    this.weakest,
+    this.advice,
+  });
+
+  factory SkillReport.fromJson(Json json) => SkillReport(
+    status: json['status'] as String,
+    summary: json['summary'] as String,
+    facts: json['facts'] as String?,
+    weakest: json['weakest'] as String?,
+    advice: json['advice'] as String?,
+  );
+
+  /// not_started, to_work, in_progress, acquired.
+  final String status;
+  final String summary;
+  final String? facts;
+  final String? weakest;
+  final String? advice;
+
+  String get emoji => switch (status) {
+    'acquired' => '✅',
+    'in_progress' => '🟠',
+    'to_work' => '🔴',
+    _ => '⚪',
+  };
 }
