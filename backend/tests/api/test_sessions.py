@@ -18,6 +18,7 @@ from app import clock
 from app.db.models import Attempt, KnowledgeItem, KnowledgeMastery, RevisionSession, SessionItem
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.composer import fingerprint
+from app.domain.decisions import Rule
 from app.domain.simulated_pupil import Knows, respond
 from app.services.learning import activity_of
 from tests.api.helpers import auth, family_with_device, upload_lesson
@@ -82,8 +83,17 @@ async def test_full_child_journey(client: AsyncClient, db: AsyncSession, now: li
     # Écran 4 : la séance.
     session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     assert session["kind"] == "first" and session["status"] == "active" and not session["express"]
-    # 10 minutes par défaut (étape 26) : 13 activités, un peu moins de 10 minutes.
-    assert [i["block"] for i in session["items"]] == ["warmup"] * 3 + ["core"] * 8 + ["match", "speed"]
+    # 10 minutes par défaut (étape 26) : 13 activités, un peu moins de 10 minutes ; plus le jeu du
+    # jour s'il a été ajouté (§5.54), selon le jour et le tirage.
+    rules = {
+        str(row.id): (row.reason or {}).get("rule")
+        for row in await db.scalars(
+            select(SessionItem).where(SessionItem.session_id == uuid.UUID(session["id"]))
+        )
+    }
+    blocks = [i["block"] for i in session["items"] if rules[i["id"]] != Rule.DAILY_GAME]
+    assert blocks == ["warmup"] * 3 + ["core"] * 8 + ["match", "speed"], rules
+    assert list(rules.values()).count(Rule.DAILY_GAME) <= 1
     assert session["estimated_duration_min"] <= 10
     assert all(not SOLUTION_KEYS & set(i["payload"]) for i in session["items"])  # jamais la solution
     reopened = (
