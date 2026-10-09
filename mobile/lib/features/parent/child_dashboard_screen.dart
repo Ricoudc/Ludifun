@@ -80,6 +80,12 @@ class ChildDashboardScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_a_photo_outlined),
               label: Text('Ajouter une leçon pour $name'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => context.go(Routes.childAssistant(childId)),
+              icon: const Icon(Icons.tips_and_updates_outlined),
+              label: Text('Sur quoi faire travailler $name ?'),
+            ),
             const SizedBox(height: 12),
             _Shortcuts([
               _Shortcut(

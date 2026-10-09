@@ -1615,6 +1615,46 @@ void main() {
     expect(find.text('Coups de pouce : 4 sur 4 · essais : 2'), findsOneWidget);
   });
 
+  testWidgets('assistant : le parent pose une question, la réponse vient des données', (
+    tester,
+  ) async {
+    server.on(
+      'GET /v1/children/c1/assistant',
+      (_) => (
+        200,
+        {
+          'answers': [
+            {
+              'question': 'week',
+              'title': 'Sur quoi faire travailler Emma cette semaine ?',
+              'lines': ['🎯 En priorité : « Comparer des fractions » (Les fractions), fragile.'],
+              'based_on': ['6 notions travaillées sur 8'],
+            },
+            {
+              'question': 'help',
+              'title': 'Comment aider Emma à la maison ?',
+              'lines': ['💬 Félicitez l\'effort et la régularité plutôt que la note.'],
+              'based_on': ['Classe : CM1'],
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Sur quoi faire travailler Emma ?'));
+    expect(
+      find.text('🎯 En priorité : « Comparer des fractions » (Les fractions), fragile.'),
+      findsOneWidget,
+    );
+    expect(find.text('D\'après : 6 notions travaillées sur 8'), findsOneWidget);
+    await tap(tester, find.text('Comment aider Emma à la maison ?'));
+    expect(
+      find.text('💬 Félicitez l\'effort et la régularité plutôt que la note.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('le parent voit ce qu\'Emma a expliqué à Ludi', (tester) async {
     server.on(
       'GET /v1/children/c1/teach',

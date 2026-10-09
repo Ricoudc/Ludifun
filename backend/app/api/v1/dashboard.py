@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app import clock
@@ -50,6 +51,7 @@ from app.api.v1.schemas_dashboard import (
 )
 from app.db import models as db_models
 from app.domain import mistakes as mistakes_domain
+from app.domain import parent_assistant
 from app.domain.activities.registry import default_registry
 from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
@@ -59,6 +61,7 @@ from app.domain.knowledge import SkillVerb
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
 from app.services import dashboard, export
+from app.services import parent_assistant as parent_assistant_service
 from app.services import programme as programme_service
 from app.services.dashboard import WeekStats
 
@@ -517,4 +520,33 @@ async def get_session_detail(
             )
             for d in revision.decisions
         ],
+    )
+
+
+class AssistantAnswerOut(BaseModel):
+    question: str = Field(description="week, help, exam ou progress.")
+    title: str = Field(description="La question, telle que le parent la lit.")
+    lines: list[str] = Field(description="La réponse, écrite par le code à partir des données réelles.")
+    based_on: list[str] = Field(description="Les faits utilisés.")
+
+
+class AssistantOut(BaseModel):
+    answers: list[AssistantAnswerOut]
+
+
+@router.get("/children/{child_id}/assistant")
+async def assistant(
+    child_id: uuid.UUID, parent: CurrentParent, db: DbSession, settings: AppSettings
+) -> AssistantOut:
+    """Assistant parent (§46) : « Sur quoi faire travailler Emma cette semaine ? », « Comment
+    l'aider ? », un contrôle à venir, la progression. Réponses calculées, sans IA."""
+    child = await own_child(db, parent, child_id)
+    facts = await parent_assistant_service.assistant_facts(
+        db, child, clock.now(), ZoneInfo(settings.family_timezone)
+    )
+    return AssistantOut(
+        answers=[
+            AssistantAnswerOut(question=a.question.value, title=a.title, lines=a.lines, based_on=a.based_on)
+            for a in parent_assistant.answers(facts)
+        ]
     )

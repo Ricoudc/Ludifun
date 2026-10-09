@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../models/account.dart';
 import '../../models/ai.dart';
 import '../../models/figure.dart';
+import '../../models/assistant.dart';
 import '../../models/homework.dart';
 import '../../models/lesson_sheet.dart';
 import '../../models/teach.dart';
@@ -626,6 +627,14 @@ class LudifunApi {
   Future<Teach> teachAnswer(String id, String text) => _call(() async {
     final r = await _dio.post<Json>('/v1/teach/$id/answers', data: {'text': text});
     return Teach.fromJson(r.data!);
+  });
+
+  /// Assistant parent : les questions et leurs réponses, calculées à partir des données réelles.
+  Future<List<AssistantAnswer>> assistant(String childId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/children/$childId/assistant');
+    return [
+      for (final a in r.data!['answers'] as List<dynamic>) AssistantAnswer.fromJson(a as Json),
+    ];
   });
 
   /// Parent : ce que l'enfant a expliqué à Ludi.

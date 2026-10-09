@@ -21,6 +21,7 @@ import '../features/notebook/lesson_sheet_screen.dart';
 import '../features/notebook/notebook_screen.dart';
 import '../features/teach/teach_screen.dart';
 import '../features/parent/child_help_screen.dart';
+import '../features/parent/child_assistant_screen.dart';
 import '../features/parent/child_homework_screen.dart';
 import '../features/parent/child_teach_screen.dart';
 import '../features/parent/child_programme_screen.dart';
@@ -83,6 +84,7 @@ abstract final class Routes {
   static String childHomework(String childId) => '/parent/enfants/$childId/devoirs';
   static String teach(String id) => '/enfant/enseigne/$id';
   static String childTeach(String childId) => '/parent/enfants/$childId/enseigne';
+  static String childAssistant(String childId) => '/parent/enfants/$childId/assistant';
   static String analysis(String lessonId, {String? childId}) =>
       childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
@@ -197,6 +199,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'enseigne',
                 builder: (_, state) => ChildTeachScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
+                path: 'assistant',
+                builder: (_, state) => ChildAssistantScreen(childId: state.pathParameters['id']!),
               ),
               GoRoute(
                 path: 'modifier',

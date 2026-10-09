@@ -41,7 +41,7 @@ ont été mises à jour depuis.
 | §40-§42 | Tableaux de bord enfant et parent, statuts 🟢🟠🔴 | ✅ | `features/home`, `features/parent/child_dashboard_screen.dart` |
 | §43, §62-§63 | Historique des erreurs, types d'erreurs | ✅ étape 14 : type d'erreur par notion ratée, erreurs récurrentes au tableau de bord | `domain/errors.py` |
 | §44-§45 | Historique, graphiques | ✅ historique paginé, progression par semaine | `services/dashboard.py` |
-| §46 | Assistant parent | 🔮 V5 | |
+| §46 | Assistant parent | ✅ questions fixes, réponses calculées à partir des données réelles, sans IA (§5.36) ; 🔮 question libre | `domain/parent_assistant.py` |
 | §47 | Objectifs parent | ✅ étape 16 : temps quotidien, matière prioritaire, contrôles | `features/parent/goals_screen.dart` |
 | §48 | Notifications | 🔮 V5 | |
 | §59-§61, §68 | IA en étapes, fournisseur interchangeable, contrats JSON stricts, contrôle qualité | ✅ lecture → analyse → matériel par notion, schémas Pydantic, validateurs, relance ciblée, `ai_runs` | `ai/`, `services/lesson_pipeline.py` |
@@ -1118,6 +1118,27 @@ changer à la maîtrise.
   pour relire les étapes vues et la correction ; le retour revient au cahier.
 - Aucune nouvelle donnée ni migration ; la tuile d'une ressource est partagée entre l'écran de
   la leçon et la fiche (`features/lesson/resource_tile.dart`).
+
+### 5.36 Assistant parent (octobre 2026, CDC §46)
+
+Sur le tableau de bord de l'enfant, « Sur quoi faire travailler Emma ? » ouvre l'assistant
+(`GET /v1/children/{c}/assistant`). Le parent touche une question ; la réponse est **écrite par
+le code** (`domain/parent_assistant.py`) à partir des données réelles, toujours la même pour les
+mêmes données, et dit sur quels faits elle s'appuie (« D'après : 6 notions travaillées sur 8 ·
+révisé 2 jours sur 7 (25 min) »). Pas d'IA : rien d'inventé, aucun coût.
+
+- **Sur quoi faire travailler Emma cette semaine ?** Les notions travaillées encore fragiles, ou
+  maîtrisées mais sans doute un peu oubliées (§5.32), la matière choisie par le parent d'abord ;
+  ce qui manque encore (« il reste à la retrouver sans aide ») ; l'erreur qui revient ; un
+  contrôle proche ; le rythme conseillé (objectif du parent, sinon 10 à 20 min selon la classe).
+- **Comment aider Emma à la maison ?** Selon l'âge (lire les consignes ensemble au CP-CE1,
+  laisser travailler en autonomie au CM, s'organiser au collège), un geste par erreur qui revient
+  (relire la consigne à voix haute, poser le calcul…), « Enseigne-moi » et « Mon cahier ».
+- **Le contrôle « … » : où en est Emma ?** (s'il y a un contrôle à venir) : notions acquises,
+  à revoir, pas encore travaillées, et le conseil selon les jours restants.
+- **Est-ce qu'Emma progresse ?** Note moyenne des séances, semaine contre semaine ; notions
+  maîtrisées ces 7 jours et en tout.
+- Le prénom remplace les pronoms : aucune réponse ne devine le genre de l'enfant (test).
 
 ---
 
