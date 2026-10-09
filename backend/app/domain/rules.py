@@ -84,6 +84,13 @@ class HomeworkRules(_Section):
     attempts_before_solution: int = Field(ge=1, le=10)
 
 
+class DifficultyRules(_Section):
+    step_up_after: int = Field(ge=2, le=10)
+    step_down_after: int = Field(ge=1, le=10)
+    success: float = Field(gt=0, le=1)
+    window: int = Field(ge=2, le=20)
+
+
 class TeachRules(_Section):
     follow_ups: int = Field(ge=0, le=5)
     explain_ratio: float = Field(gt=0, le=1)
@@ -101,6 +108,7 @@ class EngineRules(_Section):
     material: MaterialRules
     homework: HomeworkRules
     teach: TeachRules
+    difficulty: DifficultyRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

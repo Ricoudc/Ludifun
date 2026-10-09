@@ -71,7 +71,12 @@ def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
             )
         case Rule.BY_SCORE:
             due = "révision prévue aujourd'hui" if f.get("due") else "notion à consolider"
-            return f"{due.capitalize()} (score {f.get('score')}) : difficulté {f.get('difficulty')}."
+            text = f"{due.capitalize()} (score {f.get('score')}) : difficulté {f.get('difficulty')}."
+            if f.get("adjust") == "up":
+                text += f" Plus difficile : {f.get('successes')} réussites d'affilée sans aide."
+            elif f.get("adjust") == "down":
+                text += f" Plus facile : {f.get('failures')} échecs d'affilée sur la notion."
+            return text
         case Rule.GAME:
             return f"Jeu sur {f.get('notions')} notions de la leçon."
         case Rule.SPEED:

@@ -21,6 +21,7 @@ from enum import StrEnum
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.decisions import Reason, Rule, reason
+from app.domain.difficulty import Difficulty, RecentAnswer, by_score, notion_difficulty
 from app.domain.knowledge import KnowledgeUnit
 from app.domain.mastery import IMPORTANT, KNOWN_SCORE, Mastery
 from app.domain.rules import RULES
@@ -144,18 +145,17 @@ class SessionPlan:
 
 
 def target_difficulties(mastery: Mastery | None) -> tuple[int, ...]:
-    """Difficultés adaptées au score de maîtrise (§8.3), par ordre de préférence."""
-    if mastery is None or mastery.score < 50:
-        return (1,)
-    if mastery.score < 80:
-        return (2, 1)
-    return (3, 2)
+    """Difficultés adaptées au score de maîtrise (§8.3), par ordre de préférence (sans l'oubli
+    ni les dernières réponses : `app.domain.difficulty` pour la révision)."""
+    return (1,) if mastery is None else by_score(mastery.score)
 
 
 class SessionComposer:
     def __init__(self, registry: ActivityRegistry) -> None:
         self.registry = registry
         self.recent: frozenset[str] = frozenset()
+        self.history: Mapping[str, Sequence[RecentAnswer]] = {}
+        self.adjusted: dict[str, Difficulty] = {}
 
     # ------------------------------------------------------------------ #
     # Séances « première révision » et « révision »
@@ -170,13 +170,16 @@ class SessionComposer:
         core_size: int = BLOCK_SIZE,
         include_known: bool = False,
         recent: frozenset[str] = frozenset(),
+        history: Mapping[str, Sequence[RecentAnswer]] | None = None,
     ) -> SessionPlan:
         """`core_size` : activités d'approfondissement (selon le temps du jour choisi par le parent ;
         0 : révision express). `include_known` : toute la leçon, même ce qui est su (mini-contrôle).
         `recent` : empreintes (`fingerprint`) des questions des séances précédentes de la leçon,
-        évitées tant que la notion en a d'autres."""
+        évitées tant que la notion en a d'autres. `history` : dernières réponses par notion, pour
+        ajuster la difficulté (§36)."""
         rng = random.Random(seed)
         self.recent = recent
+        self.history, self.adjusted = history or {}, {}
         eligible = _eligible(units)
         first = not any(u.id in masteries for u in units)
         if first:
@@ -269,8 +272,19 @@ class SessionComposer:
             return reason(Rule.LEVEL_UP, score=mastery.score, threshold=LEVEL_UP_SCORE, level=level)
         if mastery.score >= DEEPEN_SCORE and level not in required_levels(unit, self.registry):
             return reason(Rule.DEEPEN, score=mastery.score, level=level)
+        adjusted = self.adjusted.get(unit.id)
+        # Le changement n'est dit que si l'activité est bien au niveau visé (sinon : faute de jeu).
+        extra = (
+            {"adjust": adjusted.adjust, **(adjusted.facts or {})}
+            if adjusted and adjusted.facts and activity.difficulty == adjusted.facts["target"]
+            else {}
+        )
         return reason(
-            Rule.BY_SCORE, score=mastery.score, due=mastery.is_due(now), difficulty=activity.difficulty
+            Rule.BY_SCORE,
+            score=mastery.score,
+            due=mastery.is_due(now),
+            difficulty=activity.difficulty,
+            **extra,
         )
 
     def _to_review(
@@ -335,7 +349,12 @@ class SessionComposer:
             if options:
                 difficulties = tuple(sorted({d for _, d in options}, reverse=True))
                 return difficulties, frozenset(code for code, _ in options)
-        return target_difficulties(mastery), None
+        if mastery is None:
+            return target_difficulties(mastery), None
+        chosen = notion_difficulty(mastery, self.history.get(unit.id, ()))
+        if chosen.adjust:
+            self.adjusted[unit.id] = chosen
+        return chosen.preferred, None
 
     # ------------------------------------------------------------------ #
     # 🔄 Reprise des erreurs (fin de séance)

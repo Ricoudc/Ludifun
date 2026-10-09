@@ -36,7 +36,7 @@ ont été mises à jour depuis.
 | §32 | Fatigue / désengagement | ✅ étape 17 : pause proposée (réponses au hasard, échecs d'affilée) | `domain/engagement.py` |
 | §33 | Plan de révision avant un contrôle | ✅ étape 16 : plan jour par jour, recalculé chaque jour | `domain/planning.py`, `services/goals.py` |
 | §34 | Répétition espacée | ✅ J+1, 2, 4, 7, 14 selon la réussite ; mission du jour | `domain/mastery.py` |
-| §35-§36 | Adaptation en temps réel, difficulté dynamique | ✅ étape 17 : remédiation insérée après deux échecs, défis bonus pour l'enfant rapide ; 🟡 difficulté propre à chaque notion : V3 | `domain/composer.py`, `domain/engagement.py` |
+| §35-§36 | Adaptation en temps réel, difficulté dynamique | ✅ étape 17 : remédiation insérée après deux échecs, défis bonus pour l'enfant rapide ; difficulté propre à chaque notion selon les dernières réponses (§5.37) | `domain/composer.py`, `domain/engagement.py` |
 | §37-§39, §85 | Missions, XP, badges, séries | ✅ étape 20 : mission du jour, XP, niveaux, série, badges | `domain/rewards.py` |
 | §40-§42 | Tableaux de bord enfant et parent, statuts 🟢🟠🔴 | ✅ | `features/home`, `features/parent/child_dashboard_screen.dart` |
 | §43, §62-§63 | Historique des erreurs, types d'erreurs | ✅ étape 14 : type d'erreur par notion ratée, erreurs récurrentes au tableau de bord | `domain/errors.py` |
@@ -1139,6 +1139,24 @@ révisé 2 jours sur 7 (25 min) »). Pas d'IA : rien d'inventé, aucun coût.
 - **Est-ce qu'Emma progresse ?** Note moyenne des séances, semaine contre semaine ; notions
   maîtrisées ces 7 jours et en tout.
 - Le prénom remplace les pronoms : aucune réponse ne devine le genre de l'enfant (test).
+
+### 5.37 Difficulté dynamique par notion (octobre 2026, CDC §36, règles 1.7.0)
+
+La difficulté d'une activité de révision part du score de maîtrise (§8.3), puis suit les
+dernières réponses de l'enfant **sur cette notion**, toutes séances confondues
+(`difficulty.window` = 6, `domain/difficulty.py`) :
+
+- **plus difficile** après `difficulty.step_up_after` (3) réussites d'affilée sans aide au plus
+  haut niveau proposé ; 2 suffisent si elles sont rapides (moins de 60 % du temps prévu) ;
+- **plus facile** après `difficulty.step_down_after` (2) échecs d'affilée qui disent « ne sait pas
+  encore » (connaissance, méthode, confusion, oubli, calcul) ; une lecture trop rapide, une
+  consigne mal comprise ou une réponse au hasard ne baissent pas la difficulté : c'est
+  l'attention qui manque, pas le niveau ;
+- la raison est enregistrée avec l'activité et lue par le parent (« Plus difficile : 3 réussites
+  d'affilée sans aide. »), seulement si l'activité est bien au niveau visé (une notion sans jeu de
+  niveau 3 reste au niveau 2, sans le prétendre).
+
+L'oubli estimé (§5.32) décide de l'ordre des notions, pas de la difficulté.
 
 ---
 

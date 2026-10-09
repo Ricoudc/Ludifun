@@ -6,7 +6,8 @@ mémorisation) ; ce module la relie à PostgreSQL.
 
 import secrets
 import uuid
-from dataclasses import dataclass, replace
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any, Literal
@@ -17,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity, Grade
 from app.domain.activities.open_question import OpenQuestionActivity
-from app.domain.activities.registry import ActivityRegistry
+from app.domain.activities.registry import ActivityRegistry, UnknownActivity
 from app.domain.composer import (
     BLOCK_SIZE,
     UNGRADED_BLOCKS,
@@ -29,6 +30,8 @@ from app.domain.composer import (
     fingerprint,
 )
 from app.domain.decisions import Reason, Rule, reason
+from app.domain.difficulty import QUICK_SHARE, RecentAnswer
+from app.domain.difficulty import WINDOW as DIFFICULTY_WINDOW
 from app.domain.engagement import (
     BONUS_ACTIVITIES,
     FAILURE_BELOW,
@@ -184,6 +187,8 @@ class SessionOptions:
     core_size: int = BLOCK_SIZE  # selon le temps de révision par jour
     focus: Focus | None = None  # étape du plan avant un contrôle
     recent: frozenset[str] = frozenset()  # questions des dernières séances, à ne pas reposer
+    # Dernières réponses par notion (clé « k1 ») : la difficulté s'y ajuste (§36).
+    history: Mapping[str, Sequence[RecentAnswer]] = field(default_factory=dict)
 
 
 RECENT_SESSIONS = 3  # séances d'une leçon dont les questions sont évitées à la suivante
@@ -215,6 +220,55 @@ async def recent_questions(
     return frozenset(prints)
 
 
+async def recent_answers(
+    session: AsyncSession, child_id: uuid.UUID, lesson: LessonUnits, registry: ActivityRegistry
+) -> dict[str, list[RecentAnswer]]:
+    """Les dernières réponses de l'enfant sur chaque notion de la leçon, toutes séances
+    confondues, la plus récente en dernier (difficulté dynamique, §36)."""
+    keys = lesson.id_to_key
+    rows = await session.execute(
+        select(
+            db.AttemptEvidence.knowledge_id,
+            db.AttemptEvidence.result,
+            db.AttemptEvidence.error_type,
+            db.SessionItem.activity_type,
+            db.SessionItem.difficulty,
+            db.SessionItem.help_level,
+            db.Attempt.duration_ms,
+        )
+        .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
+        .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
+        .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
+        .where(
+            db.RevisionSession.child_id == child_id,
+            db.AttemptEvidence.knowledge_id.in_(list(keys)),
+        )
+        .order_by(db.Attempt.created_at.desc())
+    )
+    found: dict[str, list[RecentAnswer]] = {}
+    for knowledge_id, result, error_type, activity_type, difficulty, help_level, duration_ms in rows:
+        answers = found.setdefault(keys[knowledge_id], [])
+        if len(answers) >= DIFFICULTY_WINDOW:
+            continue
+        try:
+            expected_ms: float | None = registry.get(activity_type).base_duration_s * 1000
+        except UnknownActivity:
+            expected_ms = None  # type d'activité retiré depuis
+        quick = (
+            duration_ms is not None and expected_ms is not None and duration_ms <= QUICK_SHARE * expected_ms
+        )
+        answers.append(
+            RecentAnswer(
+                difficulty=difficulty,
+                result=float(result),
+                helped=help_level > 0,
+                quick=quick,
+                error_type=error_type,
+            )
+        )
+    return {key: list(reversed(answers)) for key, answers in found.items()}
+
+
 def compose_with(
     composer: SessionComposer,
     lesson: LessonUnits,
@@ -243,6 +297,7 @@ def compose_with(
         core_size=options.core_size,
         include_known=options.focus is Focus.MOCK_TEST,
         recent=options.recent,
+        history=options.history,
     )
 
 
@@ -276,7 +331,9 @@ async def start_session(
     masteries = await load_masteries(session, child_id, lesson)
     seed = new_seed()
     options = replace(
-        options or SessionOptions(), recent=await recent_questions(session, child_id, lesson_row.id)
+        options or SessionOptions(),
+        recent=await recent_questions(session, child_id, lesson_row.id),
+        history=await recent_answers(session, child_id, lesson, registry),
     )
     plan = compose_with(SessionComposer(registry), lesson, masteries, now, seed, options)
     return await _new_session(session, child_id, lesson, plan, seed, now)
