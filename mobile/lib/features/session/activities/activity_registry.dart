@@ -11,6 +11,7 @@ import 'fun_games_views.dart';
 import 'map_view.dart';
 import 'match_view.dart';
 import 'math_games_views.dart';
+import 'measure_games_views.dart';
 import 'mcq_view.dart';
 import 'memory_view.dart';
 import 'open_question_view.dart';
@@ -70,6 +71,9 @@ final activityRegistry = <String, ActivityBuilder>{
   'ALPHA_ORDER': (payload, onSubmit) => OrderView(payload: payload, onSubmit: onSubmit),
   'CLOCK': (payload, onSubmit) => ClockView(payload: payload, onSubmit: onSubmit),
   'MONEY': (payload, onSubmit) => MoneyView(payload: payload, onSubmit: onSubmit),
+  'RULER': (payload, onSubmit) => RulerView(payload: payload, onSubmit: onSubmit),
+  'SYMMETRY': (payload, onSubmit) => SymmetryView(payload: payload, onSubmit: onSubmit),
+  'SYLLABLES': (payload, onSubmit) => SyllableView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

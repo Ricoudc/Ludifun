@@ -22,7 +22,7 @@ ont été mises à jour depuis.
 | §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
-| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation, thème contrôlé (§5.47) | `domain/knowledge.py`, `prompts/analysis.v7.md` |
+| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation, thème contrôlé (§5.47) | `domain/knowledge.py`, `prompts/analysis.v8.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
 | §15, §65 | Mémorisation vs compréhension, transfert | ✅ étapes 13-14 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer (exigés), 4 expliquer et 5 transférer (questions ouvertes d'approfondissement) | `domain/understanding.py` |
@@ -1401,6 +1401,25 @@ L'IA propose, le code décide (§112) :
 Tests : `tests/domain/test_themes.py` (contrôle, déclenchement de chaque jeu par le thème seul,
 liste complète dans le prompt), `tests/api/test_math_exercises.py` (IA → base → jeux),
 `tests/db/test_schema.py` (migration 0029).
+
+### 5.48 Mesurer à la règle, symétrie, syllabes (octobre 2026, analyse v8)
+
+| Jeu | Notion (thème §5.47 ou mots) | Ce que fait l'enfant |
+|---|---|---|
+| `RULER` | maths : `longueurs` (mesurer, règle graduée, cm, mm) | lire la longueur d'un segment rouge posé sur une règle de 15 cm dessinée par l'application ; difficulté 1 : il part du 0 ; 2 : d'une autre graduation (lire le nombre du bout est reconnu comme une erreur de lecture) ; 3 (dès le CE2) : en cm et mm (« 53 cm » ou cm et mm inversés : confusion d'unités) |
+| `SYMMETRY` | maths : `symetrie` | toucher les cases d'un quadrillage pour compléter une figure de l'autre côté d'un axe rouge ; difficulté 1 : 3-4 cases contre un axe vertical, 2 : 5-7 cases, 3 : 6-8 cases, axe horizontal. Faire glisser la figure au lieu de la retourner est reconnu et expliqué à l'enfant |
+| `SYLLABLES` | français : `syllabes` | couper trois mots en syllabes en touchant entre les lettres, un mot à la fois ; banque de 63 mots découpés à la main, choisis pour que syllabes orales et écrites soient les mêmes (pas de « e » muet final ni de consonne doublée) ; difficulté 1 : deux syllabes, 2 : trois, 3 : consonnes qui se suivent ou quatre syllabes |
+
+Les nouveaux thèmes `longueurs`, `symetrie` et `syllabes` sont dans le prompt `analysis.v8` (v7
+inchangé). Le plafond de deux thèmes par notion (`MAX_TOPICS`) ne vaut plus que pour les thèmes
+qui donnent des exercices calculés : un jeu dessiné (heure, monnaie, règle, symétrie) n'est plus
+écarté par deux thèmes de calcul (« comparer », « unités »). Correction au passage : quand deux
+erreurs d'enfant donnent la même mauvaise réponse (horloge, monnaie, droite graduée, règle), la
+première décrite est gardée au lieu de la dernière.
+
+Tests : `tests/domain/test_measure_and_syllables.py` (règle relue graduation par graduation,
+figure retournée à la main, syllabes recomptées lettre par lettre), widgets dans
+`mobile/test/activities/activities_test.dart`.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

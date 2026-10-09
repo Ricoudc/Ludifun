@@ -90,6 +90,9 @@ const activityLabels = {
   'ALPHA_ORDER': ('🔤', 'Ordre alphabétique'),
   'CLOCK': ('🕒', 'Lire l\'heure'),
   'MONEY': ('💶', 'Monnaie'),
+  'RULER': ('📏', 'Mesurer à la règle'),
+  'SYMMETRY': ('🦋', 'Symétrie'),
+  'SYLLABLES': ('👏', 'Syllabes'),
 };
 
 /// Avatars proposés à la création d'un profil.

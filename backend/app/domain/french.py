@@ -8,6 +8,7 @@ par cœur (être, avoir, aller, faire). Au passé composé, seulement l'auxiliai
 être, l'accord dépendrait de qui parle.
 """
 
+import itertools
 import re
 from dataclasses import dataclass
 from enum import StrEnum
@@ -111,6 +112,7 @@ class FrenchTopic(StrEnum):
     NUMBER = "singulier et pluriel"
     GENDER = "masculin et féminin"
     ALPHABET = "ordre alphabétique"
+    SYLLABLES = "syllabes"
 
 
 _TOPICS = (
@@ -127,6 +129,7 @@ _TOPICS = (
     (FrenchTopic.NUMBER, r"\bpluriel|\bsingulier"),
     (FrenchTopic.GENDER, r"\bfeminin|\bmasculin"),
     (FrenchTopic.ALPHABET, r"ordre alphabetique|\balphabet\b|\bdictionnaire"),
+    (FrenchTopic.SYLLABLES, r"syllab"),
 )
 
 
@@ -358,3 +361,47 @@ ALPHABET_WORDS = (
     "souris", "tigre", "tortue", "train", "usine", "vache", "vélo", "violon", "wagon", "yaourt",
     "zèbre",
 )  # fmt: skip
+
+# Mots à couper en syllabes, découpés à la main. Seulement des mots dont les syllabes écrites et
+# orales sont les mêmes : pas de « e » muet final (« to-ma-te »), pas de consonne doublée
+# (« pom-me »), pas de voyelles qui se lisent ensemble ou séparées selon les régions (« a-vion »).
+# Niveau 1 : deux syllabes simples ; 2 : trois syllabes ; 3 : consonnes qui se suivent
+# (« a-bri-cot », « fac-teur ») ou quatre syllabes.
+SYLLABLE_WORDS: dict[int, tuple[tuple[str, ...], ...]] = {
+    1: (
+        ("vé", "lo"), ("mo", "to"), ("pa", "pa"), ("ma", "man"), ("la", "pin"), ("sa", "pin"),
+        ("lu", "tin"), ("ro", "bot"), ("bi", "jou"), ("hi", "bou"), ("ca", "deau"), ("ba", "teau"),
+        ("gâ", "teau"), ("che", "val"), ("ju", "pon"), ("pou", "let"), ("ca", "nard"),
+        ("mou", "ton"), ("lo", "to"), ("ki", "wi"), ("dî", "ner"), ("sa", "lut"), ("bon", "bon"),
+        ("mou", "lin"),
+    ),
+    2: (
+        ("do", "mi", "no"), ("ki", "mo", "no"), ("pi", "ja", "ma"), ("ca", "na", "pé"),
+        ("a", "ni", "mal"), ("cho", "co", "lat"), ("ma", "ga", "sin"), ("ca", "ra", "mel"),
+        ("ma", "te", "las"), ("pa", "ra", "sol"), ("ma", "ca", "ron"), ("é", "lé", "phant"),
+        ("ko", "a", "la"), ("pan", "ta", "lon"), ("dé", "jeu", "ner"), ("é", "pi", "nard"),
+        ("la", "va", "bo"), ("vé", "ri", "té"), ("sa", "me", "di"), ("ca", "po", "ral"),
+    ),
+    3: (
+        ("a", "bri", "cot"), ("ta", "bleau"), ("dra", "gon"), ("fac", "teur"), ("doc", "teur"),
+        ("bal", "con"), ("car", "ton"), ("jour", "nal"), ("or", "di", "na", "teur"),
+        ("mé", "di", "ca", "ment"), ("té", "lé", "vi", "sion"), ("kan", "gou", "rou"),
+        ("pom", "pier"), ("chan", "teur"), ("por", "tail"), ("es", "car", "got"),
+        ("har", "mo", "ni", "ca"), ("cor", "ni", "chon"), ("mar", "teau"),
+    ),
+}  # fmt: skip
+
+
+def syllable_cuts(syllables: tuple[str, ...]) -> list[int]:
+    """Où couper le mot : le nombre de lettres avant chaque coupure (« vé-lo » → [2])."""
+    cuts, position = [], 0
+    for syllable in syllables[:-1]:
+        position += len(syllable)
+        cuts.append(position)
+    return cuts
+
+
+def with_cuts(word: str, cuts: list[int]) -> str:
+    """Le mot coupé comme l'enfant l'a fait : « vélo », [3] → « vél-o »."""
+    bounds = [0, *sorted(set(cuts)), len(word)]
+    return "-".join(word[a:b] for a, b in itertools.pairwise(bounds) if b > a)

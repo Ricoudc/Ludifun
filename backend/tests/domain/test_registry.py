@@ -43,6 +43,11 @@ EVERYDAY_CODES = {
     ActivityCode.CLOCK,
     ActivityCode.MONEY,
 }  # alphabet, heure, monnaie
+MEASURE_CODES = {
+    ActivityCode.RULER,
+    ActivityCode.SYMMETRY,
+    ActivityCode.SYLLABLES,
+}  # règle, symétrie, syllabes
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -58,6 +63,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | MATH_CODES
         | WORD_CODES
         | EVERYDAY_CODES
+        | MEASURE_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

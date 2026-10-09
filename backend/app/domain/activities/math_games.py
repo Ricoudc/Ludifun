@@ -270,7 +270,9 @@ class NumberLine(ActivityType):
             if choices is None:
                 continue
             listed, answer_id = choices
-            kinds = {w: k.value for w, k in wrong}
+            kinds: dict[str, str] = {}
+            for shown, kind in wrong:  # deux erreurs qui donnent le même nombre : la première
+                kinds.setdefault(shown, kind.value)
             payload = {
                 "prompt": "Quel nombre montre la flèche ?",
                 "task": "read",
@@ -555,7 +557,9 @@ class Clock(ActivityType):
             if choices is None:
                 continue
             listed, answer_id = choices
-            kinds = {w: k.value for w, k in wrong}
+            kinds: dict[str, str] = {}
+            for shown, kind in wrong:  # deux erreurs qui donnent le même nombre : la première
+                kinds.setdefault(shown, kind.value)
             payload = {
                 "prompt": "Quelle heure est-il ?",
                 "hour": hour,
@@ -648,7 +652,9 @@ class Money(ActivityType):
             if choices is None:
                 continue
             listed, answer_id = choices
-            kinds = {w: k.value for w, k in wrong}
+            kinds: dict[str, str] = {}
+            for shown, kind in wrong:  # deux erreurs qui donnent le même nombre : la première
+                kinds.setdefault(shown, kind.value)
             items = [{"id": f"m{i}", "value": v} for i, v in enumerate(pieces, start=1)]
             payload = {
                 "prompt": "Combien d'argent y a-t-il ?",

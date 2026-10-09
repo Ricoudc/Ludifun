@@ -133,6 +133,20 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                 for sid, value in s["answers"].items()
             ]
             return {"answers": answers, "elapsed_ms": 20000}
+        case ActivityCode.RULER:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.SYMMETRY:
+            # Erreur : la figure glissée au lieu d'être retournée.
+            return {"selected": s["expected"] if single_ok else s["slid"]}
+        case ActivityCode.SYLLABLES:
+            lengths = {i["id"]: len(i["text"]) for i in activity.payload["items"]}
+            return {
+                "answers": [
+                    [wid, cuts if single_ok else _shifted(cuts, lengths[wid])]
+                    for wid, cuts in s["expected"].items()
+                ]
+            }
         case ActivityCode.CLOCK | ActivityCode.MONEY if "choice_id" in s:
             wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
             return {"choice_id": s["choice_id"] if single_ok else wrong}
@@ -192,6 +206,11 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                 ]
             }
     raise ValueError(f"type d'activité inconnu : {activity.type}")
+
+
+def _shifted(cuts: list[int], length: int) -> list[int]:
+    """Syllabes mal coupées : chaque coupure d'une lettre plus loin (ou plus tôt au bout du mot)."""
+    return sorted({cut + 1 if cut + 1 < length else cut - 1 for cut in cuts} - {0})
 
 
 def _pay(items: list[dict[str, Any]], price: int) -> list[str]:

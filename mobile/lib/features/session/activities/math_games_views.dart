@@ -10,9 +10,9 @@ import 'common.dart';
 /// Jeux de maths calculés par le serveur : droite graduée, fraction à colorier, opération posée.
 /// Le dessin est fait ici à partir des nombres envoyés ; la correction reste sur le serveur.
 
-/// Les choix d'une question « lire » (droite graduée, fraction) : `{choice_id}`.
-class _Choices extends StatelessWidget {
-  const _Choices({required this.payload, required this.onChoose});
+/// Les choix d'une question « lire » (droite graduée, fraction, heure, règle) : `{choice_id}`.
+class ChoiceGrid extends StatelessWidget {
+  const ChoiceGrid({required this.payload, required this.onChoose, super.key});
 
   final Json payload;
   final void Function(String id)? onChoose;
@@ -114,7 +114,7 @@ class _NumberLineViewState extends State<NumberLineView> {
         ),
         const SizedBox(height: 16),
         if (_read)
-          _Choices(
+          ChoiceGrid(
             payload: widget.payload,
             onChoose: _sent ? null : (id) => _send({'choice_id': id}),
           )
@@ -278,7 +278,7 @@ class _FractionBarViewState extends State<FractionBarView> {
         ),
         const SizedBox(height: 16),
         if (_read)
-          _Choices(
+          ChoiceGrid(
             payload: widget.payload,
             onChoose: _sent ? null : (id) => _send({'choice_id': id}),
           )
@@ -548,7 +548,7 @@ class _ClockViewState extends State<ClockView> {
         ),
       ),
       const SizedBox(height: 16),
-      _Choices(
+      ChoiceGrid(
         payload: widget.payload,
         onChoose: _sent
             ? null
@@ -736,7 +736,7 @@ class _MoneyViewState extends State<MoneyView> {
             child: const Text('Payer'),
           ),
         ] else
-          _Choices(
+          ChoiceGrid(
             payload: widget.payload,
             onChoose: _sent ? null : (id) => _send({'choice_id': id}),
           ),

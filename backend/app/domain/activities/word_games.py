@@ -5,6 +5,8 @@
   la leçon (classement, jeu de tri vérifié) ou, en français, du lexique du code.
 - « Conjugaison » (CONJUGATION) : compléter le tableau d'un verbe ; le code conjugue.
 - « Homophones » (HOMOPHONE) : a ou à, et ou est… dans des phrases écrites à la main.
+- « Ordre alphabétique » (ALPHA_ORDER) : ranger des mots comme dans le dictionnaire.
+- « Syllabes » (SYLLABLES) : couper des mots en syllabes (banque découpée à la main).
 
 La bonne réponse est toujours connue du code ; rien n'est demandé à l'IA pendant la séance.
 """
@@ -33,14 +35,17 @@ from app.domain.french import (
     EARLY_PAIRS,
     HOMOPHONES,
     LEXICON,
+    SYLLABLE_WORDS,
     FrenchTopic,
     Tense,
     conjugate,
     french_topics,
     homophone_pairs,
     pronoun,
+    syllable_cuts,
     tense_of,
     verbs_of,
+    with_cuts,
 )
 from app.domain.knowledge import ClassificationAttributes, KnowledgeType, KnowledgeUnit, Subject, Theme
 from app.domain.knowledge import Grade as SchoolGrade
@@ -54,6 +59,7 @@ _BY_THEME = {
     Theme.NUMBER: FrenchTopic.NUMBER,
     Theme.GENDER: FrenchTopic.GENDER,
     Theme.ALPHABET: FrenchTopic.ALPHABET,
+    Theme.SYLLABLES: FrenchTopic.SYLLABLES,
 }
 
 
@@ -359,4 +365,63 @@ class AlphaOrder(ActivityType):
 
     def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
         details, score = grade_order(activity, response)
+        return _result(activity, score, ErrorType.METHOD, details)
+
+
+# --------------------------------------------------------------------------- #
+# Syllabes
+# --------------------------------------------------------------------------- #
+
+SYLLABLE_COUNT = 3  # mots à couper par activité
+
+
+class CutsResponse(ResponseModel):
+    answers: list[tuple[str, list[int]]] = Field(max_length=SYLLABLE_COUNT)
+
+
+class Syllables(ActivityType):
+    """Couper des mots en syllabes : l'enfant touche entre deux lettres pour couper, un mot à la
+    fois. Mots d'une banque découpée à la main (`french.SYLLABLE_WORDS`). Difficulté 1 : deux
+    syllabes simples ; 2 : trois syllabes ; 3 : consonnes qui se suivent ou quatre syllabes."""
+
+    code = ActivityCode.SYLLABLES
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 30
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return FrenchTopic.SYLLABLES in _french(unit)
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        picked = rng.sample(SYLLABLE_WORDS[difficulty], SYLLABLE_COUNT)
+        items = [{"id": f"w{i}", "text": "".join(word)} for i, word in enumerate(picked, start=1)]
+        expected = {f"w{i}": syllable_cuts(word) for i, word in enumerate(picked, start=1)}
+        display = ", ".join("-".join(word) for word in picked)
+        payload = {"prompt": "Coupe chaque mot en syllabes.", "items": items}
+        return payload, {"expected": expected, "display": display, **feedback(unit)}
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        answers = dict(parse_response(CutsResponse, response).answers)
+        words = {i["id"]: i["text"] for i in activity.payload["items"]}
+        if not set(answers) <= set(words):
+            raise InvalidResponse("mot inconnu")
+        for wid, cuts in answers.items():
+            if any(not 0 < cut < len(words[wid]) for cut in cuts):
+                raise InvalidResponse("coupure hors du mot")
+        expected: dict[str, list[int]] = activity.solution["expected"]
+        correct = {wid: sorted(set(answers.get(wid, []))) == cuts for wid, cuts in expected.items()}
+        details = [
+            {
+                "id": wid,
+                "correct": correct[wid],
+                "given": with_cuts(words[wid], answers.get(wid, [])),
+                "expected": with_cuts(words[wid], cuts),
+            }
+            for wid, cuts in expected.items()
+        ]
+        right = sum(correct.values())
+        score = 1.0 if right == len(details) else round(right / len(details) * 0.8, 2)
         return _result(activity, score, ErrorType.METHOD, details)

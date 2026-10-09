@@ -66,6 +66,9 @@ EASY = frozenset(
         ActivityCode.HOMOPHONE,
         ActivityCode.CLOCK,
         ActivityCode.MONEY,
+        ActivityCode.RULER,
+        ActivityCode.SYMMETRY,
+        ActivityCode.SYLLABLES,
     }
 )
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
@@ -104,6 +107,9 @@ INTERMEDIATE = frozenset(
         ActivityCode.ALPHA_ORDER,
         ActivityCode.CLOCK,
         ActivityCode.MONEY,
+        ActivityCode.RULER,
+        ActivityCode.SYMMETRY,
+        ActivityCode.SYLLABLES,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les

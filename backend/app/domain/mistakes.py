@@ -130,6 +130,17 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
                     for d in wrong
                 ]
             )
+        case ActivityCode.RULER:
+            given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.SYMMETRY:
+            cells = {tuple(c) for c in response.get("selected", [])}
+            right = len(cells & {tuple(c) for c in activity.solution.get("expected", [])})
+            given = f"{len(cells)} case(s) coloriée(s), dont {right} juste(s)"
+            if cells == {tuple(c) for c in activity.solution.get("slid", [])}:
+                given += " : la figure a glissé au lieu d'être retournée"
+        case ActivityCode.SYLLABLES:
+            given = _lines([d["given"] or "(pas coupé)" for d in wrong])
+            expected = _lines([d["expected"] for d in wrong])
         case ActivityCode.CLOCK | ActivityCode.MONEY if "choices" in payload:
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
         case ActivityCode.MONEY:

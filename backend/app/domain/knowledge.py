@@ -68,12 +68,15 @@ class Theme(StrEnum):
     CLOCK = "heure"
     MONEY = "monnaie"
     ALIGNMENT = "alignement"
+    SYMMETRY = "symetrie"
+    LENGTHS = "longueurs"
     CONJUGATION = "conjugaison"
     HOMOPHONES = "homophones"
     WORD_NATURE = "nature_mots"
     NUMBER = "singulier_pluriel"
     GENDER = "masculin_feminin"
     ALPHABET = "ordre_alphabetique"
+    SYLLABLES = "syllabes"
 
 
 FRENCH_THEMES = frozenset(
@@ -84,6 +87,7 @@ FRENCH_THEMES = frozenset(
         Theme.NUMBER,
         Theme.GENDER,
         Theme.ALPHABET,
+        Theme.SYLLABLES,
     }
 )
 

@@ -62,6 +62,9 @@ class ActivityCode(StrEnum):
     ALPHA_ORDER = "ALPHA_ORDER"  # ordre alphabétique : ranger des mots
     CLOCK = "CLOCK"  # lire l'heure sur une horloge à aiguilles
     MONEY = "MONEY"  # pièces et billets : compter, payer un prix juste
+    RULER = "RULER"  # mesurer un segment avec une règle graduée (cm, puis mm)
+    SYMMETRY = "SYMMETRY"  # compléter une figure par symétrie sur un quadrillage
+    SYLLABLES = "SYLLABLES"  # couper des mots en syllabes
 
 
 Result = Literal["correct", "partial", "incorrect"]

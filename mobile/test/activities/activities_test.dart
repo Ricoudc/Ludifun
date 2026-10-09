@@ -429,6 +429,108 @@ void main() {
     ]);
   });
 
+  testWidgets('règle : lire la longueur du segment', (tester) async {
+    await show(tester, 'RULER', {
+      'prompt': 'Combien mesure le segment rouge ?',
+      'ruler_cm': 15,
+      'start_mm': 20,
+      'length_mm': 53,
+      'choices': [
+        {'id': 'a', 'text': '7 cm 3 mm'},
+        {'id': 'b', 'text': '5 cm 3 mm'},
+        {'id': 'c', 'text': '53 cm'},
+        {'id': 'd', 'text': '3 cm 5 mm'},
+      ],
+    });
+    expect(find.byKey(const Key('ruler')), findsOneWidget);
+    await tester.tap(find.text('5 cm 3 mm'));
+    await tester.tap(find.text('53 cm')); // une seule réponse
+    expect(sent, [
+      {'choice_id': 'b'},
+    ]);
+  });
+
+  testWidgets('symétrie : toucher les cases de l\'autre côté, en retirer une, valider', (
+    tester,
+  ) async {
+    await show(tester, 'SYMMETRY', {
+      'prompt': 'Complète la figure par symétrie : touche les cases à droite de l\'axe.',
+      'width': 10,
+      'height': 8,
+      'axis': 'vertical',
+      'filled': [
+        [4, 2],
+        [3, 2],
+        [4, 3],
+      ],
+    });
+    final grid = tester.getRect(find.byKey(const Key('symmetry-grid')));
+    final side = grid.width / 10;
+    Future<void> touch(int x, int y) async {
+      await tester.tapAt(grid.topLeft + Offset((x + 0.5) * side, (y + 0.5) * side));
+      await tester.pump();
+    }
+
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+    await touch(1, 1); // côté déjà dessiné : rien
+    for (final (x, y) in [(5, 2), (6, 2), (7, 7), (5, 3), (7, 7)]) {
+      await touch(x, y);
+    }
+    expect(find.text('Cases coloriées : 3'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'selected': [
+          [5, 2],
+          [5, 3],
+          [6, 2],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('syllabes : couper chaque mot, un mot à la fois', (tester) async {
+    await show(tester, 'SYLLABLES', {
+      'prompt': 'Coupe chaque mot en syllabes.',
+      'items': [
+        {'id': 'w1', 'text': 'vélo'},
+        {'id': 'w2', 'text': 'domino'},
+      ],
+    });
+    expect(find.text('Mot 1 sur 2'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('gap-3')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('gap-3'))); // retirée
+    await tester.tap(find.byKey(const Key('gap-2')));
+    await tester.pump();
+    expect(find.text('vé-lo'), findsOneWidget);
+    await tester.tap(find.text('Mot suivant'));
+    await tester.pump();
+    expect(sent, isEmpty);
+    expect(find.text('Mot 2 sur 2'), findsOneWidget);
+    for (final gap in [2, 4]) {
+      await tester.tap(find.byKey(Key('gap-$gap')));
+      await tester.pump();
+    }
+    expect(find.text('do-mi-no'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    await tester.pump();
+    expect(sent, [
+      {
+        'answers': [
+          [
+            'w1',
+            [2],
+          ],
+          [
+            'w2',
+            [2, 4],
+          ],
+        ],
+      },
+    ]);
+  });
+
   test('monnaie : écriture des sommes', () {
     expect(
       [moneyLabel(5), moneyLabel(230), moneyLabel(1205), moneyLabel(2000)],

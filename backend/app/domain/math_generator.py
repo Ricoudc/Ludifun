@@ -24,7 +24,7 @@ from app.domain.knowledge import Grade, KnowledgeItem, KnowledgeMaterial, Materi
 from app.domain.text import normalize
 
 PER_DIFFICULTY = 6  # questions créées par thème et par difficulté
-MAX_TOPICS = 2  # thèmes retenus par notion
+MAX_TOPICS = 2  # thèmes de calcul retenus par notion
 GRADES = list(Grade)
 
 
@@ -48,6 +48,8 @@ class Topic(StrEnum):
     PYTHAGORE = "théorème de Pythagore"
     CLOCK = "lire l'heure"  # jeu « Quelle heure est-il ? » (activité CLOCK), pas de QCM ici
     MONEY = "monnaie"  # jeu « Pièces et billets » (activité MONEY)
+    LENGTH = "longueurs"  # jeu « Mesurer à la règle » (activité RULER)
+    SYMMETRY = "symétrie"  # jeu « Symétrie » (activité SYMMETRY)
 
 
 # Mots (sans accents) qui désignent chaque thème, et classe à partir de laquelle il est au programme.
@@ -71,6 +73,9 @@ _TOPICS: tuple[tuple[Topic, str, Grade], ...] = (
     (Topic.DOUBLE, r"\bdouble|moitie", Grade.CP),
     (Topic.PLACE, r"dizaine|centaine|unite|millier|decompos|chiffre des", Grade.CP),
     (Topic.COMPARE, r"compar|ranger|\bordre\b|plus grand|plus petit|inferieur|superieur", Grade.CP),
+    # En dernier : sans exercice calculé, ils ne prennent pas la place d'un thème de calcul.
+    (Topic.SYMMETRY, r"symetri", Grade.CP),
+    (Topic.LENGTH, r"\blongueurs?\b|mesurer|regle graduee|centimetre|millimetre", Grade.CP),
 )
 # Calcul mental, nombres, opérations : sans mot plus précis, les opérations de la classe.
 _GENERIC = re.compile(r"calcul|operation|nombre")
@@ -96,6 +101,8 @@ _BY_THEME: dict[Theme, Topic] = {
     Theme.PYTHAGORE: Topic.PYTHAGORE,
     Theme.CLOCK: Topic.CLOCK,
     Theme.MONEY: Topic.MONEY,
+    Theme.LENGTHS: Topic.LENGTH,
+    Theme.SYMMETRY: Topic.SYMMETRY,
 }
 
 
@@ -104,8 +111,9 @@ def _rank(grade: Grade) -> int:
 
 
 def topics(item: KnowledgeItem, grade: Grade) -> list[Topic]:
-    """Les thèmes de calcul de la notion, au programme de la classe (au plus `MAX_TOPICS`) : celui
-    choisi par l'IA s'il y en a un, puis ceux que désignent les mots de la notion."""
+    """Les thèmes de la notion, au programme de la classe : celui choisi par l'IA s'il y en a un,
+    puis ceux que désignent les mots de la notion (au plus `MAX_TOPICS` qui donnent des
+    exercices calculés)."""
     text = normalize(item.corpus())
     found = [
         topic
@@ -118,7 +126,9 @@ def topics(item: KnowledgeItem, grade: Grade) -> list[Topic]:
         found = [named, *(topic for topic in found if topic is not named)]
     if not found and _GENERIC.search(text):
         found = [Topic.ADD, Topic.SUB] if _rank(grade) <= _rank(Grade.CP) else [Topic.ADD, Topic.MUL]
-    return found[:MAX_TOPICS]
+    # Le plafond ne vaut que pour les exercices calculés ; un jeu dessiné (heure, règle…) reste.
+    computed = [topic for topic in found if topic in MAKERS][:MAX_TOPICS]
+    return [topic for topic in found if topic in computed or topic not in MAKERS]
 
 
 # --------------------------------------------------------------------------- #

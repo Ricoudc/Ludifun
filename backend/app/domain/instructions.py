@@ -185,6 +185,21 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Compte les pièces et les billets, ou touche ceux qu'il faut pour payer juste.",
         "Compte la somme, ou paie le prix exact.",
     ),
+    ActivityCode.RULER: (
+        "Regarde la règle. Combien mesure le trait rouge ?",
+        "Lis où commence et où finit le segment sur la règle, puis choisis sa longueur.",
+        "Mesure le segment avec la règle graduée.",
+    ),
+    ActivityCode.SYMMETRY: (
+        "Touche les cases pour finir le dessin. Comme dans un miroir !",
+        "Complète la figure de l'autre côté de l'axe : chaque case à la même distance.",
+        "Construis le symétrique de la figure par rapport à l'axe.",
+    ),
+    ActivityCode.SYLLABLES: (
+        "Touche entre deux lettres pour couper le mot.",
+        "Coupe chaque mot en syllabes : touche entre les lettres là où tu entends une coupure.",
+        "Découpe chaque mot en syllabes.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",
