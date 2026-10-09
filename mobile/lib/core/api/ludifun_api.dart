@@ -663,6 +663,40 @@ class LudifunApi {
         return TeachPage.fromJson(r.data!);
       });
 
+  /// Leçon en fichier (PDF, Word .docx, LibreOffice .odt) : le serveur lit son texte, ou ses
+  /// pages comme des photos si c'est un PDF scanné. Le fichier n'est pas gardé.
+  Future<Lesson> lessonFromDocument(
+    Uint8List bytes,
+    String filename, {
+    void Function(int sent, int total)? onProgress,
+    String? childId,
+  }) => _call(() async {
+    final extension = filename.split('.').last.toLowerCase();
+    final form = FormData.fromMap({
+      'document': MultipartFile.fromBytes(
+        bytes,
+        filename: filename,
+        contentType: switch (extension) {
+          'pdf' => DioMediaType('application', 'pdf'),
+          'docx' => DioMediaType(
+            'application',
+            'vnd.openxmlformats-officedocument.wordprocessingml.document',
+          ),
+          'odt' => DioMediaType('application', 'vnd.oasis.opendocument.text'),
+          _ => DioMediaType('application', 'octet-stream'),
+        },
+      ),
+    });
+    final r = await _dio.post<Json>(
+      '/v1/lessons/document',
+      data: form,
+      queryParameters: _forChild(childId),
+      options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 2)),
+      onSendProgress: onProgress,
+    );
+    return lesson(r.data!['id'] as String, childId: childId);
+  });
+
   /// Leçon collée ou tapée : même analyse que pour une photo.
   Future<Lesson> lessonFromText(String text, {String? childId}) => _call(() async {
     final r = await _dio.post<Json>(

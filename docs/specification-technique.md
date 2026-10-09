@@ -20,6 +20,7 @@ ont été mises à jour depuis.
 | §8.1-8.3 | Photo, galerie, plusieurs pages réordonnables | ✅ | `features/capture` |
 | §8.4 | PDF | ⏳ V1.5 | — |
 | §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
+| §8.5 | Leçon en fichier (PDF, Word, LibreOffice) | ✅ §5.49 : `POST /v1/lessons/document`, bouton « J'ai la leçon en PDF ou Word » | `services/documents.py`, `features/capture/capture_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
 | §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation, thème contrôlé (§5.47) | `domain/knowledge.py`, `prompts/analysis.v8.md` |
@@ -1420,6 +1421,32 @@ première décrite est gardée au lieu de la dernière.
 Tests : `tests/domain/test_measure_and_syllables.py` (règle relue graduation par graduation,
 figure retournée à la main, syllabes recomptées lettre par lettre), widgets dans
 `mobile/test/activities/activities_test.dart`.
+
+### 5.49 Leçon envoyée en PDF ou en Word (octobre 2026)
+
+Une leçon reçue par l'ENT ou par courriel arrive souvent en fichier. `POST /v1/lessons/document`
+accepte un PDF, un Word (.docx) ou un LibreOffice (.odt), 15 Mo au plus
+(`settings.max_document_bytes`). `app/services/documents.py` le lit en mémoire, sans IA :
+
+- texte trouvé (Word, LibreOffice, PDF « numérique ») : paragraphes, titres et cases de tableau
+  dans l'ordre, puis même chemin qu'une leçon collée (source `text`, 40 à 20 000 caractères) ;
+- PDF scanné (pas de texte) : la plus grande image de chaque page (6 pages au plus), puis même
+  chemin que des photos (lecture, « Peux-tu vérifier ? »), source `photo` ;
+- refusés avec un message pour la famille : ancien Word (.doc : « enregistre-le en .docx ou en
+  PDF »), autre format, PDF protégé par un mot de passe, fichier abîmé, texte trop long.
+
+Le fichier n'est jamais enregistré (comme les photos, §15) : seul le texte extrait est gardé,
+comme pour une leçon collée. Garde-fous : taille lue limitée, 20 pages au plus pour le texte,
+texte décompressé d'un .docx ou .odt limité à 5 Mo (bombe de décompression), XML avec
+déclaration de type refusé (entités), lecture dans un fil à part.
+
+Application : bouton « J'ai la leçon en PDF ou Word » sur l'écran de la photo (enfant et parent),
+visible tant qu'aucune photo n'est prise ; sélecteur de fichiers du téléphone (`file_picker`,
+sans autorisation à demander sur Android), fichier trop lourd refusé avant l'envoi.
+
+Tests : `tests/services/test_documents.py` (Word, tableaux, LibreOffice, PDF texte, PDF scanné,
+fichiers refusés), `tests/api/test_documents.py` (route, analyse, refus),
+`mobile/test/features/child_flow_test.dart` (annulation, trop lourd, envoi).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1515,6 +1542,7 @@ tableau de bord, jamais du texte libre des leçons ; mode devoirs (V3) : dialogu
 | Méthode | Route | Rôle |
 |---|---|---|
 | POST | `/v1/lessons/text` `{text}` | ✅ étape 15 : leçon depuis un texte (CDC §8.5) ; 40 à 20 000 caractères |
+| POST | `/v1/lessons/document` (multipart `document`) | ✅ §5.49 : leçon en PDF, Word (.docx) ou LibreOffice (.odt), 15 Mo au plus ; texte → comme une leçon collée, PDF scanné → comme des photos ; 413 trop lourd, 415 format refusé (dont ancien .doc), 422 illisible ou protégé |
 | POST | `/v1/lessons/{id}/review` `{answers}` | ✅ étape 15 : réponses de l'enfant ; les passages sont dans `GET /v1/lessons/{id}` (`review`) |
 | POST | `/v1/sessions/{id}/items/{item_id}/help` | ✅ étape 14 : aide suivante (niveau 1 → 5) |
 | POST | `/v1/sessions/{id}/extend` | ✅ étape 17 : défis bonus (enfant rapide), après `bonus_offer` |

@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     ai_daily_budget_usd: float | None = 50.0
     max_pages: int = 6
     max_image_bytes: int = 8 * 1024 * 1024
+    max_document_bytes: int = 15 * 1024 * 1024  # leçon en PDF, Word ou LibreOffice
     lessons_per_day: int = 20  # par enfant
 
     # Comptes (§16.1)

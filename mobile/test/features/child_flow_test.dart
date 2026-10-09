@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -131,6 +132,7 @@ Future<Duration> advanceUntil(
 void main() {
   late FakeServer server;
   late FakeImagePicker picker;
+  PickedDocument? document; // fichier choisi dans le sélecteur (null : annulé)
 
   var clock = now; // horloge de l'affichage, avancée par certains tests
 
@@ -141,6 +143,7 @@ void main() {
       ..on('GET /v1/me/mission', (_) => (200, {'lesson': null}))
       ..on('GET /v1/lessons', (_) => (200, <Object>[]));
     picker = FakeImagePicker();
+    document = null;
   });
 
   Future<ProviderContainer> launch(WidgetTester tester, MemoryCredentialStore store) async {
@@ -150,6 +153,7 @@ void main() {
           ...overridesFor(server, store),
           imagePickerProvider.overrideWithValue(picker),
           imageCompressorProvider.overrideWithValue(FakeCompressor()),
+          documentPickerProvider.overrideWithValue(() async => document),
           nowProvider.overrideWithValue(() => clock),
         ],
         retry: noRetry,
@@ -427,6 +431,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(server.routes, contains('DELETE /v1/lessons/l4'));
     expect(server.routes.where((r) => r.startsWith('DELETE')), ['DELETE /v1/lessons/l4']);
+  });
+
+  testWidgets('leçon en PDF ou Word : le fichier part tel quel, puis l\'analyse', (tester) async {
+    server
+      ..on('POST /v1/lessons/document', (_) => (202, {'id': 'l1', 'status': 'uploaded'}))
+      ..on('GET /v1/lessons/l1', (_) => (200, lessonJson('ready')));
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Nouvelle leçon'));
+    await tester.pumpAndSettle();
+
+    // Annulé dans le sélecteur : rien n'est envoyé.
+    await tester.tap(find.text('J\'ai la leçon en PDF ou Word'));
+    await tester.pumpAndSettle();
+    expect(server.routes, isNot(contains('POST /v1/lessons/document')));
+
+    // Trop lourd : message, rien n'est envoyé.
+    document = (name: 'gros.pdf', bytes: Uint8List(maxDocumentBytes + 1));
+    await tester.tap(find.text('J\'ai la leçon en PDF ou Word'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ce fichier est trop lourd (15 Mo au plus).'), findsOneWidget);
+    expect(server.routes, isNot(contains('POST /v1/lessons/document')));
+
+    document = (name: 'Revolution.docx', bytes: Uint8List.fromList(utf8.encode('PK leçon')));
+    await tester.tap(find.text('J\'ai la leçon en PDF ou Word'));
+    await advanceUntil(tester, find.text('C\'est prêt ! 🎉'));
+    final sent = server.requests.indexWhere((r) => r.path == '/v1/lessons/document');
+    final body = latin1.decode(server.bodies[sent]);
+    expect(body, contains('name="document"; filename="Revolution.docx"'));
+    expect(body, contains('wordprocessingml.document'));
+    expect(bearer(server.requests[sent]), 'Bearer ldf_d_x');
+    await advance(tester, const Duration(seconds: 2)); // fin de l'écran d'analyse
+    await tester.pumpAndSettle();
   });
 
   testWidgets('photo illisible : retour à l\'écran 2 avec les photos gardées', (tester) async {

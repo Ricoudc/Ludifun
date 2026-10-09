@@ -36,6 +36,45 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
     }
   }
 
+  /// Une leçon reçue en PDF ou en Word (ENT, courriel de l'enseignant…).
+  Future<void> _sendDocument() async {
+    setState(() => _error = null);
+    final PickedDocument? document;
+    try {
+      document = await ref.read(documentPickerProvider)();
+    } on Exception {
+      setState(() => _error = 'Impossible d\'ouvrir les fichiers. Vérifie les autorisations.');
+      return;
+    }
+    if (document == null || !mounted) return;
+    if (document.bytes.length > maxDocumentBytes) {
+      setState(() => _error = 'Ce fichier est trop lourd (15 Mo au plus).');
+      return;
+    }
+    setState(() => _progress = 0);
+    try {
+      final lesson = await ref
+          .read(apiProvider)
+          .lessonFromDocument(
+            document.bytes,
+            document.name,
+            childId: widget.childId,
+            onProgress: (sent, total) {
+              if (mounted && total > 0) setState(() => _progress = sent / total);
+            },
+          );
+      refreshHome(ref);
+      if (mounted) context.go(Routes.analysis(lesson.id, childId: widget.childId));
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _progress = null;
+          _error = error.message;
+        });
+      }
+    }
+  }
+
   Future<void> _analyze() async {
     setState(() {
       _progress = 0;
@@ -108,16 +147,24 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
             icon: const Icon(Icons.photo_library_outlined),
             label: const Text('Ajouter depuis la galerie'),
           ),
-          const SizedBox(height: 4),
-          TextButton.icon(
-            onPressed: sending
-                ? null
-                : () => context.go(
-                    widget.childId == null ? Routes.paste : Routes.childPaste(widget.childId!),
-                  ),
-            icon: const Icon(Icons.content_paste),
-            label: const Text('J\'ai le texte de la leçon'),
-          ),
+          // Autres façons d'apporter la leçon, tant qu'aucune photo n'est prise.
+          if (pages.isEmpty) ...[
+            const SizedBox(height: 4),
+            TextButton.icon(
+              onPressed: sending
+                  ? null
+                  : () => context.go(
+                      widget.childId == null ? Routes.paste : Routes.childPaste(widget.childId!),
+                    ),
+              icon: const Icon(Icons.content_paste),
+              label: const Text('J\'ai le texte de la leçon'),
+            ),
+            TextButton.icon(
+              onPressed: sending ? null : _sendDocument,
+              icon: const Icon(Icons.description_outlined),
+              label: const Text('J\'ai la leçon en PDF ou Word'),
+            ),
+          ],
           const SizedBox(height: 12),
           if (pages.isEmpty)
             const _Tip()

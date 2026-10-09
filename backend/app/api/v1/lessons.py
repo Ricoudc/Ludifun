@@ -1,5 +1,6 @@
 """Leçons de l'enfant (écrans 1 à 4) et mission du jour."""
 
+import asyncio
 import uuid
 from typing import Annotated
 from zoneinfo import ZoneInfo
@@ -48,6 +49,7 @@ from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
 from app.domain.text import fuzzy_contains
 from app.services import ai_budget, goals, illustration, learning, lesson_diagnostics
+from app.services.documents import DocumentError, read_document
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 from app.services.live_calls import LIVE
@@ -62,6 +64,7 @@ FAILURE_MESSAGES = {
 }
 STEPS = ("reading", "analyzing", "generating")
 MIN_TEXT_CHARS = 40
+UNSUPPORTED = {"unsupported_document", "old_word_format"}  # 415 ; un fichier abîmé : 422
 
 
 def source_page(pages: list[LessonPage], excerpt: str) -> int | None:
@@ -187,6 +190,19 @@ async def create_lesson(
                 415, "unsupported_media_type", "Format de photo non pris en charge (JPEG, PNG, WebP)."
             )
         images.append(PageImage(data, media_type))
+    return await _start_from_images(request, child, db, settings, ai, registry, background, images)
+
+
+async def _start_from_images(
+    request: Request,
+    child: Child,
+    db: DbSession,
+    settings: AppSettings,
+    ai: ChildAi,
+    registry: Registry,
+    background: BackgroundTasks,
+    images: list[PageImage],
+) -> LessonAccepted:
     await ensure_ai_budget(db, settings)
     rate_limit(request, f"lessons:{child.id}", limit=settings.lessons_per_day, window_s=86400)
 
@@ -211,7 +227,20 @@ async def create_lesson_from_text(
     background: BackgroundTasks,
 ) -> LessonAccepted:
     """Leçon collée ou tapée : même analyse que pour une photo, sans l'étape de lecture."""
-    text = body.text.strip()
+    return await _start_from_text(request, child, db, settings, ai, registry, background, body.text)
+
+
+async def _start_from_text(
+    request: Request,
+    child: Child,
+    db: DbSession,
+    settings: AppSettings,
+    ai: ChildAi,
+    registry: Registry,
+    background: BackgroundTasks,
+    text: str,
+) -> LessonAccepted:
+    text = text.strip()
     if len(text) < MIN_TEXT_CHARS:
         raise ApiError(422, "text_too_short", "C'est un peu court pour une leçon : colle-la en entier.")
     if len(text) > settings.max_lesson_chars:
@@ -225,6 +254,33 @@ async def create_lesson_from_text(
         process_lesson, get_database(request), ai.ocr, ai.llm, registry, settings, lesson.id, (), text
     )
     return LessonAccepted(id=lesson.id, status=lesson.status)
+
+
+@router.post("/lessons/document", status_code=status.HTTP_202_ACCEPTED)
+async def create_lesson_from_document(
+    request: Request,
+    child: ChildInScope,
+    db: DbSession,
+    settings: AppSettings,
+    ai: ChildAi,
+    registry: Registry,
+    background: BackgroundTasks,
+    document: Annotated[UploadFile, File(description="La leçon en PDF, Word (.docx) ou LibreOffice (.odt)")],
+) -> LessonAccepted:
+    """Leçon en fichier : son texte suit le chemin d'une leçon collée ; un PDF scanné, celui des
+    photos. Le fichier n'est pas enregistré."""
+    data = await document.read(settings.max_document_bytes + 1)
+    if len(data) > settings.max_document_bytes:
+        raise ApiError(413, "document_too_large", "Ce fichier est trop lourd.")
+    try:
+        read = await asyncio.to_thread(read_document, data, settings.max_pages, settings.max_image_bytes)
+    except DocumentError as exc:
+        raise ApiError(415 if exc.code in UNSUPPORTED else 422, exc.code, exc.message) from exc
+    if read.images:
+        return await _start_from_images(request, child, db, settings, ai, registry, background, read.images)
+    if len(read.text) > settings.max_lesson_chars:
+        raise ApiError(422, "too_long", FAILURE_MESSAGES["too_long"])
+    return await _start_from_text(request, child, db, settings, ai, registry, background, read.text)
 
 
 async def review_items(db: DbSession, lesson: Lesson) -> list[LessonReviewItem]:

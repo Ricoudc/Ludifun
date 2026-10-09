@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -20,6 +21,27 @@ class CapturedPage {
 final imagePickerProvider = Provider<ImagePicker>((ref) => ImagePicker());
 
 final imageCompressorProvider = Provider<ImageCompressor>((ref) => platformCompressor());
+
+/// Une leçon reçue en fichier (PDF, Word, LibreOffice) : son nom et son contenu.
+typedef PickedDocument = ({String name, Uint8List bytes});
+
+/// Extensions acceptées par le serveur (`POST /v1/lessons/document`).
+const documentExtensions = ['pdf', 'docx', 'odt'];
+
+/// Plus gros fichier accepté par le serveur.
+const maxDocumentBytes = 15 * 1024 * 1024;
+
+/// Ouvre le sélecteur de fichiers du téléphone ; null si l'enfant ou le parent annule.
+final documentPickerProvider = Provider<Future<PickedDocument?> Function()>(
+  (ref) => () async {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: documentExtensions,
+    );
+    if (file == null) return null;
+    return (name: file.name, bytes: await file.readAsBytes());
+  },
+);
 
 /// Pages de la leçon en cours (écran 2). Gardées jusqu'à la fin de l'analyse : si la photo
 /// est illisible, l'enfant revient à l'écran 2 sans tout reprendre (§3, écran 3).
