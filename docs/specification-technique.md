@@ -1210,6 +1210,14 @@ le moteur de recherche installé et l'accord du parent (« Sites de confiance »
 `lesson_resources` accepte `fondamentaux`, `maitrelucas` et le type `lesson` ; l'application
 publiée saute ces ressources (type inconnu), la nouvelle les ouvre.
 
+**Calcul@TICE et Sésamath** (migration 0028, type `game`) : pour les leçons de **mathématiques**,
+les jeux de calcul mental de Calcul@TICE (académie de Lille, avec Sésamath, CP à 6e ; une page
+d'exercice `spip.php?articleN`, jamais une rubrique) et les pages du manuel en ligne Sésamath
+(6e à 3e). Les **PDF** des sites autorisés sont maintenant lus (pypdf, 40 pages et 8 Mo au plus) :
+les cahiers Sésamath (licence libre) et les documents Éduscol servent aux explications et aux
+questions « D'après… » ; un PDF n'est jamais proposé dans la visionneuse. `sesamath.net` (tous ses
+sous-domaines) remplace `manuel.sesamath.net` dans les sites autorisés par défaut.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

@@ -57,4 +57,21 @@ void main() {
       'Les Fondamentaux (Canopé)',
     );
   });
+
+  test('Calcul@TICE et Sésamath : un jeu et une page de manuel, sur leur site', () {
+    final game = LessonResource.tryParse({
+      'id': 'r1',
+      'provider': 'calculatice',
+      'kind': 'game',
+      'title': 'La table de multiplication',
+      'url': 'https://calculatice.ac-lille.fr/spip.php?article57',
+      'licence': 'Calcul@TICE',
+    });
+    expect(game?.kind.label, 'Jeu');
+    expect(
+      ResourceProvider.sesamath.allows(Uri.parse('https://manuel.sesamath.net/numerique/')),
+      isTrue,
+    );
+    expect(ResourceProvider.calculatice.allows(Uri.parse('https://ac-lille.fr/')), isFalse);
+  });
 }

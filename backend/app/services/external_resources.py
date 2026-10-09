@@ -212,7 +212,9 @@ async def prepare(
                 # Les Fondamentaux, Maître Lucas : des pages sur la leçon, pour la classe de l'enfant.
                 topic = keywords(" ".join([query, *(n.label for n in notions)]))
                 for site in LINKED_SITES:
-                    if lesson.grade not in site.grades:
+                    if lesson.grade not in site.grades or (
+                        site.subjects is not None and lesson.subject not in site.subjects
+                    ):
                         continue
                     search = web or WebSources(settings.web_search_url, site.sites)
                     try:

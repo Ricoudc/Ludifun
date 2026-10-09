@@ -10,7 +10,9 @@ enum ResourceProvider {
   vikidia('📖', 'Vikidia', ['vikidia.org']),
   lumni('📺', 'Lumni', ['lumni.fr']),
   fondamentaux('🎬', 'Les Fondamentaux (Canopé)', ['reseau-canope.fr']),
-  maitrelucas('👨‍🏫', 'Maître Lucas', ['maitrelucas.fr']);
+  maitrelucas('👨‍🏫', 'Maître Lucas', ['maitrelucas.fr']),
+  calculatice('🧠', 'Calcul@TICE', ['calculatice.ac-lille.fr']),
+  sesamath('📐', 'Sésamath', ['sesamath.net']);
 
   const ResourceProvider(this.emoji, this.label, this.hosts);
 
@@ -29,7 +31,8 @@ enum ResourceKind {
   quiz('Quiz'),
   video('Vidéo'),
   article('Article'),
-  lesson('Leçon');
+  lesson('Leçon'),
+  game('Jeu');
 
   const ResourceKind(this.label);
 

@@ -17,8 +17,14 @@ Trois sites, trois façons de faire, toutes dans l'application :
   publiée) : rien n'est copié ni lu par l'IA ; ses pages de leçon (vidéo, fiche) sont proposées
   telles quelles, comme un lien.
 
-Pour ces trois sites, le moteur de recherche du serveur trouve les pages ; le code ne garde que
-celles qui parlent de la leçon (`linked_resource`).
+- **Calcul@TICE** (académie de Lille, avec Sésamath) : des jeux de calcul mental du CP à la 6e,
+  pour les leçons de mathématiques.
+- **Sésamath** (manuels libres du collège) : les pages du manuel en ligne sur la notion ; ses
+  cahiers PDF servent aussi aux explications et questions « D'après… » (`sources.DEFAULT_SITES`).
+
+Pour ces sites, le moteur de recherche du serveur trouve les pages ; le code ne garde que celles
+qui parlent de la leçon (`linked_resource`). Un PDF n'est jamais proposé dans la visionneuse (le
+téléphone ne l'affiche pas) : il sert seulement de source de texte.
 
 La visionneuse ne quitte jamais le site de la ressource (`ALLOWED_HOSTS`) : un lien vers un autre
 site, une publicité, un réseau social n'est pas ouvert.
@@ -41,6 +47,8 @@ class Provider(StrEnum):
     LUMNI = "lumni"
     FONDAMENTAUX = "fondamentaux"
     MAITRE_LUCAS = "maitrelucas"
+    CALCULATICE = "calculatice"
+    SESAMATH = "sesamath"
 
 
 class ResourceKind(StrEnum):
@@ -48,7 +56,8 @@ class ResourceKind(StrEnum):
     QUIZ = "quiz"
     VIDEO = "video"
     ARTICLE = "article"
-    LESSON = "lesson"  # une page de leçon, souvent avec sa vidéo (Maître Lucas)
+    LESSON = "lesson"  # une page de leçon, souvent avec sa vidéo (Maître Lucas, Sésamath)
+    GAME = "game"  # un jeu d'entraînement en ligne, non noté par Ludifun (Calcul@TICE)
 
 
 # Sites que la visionneuse peut afficher, par fournisseur (les sous-domaines aussi).
@@ -58,6 +67,8 @@ ALLOWED_HOSTS: dict[Provider, tuple[str, ...]] = {
     Provider.LUMNI: ("lumni.fr",),
     Provider.FONDAMENTAUX: ("reseau-canope.fr",),
     Provider.MAITRE_LUCAS: ("maitrelucas.fr",),
+    Provider.CALCULATICE: ("calculatice.ac-lille.fr",),
+    Provider.SESAMATH: ("sesamath.net",),
 }
 LICENCES: dict[Provider, str] = {
     Provider.MATHALEA: "MathALÉA, Coopmaths (logiciel libre AGPL)",
@@ -65,6 +76,8 @@ LICENCES: dict[Provider, str] = {
     Provider.LUMNI: "Lumni, France Télévisions (droits réservés, consultation seulement)",
     Provider.FONDAMENTAUX: "Les Fondamentaux, Réseau Canopé (droits réservés, consultation seulement)",
     Provider.MAITRE_LUCAS: "Maître Lucas (consultation seulement, rien n'est copié)",
+    Provider.CALCULATICE: "Calcul@TICE, académie de Lille et Sésamath (exercices en ligne)",
+    Provider.SESAMATH: "Sésamath, association de professeurs de mathématiques (licence libre)",
 }
 PER_PROVIDER = 3  # ressources proposées au plus par site et par leçon
 
@@ -354,6 +367,9 @@ class LinkedSite:
     grades: frozenset[Grade]  # classes pour lesquelles le site est fait
     path: str = "/"  # seules les pages sous ce chemin
     site_name: str = ""  # retiré de la fin des titres
+    subjects: frozenset[Subject] | None = None  # matières de la leçon ; None : toutes
+    query: re.Pattern[str] | None = None  # adresses avec « ? » acceptées si la requête correspond
+    kind: ResourceKind | None = None  # type imposé (sinon vidéo ou leçon, selon la page)
 
 
 PRIMARY = frozenset({Grade.CP, Grade.CE1, Grade.CE2, Grade.CM1, Grade.CM2})
@@ -373,11 +389,29 @@ LINKED_SITES = (
         PRIMARY,
         site_name="Maître Lucas",
     ),
+    LinkedSite(
+        Provider.CALCULATICE,
+        ("calculatice.ac-lille.fr",),
+        "calcul@tice calcul mental",
+        PRIMARY | {Grade.SIXIEME},
+        site_name="Calcul@TICE",
+        subjects=frozenset({Subject.MATH}),
+        query=re.compile(r"^article\d+$"),  # SPIP : « spip.php?article123 », pas les rubriques
+        kind=ResourceKind.GAME,
+    ),
+    LinkedSite(
+        Provider.SESAMATH,
+        ("manuel.sesamath.net", "mathenpoche.sesamath.net", "sesamath.net"),
+        "sésamath manuel",
+        frozenset({Grade.SIXIEME, Grade.CINQUIEME, Grade.QUATRIEME, Grade.TROISIEME}),
+        site_name="Sésamath",
+        subjects=frozenset({Subject.MATH}),
+        query=re.compile(r"(^|&)(ouvrage|page|chapitre|exo|exercice|id)="),  # manuel numérique
+        kind=ResourceKind.LESSON,
+    ),
 )
 # Pages de navigation, jamais une leçon.
-_NAVIGATION = re.compile(
-    r"/(recherche|search|tag|tags|categorie|category|page|auteur|author|contact)(/|$)|\?"
-)
+_NAVIGATION = re.compile(r"/(recherche|search|tag|tags|categorie|category|page|auteur|author|contact)(/|$)")
 
 
 def linked_resource(site: LinkedSite, url: str, title: str, topic: Iterable[str]) -> Resource | None:
@@ -387,10 +421,13 @@ def linked_resource(site: LinkedSite, url: str, title: str, topic: Iterable[str]
         return None
     parts = urlsplit(url)
     path = parts.path or "/"
+    query_ok = not parts.query or (site.query is not None and site.query.search(parts.query) is not None)
     if (
-        not path.startswith(site.path)
-        or path.rstrip("/") == site.path.rstrip("/")
-        or _NAVIGATION.search(path + ("?" if parts.query else ""))
+        not query_ok
+        or not path.startswith(site.path)
+        or path.lower().endswith(".pdf")  # la visionneuse du téléphone n'affiche pas les PDF
+        or (path.rstrip("/") == site.path.rstrip("/") and not parts.query)
+        or _NAVIGATION.search(path)
     ):
         return None
     if site.site_name:
@@ -399,5 +436,5 @@ def linked_resource(site: LinkedSite, url: str, title: str, topic: Iterable[str]
     if not title or not keywords(title) & set(topic):
         return None
     video = site.provider is Provider.FONDAMENTAUX or "video" in normalize(f"{path} {title}")
-    kind = ResourceKind.VIDEO if video else ResourceKind.LESSON
+    kind = site.kind or (ResourceKind.VIDEO if video else ResourceKind.LESSON)
     return Resource(site.provider, kind, title, url)

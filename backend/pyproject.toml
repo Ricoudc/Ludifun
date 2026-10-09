@@ -21,6 +21,7 @@ dependencies = [
     "httpx>=0.27", # fournisseurs d'IA compatibles OpenAI, Ollama
     "cryptography>=43", # clés d'IA des familles, chiffrées en base
     "pillow>=11",
+    "pypdf>=6.19.0",
 ]
 
 [dependency-groups]

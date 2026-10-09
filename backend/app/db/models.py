@@ -377,9 +377,11 @@ class LessonImage(Base):
 
 
 RESOURCE_PROVIDERS = (  # domain.resources.Provider
-    "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas",
+    "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas", "calculatice", "sesamath",
 )  # fmt: skip
-RESOURCE_KINDS = ("exercise", "quiz", "video", "article", "lesson")  # domain.resources.ResourceKind
+RESOURCE_KINDS = (  # domain.resources.ResourceKind
+    "exercise", "quiz", "video", "article", "lesson", "game",
+)  # fmt: skip
 
 
 class LessonResource(Base):

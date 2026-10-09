@@ -125,8 +125,10 @@ class LessonResourceOut(BaseModel):
     qui ne quitte pas le site (`provider`)."""
 
     id: uuid.UUID
-    provider: Literal["mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas"]
-    kind: Literal["exercise", "quiz", "video", "article", "lesson"]
+    provider: Literal[
+        "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas", "calculatice", "sesamath"
+    ]
+    kind: Literal["exercise", "quiz", "video", "article", "lesson", "game"]
     title: str
     url: str
     licence: str

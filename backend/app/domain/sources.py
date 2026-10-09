@@ -22,7 +22,7 @@ DEFAULT_SITES = (
     "www.lumni.fr",
     "eduscol.education.gouv.fr",
     "www.education.gouv.fr",
-    "manuel.sesamath.net",
+    "sesamath.net",  # manuels et cahiers libres du collège (pages et PDF)
     "fr.wikipedia.org",
 )
 EXCERPT_CHARS = 800  # un extrait : quelques paragraphes, assez court pour une petite IA locale

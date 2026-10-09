@@ -641,3 +641,30 @@ async def test_migration_0027_new_resource_sites(engine: AsyncEngine, db: AsyncS
         providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
     assert providers == ["lumni"]
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0028_calculatice_and_sesamath(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Calcul@TICE (type « jeu ») et Sésamath acceptés ; retour arrière : leurs ressources
+    disparaissent, les autres restent."""
+    await create_full_lesson(db)
+    await db.commit()
+    lesson = await db.scalar(select(Lesson.id).limit(1))
+    await db.commit()
+    insert = text(
+        "INSERT INTO lesson_resources (id, lesson_id, provider, kind, title, url, position) "
+        "VALUES (:id, :lesson, :provider, :kind, 'Titre', :url, :position)"
+    )
+    async with engine.begin() as conn:
+        for position, (provider, kind) in enumerate(
+            [("calculatice", "game"), ("sesamath", "lesson"), ("maitrelucas", "lesson")]
+        ):
+            await conn.execute(
+                insert,
+                {"id": uuid.uuid4(), "lesson": lesson, "provider": provider, "kind": kind,
+                 "url": f"https://exemple.fr/{position}", "position": position},
+            )  # fmt: skip
+    await run_alembic("downgrade", "0027")
+    async with engine.connect() as conn:
+        providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
+    assert providers == ["maitrelucas"]
+    await run_alembic("upgrade", "head")

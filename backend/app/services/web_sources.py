@@ -6,12 +6,16 @@ le prénom de l'enfant ni sa photo). Seules les pages en https des sites autoris
 une redirection vers un autre site est refusée.
 """
 
+import asyncio
+import io
 import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from html.parser import HTMLParser
 
 import httpx
+from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 
 from app.domain.sources import DEFAULT_SITES, EXCERPT_CHARS, Excerpt, allowed, best_excerpts
 from app.services.library import Library
@@ -20,6 +24,8 @@ logger = logging.getLogger("ludifun.sources")
 
 TIMEOUT_S = 10.0
 MAX_PAGE_BYTES = 2 * 1024 * 1024
+MAX_PDF_BYTES = 8 * 1024 * 1024  # un cahier ou une fiche (Sésamath, Éduscol)
+MAX_PDF_PAGES = 40
 MAX_PAGES = 4  # pages lues par question
 USER_AGENT = "Ludifun/1.0 (coach de revision ; recherche de sources educatives)"
 
@@ -82,6 +88,26 @@ def page_text(html: str) -> tuple[str, str]:
     for mark in ("[modifier | modifier le code]", "[modifier]"):
         text = text.replace(mark, "")
     return " ".join(extractor.title.split()), text
+
+
+def pdf_text(data: bytes, url: str = "") -> tuple[str, str] | None:
+    """(titre, texte) d'un PDF : les `MAX_PDF_PAGES` premières pages ; None s'il est illisible
+    (protégé, abîmé, ou seulement des images)."""
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            return None
+        pages = [page.extract_text() or "" for page in reader.pages[:MAX_PDF_PAGES]]
+        metadata = reader.metadata
+        title = str(metadata.title or "").strip() if metadata is not None else ""
+    except (PdfReadError, ValueError, KeyError, TypeError, OSError) as exc:
+        logger.info("PDF illisible %s : %s", url, type(exc).__name__)
+        return None
+    text = "\n\n".join(p.strip() for p in pages if p.strip())
+    if not text:
+        return None
+    name = url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".pdf").replace("_", " ").replace("-", " ")
+    return title or name, text
 
 
 class WebSources:
@@ -147,20 +173,25 @@ class WebSources:
         ]
 
     async def fetch(self, url: str) -> tuple[str, str] | None:
-        """(titre, texte) d'une page autorisée ; None si elle n'est pas lisible."""
+        """(titre, texte) d'une page autorisée, ou d'un PDF (cahiers Sésamath, documents
+        Éduscol) ; None si elle n'est pas lisible."""
         if not allowed(url, self.sites):
             return None
         try:
             async with self._client.stream("GET", url) as response:
                 kind = response.headers.get("content-type", "")
-                if response.status_code != 200 or "html" not in kind:
+                pdf = "application/pdf" in kind
+                if response.status_code != 200 or ("html" not in kind and not pdf):
                     return None
+                limit = MAX_PDF_BYTES if pdf else MAX_PAGE_BYTES
                 body = bytearray()
                 async for chunk in response.aiter_bytes():
                     body += chunk
-                    if len(body) > MAX_PAGE_BYTES:
+                    if len(body) > limit:
                         return None
                 encoding = response.encoding or "utf-8"
+            if pdf:
+                return await asyncio.to_thread(pdf_text, bytes(body), url)
             text = body.decode(encoding, errors="replace")
         except (httpx.HTTPError, LookupError) as exc:  # LookupError : jeu de caractères inconnu
             logger.info("Page illisible %s : %s", url, type(exc).__name__)

@@ -210,7 +210,7 @@ def test_linked_sites_keep_only_lesson_pages_about_the_topic() -> None:
     from app.domain.resources import LINKED_SITES, Provider, ResourceKind, linked_resource
     from app.domain.sources import keywords
 
-    fondamentaux, lucas = LINKED_SITES
+    fondamentaux, lucas = LINKED_SITES[:2]
     topic = keywords("Les fractions numérateur dénominateur")
     film = linked_resource(
         fondamentaux,
@@ -240,3 +240,44 @@ def test_linked_sites_keep_only_lesson_pages_about_the_topic() -> None:
     )
     assert Grade.CE1 in lucas.grades and Grade.CINQUIEME not in lucas.grades
     assert Grade.SIXIEME in fondamentaux.grades
+
+
+def test_calculatice_and_sesamath_for_math_lessons() -> None:
+    """Calcul@TICE : un exercice (article SPIP), jamais une rubrique ; Sésamath : une page du
+    manuel en ligne, jamais un PDF (le téléphone ne l'affiche pas) ; les deux en maths seulement."""
+    from app.domain.knowledge import Subject
+    from app.domain.resources import LINKED_SITES, Provider, ResourceKind, linked_resource
+    from app.domain.sources import keywords
+
+    sites = {s.provider: s for s in LINKED_SITES}
+    calcul, sesamath = sites[Provider.CALCULATICE], sites[Provider.SESAMATH]
+    topic = keywords("La multiplication tables de multiplication")
+    game = linked_resource(
+        calcul,
+        "https://calculatice.ac-lille.fr/spip.php?article57",
+        "La table de multiplication - Calcul@TICE",
+        topic,
+    )
+    assert game is not None and game.kind is ResourceKind.GAME and game.title == "La table de multiplication"
+    assert (
+        linked_resource(calcul, "https://calculatice.ac-lille.fr/spip.php?rubrique2", "Multiplication", topic)
+        is None
+    )
+    page = linked_resource(
+        sesamath,
+        "https://manuel.sesamath.net/numerique/?ouvrage=ms6_2019&page=42",
+        "Multiplication | Sésamath",
+        topic,
+    )
+    assert page is not None and page.kind is ResourceKind.LESSON and page.provider is Provider.SESAMATH
+    assert (
+        linked_resource(sesamath, "https://manuel.sesamath.net/cahier_6e.pdf", "Multiplication", topic)
+        is None
+    )
+    assert linked_resource(sesamath, "https://manuel.sesamath.net/?utm=pub", "Multiplication", topic) is None
+    assert (
+        calcul.subjects == frozenset({Subject.MATH})
+        and Grade.CE1 in calcul.grades
+        and Grade.CINQUIEME not in calcul.grades
+    )
+    assert sesamath.subjects == frozenset({Subject.MATH}) and Grade.CM2 not in sesamath.grades
