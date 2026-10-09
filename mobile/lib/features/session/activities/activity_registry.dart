@@ -19,6 +19,7 @@ import 'picture_views.dart';
 import 'speed_challenge_view.dart';
 import 'spelling_views.dart';
 import 'true_false_view.dart';
+import 'word_games_views.dart';
 
 typedef ActivitySubmit = void Function(Map<String, Object?> response);
 typedef ActivityBuilder = Widget Function(Json payload, ActivitySubmit onSubmit);
@@ -62,6 +63,10 @@ final activityRegistry = <String, ActivityBuilder>{
   'NUMBER_LINE': (payload, onSubmit) => NumberLineView(payload: payload, onSubmit: onSubmit),
   'FRACTION_BAR': (payload, onSubmit) => FractionBarView(payload: payload, onSubmit: onSubmit),
   'COLUMN_OP': (payload, onSubmit) => ColumnOperationView(payload: payload, onSubmit: onSubmit),
+  // Jeux calculés pour toutes les matières
+  'WORD_HUNT': (payload, onSubmit) => WordHuntView(payload: payload, onSubmit: onSubmit),
+  'CONJUGATION': (payload, onSubmit) => ConjugationView(payload: payload, onSubmit: onSubmit),
+  'HOMOPHONE': (payload, onSubmit) => HomophoneView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

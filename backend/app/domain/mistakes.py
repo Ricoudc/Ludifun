@@ -65,6 +65,16 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
             given = f"Graduation n° {response.get('index', '?')}"
         case ActivityCode.FRACTION_BAR:
             given = f"{len(response.get('colored', []))} part(s) coloriée(s) sur {payload.get('parts', '?')}"
+        case ActivityCode.WORD_HUNT:
+            words = _texts(payload.get("words"))
+            touched = [words.get(str(w), "?") for w in response.get("selected", [])]
+            given = "Mots touchés : " + (", ".join(touched) if touched else "aucun")
+        case ActivityCode.CONJUGATION | ActivityCode.HOMOPHONE:
+            rows, chips = _texts(payload.get("items")), _texts(payload.get("choices"))
+            chosen = dict(response.get("answers", []))
+            picked = {row: chips.get(choice, choice) for row, choice in chosen.items()}
+            given = _lines([f"{rows.get(d['id'], '?')} → {picked.get(d['id'], 'rien')}" for d in wrong])
+            expected = _lines([d["expected"] for d in wrong])
         case ActivityCode.COLUMN_OP:
             given = str(response.get("result", "")).strip() or "(rien écrit)"
         case ActivityCode.ALIGN if payload.get("task") == "yes_no":

@@ -11,6 +11,7 @@ réponse est calculée. Ils sont proposés pour une notion de maths dont le thè
 """
 
 import random
+import re
 from fractions import Fraction
 from typing import Any
 
@@ -29,7 +30,7 @@ from app.domain.activities.base import (
 )
 from app.domain.errors import ErrorType
 from app.domain.knowledge import Grade as SchoolGrade
-from app.domain.knowledge import KnowledgeUnit, Subject
+from app.domain.knowledge import KnowledgeType, KnowledgeUnit, Subject
 from app.domain.math_generator import Topic, fmt, topics
 
 GRADES = list(SchoolGrade)
@@ -110,6 +111,27 @@ INTEGER_STEPS = {
 }
 
 
+_YEAR = re.compile(r"(?<![\d,.])(\d{3,4})(?![\d,.])")
+
+
+def _year(unit: KnowledgeUnit) -> int | None:
+    """L'année d'une date ou d'un événement d'histoire (« 1789 », « en 800 »), hors maths."""
+    if unit.subject == Subject.MATH or unit.type not in (KnowledgeType.DATE, KnowledgeType.EVENT):
+        return None
+    attributes = unit.item.attributes
+    text = str(attributes.get("value") or attributes.get("date") or "")
+    if re.search(r"av(\.|ant) ?j", text.lower()):
+        return None  # avant Jésus-Christ : une autre frise
+    found = _YEAR.search(text)
+    year = int(found.group(1)) if found else None
+    return year if year is not None and 100 <= year <= 2100 else None
+
+
+def _event(unit: KnowledgeUnit) -> str:
+    event = unit.item.attributes.get("event") if unit.type == KnowledgeType.DATE else None
+    return str(event or unit.item.label)
+
+
 class IndexResponse(ResponseModel):
     index: int = Field(ge=0, le=40)
 
@@ -128,7 +150,45 @@ class NumberLine(ActivityType):
     base_duration_s = 20
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
-        return bool(_topics(unit) & NUMBER_TOPICS)
+        return bool(_topics(unit) & NUMBER_TOPICS) or _year(unit) is not None
+
+    @staticmethod
+    def _frise(
+        unit: KnowledgeUnit, year: int, difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Histoire : placer une date sur une frise. Difficulté 1, frise d'un siècle graduée tous
+        les 10 ans ; 2, frise de 10 ans graduée année par année ; 3, comme 1 mais sans donner
+        l'année (il faut la savoir). Entre deux graduations, la plus proche est juste (les deux
+        pour une année en 5)."""
+        event = _event(unit)
+        if difficulty == 2:
+            start = year - year % 10 if year % 10 else year - 5  # une frise de 1780 à 1790
+            step, accepted = 1, [year - start]
+        else:
+            start, step = year // 100 * 100, 10
+            offset = year - start
+            accepted = sorted(
+                {offset // 10, (offset + 9) // 10} if offset % 10 == 5 else {round(offset / 10)}
+            )
+        labeled = [0, 10] if difficulty == 2 else [0, 5, 10]
+        payload = {
+            "prompt": (
+                f"Place « {event} » sur la frise."
+                if difficulty == 3
+                else f"Place l'année {year} sur la frise."
+                if difficulty == 2 or year % 10 == 0
+                else f"Touche la graduation la plus proche de l'année {year}."
+            ),
+            "task": "place",
+            "intervals": 10,
+            "labels": [{"index": i, "text": str(start + step * i)} for i in labeled],
+        }
+        return payload, {
+            "index": accepted[0],
+            "accepted": accepted,
+            "display": f"{event}, en {year}.",
+            **feedback(unit),
+        }
 
     @staticmethod
     def _line(unit: KnowledgeUnit, difficulty: int, rng: random.Random) -> dict[str, Any]:
@@ -182,6 +242,9 @@ class NumberLine(ActivityType):
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
+        year = _year(unit)
+        if year is not None and not _topics(unit) & NUMBER_TOPICS:
+            return self._frise(unit, year, difficulty, rng)
         for _ in range(20):
             line = self._line(unit, difficulty, rng)
             target, text = line["target"], line["text"]
@@ -232,8 +295,11 @@ class NumberLine(ActivityType):
         if index > activity.payload["intervals"]:
             raise InvalidResponse("graduation hors de la droite")
         expected = activity.solution["index"]
+        accepted = activity.solution.get("accepted", [expected])
         error = ErrorType.CALCULATION if abs(index - expected) == 1 else ErrorType.METHOD
-        return _result(activity, 1.0 if index == expected else 0.0, error)
+        if "accepted" in activity.solution:
+            error = ErrorType.KNOWLEDGE  # une frise d'histoire : la date n'est pas encore sue
+        return _result(activity, 1.0 if index in accepted else 0.0, error)
 
 
 # --------------------------------------------------------------------------- #

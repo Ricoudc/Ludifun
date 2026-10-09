@@ -23,6 +23,7 @@ from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.spelling import Dictation, Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
 from app.domain.activities.unjumble import Unjumble
+from app.domain.activities.word_games import Conjugation, Homophones, WordHunt
 from app.domain.knowledge import KnowledgeUnit
 
 
@@ -106,5 +107,9 @@ def default_registry() -> ActivityRegistry:
             NumberLine(),
             FractionBar(),
             ColumnOperation(),
+            # Jeux calculés pour toutes les matières
+            WordHunt(),
+            Conjugation(),
+            Homophones(),
         ]
     )

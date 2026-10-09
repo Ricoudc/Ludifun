@@ -37,6 +37,7 @@ EXTRA_CODES = {
 PICTURE_CODES = {ActivityCode.PICTURE_MATCH, ActivityCode.PICTURE_FIND}  # étape 28
 GEOMETRY_CODES = {ActivityCode.ALIGN}  # figure dessinée par le code
 MATH_CODES = {ActivityCode.NUMBER_LINE, ActivityCode.FRACTION_BAR, ActivityCode.COLUMN_OP}  # calculés
+WORD_CODES = {ActivityCode.WORD_HUNT, ActivityCode.CONJUGATION, ActivityCode.HOMOPHONE}  # toutes matières
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -50,6 +51,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | PICTURE_CODES
         | GEOMETRY_CODES
         | MATH_CODES
+        | WORD_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

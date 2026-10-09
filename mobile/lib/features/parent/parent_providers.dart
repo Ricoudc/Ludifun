@@ -84,6 +84,9 @@ const activityLabels = {
   'NUMBER_LINE': ('📏', 'Droites graduées'),
   'FRACTION_BAR': ('🍕', 'Fractions à colorier'),
   'COLUMN_OP': ('🧮', 'Opérations posées'),
+  'WORD_HUNT': ('🔍', 'Chasses aux mots'),
+  'CONJUGATION': ('📝', 'Tableaux de conjugaison'),
+  'HOMOPHONE': ('👂', 'Homophones'),
 };
 
 /// Avatars proposés à la création d'un profil.

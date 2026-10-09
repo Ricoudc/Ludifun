@@ -63,8 +63,8 @@ def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel
     code = ActivityCode(code)
     if code is ActivityCode.OPEN_QUESTION:
         return CognitiveLevel(min(5, difficulty + 2))  # difficulté 1, 2, 3 → appliquer, expliquer, transférer
-    if code is ActivityCode.COLUMN_OP:
-        return CognitiveLevel.APPLY  # poser et calculer
+    if code in (ActivityCode.COLUMN_OP, ActivityCode.CONJUGATION, ActivityCode.HOMOPHONE):
+        return CognitiveLevel.APPLY  # poser et calculer, conjuguer, choisir le bon homophone
     if code in (ActivityCode.NUMBER_LINE, ActivityCode.FRACTION_BAR):
         # Lire (difficulté 2) : reconnaître ; placer ou colorier : appliquer.
         return CognitiveLevel.RECOGNIZE if difficulty == 2 else CognitiveLevel.APPLY

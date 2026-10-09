@@ -172,6 +172,10 @@ Un appareil sert **un seul espace**. Pour tester les deux :
   graduation, lire la flèche), fraction à colorier (bande ou disque) et opération posée (taper
   les chiffres de droite à gauche, noter les retenues) ; vérifier que tout se touche bien du
   doigt et que les nombres conviennent à la classe. D'une séance à l'autre, les jeux changent.
+- **Une leçon de français** (conjugaison, homophones, nature des mots, pluriel) : tableau de
+  conjugaison, homophones phrase par phrase, chasse aux mots. **Une leçon d'histoire avec des
+  dates** : la frise. **Sciences, géographie** : la chasse aux mots sur les catégories de la
+  leçon.
 - **Une leçon de maths** : plus aucun jeu de français (mot éclair, lettres mélangées, dictée,
   phrase à remettre dans l'ordre).
 

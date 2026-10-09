@@ -294,6 +294,98 @@ void main() {
     ]);
   });
 
+  testWidgets('chasse aux mots : toucher, retirer, valider', (tester) async {
+    await show(tester, 'WORD_HUNT', {
+      'prompt': 'Touche tous les noms.',
+      'words': [
+        {'id': 'w1', 'text': 'chat'},
+        {'id': 'w2', 'text': 'courir'},
+        {'id': 'w3', 'text': 'maison'},
+        {'id': 'w4', 'text': 'rouge'},
+      ],
+    });
+    for (final word in ['maison', 'courir', 'chat', 'courir']) {
+      await tester.tap(find.text(word));
+      await tester.pump();
+    }
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'selected': ['w1', 'w3'],
+      },
+    ]);
+  });
+
+  testWidgets('conjugaison : remplir les lignes, en vider une, valider', (tester) async {
+    await show(tester, 'CONJUGATION', {
+      'prompt': 'Conjugue « finir » au présent.',
+      'word': 'finir',
+      'items': [
+        {'id': 'p0', 'text': 'je'},
+        {'id': 'p1', 'text': 'tu'},
+        {'id': 'p2', 'text': 'il'},
+      ],
+      'choices': [
+        {'id': 'c1', 'text': 'finit'},
+        {'id': 'c2', 'text': 'finis'},
+        {'id': 'c3', 'text': 'finis'},
+      ],
+    });
+    await tester.tap(find.text('finit')); // je → finit (erreur)
+    await tester.pump();
+    await tester.tap(find.text('finit')); // la ligne se vide
+    await tester.pump();
+    await tester.tap(find.text('finis').first);
+    await tester.pump();
+    await tester.tap(find.text('finis').last);
+    await tester.pump();
+    await tester.tap(find.text('finit'));
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'answers': [
+          ['p0', 'c2'],
+          ['p1', 'c3'],
+          ['p2', 'c1'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('homophones : une phrase à la fois, réponse après la dernière', (tester) async {
+    await show(tester, 'HOMOPHONE', {
+      'prompt': 'Choisis le bon mot pour chaque phrase.',
+      'items': [
+        {
+          'id': 's1',
+          'text': 'Léa ___ un chat.',
+          'choices': ['a', 'à'],
+        },
+        {
+          'id': 's2',
+          'text': 'Je vais ___ l\'école.',
+          'choices': ['a', 'à'],
+        },
+      ],
+    });
+    expect(find.text('Phrase 1 sur 2'), findsOneWidget);
+    await tester.tap(find.text('a'));
+    await tester.pump();
+    expect(sent, isEmpty);
+    expect(find.text('Phrase 2 sur 2'), findsOneWidget);
+    await tester.tap(find.text('à'));
+    await tester.pump();
+    expect(sent, [
+      {
+        'answers': [
+          ['s1', 'a'],
+          ['s2', 'à'],
+        ],
+      },
+    ]);
+  });
+
   testWidgets('points alignés : oui ou non', (tester) async {
     await show(tester, 'ALIGN', {
       'prompt': 'Les 3 points sont-ils alignés ?',

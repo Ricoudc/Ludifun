@@ -95,6 +95,22 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"colored": list(range(count))}
         case ActivityCode.COLUMN_OP:
             return {"result": s["result"] if single_ok else str(int(s["result"]) + 1)}
+        case ActivityCode.WORD_HUNT:
+            return {"selected": s["expected"] if single_ok else s["expected"][1:]}
+        case ActivityCode.CONJUGATION:
+            by_text = {c["text"]: c["id"] for c in activity.payload["choices"]}
+            rows = list(s["expected"].items())
+            if not single_ok:  # deux lignes inversées
+                rows = [(rows[1][0], rows[0][1]), (rows[0][0], rows[1][1]), *rows[2:]]
+            return {"answers": [[row, by_text[form]] for row, form in rows]}
+        case ActivityCode.HOMOPHONE:
+            choices = {i["id"]: i["choices"] for i in activity.payload["items"]}
+            return {
+                "answers": [
+                    [sid, word if single_ok else next(c for c in choices[sid] if c != word)]
+                    for sid, word in s["expected"].items()
+                ]
+            }
         case ActivityCode.ALIGN:
             if "choice_id" in s:
                 return {

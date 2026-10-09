@@ -26,6 +26,8 @@ PAYLOAD_KEYS = {
     ActivityCode.MAP: {"prompt", "figure", "items"},
     ActivityCode.COLORING: {"prompt", "figure", "palette", "count"},
     ActivityCode.UNJUMBLE: {"prompt", "words"},
+    ActivityCode.WORD_HUNT: {"prompt", "words"},
+    ActivityCode.NUMBER_LINE: {"prompt", "task", "intervals", "labels"},  # frise d'histoire
 }
 
 
@@ -58,6 +60,15 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             }
         case ActivityCode.TRUE_FALSE:
             return {"value": not s["value"]}
+        case ActivityCode.WORD_HUNT:  # seulement des intrus
+            return {
+                "selected": [w["id"] for w in activity.payload["words"] if w["id"] not in s["expected"]][:2]
+            }
+        case ActivityCode.CONJUGATION:
+            first = activity.payload["choices"][0]["id"]
+            return {"answers": [[row, first] for row in s["expected"]]}
+        case ActivityCode.HOMOPHONE:
+            return {"answers": [[i["id"], "x"] for i in activity.payload["items"]]}
         case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choice_id" in s:
             return {
                 "choice_id": next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])

@@ -55,6 +55,10 @@ class ActivityCode(StrEnum):
     NUMBER_LINE = "NUMBER_LINE"  # droite graduée : placer ou lire un nombre
     FRACTION_BAR = "FRACTION_BAR"  # fraction à colorier : colorier ou lire une fraction
     COLUMN_OP = "COLUMN_OP"  # opération posée : addition, soustraction, multiplication
+    # Jeux calculés pour toutes les matières.
+    WORD_HUNT = "WORD_HUNT"  # chasse aux mots : toucher tous les éléments d'une catégorie
+    CONJUGATION = "CONJUGATION"  # conjugaison : compléter le tableau d'un verbe
+    HOMOPHONE = "HOMOPHONE"  # homophones : a ou à, et ou est… dans des phrases
 
 
 Result = Literal["correct", "partial", "incorrect"]

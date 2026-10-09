@@ -1339,6 +1339,24 @@ d'où vient l'erreur. Ces jeux comptent pour le niveau « appliquer » (lire la 
 : « reconnaître »). Ils marchent sans connexion ; l'application publiée saute ces types
 inconnus. Les textes de correction n'ont pas de deux-points (la typographie française du serveur
 y ajoute une espace).
+
+### 5.45 Jeux calculés pour toutes les matières (octobre 2026)
+
+Les jeux fabriqués par le code ne sont plus réservés aux maths (`activities/word_games.py`,
+`domain/french.py`) :
+
+| Jeu | Matières | Ce que fait l'enfant |
+|---|---|---|
+| `WORD_HUNT` chasse aux mots | toutes : catégories de la leçon (classement, jeu de tri vérifié) ; en français, lexique du code (nature des mots, singulier/pluriel, masculin/féminin) | toucher tous les éléments d'une catégorie parmi 6, 9 ou 12 (« Touche tous les noms », « Touche tout ce qui va dans « vivipares » ») |
+| `CONJUGATION` tableau de conjugaison | français (notion de conjugaison ; temps et verbes tirés de la notion) | une forme par personne ; difficulté 1 : 4 personnes, 3 : deux formes d'un autre temps en intrus |
+| `HOMOPHONE` homophones | français (a/à, et/est, son/sont, on/ont, ces/ses, ou/où, ce/se ; CP-CE1 : les quatre premiers) | une phrase écrite à la main à la fois, choisir le bon mot |
+| `NUMBER_LINE` frise | histoire : une date ou un événement avec son année | placer l'année sur une frise d'un siècle (graduée par 10 ans, la plus proche est juste) ou d'une décennie ; difficulté 3 : placer l'événement sans voir l'année |
+
+Le code conjugue (1er groupe sans changement de radical, avec manger → mangeons et commencer →
+commençons ; 2e groupe ; être, avoir, aller, faire ; passé composé avec avoir seulement) ; les
+tableaux sont vérifiés contre des tableaux recopiés à la main. La correction est donnée phrase
+par phrase ou ligne par ligne. Une erreur de date sur la frise compte comme « ne connaît pas
+encore » pour le parent.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

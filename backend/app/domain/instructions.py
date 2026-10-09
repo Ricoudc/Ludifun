@@ -155,6 +155,21 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Pose l'opération : commence par les unités, n'oublie pas les retenues.",
         "Effectue l'opération posée, en commençant par la droite.",
     ),
+    ActivityCode.WORD_HUNT: (
+        "Touche tous les bons mots. Puis valide.",
+        "Trouve et touche tous les éléments demandés, puis valide.",
+        "Repère tous les éléments de la catégorie demandée.",
+    ),
+    ActivityCode.CONJUGATION: (
+        "Touche une forme du verbe pour chaque ligne.",
+        "Complète le tableau : une forme du verbe pour chaque personne.",
+        "Conjugue le verbe à toutes les personnes demandées.",
+    ),
+    ActivityCode.HOMOPHONE: (
+        "Lis la phrase. Touche le bon mot.",
+        "Lis chaque phrase et choisis le mot qui convient.",
+        "Choisis l'homophone qui convient dans chaque phrase.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",
