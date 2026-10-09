@@ -11,6 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.domain.child_safety import unsafe_reason
 from app.domain.equivalence import all_different, same_answer, separate_boxes, statement_truth
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
@@ -189,6 +190,8 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
             continue
         if any(existing.id == item.id for existing in items):
             rejected.append(Rejection(element, "identifiant en double"))
+        elif reason := unsafe_reason(item.model_dump(mode="json"), ocr_text):
+            rejected.append(Rejection(element, reason))
         elif not fuzzy_contains(ocr_text, item.source_excerpt):
             rejected.append(Rejection(element, "source_excerpt introuvable dans le texte de la leçon"))
         else:
@@ -392,6 +395,26 @@ def _check_tip(tip: str, item: KnowledgeItem) -> str:
     return ""
 
 
+def _screen_for_child(raw: Mapping[str, Any], context: str, rejected: list[Rejection]) -> dict[str, Any]:
+    """§141 : chaque élément destiné à l'enfant qui contient un passage inadapté, absent de la
+    leçon, est écarté (le reste de la notion est gardé)."""
+    screened: dict[str, Any] = {}
+    for key, value in raw.items():
+        if isinstance(value, list):
+            kept = []
+            for i, element in enumerate(value):
+                if reason := unsafe_reason(element, context):
+                    rejected.append(Rejection(f"{key}[{i}]", reason))
+                else:
+                    kept.append(element)
+            screened[key] = kept
+        elif reason := unsafe_reason(value, context):
+            rejected.append(Rejection(key, reason))
+        else:
+            screened[key] = value
+    return screened
+
+
 def validate_material(
     item: KnowledgeItem, raw: Mapping[str, Any], lesson_text: str | None = None
 ) -> MaterialValidation:
@@ -400,6 +423,7 @@ def validate_material(
     rejected: list[Rejection] = []
     raw = clean_markup(dict(raw))
     source = strip_markup(lesson_text) if lesson_text is not None else item.corpus()
+    raw = _screen_for_child(raw, f"{source}\n{item.corpus()}", rejected)
 
     questions: list[MaterialQuestion] = []
     raw_questions = raw.get("questions")

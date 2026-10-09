@@ -12,6 +12,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
+from app.domain.child_safety import unsafe_reason
 from app.domain.text import fuzzy_contains, normalize
 
 # Sites éducatifs de confiance, du plus adapté aux enfants au plus général. Modifiable par
@@ -233,6 +234,8 @@ def check_answer(
     text = " ".join(answer.split())
     if not found or not text or len(text) > MAX_ANSWER:
         return None
+    if unsafe_reason(text, [e.text for e in excerpts]) is not None:
+        return None  # §141 : rien d'inadapté qui ne viendrait pas des extraits
     by_number = {e.number: e for e in excerpts}
     verified = [
         Quote(q.source, " ".join(q.text.split()))

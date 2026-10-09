@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from app.domain.child_safety import unsafe_reason
 from app.domain.equivalence import decimal_value, french_number, written_match
 from app.domain.help import reveals
 from app.domain.rules import RULES
@@ -105,12 +106,15 @@ def _clean(text: Any, limit: int) -> str | None:
     return cleaned if cleaned and len(cleaned) <= limit else None
 
 
-def check_plan(raw: dict[str, Any]) -> tuple[HomeworkPlan | None, list[str]]:
+def check_plan(raw: dict[str, Any], statement: str = "") -> tuple[HomeworkPlan | None, list[str]]:
     """Le plan proposé par l'IA, remis dans l'ordre du §127 et sans ce qui donnerait la réponse ;
-    `None` si on ne peut pas guider l'enfant sans la lui donner. Renvoie aussi ce qui a été écarté."""
+    `None` si on ne peut pas guider l'enfant sans la lui donner. Renvoie aussi ce qui a été écarté.
+    `statement` : l'énoncé, seul texte d'où un passage inadapté peut venir (§141)."""
     rejected: list[str] = []
     answer = _clean(raw.get("answer"), STEP_MAX_LENGTH)
     task = _clean(raw.get("task"), TASK_MAX_LENGTH)
+    if (reason := unsafe_reason([answer or "", task or ""], statement)) is not None:
+        return None, [reason]
     try:
         kind = AnswerKind(str(raw.get("answer_kind")))
     except ValueError:
@@ -137,6 +141,8 @@ def check_plan(raw: dict[str, Any]) -> tuple[HomeworkPlan | None, list[str]]:
             rejected.append(f"étape {i + 1} : vide ou trop longue")
         elif hidden and reveals(text, answer):
             rejected.append(f"étape {i + 1} : elle donnerait la réponse")
+        elif (reason := unsafe_reason(text, statement)) is not None:
+            rejected.append(f"étape {i + 1} : {reason}")
         elif text in by_kind[step_kind]:
             rejected.append(f"étape {i + 1} : en double")
         else:
@@ -149,9 +155,13 @@ def check_plan(raw: dict[str, Any]) -> tuple[HomeworkPlan | None, list[str]]:
     if len(steps) < MIN_STEPS:
         return None, [*rejected, "pas assez d'étapes sans donner la réponse"]
     solution = tuple(
-        line for line in (_clean(s, STEP_MAX_LENGTH) for s in raw.get("solution") or []) if line
+        line
+        for line in (_clean(s, STEP_MAX_LENGTH) for s in raw.get("solution") or [])
+        if line and unsafe_reason(line, statement) is None
     )[:SOLUTION_LINES]
-    check = _clean(raw.get("check"), STEP_MAX_LENGTH) or "Relis la question : ta réponse y répond-elle ?"
+    check = _clean(raw.get("check"), STEP_MAX_LENGTH)
+    if check is None or unsafe_reason(check, statement) is not None:
+        check = "Relis la question : ta réponse y répond-elle ?"
     return HomeworkPlan(task, tuple(steps), answer, kind, solution or (answer,), check), rejected
 
 

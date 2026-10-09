@@ -19,6 +19,7 @@ correction cite la phrase, le parent la voit dans les questions de la leçon.
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from app.domain.child_safety import unsafe_reason
 from app.domain.knowledge import KnowledgeItem, MaterialQuestion, QuestionSource
 from app.domain.rules import RULES
 from app.domain.sources import MIN_QUOTE, Excerpt, keywords
@@ -88,6 +89,10 @@ def check_practice(
                 reason = "la citation ne contient pas la bonne réponse"
             elif not topic & keywords(f"{question.stem} {question.answer} {quote}"):
                 reason = "la question ne parle pas de la notion de la leçon"
+            elif unsafe := unsafe_reason(
+                [question.stem, question.answer, *question.distractors], [excerpt.text, item.corpus()]
+            ):
+                reason = unsafe
             elif len(kept) >= limit:
                 reason = f"plus de {limit} questions pour cette notion"
         if question is None or reason:

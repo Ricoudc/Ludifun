@@ -103,7 +103,7 @@ async def prepare(
                     )
                 )
                 raise
-            plan, rejected = check_plan(result.output.model_dump())
+            plan, rejected = check_plan(result.output.model_dump(), statement)
             usage = result.usage
             session.add(
                 db.AiRun(

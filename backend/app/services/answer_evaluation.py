@@ -9,11 +9,13 @@ ses mots clés (`OpenQuestionActivity.grade`) : l'enfant n'est jamais bloqué.
 import asyncio
 import logging
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.ai.ports import AIError, AITimeout, LLMProvider, Prompt
 from app.ai.schemas import EvaluationOutput
 from app.domain.activities.open_question import OpenEvaluation
+from app.domain.child_safety import unsafe_reason
 from app.services.lesson_pipeline import AiRunRecord
 
 logger = logging.getLogger(__name__)
@@ -44,10 +46,15 @@ def evaluation_input(prompt: str, key_points: list[str], model_answer: str, answ
     )
 
 
-def to_evaluation(output: EvaluationOutput, key_points: list[str]) -> OpenEvaluation | None:
-    """Garde-fous sur la sortie : points clés connus seulement, score borné, retour court."""
+def to_evaluation(
+    output: EvaluationOutput, key_points: list[str], context: Sequence[str] = ()
+) -> OpenEvaluation | None:
+    """Garde-fous sur la sortie : points clés connus seulement, score borné, retour court, rien
+    d'inadapté à un enfant qui ne viendrait pas de la question ou de sa réponse (§141)."""
     feedback = output.feedback.strip()
     if not feedback or len(feedback) > FEEDBACK_MAX_LENGTH or output.confidence < MIN_CONFIDENCE:
+        return None
+    if unsafe_reason(feedback, context) is not None:
         return None
     found = [p for p in key_points if p in output.key_points_found]
     return OpenEvaluation(
@@ -97,7 +104,7 @@ class AnswerEvaluator:
             )
             return EvaluationRun(None, run)
         usage = result.usage
-        evaluation = to_evaluation(result.output, key_points)
+        evaluation = to_evaluation(result.output, key_points, [prompt, *key_points, model_answer, answer])
         run = AiRunRecord(
             "evaluation",
             usage.provider,
