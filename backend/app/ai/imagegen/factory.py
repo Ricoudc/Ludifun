@@ -1,5 +1,8 @@
 from app.ai.imagegen.comfyui import ComfyUiEngine
 from app.ai.imagegen.fake import FakeImageEngine
+from app.ai.imagegen.pollinations import DEFAULT_MODEL as POLLINATIONS_MODEL
+from app.ai.imagegen.pollinations import DEFAULT_URL as POLLINATIONS_URL
+from app.ai.imagegen.pollinations import PollinationsEngine
 from app.ai.imagegen.ports import ImageEngine
 from app.ai.imagegen.sdcpp import SdCppEngine
 from app.config import Settings
@@ -14,6 +17,12 @@ def image_engine_for(settings: Settings) -> ImageEngine | None:
             return SdCppEngine(settings.image_url, settings.image_model or DEFAULT_MODEL)
         case "comfyui" if settings.image_url:
             return ComfyUiEngine(settings.image_url, settings.image_model or f"{DEFAULT_MODEL}.safetensors")
+        case "pollinations" if settings.image_api_key and settings.image_api_key.get_secret_value():
+            return PollinationsEngine(
+                settings.image_api_key.get_secret_value(),
+                settings.image_model or POLLINATIONS_MODEL,
+                settings.image_url or POLLINATIONS_URL,
+            )
         case "fake":
             return FakeImageEngine()
     return None

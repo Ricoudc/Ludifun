@@ -1,4 +1,4 @@
-"""Moteurs d'images (étape 27) : stable-diffusion.cpp, ComfyUI, factice ; verrou de la carte."""
+"""Moteurs d'images (étape 27) : stable-diffusion.cpp, ComfyUI, Pollinations, factice ; verrou de la carte."""
 
 import asyncio
 import base64
@@ -9,10 +9,12 @@ from typing import Any
 import httpx
 import pytest
 from PIL import Image
+from pydantic import SecretStr
 
 from app.ai.imagegen.comfyui import ComfyUiEngine
 from app.ai.imagegen.factory import image_engine_for
 from app.ai.imagegen.fake import FakeImageEngine
+from app.ai.imagegen.pollinations import PollinationsEngine
 from app.ai.imagegen.ports import ImageEngineError, ImageRequest
 from app.ai.imagegen.sdcpp import SdCppEngine
 from app.ai.providers.ollama import gpu_lock, unload_models
@@ -139,3 +141,56 @@ def test_factory() -> None:
     )
     assert isinstance(comfy, ComfyUiEngine) and comfy.model == "m.safetensors"
     assert isinstance(image_engine_for(Settings(image_engine="fake")), FakeImageEngine)
+    assert image_engine_for(Settings(image_engine="pollinations")) is None  # sans clé : pas d'images
+    online = image_engine_for(Settings(image_engine="pollinations", image_api_key=SecretStr("sk_test")))
+    assert isinstance(online, PollinationsEngine)
+    assert (
+        online.model == "black-forest-labs/flux.1-schnell" and online.api_url == "https://gen.pollinations.ai"
+    )
+    assert online.base_url is None  # en ligne : Ollama n'est pas déchargé, aucune carte à libérer
+
+
+async def test_pollinations_get_image() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, content=png(), headers={"content-type": "image/png"})
+
+    engine = PollinationsEngine("sk_secret", "black-forest-labs/flux.1-schnell", client=client(handler))
+    image = await engine.generate(ImageRequest("A dog / a cat & a bird?", "text", 1024, 768, seed=42))
+    await engine.release()
+    assert image.data == png() and image.media_type == "image/png" and image.engine == "pollinations"
+    (request,) = seen
+    assert request.url.host == "gen.pollinations.ai"
+    assert request.url.raw_path.startswith(b"/image/A%20dog%20%2F%20a%20cat%20%26%20a%20bird%3F?")
+    assert request.headers["authorization"] == "Bearer sk_secret"
+    params = request.url.params
+    assert "key" not in params  # la clé ne passe jamais dans l'adresse
+    assert (params["width"], params["height"], params["seed"]) == ("1024", "768", "42")
+    assert params["model"] == "black-forest-labs/flux.1-schnell"
+    assert params["safe"] == "privacy,sexual,violence"
+
+
+@pytest.mark.parametrize(
+    ("response", "message"),
+    [
+        (httpx.Response(401, text="bad key"), "clé refusée"),
+        (httpx.Response(402, text="no pollen"), "crédit épuisé"),
+        (httpx.Response(429, text="slow down"), "trop de demandes"),
+        (httpx.Response(500, text="A dog in a meadow"), "erreur 500$"),  # le prompt n'est pas recopié
+        (httpx.Response(200, content=b"<svg></svg>"), "PNG"),
+    ],
+)
+async def test_pollinations_errors(response: httpx.Response, message: str) -> None:
+    engine = PollinationsEngine("sk_x", "m", client=client(lambda request: response))
+    with pytest.raises(ImageEngineError, match=message):
+        await engine.generate(REQUEST)
+
+
+async def test_pollinations_offline() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("pas de réseau", request=request)
+
+    with pytest.raises(ImageEngineError, match="Internet"):
+        await PollinationsEngine("sk_x", "m", client=client(handler)).generate(REQUEST)

@@ -67,9 +67,12 @@ services:
       # Image des leçons (étape 27), facultative : moteur stable-diffusion.cpp (« sdcpp ») ou
       # ComfyUI (« comfyui ») sur ce PC, installé par scripts/windows/installer-images.ps1.
       # Exemple : LUDIFUN_IMAGE_ENGINE=sdcpp et LUDIFUN_IMAGE_URL=http://host.docker.internal:7860
+      # Ou en ligne, sans carte graphique : LUDIFUN_IMAGE_ENGINE=pollinations et
+      # LUDIFUN_IMAGE_API_KEY=sk_… (clé secrète créée sur https://enter.pollinations.ai/keys).
       LUDIFUN_IMAGE_ENGINE: ${LUDIFUN_IMAGE_ENGINE:-none}
       LUDIFUN_IMAGE_URL: ${LUDIFUN_IMAGE_URL:-}
       LUDIFUN_IMAGE_MODEL: ${LUDIFUN_IMAGE_MODEL:-}
+      LUDIFUN_IMAGE_API_KEY: ${LUDIFUN_IMAGE_API_KEY:-}
     volumes:
       - images:/app/data/images  # images des leçons : jamais les photos, qui ne sont pas gardées
     ports:
