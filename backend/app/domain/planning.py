@@ -16,7 +16,8 @@ DEFAULT_MINUTES = 10
 # Activités de l'approfondissement selon le temps du jour (l'échauffement en compte toujours 3,
 # puis viennent le jeu de fin, le défi rapide et la reprise des erreurs). Réglé pour que la séance
 # dure un peu moins que le temps choisi : 10 minutes → 13 activités, environ 9 minutes (étape 26 ;
-# avant : 3, soit 8 activités et 5 minutes, jugé trop court par la famille).
+# avant : 3, soit 8 activités et 5 minutes, jugé trop court par la famille). Une séance estimée à
+# moins de `session.min_minutes` est complétée par le composeur (règles 1.10.0).
 CORE_SIZE = {5: 1, 10: 8, 15: 14, 20: 20, 30: 30}
 
 

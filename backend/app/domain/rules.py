@@ -31,6 +31,10 @@ class SessionRules(_Section):
     # Étape 25 : dans l'approfondissement, les jeux visuels (ranger, remettre dans l'ordre,
     # colorier) passent avant les autres formats quand la notion le permet.
     visual_first: bool = False
+    # Durée estimée d'une séance (1.10.0) : complétée jusqu'à `min_minutes`, sans dépasser
+    # `max_minutes` (le temps du jour choisi par le parent peut demander plus : il décide alors).
+    min_minutes: int = Field(5, ge=0)
+    max_minutes: int = Field(10, ge=1)
 
 
 class MasteryRules(_Section):

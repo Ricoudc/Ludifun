@@ -1218,6 +1218,45 @@ les cahiers Sésamath (licence libre) et les documents Éduscol servent aux expl
 questions « D'après… » ; un PDF n'est jamais proposé dans la visionneuse. `sesamath.net` (tous ses
 sous-domaines) remplace `manuel.sesamath.net` dans les sites autorisés par défaut.
 
+### 5.41 Exercices de maths calculés et séances de 5 à 10 minutes (octobre 2026, règles 1.10.0)
+
+Une leçon photographiée ne donnait parfois que 2 ou 3 questions : la séance durait 2 minutes.
+
+**Exercices calculés** (`domain/math_generator.py`, sans IA ni réseau, déterministe). Pour une
+leçon de **mathématiques** dont la classe est connue, le code reconnaît le thème de chaque notion
+(addition, soustraction, tables, division, doubles et moitiés, valeur des chiffres, comparer des
+nombres, fractions, décimaux, pourcentages, proportionnalité, périmètre, aire, priorités
+opératoires, puissances, équations, Pythagore ; « calcul mental » seul : les opérations de la
+classe) et crée jusqu'à 6 QCM par thème et par difficulté (2 thèmes au plus par notion) :
+
+- un thème n'est proposé qu'à partir de sa classe (Pythagore et équations en 4e, pourcentages en
+  CM2…) ; les nombres suivent la classe et la difficulté (CP : jusqu'à 20 ; CE1 : 100 ; CE2 :
+  1 000 ; CM1 : 10 000…) ;
+- **la réponse est calculée** ; les trois mauvaises réponses sont des erreurs d'enfants
+  (retenue oubliée, « petit chiffre ôté du grand », mauvaise opération, aire confondue avec le
+  périmètre, « on ajoute un zéro » à un décimal, signe non changé dans une équation…), chacune
+  avec son type d'erreur (`calculation`, `method`, `confusion`…) pour le tableau de bord ;
+- nombres écrits à la française (`12 345`, `3,5`).
+
+Ces questions (`MaterialQuestion.generated`) ne sont **pas enregistrées** : `load_units` les
+recalcule à chaque chargement (même notion → mêmes questions), sans reprendre l'énoncé d'une
+question de la leçon. Le QCM tire une fois sur deux une question de la leçon quand il en a
+(`OWN_SHARE`) ; le composeur évite comme avant les questions des séances précédentes.
+
+**Durée d'une séance** (`session.min_minutes = 5`, `session.max_minutes = 10`). Une séance
+estimée à moins de 5 minutes est complétée, avant le jeu de fin et le défi rapide :
+
+1. d'autres questions sur les notions à travailler (un format déjà vu est permis, une question
+   déjà posée dans la séance jamais) ;
+2. puis, épuisées, sur les autres notions de la leçon ;
+3. en dernier recours, **rappel espacé** : une question du début de la séance reposée quelques
+   minutes plus tard (une fois, jamais deux formats identiques à la suite).
+
+On s'arrête dès 5 minutes, sans jamais dépasser 10 ; un temps du jour plus long choisi par le
+parent n'est pas touché. Chaque activité ajoutée porte la règle `extra_practice` (« Séance
+complétée pour durer au moins 5 minutes… », `repeat` pour un rappel espacé). Ni migration ni
+changement d'API : les questions calculées sont des QCM, que l'application publiée sait jouer.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

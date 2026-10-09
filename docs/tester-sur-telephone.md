@@ -142,6 +142,10 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 - **« Mon cahier »** sur l'accueil de l'enfant : *Mes leçons* (fiche de révision, vidéos et
   exercices proposés, carte mémoire à retourner, texte de la leçon) et *Mes devoirs* (relire
   un exercice déjà fait). Aucun jeu n'est lancé.
+- **Une leçon de maths courte** (par exemple une table de multiplication ou « l'addition »
+  photographiée avec 2 ou 3 calculs) : la séance dure au moins 5 minutes, avec d'autres calculs
+  à la classe de l'enfant ; vérifier que les réponses proposées sont justes et que les nombres
+  ne sont ni trop grands ni trop petits pour la classe.
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 

@@ -23,6 +23,7 @@ class Rule(StrEnum):
     PAUSE_FAST_GUESSING = "pause_fast_guessing"  # réponses au hasard : pause proposée
     PAUSE_STRUGGLING = "pause_struggling"  # échecs d'affilée : pause proposée
     TEACH_EXPLAIN = "teach_explain"  # « Enseigne-moi » : points clés dits, niveau « expliquer »
+    EXTRA_PRACTICE = "extra_practice"  # séance trop courte : complétée jusqu'à la durée minimale
 
 
 Reason = dict[str, Any]
@@ -81,6 +82,16 @@ def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
             return f"Jeu sur {f.get('notions')} notions de la leçon."
         case Rule.SPEED:
             return f"Défi rapide sur {f.get('notions')} notion(s)."
+        case Rule.EXTRA_PRACTICE:
+            if f.get("repeat"):
+                return (
+                    f"Séance complétée pour durer au moins {f.get('minutes')} minutes : question du "
+                    "début de la séance reposée plus tard, pour la retenir (rappel espacé)."
+                )
+            return (
+                f"Séance complétée pour durer au moins {f.get('minutes')} minutes : "
+                "une autre question sur une notion de la leçon."
+            )
         case Rule.REPLAY:
             return "Notion ratée pendant la séance : reprise dans un autre format."
         case Rule.REMEDIATION:

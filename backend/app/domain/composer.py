@@ -40,6 +40,9 @@ LEVEL_UP_SCORE = RULES.session.level_up_score
 DEEPEN_SCORE = RULES.session.deepen_score
 MISSING_LEVEL_SCORE = RULES.session.missing_level_score
 VISUAL_FIRST = RULES.session.visual_first
+MIN_SECONDS = RULES.session.min_minutes * 60
+MAX_SECONDS = RULES.session.max_minutes * 60
+EXTRA_ROUNDS = 40  # tours essayés au plus pour compléter une séance trop courte
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 FRESH_TRIES = 8  # tirages essayés pour trouver une question pas posée aux séances précédentes
 
@@ -212,6 +215,7 @@ class SessionComposer:
         for activity in self._sequence(warmup_units, prefs(1, EASY), items, used, rng):
             add(activity, Block.WARMUP)
 
+        tail = len(items)  # où la séance est complétée si elle est trop courte
         if not express:
             # Par tours de 3 notions : les suivantes à travailler, puis (leçon courte, séance longue)
             # les plus importantes à nouveau, dans un autre format.
@@ -232,6 +236,7 @@ class SessionComposer:
                 done += len(activities)
 
             # 🧩 Association : d'abord les notions pas encore vues dans la séance.
+            tail = len(items)
             seen = {k for a in items for k in a.knowledge_ids}
             candidates = [u for u in ranked if u.id not in seen] + [u for u in ranked if u.id in seen]
             add(self._puzzle(candidates, rng, first), Block.MATCH)
@@ -239,13 +244,94 @@ class SessionComposer:
         # ⚡ Défi rapide : les notions à travailler d'abord, complétées par les autres si besoin.
         add(self._speed(ranked, rng), Block.SPEED)
 
+        # Séance trop courte (leçon de 2 ou 3 questions) : d'autres questions avant le jeu de fin.
+        extra: list[BuiltActivity] = []
+        if core_size > 0:
+            extra = self._extra([to_work, [u for u in ranked if u not in to_work]], prefs, items, tail, rng)
+            items[tail:tail] = extra
+            blocks[tail:tail] = [Block.CORE] * len(extra)
+
         by_id = {u.id: u for u in units}
+        repeated = {fingerprint(a) for a in items[:tail]}
         planned = [
-            PlannedItem(i, block, a, _visual(a, self._reason(a, block, first, by_id, masteries, now)))
+            PlannedItem(
+                i,
+                block,
+                a,
+                reason(
+                    Rule.EXTRA_PRACTICE,
+                    minutes=MIN_SECONDS // 60,
+                    difficulty=a.difficulty,
+                    repeat=fingerprint(a) in repeated,
+                )
+                if tail < i <= tail + len(extra)
+                else _visual(a, self._reason(a, block, first, by_id, masteries, now)),
+            )
             for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
         ]
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
         return SessionPlan(kind, planned, self.estimate_duration_s(items, with_replay=True), express)
+
+    def _extra(
+        self,
+        groups: Sequence[Sequence[KnowledgeUnit]],
+        prefs: Callable[[int, frozenset[ActivityCode]], Prefs],
+        items: Sequence[BuiltActivity],
+        at: int,
+        rng: random.Random,
+    ) -> list[BuiltActivity]:
+        """Activités qui complètent une séance estimée à moins de `min_minutes`, insérées en
+        position `at` : les notions à travailler à nouveau, puis (épuisées) les autres notions de la
+        leçon ; un format déjà vu
+        permis mais jamais une question déjà posée dans la séance, sans dépasser `max_minutes`."""
+        if self.estimate_duration_s(items, with_replay=True) >= MIN_SECONDS:
+            return []
+        recent = self.recent
+        asked = {fingerprint(a) for a in items}
+        added: list[BuiltActivity] = []
+        try:
+            for order in groups:
+                used: dict[str, set[ActivityCode]] = {}
+                position, progress = 0, False
+                for _ in range(EXTRA_ROUNDS if order else 0):
+                    size = min(BLOCK_SIZE, len(order))
+                    round_units = [order[(position + i) % len(order)] for i in range(size)]
+                    position += size
+                    self.recent = recent | asked  # `_fresh` cherche une question pas encore posée
+                    previous = [*items[:at], *added]
+                    built = self._sequence(round_units, prefs(2, INTERMEDIATE), previous, used, rng)
+                    if not built:
+                        # Tous les formats ont servi : on peut les reprendre, s'ils ont encore donné
+                        # une question nouvelle depuis la dernière fois.
+                        if not progress:
+                            break
+                        used, progress = {}, False
+                        continue
+                    fresh = [a for a in built if fingerprint(a) not in asked]
+                    progress = progress or bool(fresh)
+                    for activity in fresh:
+                        total = [*items, *added, activity]
+                        if self.estimate_duration_s(total, with_replay=True) > MAX_SECONDS:
+                            return added
+                        added.append(activity)
+                        asked.add(fingerprint(activity))
+                        if self.estimate_duration_s(total, with_replay=True) >= MIN_SECONDS:
+                            return added
+        finally:
+            self.recent = recent
+        # Plus aucune question nouvelle : rappel espacé, une question du début de la séance reposée
+        # quelques minutes plus tard (jamais deux fois, jamais deux formats identiques à la suite).
+        for activity in [a for a in items[:at] if len(a.knowledge_ids) == 1]:
+            last = added[-1] if added else items[at - 1] if at else None
+            if last is not None and (last.type == activity.type or last is activity):
+                continue
+            total = [*items, *added, activity]
+            if self.estimate_duration_s(total, with_replay=True) > MAX_SECONDS:
+                break
+            added.append(activity)
+            if self.estimate_duration_s(total, with_replay=True) >= MIN_SECONDS:
+                break
+        return added
 
     def _reason(
         self,

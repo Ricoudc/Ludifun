@@ -12,6 +12,7 @@ import pytest
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.composer import Block, SessionComposer
+from app.domain.decisions import Rule
 from app.domain.mastery import Mastery
 from app.domain.scoring import Evidence, evidences_from, summarize_session, validated_levels
 from app.domain.simulated_pupil import respond
@@ -221,7 +222,9 @@ def test_a_notion_known_at_every_level_is_left_alone(
     only_mcq = {**solid, "k1": mastery(95, box=5, levels=frozenset({1}))}
     plan = SessionComposer(registry).compose(units, only_mcq, NOW, seed=2)
     assert plan.items[0].activity.knowledge_ids == ["k1"]
-    worked = {
-        k for i in plan.items if i.block in (Block.WARMUP, Block.CORE) for k in i.activity.knowledge_ids
-    }
+    chosen = [i for i in plan.items if i.reason["rule"] != Rule.EXTRA_PRACTICE]
+    worked = {k for i in chosen if i.block in (Block.WARMUP, Block.CORE) for k in i.activity.knowledge_ids}
     assert worked == {"k1"}
+    # Séance trop courte : complétée d'abord sur k1, puis seulement sur les notions déjà sues.
+    extra = [i.activity.knowledge_ids[0] for i in plan.items if i.reason["rule"] == Rule.EXTRA_PRACTICE]
+    assert extra[0] == "k1" and extra == sorted(extra, key=lambda k: k != "k1")

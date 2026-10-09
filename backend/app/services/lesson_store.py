@@ -16,8 +16,16 @@ from app.domain.confidence import LOW as LOW_CONFIDENCE
 from app.domain.confidence import notion_confidence
 from app.domain.duplicates import deduplicate
 from app.domain.equivalence import consistent
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, MaterialQuestion, Subject
+from app.domain.knowledge import (
+    Grade,
+    KnowledgeItem,
+    KnowledgeMaterial,
+    KnowledgeUnit,
+    MaterialQuestion,
+    Subject,
+)
 from app.domain.mastery import Mastery, lesson_review
+from app.domain.math_generator import generated_questions
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
 from app.domain.validation import Rejection
 from app.services.lesson_pipeline import PipelineResult
@@ -184,6 +192,8 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
     ).all()
     pictures = await approved_pictures(session, lesson.id)
     units, key_to_id, required, doubtful = [], {}, {}, set()
+    grade = Grade(lesson.grade) if lesson.subject == Subject.MATH and lesson.grade in list(Grade) else None
+    stems: set[str] = set()  # une question créée n'est posée qu'une fois dans la leçon
     for item, material in rows:
         domain_item = KnowledgeItem(
             id=item.key,
@@ -195,11 +205,17 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             source_excerpt=item.source_excerpt,
             relations=item.relations,
         )
+        # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
+        checked = consistent(KnowledgeMaterial.model_validate(material.material))
+        stems.update(q.stem for q in checked.questions)
+        if grade is not None and (created := generated_questions(domain_item, grade, stems)):
+            # Leçon de maths : des exercices calculés par le code, à la classe de l'enfant.
+            stems.update(q.stem for q in created)
+            checked = checked.model_copy(update={"questions": [*checked.questions, *created]})
         units.append(
             KnowledgeUnit(
                 item=domain_item,
-                # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
-                material=consistent(KnowledgeMaterial.model_validate(material.material)),
+                material=checked,
                 picture=pictures.get(item.id),
                 subject=lesson.subject if lesson.subject in Subject else None,
             )

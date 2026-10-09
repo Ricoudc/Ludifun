@@ -16,6 +16,7 @@ from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeUnit
 
 CHOICE_IDS = ("a", "b", "c", "d")
+OWN_SHARE = 0.5  # part des QCM tirés des questions de la leçon quand le calcul en a créé d'autres
 
 
 class McqResponse(ResponseModel):
@@ -40,7 +41,12 @@ class Mcq(ActivityType):
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
-        question = rng.choice(unit.material.questions_of(difficulty))
+        questions = unit.material.questions_of(difficulty)
+        # Les questions de la leçon gardent leur place à côté de celles créées par le calcul.
+        own = [q for q in questions if not q.generated]
+        if own and len(own) < len(questions) and rng.random() >= OWN_SHARE:
+            own = [q for q in questions if q.generated]
+        question = rng.choice(own or questions)
         texts = [question.answer, *question.distractors]
         rng.shuffle(texts)
         choices = [{"id": cid, "text": text} for cid, text in zip(CHOICE_IDS, texts, strict=True)]

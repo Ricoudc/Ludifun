@@ -13,7 +13,9 @@ from app.domain.composer import (
     SessionComposer,
     SessionKind,
     SessionPlan,
+    fingerprint,
 )
+from app.domain.decisions import Rule
 from app.domain.mastery import Mastery
 from tests.domain.conftest import ReferenceLesson
 
@@ -92,6 +94,33 @@ def test_short_lesson_reuses_important_notions_with_another_format(
     assert len(k1_types) == 2 and k1_types[0] != k1_types[1]
 
 
+@pytest.mark.parametrize("seed", range(10))
+def test_a_two_notion_lesson_still_lasts_five_minutes(
+    history: ReferenceLesson, composer: SessionComposer, seed: int
+) -> None:
+    """Leçon de 2 notions, temps du jour le plus court : au moins 5 minutes, jamais plus de 10, et
+    jamais deux fois la même question (1.10.0)."""
+    units = [history.units["k1"], history.units["k5"]]
+    plan = composer.compose(units, {}, NOW, seed=seed, core_size=1)
+    assert 5 * 60 <= plan.estimated_duration_s <= 10 * 60
+    extra = [i for i in plan.items if i.reason["rule"] == Rule.EXTRA_PRACTICE]
+    assert extra and all(i.block is Block.CORE for i in extra)
+    assert extra[0].reason["facts"]["minutes"] == 5
+    after = plan.items[plan.items.index(extra[-1]) + 1 :]
+    assert all(i.block in (Block.MATCH, Block.SPEED) for i in after)  # avant le jeu de fin et le défi
+    # Une question n'est reposée que faute de question nouvelle, une seule fois, plus tard.
+    new = [fingerprint(i.activity) for i in plan.items if not i.reason["facts"].get("repeat")]
+    assert len(new) == len(set(new))
+    again = [fingerprint(i.activity) for i in plan.items if i.reason["facts"].get("repeat")]
+    assert len(again) == len(set(again)) and set(again) <= set(new)
+    assert all(a.activity.type != b.activity.type or a.block is Block.SPEED for a, b in pairwise(plan.items))
+
+
+def test_a_long_enough_session_is_not_completed(history: ReferenceLesson, composer: SessionComposer) -> None:
+    plan = composer.compose(list(history.units.values()), {}, NOW, seed=3)
+    assert all(i.reason["rule"] != Rule.EXTRA_PRACTICE for i in plan.items)
+
+
 def test_same_seed_same_session(history: ReferenceLesson, composer: SessionComposer) -> None:
     units = list(history.units.values())
     assert composer.compose(units, {}, NOW, seed=99) == composer.compose(units, {}, NOW, seed=99)
@@ -142,10 +171,17 @@ def test_express_review_when_few_notions_remain(history: ReferenceLesson, compos
     masteries["k3"] = mastery(55, 2, due_in_days=-1)
     plan = composer.compose(list(history.units.values()), masteries, NOW, seed=5)
     assert plan.express
-    assert blocks(plan) == [Block.WARMUP, Block.SPEED]
+    assert plan.items[0].block is Block.WARMUP and plan.items[-1].block is Block.SPEED
     assert plan.items[0].activity.knowledge_ids == ["k3"]
-    assert "k3" in plan.items[1].activity.knowledge_ids  # le défi est complété par d'autres notions
-    assert plan.estimated_minutes <= 2
+    assert "k3" in plan.items[-1].activity.knowledge_ids  # le défi est complété par d'autres notions
+    # Une seule notion à revoir ne fait plus une séance de 2 minutes (1.10.0) : d'autres questions,
+    # sur k3 d'abord, puis sur les notions déjà sues, jusqu'à 5 minutes.
+    extra = [i for i in plan.items if i.reason["rule"] == Rule.EXTRA_PRACTICE]
+    assert extra and all(i.block is Block.CORE for i in extra)
+    assert extra[0].activity.knowledge_ids == ["k3"]
+    assert 5 * 60 <= plan.estimated_duration_s <= 10 * 60
+    asked = [fingerprint(i.activity) for i in plan.items if not i.reason["facts"].get("repeat")]
+    assert len(asked) == len(set(asked))  # une question n'est reposée qu'en rappel espacé
 
 
 def test_nothing_to_review(history: ReferenceLesson, composer: SessionComposer) -> None:

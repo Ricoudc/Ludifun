@@ -247,6 +247,8 @@ class MaterialQuestion(_Model):
     misconceptions: list[str | None] = Field(default_factory=list)
     # Absente : question tirée de la leçon. Présente : d'un site de confiance (étape 29).
     source: QuestionSource | None = None
+    # Question créée par le calcul pour une notion de maths (jamais enregistrée : recalculée).
+    generated: bool = False
 
     def misconception_of(self, distractor: str) -> str | None:
         index = self.distractors.index(distractor)
