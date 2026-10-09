@@ -17,6 +17,8 @@ import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
 import '../features/homework/homework_screen.dart';
 import '../features/homework/homework_start_screen.dart';
+import '../features/notebook/lesson_sheet_screen.dart';
+import '../features/notebook/notebook_screen.dart';
 import '../features/teach/teach_screen.dart';
 import '../features/parent/child_help_screen.dart';
 import '../features/parent/child_homework_screen.dart';
@@ -73,7 +75,11 @@ abstract final class Routes {
   static const paste = '/enfant/texte';
   static const badges = '/enfant/badges';
   static const homeworkStart = '/enfant/devoirs';
-  static String homework(String id) => '/enfant/devoirs/$id';
+  static String homework(String id, {bool fromNotebook = false}) =>
+      '/enfant/devoirs/$id${fromNotebook ? '?depuis=cahier' : ''}';
+  static const notebook = '/enfant/cahier';
+  static const notebookHomework = '/enfant/cahier?onglet=devoirs';
+  static String lessonSheet(String lessonId) => '/enfant/cahier/lecon/$lessonId';
   static String childHomework(String childId) => '/parent/enfants/$childId/devoirs';
   static String teach(String id) => '/enfant/enseigne/$id';
   static String childTeach(String childId) => '/parent/enfants/$childId/enseigne';
@@ -227,7 +233,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: 'devoirs', builder: (_, _) => const HomeworkStartScreen()),
           GoRoute(
             path: 'devoirs/:id',
-            builder: (_, state) => HomeworkScreen(homeworkId: state.pathParameters['id']!),
+            builder: (_, state) => HomeworkScreen(
+              homeworkId: state.pathParameters['id']!,
+              back: state.uri.queryParameters['depuis'] == 'cahier'
+                  ? Routes.notebookHomework
+                  : Routes.childHome,
+            ),
+          ),
+          GoRoute(
+            path: 'cahier',
+            builder: (_, state) =>
+                NotebookScreen(homework: state.uri.queryParameters['onglet'] == 'devoirs'),
+            routes: [
+              GoRoute(
+                path: 'lecon/:id',
+                builder: (_, state) => LessonSheetScreen(lessonId: state.pathParameters['id']!),
+              ),
+            ],
           ),
           GoRoute(
             path: 'enseigne/:id',

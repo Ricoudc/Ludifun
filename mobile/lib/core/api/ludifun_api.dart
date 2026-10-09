@@ -6,6 +6,7 @@ import '../../models/account.dart';
 import '../../models/ai.dart';
 import '../../models/figure.dart';
 import '../../models/homework.dart';
+import '../../models/lesson_sheet.dart';
 import '../../models/teach.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
@@ -579,6 +580,21 @@ class LudifunApi {
   Future<Homework> homeworkSolution(String id) => _call(() async {
     final r = await _dio.post<Json>('/v1/homework/$id/solution');
     return Homework.fromJson(r.data!);
+  });
+
+  /// « Mon cahier » : la fiche de révision d'une leçon, sans jeu.
+  Future<LessonSheet> lessonSheet(String lessonId) => _call(() async {
+    final r = await _dio.get<Json>('/v1/lessons/$lessonId/sheet');
+    return LessonSheet.fromJson(r.data!);
+  });
+
+  /// « Mon cahier » : les exercices faits avec l'aide aux devoirs, du plus récent au plus ancien.
+  Future<HomeworkPage> myHomework({int limit = 20, String? before}) => _call(() async {
+    final r = await _dio.get<Json>(
+      '/v1/homework',
+      queryParameters: {'limit': limit, 'before': ?before},
+    );
+    return HomeworkPage.fromJson(r.data!);
   });
 
   /// Parent : les exercices de l'enfant en mode devoirs.

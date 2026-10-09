@@ -13,6 +13,7 @@ from app.api.v1 import (
     lesson_images,
     lesson_resources,
     lessons,
+    notebook,
     rewards,
     sessions,
     teach,
@@ -31,6 +32,7 @@ router.include_router(lesson_content.router)
 router.include_router(lesson_images.router)
 router.include_router(lesson_resources.router)
 router.include_router(lessons.router)
+router.include_router(notebook.router)
 router.include_router(rewards.router)
 router.include_router(sessions.router)
 router.include_router(teach.router)

@@ -17,9 +17,12 @@ const homeworkPollInterval = Duration(seconds: 2);
 /// Mode devoirs (§29, §127) : les étapes une par une, la réponse de l'enfant, puis la
 /// correction guidée seulement après plusieurs essais.
 class HomeworkScreen extends ConsumerStatefulWidget {
-  const HomeworkScreen({required this.homeworkId, super.key});
+  const HomeworkScreen({required this.homeworkId, this.back = Routes.childHome, super.key});
 
   final String homeworkId;
+
+  /// Où revient le bouton retour : l'accueil, ou « Mon cahier » pour un devoir relu.
+  final String back;
 
   @override
   ConsumerState<HomeworkScreen> createState() => _HomeworkScreenState();
@@ -88,7 +91,7 @@ class _HomeworkScreenState extends ConsumerState<HomeworkScreen> {
     final homework = _homework;
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(onPressed: () => context.go(Routes.childHome)),
+        leading: BackButton(onPressed: () => context.go(widget.back)),
         title: const Text('Aide aux devoirs'),
       ),
       body: CenteredBody(

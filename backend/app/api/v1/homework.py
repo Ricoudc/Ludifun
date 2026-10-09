@@ -281,9 +281,16 @@ async def list_homework(
 ) -> HomeworkListOut:
     """Les exercices de l'enfant en mode devoirs : l'aide utilisée, les essais, la suite."""
     child = await own_child(db, parent, child_id)
+    return await homework_list(db, child.id, limit, before)
+
+
+async def homework_list(
+    db: DbSession, child_id: uuid.UUID, limit: int, before: datetime | None
+) -> HomeworkListOut:
+    """Les exercices d'un enfant, du plus récent au plus ancien (espace parent et « Mon cahier »)."""
     query = (
         select(Homework)
-        .where(Homework.child_id == child.id)
+        .where(Homework.child_id == child_id)
         .order_by(Homework.created_at.desc())
         .limit(limit)
     )

@@ -1102,6 +1102,23 @@ nouveau et facultatif pour l'application publiée) :
   `database_unavailable` (503) et écrit le détail technique dans le journal (méthode et chemin,
   aucune donnée d'enfant).
 
+### 5.35 « Mon cahier » : relire sans jouer (octobre 2026)
+
+Sur l'accueil de l'enfant, « Mon cahier » (et « Relire ma fiche (sans jeux) » sur chaque
+leçon) : on revoit ses leçons et ses devoirs quand on veut, sans séance ni jeu, et sans rien
+changer à la maîtrise.
+
+- **Mes leçons**, rangées par matière (les leçons prêtes seulement) : la **fiche de révision**
+  (`GET /v1/lessons/{id}/sheet`) donne l'objectif, « En bref », chaque notion (à retenir,
+  explication, astuce, exemple résolu, carte mémoire à retourner, niveau, image validée), les
+  vidéos, quiz et exercices des sites de confiance (ouverts dans la visionneuse habituelle) et
+  « Ma leçon en entier » (le texte lu sur la photo). Bouton 🔊 sur chaque notion. Rien de ce qui
+  sert à noter un jeu (questions, bonnes réponses) n'est envoyé.
+- **Mes devoirs** : les exercices faits avec l'aide aux devoirs (`GET /v1/homework`), à rouvrir
+  pour relire les étapes vues et la correction ; le retour revient au cahier.
+- Aucune nouvelle donnée ni migration ; la tuile d'une ressource est partagée entre l'écran de
+  la leçon et la fiche (`features/lesson/resource_tile.dart`).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

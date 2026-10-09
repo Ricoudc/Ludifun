@@ -997,4 +997,108 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(routerProvider).state.matchedLocation, '/enfant/lecon/l1');
   });
+
+  testWidgets('mon cahier : relire une leçon et ses vidéos, puis un devoir, sans jeux', (
+    tester,
+  ) async {
+    final sheet = {
+      'lesson_id': 'l1',
+      'title': 'La Révolution française',
+      'subject': 'history',
+      'grade': 'CM1',
+      'objective': 'Connaître les grandes dates de la Révolution',
+      'summary': 'En 1789, le peuple se révolte contre le roi.',
+      'text': 'La Révolution française\nEn 1789, la France est en crise.',
+      'image': null,
+      'notions': [
+        {
+          'id': 'k1',
+          'label': '1789',
+          'statement': 'La Révolution française commence en 1789.',
+          'explanation': 'Cette année-là, le peuple prend la Bastille.',
+          'tip': 'Pense au 14 juillet, la fête nationale.',
+          'card_front': 'En quelle année commence la Révolution ?',
+          'card_back': '1789',
+          'example': null,
+          'importance': 5,
+          'level': 3,
+          'image': null,
+        },
+      ],
+      'resources': [
+        {
+          'id': 'r2',
+          'provider': 'lumni',
+          'kind': 'video',
+          'title': 'La Révolution en vidéo',
+          'url': 'https://www.lumni.fr/video/la-revolution',
+          'licence': 'Lumni',
+          'best': null,
+        },
+      ],
+    };
+    server
+      ..on(
+        'GET /v1/lessons',
+        (_) => (200, [lessonJson('ready'), lessonJson('failed', id: 'l2', failure: 'unreadable')]),
+      )
+      ..on('GET /v1/lessons/l1/sheet', (_) => (200, sheet))
+      ..on(
+        'GET /v1/homework',
+        (_) => (
+          200,
+          {
+            'homework': [
+              {
+                'id': 'h1',
+                'created_at': '2026-09-23T15:00:00Z',
+                'status': 'solved',
+                'statement': 'Paul a 24 billes. Il en donne 16. Combien lui en reste-t-il ?',
+                'steps_used': 0,
+                'steps_total': 2,
+                'attempts': 1,
+                'solved_alone': true,
+              },
+            ],
+            'next_before': null,
+          },
+        ),
+      )
+      ..on('GET /v1/homework/h1', (_) => (200, homeworkJson(status: 'solved')));
+    final container = await launch(tester, MemoryCredentialStore(child));
+    await tester.ensureVisible(find.text('Mon cahier'));
+    await tester.tap(find.text('Mon cahier'));
+    await tester.pumpAndSettle();
+
+    // Seules les leçons prêtes, rangées par matière.
+    expect(find.text('La Révolution française'), findsOneWidget);
+    await tester.tap(find.text('La Révolution française'));
+    await tester.pumpAndSettle();
+    expect(find.text('La Révolution française commence en 1789.'), findsOneWidget);
+    expect(find.text('💡 Astuce : Pense au 14 juillet, la fête nationale.'), findsOneWidget);
+    expect(find.text('La Révolution en vidéo'), findsOneWidget);
+    // La carte mémoire : la question, puis la réponse quand on la retourne.
+    expect(find.text('✅ 1789'), findsNothing);
+    final card = find.text('🃏 En quelle année commence la Révolution ?');
+    await tester.ensureVisible(card);
+    await tester.tap(card);
+    await tester.pump();
+    expect(find.text('✅ 1789'), findsOneWidget);
+    await shot(tester, 'e17_cahier_fiche');
+    // Aucune séance de jeux n'a été demandée.
+    expect(server.routes.where((r) => r.contains('/sessions')), isEmpty);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mes devoirs'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Paul a 24 billes'), findsOneWidget);
+    await tester.tap(find.textContaining('Paul a 24 billes'));
+    await tester.pumpAndSettle();
+    expect(find.text('🎉 Bravo, c\'est juste !'), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(container.read(routerProvider).state.uri.toString(), Routes.notebookHomework);
+    expect(find.textContaining('Paul a 24 billes'), findsOneWidget);
+  });
 }

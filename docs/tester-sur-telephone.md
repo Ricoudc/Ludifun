@@ -139,6 +139,9 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 - **« Enseigne-moi »** en bas d'une leçon : expliquer la notion à Ludi (au clavier ou avec le
   micro 🎤 du clavier), répondre à ses questions, lire le bilan. Le parent le voit dans
   *Enseigne-moi*.
+- **« Mon cahier »** sur l'accueil de l'enfant : *Mes leçons* (fiche de révision, vidéos et
+  exercices proposés, carte mémoire à retourner, texte de la leçon) et *Mes devoirs* (relire
+  un exercice déjà fait). Aucun jeu n'est lancé.
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 
