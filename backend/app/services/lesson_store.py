@@ -236,10 +236,14 @@ async def load_skills(
     return by_lesson
 
 
-def notion_levels(lesson: LessonUnits, masteries: dict[str, Mastery]) -> dict[uuid.UUID, NotionLevel]:
-    """Niveau 0 à 5 de chaque notion de la leçon, par identifiant."""
+def notion_levels(
+    lesson: LessonUnits, masteries: dict[str, Mastery], now: datetime | None = None
+) -> dict[uuid.UUID, NotionLevel]:
+    """Niveau 0 à 5 de chaque notion de la leçon, par identifiant ; avec `now`, l'oubli estimé
+    depuis la dernière révision compte (§130)."""
     return {
-        lesson.key_to_id[u.id]: notion_level(masteries.get(u.id), lesson.required[u.id]) for u in lesson.units
+        lesson.key_to_id[u.id]: notion_level(masteries.get(u.id), lesson.required[u.id], now)
+        for u in lesson.units
     }
 
 

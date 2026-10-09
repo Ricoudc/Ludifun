@@ -386,7 +386,7 @@ async def get_programme(child_id: uuid.UUID, parent: CurrentParent, db: DbSessio
 async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> SkillsOut:
     """Compétences et notions de chaque leçon, avec leur niveau de 0 à 5 et ce qui manque encore."""
     child = await own_child(db, parent, child_id)
-    lessons = await dashboard.lessons_progress(db, child.id, limit=20)
+    lessons = await dashboard.lessons_progress(db, child.id, limit=20, now=clock.now())
     return SkillsOut(
         lessons=[
             LessonProgressOut(

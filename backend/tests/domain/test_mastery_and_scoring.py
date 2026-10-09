@@ -14,6 +14,7 @@ from app.domain.scoring import (
     status,
     summarize_session,
 )
+from app.domain.understanding import MasteryLevel, notion_level
 
 NOW = datetime(2026, 9, 23, 17, 0, tzinfo=UTC)
 
@@ -148,3 +149,26 @@ def test_summarize_session() -> None:
     assert outcome.count(KnowledgeStatus.NOT_MASTERED) == 2
     assert outcome.can_review_errors
     assert outcome.errors == ["k3", "k2"]
+
+
+def test_a_notion_is_never_known_for_good() -> None:
+    """§130 : sans révision, le score estimé baisse ; plus lentement pour une notion revue souvent."""
+    fresh = Mastery(90, 1, NOW + timedelta(days=1), NOW)
+    assert fresh.recall(NOW) == 90 and not fresh.fading(NOW)
+    # Boîte 1 : la mémoire baisse de moitié en 3 jours.
+    assert fresh.recall(NOW + timedelta(days=3)) == 45
+    often = Mastery(90, 5, NOW + timedelta(days=14), NOW)
+    assert often.recall(NOW + timedelta(days=3)) > 85
+    assert often.recall(NOW + timedelta(days=42)) == 45
+    # À la date de révision, la notion est sans doute un peu oubliée.
+    assert not often.fading(NOW + timedelta(days=7)) and often.fading(NOW + timedelta(days=14))
+
+
+def test_the_parent_reads_that_a_notion_may_be_forgotten() -> None:
+    solid = Mastery(95, 5, NOW + timedelta(days=14), NOW - timedelta(days=30), levels=frozenset({1, 2, 3}))
+    assert notion_level(solid, {1, 2}).level == MasteryLevel.SOLID
+    later = notion_level(solid, {1, 2}, NOW)
+    assert later.level == MasteryLevel.MASTERED
+    assert later.explanation.startswith("Pas revue depuis 30 jours : sans doute un peu oubliée")
+    recent = Mastery(95, 5, NOW + timedelta(days=14), NOW - timedelta(days=1), levels=frozenset({1, 2, 3}))
+    assert notion_level(recent, {1, 2}, NOW).level == MasteryLevel.SOLID

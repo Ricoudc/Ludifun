@@ -190,7 +190,7 @@ async def build_dashboard(
     weak = []
     for mastery, item, lesson in rows:
         by_subject[lesson.subject or Subject.OTHER].append((mastery.score, item.importance))
-        level = notion_level(to_mastery(mastery), item.required_levels)
+        level = notion_level(to_mastery(mastery), item.required_levels, now)
         if level.level <= MasteryLevel.LEARNING:
             weak.append(
                 (
@@ -394,7 +394,9 @@ class LessonProgress:
     notions: list[NotionProgress]  # dans l'ordre de la leçon
 
 
-async def lessons_progress(session: AsyncSession, child_id: uuid.UUID, limit: int) -> list[LessonProgress]:
+async def lessons_progress(
+    session: AsyncSession, child_id: uuid.UUID, limit: int, now: datetime | None = None
+) -> list[LessonProgress]:
     """Leçons prêtes, de la plus récente à la plus ancienne, avec le niveau de chaque compétence
     et de chaque notion."""
     lessons = list(
@@ -410,7 +412,7 @@ async def lessons_progress(session: AsyncSession, child_id: uuid.UUID, limit: in
     result = []
     for lesson in lessons:
         units = await load_units(session, lesson)
-        levels = notion_levels(units, await load_masteries(session, child_id, units))
+        levels = notion_levels(units, await load_masteries(session, child_id, units), now)
         result.append(
             LessonProgress(
                 lesson_id=lesson.id,

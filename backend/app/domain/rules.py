@@ -39,6 +39,8 @@ class MasteryRules(_Section):
     fragile_rate: float = Field(ge=0, le=1)
     known_score: int = Field(ge=0, le=100)
     important: int = Field(ge=1, le=5)
+    half_life_factor: float = Field(3.0, gt=0)
+    fading_drop: int = Field(15, ge=1, le=100)
 
 
 class HelpRules(_Section):

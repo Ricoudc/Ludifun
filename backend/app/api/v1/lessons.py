@@ -309,7 +309,7 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
                 select(LessonPage).where(LessonPage.lesson_id == lesson.id).order_by(LessonPage.page_index)
             )
         )
-        levels = notion_levels(units, await load_masteries(db, child.id, units))
+        levels = notion_levels(units, await load_masteries(db, child.id, units), clock.now())
         out.grade, out.objective, out.summary = lesson.grade, lesson.objective, lesson.summary
         out.knowledge = sorted(
             (

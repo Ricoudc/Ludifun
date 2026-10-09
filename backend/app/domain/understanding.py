@@ -9,6 +9,7 @@ que la leçon permet de travailler ont été validés.
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import datetime
 from enum import IntEnum
 from typing import Literal
 
@@ -139,7 +140,9 @@ class NotionLevel:
         return level_color(self.level)
 
 
-def notion_level(mastery: Mastery | None, required: Iterable[int]) -> NotionLevel:
+def notion_level(
+    mastery: Mastery | None, required: Iterable[int], now: datetime | None = None
+) -> NotionLevel:
     """Niveau 0 à 5 d'une notion, et la phrase qui l'explique au parent (§42 du cahier des charges).
 
     | 0 | aucune réponse |
@@ -148,8 +151,22 @@ def notion_level(mastery: Mastery | None, required: Iterable[int]) -> NotionLeve
     | 3 | score 50 à 79, ou ≥ 80 sans tous les niveaux exigés |
     | 4 | score ≥ 80 et tous les niveaux exigés validés |
     | 5 | niveau 4, score ≥ 90, et tenu jusqu'à la dernière boîte de révision (J+14) |
+
+    Avec `now` (§130) : une notion sans doute en partie oubliée depuis sa dernière révision le
+    dit, et n'est plus « très bien maîtrisée » (elle redevient « maîtrisée »).
     """
-    needed = frozenset(required)
+    level = _notion_level(mastery, frozenset(required))
+    if now is None or mastery is None or level.level < MasteryLevel.LEARNING or not mastery.fading(now):
+        return level
+    days = math.floor(mastery.days_since(now))
+    return NotionLevel(
+        min(level.level, MasteryLevel.MASTERED),
+        level.missing,
+        f"Pas revue depuis {days} jours : sans doute un peu oubliée, la prochaine révision le vérifiera.",
+    )
+
+
+def _notion_level(mastery: Mastery | None, needed: frozenset[int]) -> NotionLevel:
     if mastery is None:
         return NotionLevel(MasteryLevel.NEVER, needed, "Pas encore travaillée.")
     missing = needed - mastery.levels

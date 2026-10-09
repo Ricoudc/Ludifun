@@ -1045,6 +1045,21 @@ réponses et questions tirées des sites de confiance.
 - Aucune leçon de référence ni résultat d'évaluation n'est signalé (test) ; déterministe, sans
   IA.
 
+### 5.32 Oubli estimé entre deux révisions (octobre 2026, CDC §130, règles 1.5.0)
+
+Une notion n'est jamais acquise pour toujours : entre deux révisions, son score estimé baisse
+(`Mastery.recall`). La mémoire baisse de moitié en `mastery.half_life_factor` (3) fois
+l'intervalle de sa boîte : 3 jours pour une notion en boîte 1, 6 semaines en boîte 5. Le score
+enregistré ne change pas ; seule l'estimation du jour sert.
+
+- **Révisions** : la priorité d'une notion (importance × fragilité, majorée si due) part du
+  score estimé aujourd'hui ; à score égal, la notion travaillée il y a longtemps passe devant.
+- **Parent** : une notion dont l'estimation a baissé d'au moins `mastery.fading_drop` (15)
+  points le dit (« Pas revue depuis 30 jours : sans doute un peu oubliée, la prochaine
+  révision le vérifiera ») et n'est plus « très bien maîtrisée », seulement « maîtrisée »
+  (compétences et notions, contenu d'une leçon, tableau de bord).
+- Pas de nouvelle donnée ni de migration : la date de dernière pratique existait déjà.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1252,7 +1267,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 126 | Raison de chaque décision enregistrée | ✅ | Chaque activité porte sa règle et ses faits (`session_items.reason` : première séance, niveau à valider, approfondir, difficulté selon le score, jeu, reprise, remédiation, bonus…) ; décisions pendant la séance (`sessions.decisions` : remédiation, pause, défis bonus). Parent : « Pourquoi ces activités ? » depuis l'historique. |
 | 127 | Mode devoirs | ✅ | §5.29 : séparé des séances ; étapes dans l'ordre question → indice → question intermédiaire → rappel → méthode, imposé par le code ; une étape qui donnerait la réponse est retirée ; tentative vérifiée par le code ; correction guidée seulement après plusieurs essais (`engine_rules.toml`). |
 | 128, 129 | Hasard, aide, autonomie | ✅ | Aide la plus forte demandée enregistrée ; une réussite avec aide compte moins et ne valide pas un niveau ; réponses trop rapides au hasard détectées (pause proposée). |
-| 130 | Maîtrise jamais définitive | 🟡 | Révisions espacées : une notion maîtrisée revient et peut redescendre. Pas d'oubli estimé entre deux révisions. |
+| 130 | Maîtrise jamais définitive | ✅ | Révisions espacées : une notion maîtrisée revient et peut redescendre ; entre deux révisions, oubli estimé (§5.32) qui fait remonter les notions anciennes et l'explique au parent. Reste : maîtrise en reconnaissance mais pas en application (niveaux de compréhension, §114), en leçon mais pas en problème réel (transfert). |
 | 131 | Explications au parent fondées sur les faits | ✅ | Par notion : le fait observé chiffré (« Sur les 8 dernières activités : 4 réussies seul, 2 avec une aide, 2 ratées. Erreur la plus fréquente : … ») séparé de l'interprétation du moteur (💬). |
 | 132-134 | Règles de travail des IA de codage | ✅ | `CLAUDE.md` à la racine (lecture du CDC, plan avant de modifier, vérifications, compte rendu honnête). |
 | 135 | Erreurs catégorisées, jamais brutes | 🟡 | Erreurs de l'API : code et message en français, jamais de 500 brut côté application ; raisons d'échec d'analyse expliquées (« Voir ce qui se passe »). Pas encore la liste de catégories du §135. |

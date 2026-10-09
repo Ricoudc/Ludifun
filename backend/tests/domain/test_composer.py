@@ -124,7 +124,9 @@ def test_review_focuses_on_fragile_and_due_notions(
     }
     plan = composer.compose(list(history.units.values()), masteries, NOW, seed=3)
     assert plan.kind is SessionKind.REVIEW
-    assert notions(plan, Block.WARMUP) == ["k3", "k7", "k5"]
+    # Score estimé aujourd'hui (1.5.0, §130) : pratiquées il y a 2 jours, k5 (boîte 2) vaut ~48 et
+    # passe, plus importante, devant k7.
+    assert notions(plan, Block.WARMUP) == ["k3", "k5", "k7"]
     assert notions(plan, Block.CORE)[0] == "k2"
     worked = set(notions(plan, Block.WARMUP, Block.CORE))
     assert not worked & {"k1", "k4", "k6"}
@@ -187,3 +189,13 @@ def test_rules_hold_for_many_seeds(lesson: ReferenceLesson, composer: SessionCom
     # Même notion deux fois : jamais dans le même format.
     pairs = [(i.activity.knowledge_ids[0], i.activity.type) for i in plan.items[:6]]
     assert len(set(pairs)) == 6
+
+
+def test_a_notion_not_seen_for_long_comes_first(history: ReferenceLesson, composer: SessionComposer) -> None:
+    """§130 : à score égal, la notion travaillée il y a longtemps est sans doute plus oubliée."""
+    units = [history.units["k2"], history.units["k5"]]
+    old = Mastery(70, 2, NOW + timedelta(days=1), NOW - timedelta(days=20), levels=ALL_LEVELS)
+    recent = Mastery(70, 2, NOW + timedelta(days=1), NOW - timedelta(days=1), levels=ALL_LEVELS)
+    for first, other in (("k2", "k5"), ("k5", "k2")):
+        plan = composer.compose(units, {first: old, other: recent}, NOW, seed=1)
+        assert notions(plan, Block.WARMUP)[0] == first

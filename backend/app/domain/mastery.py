@@ -2,7 +2,7 @@
 
 Chaque notion a, pour chaque apprenant, un score de maîtrise de 0 à 100, une boîte de 1 à 5
 (qui fixe la date du prochain rappel) et les niveaux de compréhension déjà validés
-(`app.domain.understanding`).
+(`app.domain.understanding`). Entre deux révisions, le score estimé baisse (`Mastery.recall`).
 """
 
 import math
@@ -21,6 +21,10 @@ KNOWN_SCORE = RULES.mastery.known_score  # au-delà (et révision non due), la n
 IMPORTANT = (
     RULES.mastery.important
 )  # importance à partir de laquelle une notion compte pour la date de révision
+HALF_LIFE_FACTOR = RULES.mastery.half_life_factor  # demi-vie de la mémoire, en intervalles de la boîte
+FADING_DROP = (
+    RULES.mastery.fading_drop
+)  # baisse estimée à partir de laquelle la notion est « un peu oubliée »
 
 
 @dataclass(frozen=True)
@@ -34,6 +38,20 @@ class Mastery:
 
     def is_due(self, now: datetime) -> bool:
         return self.next_review_at <= now
+
+    def days_since(self, now: datetime) -> float:
+        return max(0.0, (now - self.last_practiced_at).total_seconds() / 86400)
+
+    def recall(self, now: datetime) -> int:
+        """Score estimé à `now` (§130 : une notion n'est jamais acquise pour toujours). Sans
+        révision, la mémoire baisse de moitié en `HALF_LIFE_FACTOR` fois l'intervalle de la boîte :
+        une notion revue souvent (boîte haute) s'oublie plus lentement."""
+        half_life = HALF_LIFE_FACTOR * REVIEW_INTERVAL_DAYS[self.box]
+        return _round(self.score * 0.5 ** (self.days_since(now) / half_life))
+
+    def fading(self, now: datetime) -> bool:
+        """Sans doute en partie oubliée depuis la dernière fois."""
+        return self.score - self.recall(now) >= FADING_DROP
 
 
 def _round(value: float) -> int:

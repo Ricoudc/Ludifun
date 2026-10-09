@@ -281,11 +281,13 @@ class SessionComposer:
         units: Sequence[KnowledgeUnit],
         include_known: bool = False,
     ) -> list[KnowledgeUnit]:
-        """Notions à travailler, par priorité : importance × fragilité, majorée si due (§8.3)."""
+        """Notions à travailler, par priorité : importance × fragilité, majorée si due (§8.3). La
+        fragilité part du score estimé aujourd'hui : une notion pas revue depuis longtemps remonte
+        (§130)."""
 
         def priority(unit: KnowledgeUnit) -> float:
             mastery = masteries.get(unit.id)
-            score = mastery.score if mastery else 0
+            score = mastery.recall(now) if mastery else 0
             if self._missing(unit, mastery):
                 score = min(score, MISSING_LEVEL_SCORE)
             due = mastery is None or mastery.is_due(now)
