@@ -180,6 +180,22 @@ void main() {
     await shot(tester, 's21_bilan_etoiles', height: 1400);
   });
 
+  testWidgets('jeu du jour : bandeau, puis étoiles doublées', (tester) async {
+    final daily = mcq('i2');
+    FakeSessionBackend(server, 's1', [
+      mcq('i1'),
+      FakeItem(daily.id, daily.type, daily.payload, daily.expected, daily: 'Droite graduée'),
+    ]);
+    await open(tester, 's1');
+    expect(find.textContaining('Jeu du jour'), findsNothing);
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('🎲 Jeu du jour : Droite graduée · étoiles ×2'), findsOneWidget);
+    await tapAndSettle(tester, '1789');
+    expect(find.text('🎲 Jeu du jour : tes étoiles comptent double !'), findsOneWidget);
+    expect(find.text('⭐ 9'), findsOneWidget); // 3 + 3 × 2
+  });
+
   testWidgets('étape 20 : étapes de la mission, puis XP et badges au bilan', (tester) async {
     final backend = FakeSessionBackend(server, 's1', [mcq('i1', block: 'warmup'), mcq('i2')]);
     server.on('POST /v1/sessions/s1/complete', (_) {

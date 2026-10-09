@@ -24,7 +24,8 @@ NOW = datetime(2026, 9, 23, 17, 0, tzinfo=UTC)
 
 @pytest.fixture
 def composer(registry: ActivityRegistry) -> SessionComposer:
-    return SessionComposer(registry)
+    # Structure exacte des séances : sans le jeu du jour, vérifié à part (test_daily_game.py).
+    return SessionComposer(registry, daily_game=False)
 
 
 ALL_LEVELS = frozenset({1, 2, 3})

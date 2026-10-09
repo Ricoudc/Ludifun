@@ -266,7 +266,7 @@ class SessionController extends Notifier<SessionState> {
           ...marked.skip(at),
         ],
         correction: correction,
-        stars: state.stars + starsFor(correction.score),
+        stars: state.stars + starsFor(correction.score) * (item.daily != null ? 2 : 1),
         streak: streak,
         bestStreak: streak > state.bestStreak ? streak : state.bestStreak,
       );

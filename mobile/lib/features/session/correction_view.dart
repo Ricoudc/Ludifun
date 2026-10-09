@@ -58,6 +58,12 @@ class CorrectionView extends StatelessWidget {
       children: [
         if (stars case final stars?) ...[
           StarsRow(stars, onStar: onStar),
+          if (item.daily != null && stars > 0)
+            const Text(
+              '🎲 Jeu du jour : tes étoiles comptent double !',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
           const SizedBox(height: 8),
         ],
         if (correction.result == AttemptResult.correct && streak >= 3) ...[

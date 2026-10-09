@@ -1,6 +1,7 @@
 """Séances de révision (écrans 4 à 7)."""
 
 import uuid
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, status
@@ -33,6 +34,7 @@ from app.domain import instructions
 from app.domain.activities.base import ActivityCode, InvalidResponse
 from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, NothingToReview
+from app.domain.decisions import Rule
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
 from app.domain.text import display_text
@@ -74,7 +76,19 @@ def item_out(item: SessionItem, attempt: Attempt | None = None, grade: str | Non
         # avec la typographie française (« ? » jamais seul en début de ligne).
         payload=display_text(item.payload),
         attempt=attempt_summary(attempt),
+        daily=daily_game(item.reason),
     )
+
+
+def daily_game(why: dict[str, Any] | None) -> str | None:
+    """Le nom du jeu du jour si cette activité l'est (ajoutée pour lui, ou déjà prévue)."""
+    facts = (why or {}).get("facts", {})
+    if not isinstance(facts, dict):
+        return None
+    if (why or {}).get("rule") == Rule.DAILY_GAME or facts.get("daily_game"):
+        name = facts.get("name")
+        return name if isinstance(name, str) else None
+    return None
 
 
 async def session_out(db: DbSession, revision: RevisionSession) -> SessionOut:

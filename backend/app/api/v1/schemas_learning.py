@@ -196,6 +196,7 @@ class SessionItemOut(BaseModel):
     instruction: str | None = Field(
         None, description="Comment jouer, dit au niveau de la classe de l'enfant (étape 25)."
     )
+    daily: str | None = Field(None, description="Nom du jeu du jour si c'est lui (§5.54) ; sinon null.")
 
 
 class SessionOut(BaseModel):

@@ -33,6 +33,8 @@ class SessionRules(_Section):
     visual_first: bool = False
     # 1.12.0 : d'une séance à l'autre, à difficulté égale, les formats les moins joués d'abord.
     vary_formats: bool = False
+    # 1.13.0 : un « jeu du jour », différent chaque jour, glissé dans la séance (§5.54).
+    daily_game: bool = False
     # Durée estimée d'une séance (1.10.0) : complétée jusqu'à `min_minutes`, sans dépasser
     # `max_minutes` (le temps du jour choisi par le parent peut demander plus : il décide alors).
     min_minutes: int = Field(5, ge=0)

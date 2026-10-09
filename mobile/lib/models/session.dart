@@ -41,6 +41,7 @@ class SessionItem {
     this.helpAvailable = false,
     this.intro,
     this.instruction,
+    this.daily,
   });
 
   factory SessionItem.fromJson(Json json) => SessionItem(
@@ -50,6 +51,7 @@ class SessionItem {
     block: Block.parse(json['block'] as String),
     intro: json['intro'] as String?,
     instruction: json['instruction'] as String?,
+    daily: json['daily'] as String?,
     type: json['type'] as String,
     difficulty: json['difficulty'] as int? ?? 1,
     payload: json['payload'] as Json,
@@ -80,6 +82,9 @@ class SessionItem {
   /// Comment jouer, au niveau de la classe de l'enfant (étape 25) ; null avec un serveur ancien.
   final String? instruction;
 
+  /// Nom du jeu du jour si c'est lui (§5.54) : étoiles doublées.
+  final String? daily;
+
   bool get answered => result != null;
 
   SessionItem answeredWith(AttemptResult value) => SessionItem(
@@ -92,6 +97,8 @@ class SessionItem {
     result: value,
     helpAvailable: helpAvailable,
     intro: intro,
+    instruction: instruction,
+    daily: daily,
   );
 }
 

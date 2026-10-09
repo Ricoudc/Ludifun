@@ -106,7 +106,7 @@ def test_visual_games_come_before_quizzes(math: ReferenceLesson, registry: Activ
         k1 = [p for p in plan.items if p.activity.knowledge_ids == ["k1"] and p.block.value == "core"]
         assert k1 and k1[0].activity.type == ActivityCode.CLASSIFY, seed
         assert k1[0].reason["facts"]["visual_first"] is True
-        assert str(describe(k1[0].reason)).endswith("Jeu visuel proposé avant un quiz.")
+        assert "Jeu visuel proposé avant un quiz." in str(describe(k1[0].reason))
 
 
 def test_every_game_has_an_instruction_for_every_cycle() -> None:

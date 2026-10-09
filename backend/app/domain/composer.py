@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from app.domain.activities.base import ActivityCode, BuiltActivity
+from app.domain.activities.base import ActivityCode, BuiltActivity, CannotBuild
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.decisions import Reason, Rule, reason
 from app.domain.difficulty import Difficulty, RecentAnswer, by_score, notion_difficulty
@@ -46,6 +46,30 @@ VISUAL_FIRST = RULES.session.visual_first
 VARY_FORMATS = RULES.session.vary_formats
 MIN_SECONDS = RULES.session.min_minutes * 60
 MAX_SECONDS = RULES.session.max_minutes * 60
+DAILY_GAME = RULES.session.daily_game
+# Jeu du jour (1.13.0) : les jeux qui peuvent l'être, dans l'ordre de la rotation, et leur nom.
+# Chaque jour, le suivant parmi ceux que la leçon permet ; le même pour toutes les séances du jour.
+DAILY_GAMES: dict[ActivityCode, str] = {
+    ActivityCode.ALIGN: "Points alignés",
+    ActivityCode.NUMBER_LINE: "Droite graduée",
+    ActivityCode.FRACTION_BAR: "Fractions à colorier",
+    ActivityCode.COLUMN_OP: "Opération posée",
+    ActivityCode.CLOCK: "Quelle heure est-il ?",
+    ActivityCode.MONEY: "Pièces et billets",
+    ActivityCode.RULER: "Mesurer à la règle",
+    ActivityCode.SYMMETRY: "Symétrie",
+    ActivityCode.WORD_HUNT: "Chasse aux mots",
+    ActivityCode.CONJUGATION: "Conjugaison",
+    ActivityCode.HOMOPHONE: "Homophones",
+    ActivityCode.ALPHA_ORDER: "Ordre alphabétique",
+    ActivityCode.SYLLABLES: "Syllabes",
+    ActivityCode.ORDER: "Remettre dans l'ordre",
+    ActivityCode.CLASSIFY: "Ranger dans les cases",
+    ActivityCode.COLORING: "Coloriage",
+    ActivityCode.SCRAMBLE: "Lettres mélangées",
+    ActivityCode.UNJUMBLE: "Démêler la phrase",
+    ActivityCode.WORD_FLASH: "Mot éclair",
+}
 EXTRA_ROUNDS = 40  # tours essayés au plus pour compléter une séance trop courte
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
 FRESH_TRIES = 8  # tirages essayés pour trouver une question pas posée aux séances précédentes
@@ -188,8 +212,9 @@ def target_difficulties(mastery: Mastery | None) -> tuple[int, ...]:
 
 
 class SessionComposer:
-    def __init__(self, registry: ActivityRegistry) -> None:
+    def __init__(self, registry: ActivityRegistry, daily_game: bool = DAILY_GAME) -> None:
         self.registry = registry
+        self.daily_game = daily_game  # règle `daily_game` ; coupée dans les tests de structure
         self.recent: frozenset[str] = frozenset()
         self.played: Counter[ActivityCode] = Counter()  # formats joués aux dernières séances
         self.history: Mapping[str, Sequence[RecentAnswer]] = {}
@@ -288,6 +313,14 @@ class SessionComposer:
             items[tail:tail] = extra
             blocks[tail:tail] = [Block.CORE] * len(extra)
 
+        daily = (
+            self._daily_game(
+                [*to_work, *(u for u in ranked if u not in to_work)], items, blocks, first, now, rng
+            )
+            if self.daily_game
+            else None
+        )
+
         by_id = {u.id: u for u in units}
         repeated = {fingerprint(a) for a in items[:tail]}
         planned = [
@@ -306,8 +339,71 @@ class SessionComposer:
             )
             for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
         ]
+        if daily is not None:
+            index, added = daily
+            item = planned[index]
+            code = item.activity.type
+            why = (
+                reason(
+                    Rule.DAILY_GAME,
+                    type=code.value,
+                    name=DAILY_GAMES[code],
+                    difficulty=item.activity.difficulty,
+                )
+                if added
+                else {
+                    **item.reason,
+                    "facts": {**item.reason["facts"], "daily_game": True, "name": DAILY_GAMES[code]},
+                }
+            )
+            planned[index] = PlannedItem(item.position, item.block, item.activity, why)
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
         return SessionPlan(kind, planned, self.estimate_duration_s(items, with_replay=True), express)
+
+    def _daily_game(
+        self,
+        units: Sequence[KnowledgeUnit],
+        items: list[BuiltActivity],
+        blocks: list[Block],
+        first: bool,
+        now: datetime,
+        rng: random.Random,
+    ) -> tuple[int, bool] | None:
+        """Le jeu du jour : (position dans `items`, ajouté ou non). S'il est déjà dans
+        l'échauffement ou l'approfondissement, il y est marqué ; sinon il est ajouté à la fin de
+        l'approfondissement, sur la première notion qui le permet, s'il tient dans la durée
+        maximale. None : aucun jeu du jour possible pour cette leçon."""
+        offered = [code for code in DAILY_GAMES if any(self.registry.get(code).accepts(u) for u in units)]
+        if not offered:
+            return None
+        code = offered[now.date().toordinal() % len(offered)]
+        main = [i for i, block in enumerate(blocks) if block in (Block.WARMUP, Block.CORE)]
+        for i in main:
+            if items[i].type == code:
+                return i, False
+        game = self.registry.get(code)
+        levels = sorted(game.difficulties)
+        difficulty = levels[0] if first else levels[len(levels) // 2]
+        for unit in units:
+            if not game.accepts(unit):
+                continue
+            try:
+                activity = game.build([unit], difficulty, rng)
+            except CannotBuild:
+                continue
+            if self.estimate_duration_s([*items, activity], with_replay=True) > MAX_SECONDS:
+                return None
+            # À la fin de l'approfondissement, ou plus tôt : jamais deux fois le même jeu de suite.
+            places = [i + 1 for i in reversed(main)] + ([0] if main else [])
+            for at in places:
+                before = items[at - 1].type if at > 0 else None
+                after = items[at].type if at < len(items) else None
+                if code not in (before, after):
+                    items.insert(at, activity)
+                    blocks.insert(at, Block.CORE if at > 0 else Block.WARMUP)
+                    return at, True
+            return None
+        return None
 
     def _extra(
         self,

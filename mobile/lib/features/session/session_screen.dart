@@ -180,6 +180,10 @@ class SessionScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                   ],
+                  if (item.daily case final name?) ...[
+                    DailyGameBanner(name),
+                    const SizedBox(height: 12),
+                  ],
                   if (item.intro case final intro?) ...[
                     Card(
                       color: LudiColors.primary.withValues(alpha: 0.08),

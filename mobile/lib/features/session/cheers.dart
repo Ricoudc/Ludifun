@@ -230,3 +230,24 @@ class _Confetti extends CustomPainter {
   @override
   bool shouldRepaint(_Confetti old) => old.t != t;
 }
+
+/// « 🎲 Jeu du jour » au-dessus du jeu choisi pour aujourd'hui (§5.54).
+class DailyGameBanner extends StatelessWidget {
+  const DailyGameBanner(this.name, {super.key});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFFFFE082), Color(0xFFFFCC80)]),
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Text(
+      '🎲 Jeu du jour : $name · étoiles ×2',
+      textAlign: TextAlign.center,
+      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+    ),
+  );
+}

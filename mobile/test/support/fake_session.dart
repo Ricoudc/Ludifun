@@ -4,13 +4,16 @@ import 'fake_server.dart';
 
 /// Une activité de la fausse séance : charge utile publique et bonne réponse.
 class FakeItem {
-  FakeItem(this.id, this.type, this.payload, this.expected, {this.block = 'core'});
+  FakeItem(this.id, this.type, this.payload, this.expected, {this.block = 'core', this.daily});
 
   final String id;
   final String type;
   final Map<String, Object?> payload;
   final Map<String, Object?> expected;
   final String block;
+
+  /// Nom du jeu du jour si c'est lui.
+  final String? daily;
   Map<String, Object?>? answer;
 }
 
@@ -131,6 +134,7 @@ class FakeSessionBackend {
     'difficulty': 1,
     'knowledge_ids': ['k1'],
     'payload': item.payload,
+    'daily': item.daily,
     'help_available': !{'MATCH', 'SPEED_CHALLENGE'}.contains(item.type),
     'attempt': switch (item.answer) {
       null => null,

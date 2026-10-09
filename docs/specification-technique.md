@@ -1527,6 +1527,30 @@ trop lourd, 415 format refusé (dont ancien .doc), 422 illisible, protégé, tro
 long. Le fichier n'est jamais gardé. Application : bouton « J'ai l'exercice en PDF ou Word »
 sur l'écran « Aide aux devoirs ». Tests : `tests/api/test_homework.py`,
 `mobile/test/features/child_flow_test.dart`.
+
+### 5.54 Jeu du jour (octobre 2026, règles 1.13.0)
+
+Règle `daily_game` (`engine_rules.toml`, version 1.13.0) : chaque jour, un jeu est mis en avant.
+`composer.DAILY_GAMES` liste, dans l'ordre de la rotation, les jeux qui peuvent l'être (points
+alignés, droite graduée, fractions à colorier, opération posée, heure, monnaie, règle, symétrie,
+chasse aux mots, conjugaison, homophones, ordre alphabétique, syllabes, ranger, remettre dans
+l'ordre, coloriage, lettres mélangées, démêler, mot éclair). Parmi ceux que la leçon permet,
+celui du jour est `liste[date.toordinal() % n]` : le même pour toutes les séances du jour, un
+autre le lendemain, déterministe (aucun hasard).
+
+- S'il est déjà dans l'échauffement ou l'approfondissement, il y est seulement marqué (fait
+  `daily_game` ajouté à sa raison : « C'est aussi le jeu du jour (…) ») ;
+- sinon il est ajouté à la fin de l'approfondissement (ou plus tôt, jamais deux fois le même jeu
+  de suite), sur la première notion à travailler qui le permet, s'il tient dans la durée
+  maximale ; raison `daily_game` (§126) : « Jeu du jour (…) : un jeu différent chaque jour ».
+- API : `daily` (nom du jeu, facultatif) sur l'activité de la séance. Application : bandeau
+  « 🎲 Jeu du jour : … · étoiles ×2 » et étoiles comptées double (pour le plaisir ; la note et
+  le moteur n'en tiennent pas compte).
+
+Tests : `tests/domain/test_daily_game.py` (une fois par séance, règles de la séance gardées, même
+jeu toute la journée, rotation), `tests/api/test_daily_game.py`,
+`mobile/test/features/session_flow_test.dart`. Les tests de structure exacte des séances
+(`test_composer.py`) composent sans le jeu du jour.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

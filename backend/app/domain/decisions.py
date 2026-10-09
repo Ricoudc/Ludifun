@@ -24,6 +24,7 @@ class Rule(StrEnum):
     PAUSE_STRUGGLING = "pause_struggling"  # échecs d'affilée : pause proposée
     TEACH_EXPLAIN = "teach_explain"  # « Enseigne-moi » : points clés dits, niveau « expliquer »
     EXTRA_PRACTICE = "extra_practice"  # séance trop courte : complétée jusqu'à la durée minimale
+    DAILY_GAME = "daily_game"  # jeu du jour : un format différent chaque jour, glissé dans la séance
 
 
 Reason = dict[str, Any]
@@ -48,6 +49,8 @@ def describe(decision: Reason | None) -> str | None:
     text = _sentence(decision.get("rule"), f)
     if text is not None and f.get("visual_first"):
         text += " Jeu visuel proposé avant un quiz."
+    if text is not None and f.get("daily_game"):
+        text += f" C'est aussi le jeu du jour ({f.get('name')})."
     return text
 
 
@@ -91,6 +94,11 @@ def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
             return (
                 f"Séance complétée pour durer au moins {f.get('minutes')} minutes : "
                 "une autre question sur une notion de la leçon."
+            )
+        case Rule.DAILY_GAME:
+            return (
+                f"Jeu du jour ({f.get('name')}) : un jeu différent chaque jour, pour varier ; "
+                f"difficulté {f.get('difficulty')}."
             )
         case Rule.REPLAY:
             return "Notion ratée pendant la séance : reprise dans un autre format."
