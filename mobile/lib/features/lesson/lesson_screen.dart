@@ -267,6 +267,7 @@ class _Summary extends ConsumerWidget {
           _ => [const Center(child: CircularProgressIndicator())],
         },
         const SizedBox(height: 8),
+        _TeachMe(lesson.id),
         TextButton(
           onPressed: () => _changeGrade(context, ref),
           child: const Text('Ce n\'est pas le bon niveau ?'),
@@ -374,4 +375,39 @@ class _KeepOfflineState extends ConsumerState<_KeepOffline> {
       label: Text(kept ? 'Gardée pour jouer sans Internet' : 'Garder pour jouer sans Internet'),
     );
   }
+}
+
+/// « Enseigne-moi » (§83) : l'enfant explique à Ludi une notion choisie par le moteur.
+class _TeachMe extends ConsumerStatefulWidget {
+  const _TeachMe(this.lessonId);
+
+  final String lessonId;
+
+  @override
+  ConsumerState<_TeachMe> createState() => _TeachMeState();
+}
+
+class _TeachMeState extends ConsumerState<_TeachMe> {
+  bool _starting = false;
+
+  Future<void> _start() async {
+    setState(() => _starting = true);
+    try {
+      final teach = await ref.read(apiProvider).startTeaching(widget.lessonId);
+      if (mounted) context.go(Routes.teach(teach.id));
+      return;
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+    if (mounted) setState(() => _starting = false);
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: _starting ? null : _start,
+    icon: const Icon(Icons.record_voice_over_outlined),
+    label: const Text('Enseigne-moi : explique ta leçon à Ludi'),
+  );
 }

@@ -30,6 +30,7 @@ from app.ai.schemas import (
     PracticeQuestion,
     SourcedAnswerOutput,
     SourceQuote,
+    TeachOutput,
 )
 from app.domain.activities.open_question import point_found
 
@@ -154,6 +155,26 @@ def practice_output(input: str) -> PracticeOutput:
                 quote=quote,
             )
         ]
+    )
+
+
+_EXPLANATIONS = re.compile(r"<explication_eleve>\n(.*?)\n</explication_eleve>", re.DOTALL)
+
+
+def teach_output(input: str) -> TeachOutput:
+    """Élève factice, déterministe : les points clés dont les mots sont dans les explications, et
+    une question sur le premier point encore absent."""
+    points_match = _POINTS.search(input)
+    points = [p.removeprefix("- ") for p in points_match.group(1).splitlines()] if points_match else []
+    said = " ".join(_EXPLANATIONS.findall(input))
+    found = [p for p in points if point_found(said, p)]
+    missing = [p for p in points if p not in found]
+    return TeachOutput(
+        found=found,
+        reaction="Ah, d'accord, je crois que j'ai compris !"
+        if found
+        else "Hmm, je ne suis pas sûr de comprendre…",
+        question="Et tu peux m'en dire plus ?" if missing else "Tu peux me donner un exemple ?",
     )
 
 
@@ -310,6 +331,8 @@ class FakeProvider:
             return illustration_output(input)
         if stage == "homework":
             return homework_output(input)
+        if stage == "teach":
+            return teach_output(input)
         if stage == "practice":
             return practice_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)

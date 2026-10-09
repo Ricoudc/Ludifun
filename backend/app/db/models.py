@@ -56,7 +56,8 @@ ERROR_TYPES = (
 )
 SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
 AI_STAGES = (
-    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework"
+    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework",
+    "teach",
 )  # fmt: skip
 AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
 AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
@@ -801,3 +802,37 @@ class Homework(Base):
         CheckConstraint(_in("status", HOMEWORK_STATUSES), name="status"),
         CheckConstraint("source IN ('photo', 'text')", name="source"),
     )
+
+
+TEACH_STATUSES = ("open", "finished")
+
+
+class TeachSession(Base):
+    """« Enseigne-moi » (§83) : l'enfant explique une notion de sa leçon à Ludi, l'élève joué par
+    l'IA. Les points clés attendus, chaque tour (question de Ludi, explication de l'enfant,
+    points reconnus), puis le bilan et la raison de la décision (niveau « expliquer »)."""
+
+    __tablename__ = "teach_sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    key_points: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    turns: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    question: Mapped[str | None] = mapped_column(Text)  # la question de Ludi qui attend une réponse
+    covered: Mapped[int | None] = mapped_column(SmallInteger)
+    validated: Mapped[bool | None] = mapped_column(Boolean)
+    decision: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    engine_version: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (CheckConstraint(_in("status", TEACH_STATUSES), name="status"),)

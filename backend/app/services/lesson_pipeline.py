@@ -58,6 +58,7 @@ STAGE_LABELS: dict[Stage, str] = {
     "illustration": "image de la leçon",
     "practice": "exercices des sites de confiance",
     "homework": "aide aux devoirs",
+    "teach": "« Enseigne-moi »",
 }
 MATERIAL_BATCH = 5  # notions par appel d'enrichissement (appels en parallèle)
 # IA installée sur le PC (Ollama) : une notion par appel. Plusieurs notions dans un appel

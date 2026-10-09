@@ -333,6 +333,16 @@ class SourcedAnswerOutput(BaseModel):
     quotes: list[SourceQuote] = Field(description="1 à 3 citations exactes qui justifient la réponse.")
 
 
+class TeachOutput(BaseModel):
+    """« Enseigne-moi » : Ludi, l'élève, réagit à l'explication de l'enfant (§83)."""
+
+    found: list[str] = Field(description="Points clés présents dans les explications, recopiés tels quels.")
+    reaction: str = Field(description="Une phrase d'élève qui dit ce qu'il a compris, en tutoyant l'enfant.")
+    question: str = Field(
+        description="Une question d'élève curieux sur un point clé encore absent, sans en donner la réponse."
+    )
+
+
 class HomeworkStepOutput(BaseModel):
     kind: Literal["hint", "question", "reminder", "method"] = Field(
         description="hint : un indice ; question : une question intermédiaire ; reminder : le rappel "

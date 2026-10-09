@@ -128,6 +128,25 @@ async def export_child(session: AsyncSession, child: db.Child, now: datetime) ->
                 select(db.Homework).where(db.Homework.child_id == child.id).order_by(db.Homework.created_at)
             )
         ],
+        # « Enseigne-moi » : les explications de l'enfant, les questions de Ludi et le bilan.
+        "teach": [
+            {
+                "created_at": _iso(t.created_at),
+                "lesson_id": str(t.lesson_id),
+                "knowledge_id": str(t.knowledge_id),
+                "status": t.status,
+                "turns": [{"question": turn["question"], "answer": turn["answer"]} for turn in t.turns],
+                "key_points": t.key_points,
+                "covered": t.covered,
+                "validated": t.validated,
+                "finished_at": _iso(t.finished_at),
+            }
+            for t in await session.scalars(
+                select(db.TeachSession)
+                .where(db.TeachSession.child_id == child.id)
+                .order_by(db.TeachSession.created_at)
+            )
+        ],
     }
 
 

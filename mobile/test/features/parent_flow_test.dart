@@ -1615,6 +1615,44 @@ void main() {
     expect(find.text('Coups de pouce : 4 sur 4 · essais : 2'), findsOneWidget);
   });
 
+  testWidgets('le parent voit ce qu\'Emma a expliqué à Ludi', (tester) async {
+    server.on(
+      'GET /v1/children/c1/teach',
+      (_) => (
+        200,
+        {
+          'teach': [
+            {
+              'id': 't1',
+              'created_at': '2026-09-23T15:42:00Z',
+              'lesson_id': 'l2',
+              'lesson_title': 'Les fractions',
+              'label': 'Numérateur',
+              'status': 'finished',
+              'total': 2,
+              'covered': 2,
+              'validated': true,
+              'decision': '« Enseigne-moi » : 2 point(s) clé(s) sur 2 expliqué(s) : niveau « Expliquer » validé.',
+              'turns': [
+                {
+                  'question': 'Explique-moi « Numérateur » !',
+                  'answer': 'C\'est le nombre du haut.',
+                },
+              ],
+            },
+          ],
+          'next_before': null,
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    await tap(tester, find.text('Enseigne-moi'));
+    expect(find.text('Enseigne-moi d\'Emma'), findsOneWidget);
+    expect(find.text('⭐ Niveau « Expliquer » validé'), findsOneWidget);
+    expect(find.text('« C\'est le nombre du haut. »'), findsOneWidget);
+  });
+
   testWidgets('le parent voit les questions signalées par Emma et les marque vues', (tester) async {
     Map<String, Object?> report(String id, String reason, String outcome, {String? given}) => {
       'id': id,

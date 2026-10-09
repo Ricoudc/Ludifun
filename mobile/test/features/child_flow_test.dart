@@ -928,4 +928,73 @@ void main() {
     expect(find.text('🎉 Bravo, c\'est juste !'), findsOneWidget);
     expect(find.text('✔️ Pour vérifier : 8 + 16 = 24 : c\'est bon.'), findsOneWidget);
   });
+
+  testWidgets('enseigne-moi : l\'enfant explique une notion à Ludi, puis le bilan', (tester) async {
+    var answers = <String>[];
+    Map<String, Object?> teachJson() {
+      final finished = answers.length == 3;
+      return {
+        'id': 't1',
+        'lesson_id': 'l1',
+        'knowledge_id': 'k1',
+        'label': 'Le pluriel des noms',
+        'status': finished ? 'finished' : 'open',
+        'messages': [
+          for (final (i, answer) in answers.indexed) ...[
+            {
+              'speaker': 'ludi',
+              'text': i == 0 ? 'Explique-moi « Le pluriel des noms » !' : 'Et pourquoi ?',
+            },
+            {'speaker': 'child', 'text': answer},
+            {'speaker': 'ludi', 'text': 'Ah, d\'accord !'},
+          ],
+          if (!finished)
+            {
+              'speaker': 'ludi',
+              'text': answers.isEmpty ? 'Explique-moi « Le pluriel des noms » !' : 'Et pourquoi ?',
+            },
+        ],
+        'total': 2,
+        'covered': finished ? 2 : null,
+        'validated': finished ? true : null,
+        'summary': finished ? 'Tu m\'as tout appris : 2 point(s) sur 2 !' : null,
+        'created_at': '2026-09-23T15:00:00Z',
+      };
+    }
+
+    server
+      ..on('GET /v1/lessons/l1', (_) => (200, lessonJson('ready')))
+      ..on('POST /v1/lessons/l1/teach', (_) => (201, teachJson()))
+      ..on('GET /v1/teach/t1', (_) => (200, teachJson()))
+      ..on('POST /v1/teach/t1/answers', (r) {
+        answers = [...answers, (r.data as Map)['text'] as String];
+        return (200, teachJson());
+      });
+    final container = await launch(tester, MemoryCredentialStore(child));
+    container.read(routerProvider).go('/enfant/lecon/l1');
+    await tester.pumpAndSettle();
+    final teachMe = find.text('Enseigne-moi : explique ta leçon à Ludi');
+    await tester.ensureVisible(teachMe);
+    await tester.tap(teachMe);
+    await tester.pumpAndSettle();
+    expect(find.text('🧑‍🎓 Explique-moi « Le pluriel des noms » !'), findsOneWidget);
+    await shot(tester, 'e16_enseigne_moi');
+
+    for (final text in ['On ajoute un s.', 'Parce qu\'il y en a plusieurs.', 'Des chats.']) {
+      await tester.enterText(find.byType(TextField), text);
+      await tester.pump();
+      await tester.ensureVisible(find.text('Expliquer à Ludi'));
+      await tester.tap(find.text('Expliquer à Ludi'));
+      await tester.pumpAndSettle();
+      expect(find.text(text), findsOneWidget);
+    }
+    expect(answers, ['On ajoute un s.', 'Parce qu\'il y en a plusieurs.', 'Des chats.']);
+    expect(find.text('Tu m\'as tout appris : 2 point(s) sur 2 !'), findsOneWidget);
+    expect(find.text('⭐ Niveau « Expliquer » validé !'), findsOneWidget);
+    expect(find.text('Expliquer à Ludi'), findsNothing);
+    await tester.ensureVisible(find.text('Retour à la leçon'));
+    await tester.tap(find.text('Retour à la leçon'));
+    await tester.pumpAndSettle();
+    expect(container.read(routerProvider).state.matchedLocation, '/enfant/lecon/l1');
+  });
 }

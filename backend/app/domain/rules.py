@@ -84,6 +84,11 @@ class HomeworkRules(_Section):
     attempts_before_solution: int = Field(ge=1, le=10)
 
 
+class TeachRules(_Section):
+    follow_ups: int = Field(ge=0, le=5)
+    explain_ratio: float = Field(gt=0, le=1)
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -95,6 +100,7 @@ class EngineRules(_Section):
     pictures: PictureRules
     material: MaterialRules
     homework: HomeworkRules
+    teach: TeachRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

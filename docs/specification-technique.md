@@ -29,7 +29,7 @@ ont été mises à jour depuis.
 | §16-§18 | Moteur qui choisit l'activité ; QCM, vrai/faux, flashcards, texte à trous, association, défi rapide | ✅ 6 activités, composition par blocs selon la maîtrise | `domain/composer.py`, `domain/activities/` |
 | §18 | Questions ouvertes, memory, classement | ✅ questions ouvertes (étape 14) ; ⏳ `MEMORY`, `ORDER` déclarés | `domain/activities/open_question.py` ; V2 |
 | §19-§25 | Pratique par matière, activités visuelles, géographie, histoire, sciences, maths | ⏳ V2-V3 | §9 de ce document |
-| §26, §83 | Oral, « Enseigne-moi » | 🔮 V4 | |
+| §26, §83 | Oral, « Enseigne-moi » | ✅ « Enseigne-moi » écrit ou dicté au clavier (§5.33) ; 🔮 oral complet (reconnaissance vocale dans l'application) : V4 | `domain/teach.py` |
 | §27-§28 | « Je n'ai pas compris » (5 niveaux), langage adapté à l'âge | ✅ étape 14 : indice, rappel, exemple, étapes, réponse | `domain/help.py`, `features/session/help_sheet.dart` |
 | §29 | Mode devoirs | ✅ étapes guidées, tentative vérifiée par le code, correction après plusieurs essais (§5.29) | `domain/homework.py` |
 | §31 | Durée de séance choisie par le parent | ✅ étape 16 : 5 à 30 min par jour, séances ajustées | `domain/planning.py` |
@@ -1059,6 +1059,32 @@ enregistré ne change pas ; seule l'estimation du jour sert.
   révision le vérifiera ») et n'est plus « très bien maîtrisée », seulement « maîtrisée »
   (compétences et notions, contenu d'une leçon, tableau de bord).
 - Pas de nouvelle donnée ni de migration : la date de dernière pratique existait déjà.
+
+### 5.33 « Enseigne-moi » (octobre 2026, CDC §83, §26, règles 1.6.0)
+
+L'enfant devient professeur : sur une leçon, « Enseigne-moi : explique ta leçon à Ludi ». Ludi,
+l'élève joué par l'IA, demande « Explique-moi « … » comme si je n'en avais jamais entendu
+parler », puis pose une ou deux questions de relance ; l'enfant écrit (ou dicte avec le micro
+du clavier du téléphone).
+
+- **Le moteur choisit la notion** (`choose_notion`) : une notion déjà bien travaillée (score
+  ≥ 50) dont le niveau « expliquer » n'est pas validé, la plus importante ; sinon une notion
+  travaillée ; sinon la plus importante de la leçon. Points clés attendus : ceux d'une question
+  « expliquer » de la notion, sinon la phrase « à retenir ».
+- **L'IA propose** (étape `teach`, prompt `teach.v1`, modèle rapide, 20 s au plus ; les
+  explications sont des données entre balises `<explication_eleve>`) : les points clés
+  reconnus, une réaction d'élève et sa question suivante.
+- **Le code décide** (`domain/teach.py`) : seuls les points clés de la liste comptent ;
+  `teach.follow_ups` (2) relances, puis la fin ; la réaction et la question passent le contrôle
+  du §141 et une question doit en être une, sinon Ludi dit une phrase écrite par le code. Sans
+  IA (panne, délai, plafond de coût), les points sont reconnus par leurs mots.
+- **Bilan** : « Tu m'as appris 2 point(s) sur 3 ». Le niveau « expliquer » est validé si l'enfant
+  a dit au moins `teach.explain_ratio` (75 %) des points clés, et seulement pour une notion déjà
+  travaillée en séance ; la raison (règle `teach_explain`, faits, version du moteur) est
+  enregistrée et montrée au parent.
+- API enfant : `POST /v1/lessons/{id}/teach` (notion facultative), `GET /v1/teach/{id}`,
+  `POST /v1/teach/{id}/answers`. Parent : `GET /v1/children/{c}/teach` (explications de
+  l'enfant, bilan, règle). Table `teach_sessions` (migration 0025), export RGPD.
 
 ---
 

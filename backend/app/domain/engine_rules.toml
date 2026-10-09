@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.5.0"
+version = "1.6.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -72,3 +72,8 @@ sourced_per_notion = 2
 # Mode devoirs (CDC §29, §127) : jamais « énoncé → réponse ». La correction guidée (solution
 # et réponse) n'est proposée qu'après ce nombre de tentatives fausses, toutes les étapes vues (1.4.0).
 attempts_before_solution = 2
+
+[teach]
+# « Enseigne-moi » (CDC §83, 1.6.0) : l'enfant explique une notion à Ludi, l'élève joué par l'IA.
+follow_ups = 2              # questions de relance de Ludi après la première explication
+explain_ratio = 0.75        # part des points clés dits pour valider le niveau « expliquer »

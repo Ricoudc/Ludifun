@@ -136,6 +136,9 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 - **Sans Internet** : sur une leçon, touchez « Garder pour jouer sans Internet », coupez le
   Wi-Fi (mode avion), ouvrez la leçon et jouez la séance : un bandeau 📴 le dit, les réponses
   sont gardées. Remettez le Wi-Fi et revenez à l'accueil : « Ta séance … est corrigée ».
+- **« Enseigne-moi »** en bas d'une leçon : expliquer la notion à Ludi (au clavier ou avec le
+  micro 🎤 du clavier), répondre à ses questions, lire le bilan. Le parent le voit dans
+  *Enseigne-moi*.
 
 ## 5. Avec la vraie IA (analyse de vraies leçons)
 

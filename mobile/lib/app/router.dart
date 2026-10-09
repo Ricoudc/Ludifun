@@ -17,8 +17,10 @@ import '../features/parent/child_form_screen.dart';
 import '../features/parent/child_settings_screen.dart';
 import '../features/homework/homework_screen.dart';
 import '../features/homework/homework_start_screen.dart';
+import '../features/teach/teach_screen.dart';
 import '../features/parent/child_help_screen.dart';
 import '../features/parent/child_homework_screen.dart';
+import '../features/parent/child_teach_screen.dart';
 import '../features/parent/child_programme_screen.dart';
 import '../features/parent/child_reports_screen.dart';
 import '../features/parent/child_mistakes_screen.dart';
@@ -73,6 +75,8 @@ abstract final class Routes {
   static const homeworkStart = '/enfant/devoirs';
   static String homework(String id) => '/enfant/devoirs/$id';
   static String childHomework(String childId) => '/parent/enfants/$childId/devoirs';
+  static String teach(String id) => '/enfant/enseigne/$id';
+  static String childTeach(String childId) => '/parent/enfants/$childId/enseigne';
   static String analysis(String lessonId, {String? childId}) =>
       childId == null ? '/enfant/analyse/$lessonId' : '/parent/enfants/$childId/analyse/$lessonId';
   static String lesson(String lessonId) => '/enfant/lecon/$lessonId';
@@ -185,6 +189,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => ChildHomeworkScreen(childId: state.pathParameters['id']!),
               ),
               GoRoute(
+                path: 'enseigne',
+                builder: (_, state) => ChildTeachScreen(childId: state.pathParameters['id']!),
+              ),
+              GoRoute(
                 path: 'modifier',
                 builder: (_, state) => ChildFormScreen(childId: state.pathParameters['id']),
               ),
@@ -220,6 +228,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'devoirs/:id',
             builder: (_, state) => HomeworkScreen(homeworkId: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'enseigne/:id',
+            builder: (_, state) => TeachScreen(teachId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: 'analyse/:id',

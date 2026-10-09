@@ -6,6 +6,7 @@ import '../../models/account.dart';
 import '../../models/ai.dart';
 import '../../models/figure.dart';
 import '../../models/homework.dart';
+import '../../models/teach.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
 import '../../models/programme.dart';
@@ -588,6 +589,37 @@ class LudifunApi {
           queryParameters: {'limit': limit, 'before': ?before},
         );
         return HomeworkPage.fromJson(r.data!);
+      });
+
+  /// « Enseigne-moi » : Ludi demande à l'enfant d'expliquer une notion de la leçon (choisie par
+  /// le moteur si `knowledgeId` est absent).
+  Future<Teach> startTeaching(String lessonId, {String? knowledgeId}) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/lessons/$lessonId/teach',
+      data: {'knowledge_id': ?knowledgeId},
+    );
+    return Teach.fromJson(r.data!);
+  });
+
+  Future<Teach> teaching(String id) => _call(() async {
+    final r = await _dio.get<Json>('/v1/teach/$id');
+    return Teach.fromJson(r.data!);
+  });
+
+  /// L'explication de l'enfant ; Ludi réagit et relance, ou fait le bilan.
+  Future<Teach> teachAnswer(String id, String text) => _call(() async {
+    final r = await _dio.post<Json>('/v1/teach/$id/answers', data: {'text': text});
+    return Teach.fromJson(r.data!);
+  });
+
+  /// Parent : ce que l'enfant a expliqué à Ludi.
+  Future<TeachPage> childTeaching(String childId, {int limit = 20, String? before}) =>
+      _call(() async {
+        final r = await _dio.get<Json>(
+          '/v1/children/$childId/teach',
+          queryParameters: {'limit': limit, 'before': ?before},
+        );
+        return TeachPage.fromJson(r.data!);
       });
 
   /// Leçon collée ou tapée : même analyse que pour une photo.

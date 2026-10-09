@@ -22,6 +22,7 @@ class Rule(StrEnum):
     ERRORS_SESSION = "errors_session"  # « Revoir mes erreurs »
     PAUSE_FAST_GUESSING = "pause_fast_guessing"  # réponses au hasard : pause proposée
     PAUSE_STRUGGLING = "pause_struggling"  # échecs d'affilée : pause proposée
+    TEACH_EXPLAIN = "teach_explain"  # « Enseigne-moi » : points clés dits, niveau « expliquer »
 
 
 Reason = dict[str, Any]
@@ -96,4 +97,12 @@ def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
             )
         case Rule.PAUSE_STRUGGLING:
             return f"{f.get('failures')} échecs d'affilée : pause proposée."
+        case Rule.TEACH_EXPLAIN:
+            said = f"« Enseigne-moi » : {f.get('covered')} point(s) clé(s) sur {f.get('total')} expliqué(s)"
+            if f.get("validated"):
+                return f"{said} : niveau « Expliquer » validé."
+            if not f.get("practised"):
+                return f"{said} ; notion pas encore travaillée en séance : aucun niveau validé."
+            needed = round(100 * float(f.get("threshold", 0)))
+            return f"{said}, il en faut {needed} % pour valider « Expliquer »."
     return None

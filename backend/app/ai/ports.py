@@ -11,7 +11,7 @@ from typing import Literal, Protocol
 from pydantic import BaseModel
 
 Stage = Literal[
-    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework"
+    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework", "teach"
 ]
 MediaType = Literal["image/jpeg", "image/png", "image/webp", "image/gif"]
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
@@ -24,6 +24,7 @@ PROMPT_VERSIONS: dict[Stage, str] = {
     "illustration": "v2",
     "practice": "v1",
     "homework": "v1",
+    "teach": "v1",
 }
 
 
