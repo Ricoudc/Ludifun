@@ -273,7 +273,8 @@ async def test_answers_played_offline_keep_their_time(
     lesson = await upload_lesson(client, token)
     started = now[0]
     session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
-    items = [i for i in session["items"] if i["type"] in ("MCQ", "TRUE_FALSE")][:3]
+    items = session["items"][:3]  # quel que soit le jeu : seule l'heure des réponses compte ici
+    assert len(items) == 3
     url = f"/v1/sessions/{session['id']}/attempts"
     now[0] = started + timedelta(days=1)  # retour du réseau le lendemain
     moments = [
@@ -281,8 +282,11 @@ async def test_answers_played_offline_keep_their_time(
         started + timedelta(days=3),  # dans le futur : ramenée à maintenant
         started - timedelta(days=1),  # avant la séance : ramenée au début
     ]
+    keys = await knowledge_keys(db)
     for item, moment in zip(items, moments, strict=True):
-        response = {"choice_id": "a"} if item["type"] == "MCQ" else {"value": True}
+        row = await db.get(SessionItem, uuid.UUID(item["id"]))
+        assert row is not None
+        response = respond(activity_of(row, keys), lambda _: True)  # juste : pas de remédiation
         r = await client.post(
             url,
             json={"item_id": item["id"], "response": response, "answered_at": moment.isoformat()},
