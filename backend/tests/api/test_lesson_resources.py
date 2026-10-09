@@ -36,6 +36,8 @@ LUMNI = [
     {"url": "https://www.lumni.fr/video/les-fractions", "title": "Les fractions - Lumni | Primaire"},
     {"url": "https://www.lumni.fr/recherche?q=fractions", "title": "Recherche - Lumni"},
 ]
+# Les Fondamentaux, Maître Lucas : ajoutés aux réponses du moteur dans un seul test.
+OTHERS: list[dict[str, str]] = []
 sent: list[httpx.Request] = []
 
 
@@ -48,7 +50,7 @@ def internet(request: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json={"query": {"search": [{"title": "Fraction"}]}})
         return httpx.Response(200, json={"parse": {"title": "Fraction", "wikitext": QUIZ}})
     if request.url.host == "recherche":
-        return httpx.Response(200, json={"results": LUMNI})
+        return httpx.Response(200, json={"results": LUMNI + OTHERS})
     return httpx.Response(404)
 
 
@@ -212,3 +214,41 @@ async def test_two_searches_at_once_add_each_resource_once(
         if (q.get("source") or {}).get("site") == "fr.vikidia.org"
     ]
     assert len(quiz) == 1
+
+
+async def test_les_fondamentaux_and_maitre_lucas_are_offered_as_links(
+    client: AsyncClient, trusted_sites: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le moteur trouve des pages ; seules celles qui parlent de la leçon sont gardées, sans rien
+    copier : l'accueil, la recherche, une autre leçon ou un autre site sont écartés."""
+    monkeypatch.setattr(
+        "tests.api.test_lesson_resources.OTHERS",
+        [
+            {
+                "url": "https://www.reseau-canope.fr/lesfondamentaux/discipline/mathematiques/fractions/les-fractions.html",
+                "title": "Les fractions | Les fondamentaux",
+            },
+            {"url": "https://www.reseau-canope.fr/lesfondamentaux/accueil.html", "title": "Accueil"},
+            {"url": "https://www.reseau-canope.fr/boutique/fractions.html", "title": "Fractions : le livre"},
+            {
+                "url": "https://www.maitrelucas.fr/fractions-cm2/",
+                "title": "Les fractions au CM2 - Maître Lucas",
+            },
+            {"url": "https://www.maitrelucas.fr/la-conjugaison/", "title": "La conjugaison - Maître Lucas"},
+            {"url": "https://www.maitrelucas.fr/?s=fractions", "title": "Fractions - Recherche"},
+        ],
+    )
+    family = await family_with_device(client)
+    await client.put("/v1/parent/ai/sources", json={"enabled": True}, headers=auth(family["parent"]))
+    lesson = await upload_lesson(client, family["device"])
+    linked = {
+        (r["provider"], r["kind"], r["title"])
+        for r in lesson["resources"]
+        if r["provider"] in {"fondamentaux", "maitrelucas"}
+    }
+    assert linked == {
+        ("fondamentaux", "video", "Les fractions"),
+        ("maitrelucas", "lesson", "Les fractions au CM2"),
+    }
+    licences = {r["provider"]: r["licence"] for r in lesson["resources"]}
+    assert "rien n'est copié" in licences["maitrelucas"] and "Canopé" in licences["fondamentaux"]

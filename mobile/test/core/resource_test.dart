@@ -31,4 +31,30 @@ void main() {
     expect(ResourceProvider.vikidia.allows(Uri.parse('https://vikidia.org.evil.fr/')), isFalse);
     expect(ResourceProvider.vikidia.allows(Uri.parse('https://www.lumni.fr/')), isFalse);
   });
+
+  test('Les Fondamentaux et Maître Lucas : une page de leçon, seulement sur leur site', () {
+    Map<String, Object?> json(String provider, String kind, String url) => {
+      'id': 'r1',
+      'provider': provider,
+      'kind': kind,
+      'title': 'Les fractions',
+      'url': url,
+      'licence': 'Maître Lucas (consultation seulement, rien n\'est copié)',
+    };
+    final lucas = LessonResource.tryParse(
+      json('maitrelucas', 'lesson', 'https://www.maitrelucas.fr/fractions/'),
+    );
+    expect(lucas?.provider, ResourceProvider.maitrelucas);
+    expect(lucas?.kind.label, 'Leçon');
+    expect(
+      LessonResource.tryParse(json('maitrelucas', 'lesson', 'https://www.youtube.com/watch?v=x')),
+      isNull,
+    );
+    expect(
+      LessonResource.tryParse(
+        json('fondamentaux', 'video', 'https://www.reseau-canope.fr/lesfondamentaux/x.html'),
+      )?.provider.label,
+      'Les Fondamentaux (Canopé)',
+    );
+  });
 }

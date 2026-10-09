@@ -607,3 +607,37 @@ async def test_migration_0026_notion_confidence(engine: AsyncEngine, db: AsyncSe
         count = (await conn.execute(text("SELECT count(*) FROM knowledge_items"))).scalar()
         assert count is not None and count > 0
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0027_new_resource_sites(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Les Fondamentaux et Maître Lucas acceptés (type « leçon » compris) ; un site inconnu
+    refusé ; retour arrière : leurs ressources disparaissent, les autres restent."""
+    await create_full_lesson(db)
+    await db.commit()
+    lesson = await db.scalar(select(Lesson.id).limit(1))
+    await db.commit()
+    insert = text(
+        "INSERT INTO lesson_resources (id, lesson_id, provider, kind, title, url, position) "
+        "VALUES (:id, :lesson, :provider, :kind, 'Titre', :url, :position)"
+    )
+    async with engine.begin() as conn:
+        for position, (provider, kind) in enumerate(
+            [("maitrelucas", "lesson"), ("fondamentaux", "video"), ("lumni", "video")]
+        ):
+            await conn.execute(
+                insert,
+                {"id": uuid.uuid4(), "lesson": lesson, "provider": provider, "kind": kind,
+                 "url": f"https://exemple.fr/{position}", "position": position},
+            )  # fmt: skip
+    with pytest.raises(IntegrityError):
+        async with engine.begin() as conn:
+            await conn.execute(
+                insert,
+                {"id": uuid.uuid4(), "lesson": lesson, "provider": "youtube", "kind": "video",
+                 "url": "https://exemple.fr/x", "position": 9},
+            )  # fmt: skip
+    await run_alembic("downgrade", "0026")
+    async with engine.connect() as conn:
+        providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
+    assert providers == ["lumni"]
+    await run_alembic("upgrade", "head")

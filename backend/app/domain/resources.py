@@ -11,6 +11,14 @@ Trois sites, trois façons de faire, toutes dans l'application :
   et la licence ; la page du quiz peut aussi s'ouvrir dans la visionneuse.
 - **Lumni** (France Télévisions, droits réservés) : rien n'est copié ; ses vidéos et quiz sur la
   notion sont proposés tels quels, dans la visionneuse.
+- **Les Fondamentaux** (Réseau Canopé, opérateur du ministère de l'Éducation nationale, droits
+  réservés) : des films d'animation du CP à la 6e, proposés tels quels.
+- **Maître Lucas** (site gratuit d'enseignants, du CP au CM2, sans licence de réutilisation
+  publiée) : rien n'est copié ni lu par l'IA ; ses pages de leçon (vidéo, fiche) sont proposées
+  telles quelles, comme un lien.
+
+Pour ces trois sites, le moteur de recherche du serveur trouve les pages ; le code ne garde que
+celles qui parlent de la leçon (`linked_resource`).
 
 La visionneuse ne quitte jamais le site de la ressource (`ALLOWED_HOSTS`) : un lien vers un autre
 site, une publicité, un réseau social n'est pas ouvert.
@@ -31,6 +39,8 @@ class Provider(StrEnum):
     MATHALEA = "mathalea"
     VIKIDIA = "vikidia"
     LUMNI = "lumni"
+    FONDAMENTAUX = "fondamentaux"
+    MAITRE_LUCAS = "maitrelucas"
 
 
 class ResourceKind(StrEnum):
@@ -38,6 +48,7 @@ class ResourceKind(StrEnum):
     QUIZ = "quiz"
     VIDEO = "video"
     ARTICLE = "article"
+    LESSON = "lesson"  # une page de leçon, souvent avec sa vidéo (Maître Lucas)
 
 
 # Sites que la visionneuse peut afficher, par fournisseur (les sous-domaines aussi).
@@ -45,11 +56,15 @@ ALLOWED_HOSTS: dict[Provider, tuple[str, ...]] = {
     Provider.MATHALEA: ("coopmaths.fr",),
     Provider.VIKIDIA: ("vikidia.org",),
     Provider.LUMNI: ("lumni.fr",),
+    Provider.FONDAMENTAUX: ("reseau-canope.fr",),
+    Provider.MAITRE_LUCAS: ("maitrelucas.fr",),
 }
 LICENCES: dict[Provider, str] = {
     Provider.MATHALEA: "MathALÉA, Coopmaths (logiciel libre AGPL)",
     Provider.VIKIDIA: "Vikidia, CC BY-SA 3.0 : contributeurs de Vikidia",
     Provider.LUMNI: "Lumni, France Télévisions (droits réservés, consultation seulement)",
+    Provider.FONDAMENTAUX: "Les Fondamentaux, Réseau Canopé (droits réservés, consultation seulement)",
+    Provider.MAITRE_LUCAS: "Maître Lucas (consultation seulement, rien n'est copié)",
 }
 PER_PROVIDER = 3  # ressources proposées au plus par site et par leçon
 
@@ -324,3 +339,65 @@ def lumni_resource(url: str, title: str) -> Resource | None:
     )
     title = " ".join(re.sub(r"\s*[-|–—]\s*Lumni.*$", "", title).split())
     return Resource(Provider.LUMNI, kind, title or "Lumni", url) if kind and title else None
+
+
+# --------------------------------------------------------------------------- #
+# Les Fondamentaux, Maître Lucas : des pages proposées telles quelles
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class LinkedSite:
+    provider: Provider
+    sites: tuple[str, ...]  # pour le moteur de recherche
+    search: str  # ajouté à la recherche (« les fondamentaux »)
+    grades: frozenset[Grade]  # classes pour lesquelles le site est fait
+    path: str = "/"  # seules les pages sous ce chemin
+    site_name: str = ""  # retiré de la fin des titres
+
+
+PRIMARY = frozenset({Grade.CP, Grade.CE1, Grade.CE2, Grade.CM1, Grade.CM2})
+LINKED_SITES = (
+    LinkedSite(
+        Provider.FONDAMENTAUX,
+        ("www.reseau-canope.fr",),
+        "les fondamentaux canopé",
+        PRIMARY | {Grade.SIXIEME},
+        path="/lesfondamentaux/",
+        site_name="Les fondamentaux",
+    ),
+    LinkedSite(
+        Provider.MAITRE_LUCAS,
+        ("www.maitrelucas.fr", "maitrelucas.fr"),
+        "maître lucas",
+        PRIMARY,
+        site_name="Maître Lucas",
+    ),
+)
+# Pages de navigation, jamais une leçon.
+_NAVIGATION = re.compile(
+    r"/(recherche|search|tag|tags|categorie|category|page|auteur|author|contact)(/|$)|\?"
+)
+
+
+def linked_resource(site: LinkedSite, url: str, title: str, topic: Iterable[str]) -> Resource | None:
+    """Une page du site qui parle de la leçon (un mot du titre de la page dans `topic`), sinon
+    None : accueil, recherche, catégories, autre site, page sans rapport."""
+    if not host_allowed(url, site.provider):
+        return None
+    parts = urlsplit(url)
+    path = parts.path or "/"
+    if (
+        not path.startswith(site.path)
+        or path.rstrip("/") == site.path.rstrip("/")
+        or _NAVIGATION.search(path + ("?" if parts.query else ""))
+    ):
+        return None
+    if site.site_name:
+        title = re.sub(rf"\s*[-|–—:]\s*{re.escape(site.site_name)}.*$", "", title, flags=re.IGNORECASE)
+    title = " ".join(title.split())
+    if not title or not keywords(title) & set(topic):
+        return None
+    video = site.provider is Provider.FONDAMENTAUX or "video" in normalize(f"{path} {title}")
+    kind = ResourceKind.VIDEO if video else ResourceKind.LESSON
+    return Resource(site.provider, kind, title, url)

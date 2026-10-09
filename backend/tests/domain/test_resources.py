@@ -3,7 +3,7 @@ lire les quiz ; Lumni : reconnaître une vidéo ou un quiz ; la visionneuse rest
 
 import pytest
 
-from app.domain.knowledge import KnowledgeItem
+from app.domain.knowledge import Grade, KnowledgeItem
 from app.domain.resources import (
     CatalogueEntry,
     Provider,
@@ -202,3 +202,41 @@ def test_the_viewer_stays_on_the_site() -> None:
     assert not host_allowed("https://coopmaths.fr.evil.com/", Provider.MATHALEA)
     assert not host_allowed("https://www.lumni.fr/", Provider.VIKIDIA)
     assert vikidia_page_url("Quiz sur les volcans") == "https://fr.vikidia.org/wiki/Quiz_sur_les_volcans"
+
+
+def test_linked_sites_keep_only_lesson_pages_about_the_topic() -> None:
+    """Les Fondamentaux, Maître Lucas : une page sur la leçon, jamais l'accueil, une recherche, une
+    autre leçon ni un autre site ; Maître Lucas pour l'école seulement."""
+    from app.domain.resources import LINKED_SITES, Provider, ResourceKind, linked_resource
+    from app.domain.sources import keywords
+
+    fondamentaux, lucas = LINKED_SITES
+    topic = keywords("Les fractions numérateur dénominateur")
+    film = linked_resource(
+        fondamentaux,
+        "https://www.reseau-canope.fr/lesfondamentaux/discipline/mathematiques/fractions/le-numerateur.html",
+        "Le numérateur - Les fondamentaux",
+        topic,
+    )
+    assert film is not None and film.kind is ResourceKind.VIDEO and film.title == "Le numérateur"
+    page = linked_resource(lucas, "https://www.maitrelucas.fr/fractions/", "Fractions | Maître Lucas", topic)
+    assert page is not None and page.provider is Provider.MAITRE_LUCAS and page.kind is ResourceKind.LESSON
+    video = linked_resource(lucas, "https://www.maitrelucas.fr/video-fractions/", "Fractions en vidéo", topic)
+    assert video is not None and video.kind is ResourceKind.VIDEO
+    for url, title in [
+        ("https://www.maitrelucas.fr/", "Fractions - Maître Lucas"),
+        ("https://www.maitrelucas.fr/?s=fractions", "Fractions"),
+        ("https://www.maitrelucas.fr/category/maths/", "Fractions"),
+        ("https://www.maitrelucas.fr/le-passe-compose/", "Le passé composé"),
+        ("http://www.maitrelucas.fr/fractions/", "Fractions"),
+        ("https://maitrelucas.fr.example.com/fractions/", "Fractions"),
+    ]:
+        assert linked_resource(lucas, url, title, topic) is None, url
+    assert (
+        linked_resource(
+            fondamentaux, "https://www.reseau-canope.fr/boutique/fractions.html", "Fractions", topic
+        )
+        is None
+    )
+    assert Grade.CE1 in lucas.grades and Grade.CINQUIEME not in lucas.grades
+    assert Grade.SIXIEME in fondamentaux.grades

@@ -8,7 +8,9 @@ import 'account.dart';
 enum ResourceProvider {
   mathalea('🧮', 'MathALÉA', ['coopmaths.fr']),
   vikidia('📖', 'Vikidia', ['vikidia.org']),
-  lumni('📺', 'Lumni', ['lumni.fr']);
+  lumni('📺', 'Lumni', ['lumni.fr']),
+  fondamentaux('🎬', 'Les Fondamentaux (Canopé)', ['reseau-canope.fr']),
+  maitrelucas('👨‍🏫', 'Maître Lucas', ['maitrelucas.fr']);
 
   const ResourceProvider(this.emoji, this.label, this.hosts);
 
@@ -26,7 +28,8 @@ enum ResourceKind {
   exercise('Exercice noté'),
   quiz('Quiz'),
   video('Vidéo'),
-  article('Article');
+  article('Article'),
+  lesson('Leçon');
 
   const ResourceKind(this.label);
 

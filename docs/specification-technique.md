@@ -1192,6 +1192,24 @@ Aucun rappel pour un enfant qui a déjà révisé aujourd'hui. Le ton propose, s
 rappel ouvre le tableau de bord de l'enfant ; « Masquer pour aujourd'hui ». Pas de notification
 du téléphone (il faudrait un service d'envoi et une extension Android) : à faire plus tard.
 
+### 5.40 Les Fondamentaux et Maître Lucas dans les ressources (octobre 2026)
+
+Deux sites rejoignent MathALÉA, Vikidia et Lumni dans « 🌐 Pour s'entraîner autrement » et dans
+« Mon cahier », **en consultation seulement** (rien n'est copié ni lu par l'IA, la visionneuse ne
+quitte pas le site, une vidéo intégrée se lit dans la page) :
+
+- **Les Fondamentaux** (Réseau Canopé, opérateur du ministère) : films d'animation, du CP à la
+  6e ; seules les pages sous `/lesfondamentaux/`.
+- **Maître Lucas** : pages de leçon avec leur vidéo, du CP au CM2. Aucune licence de
+  réutilisation publiée : un lien vers la page, comme dans un navigateur, jamais un extrait.
+
+Le moteur de recherche du serveur (SearXNG, `Activer-recherche`) trouve les pages ; le code ne
+garde que celles dont le titre parle de la leçon, pas l'accueil, une recherche, une catégorie ou
+une autre leçon (`domain/resources.linked_resource`), 3 au plus par site. Comme pour Lumni, il faut
+le moteur de recherche installé et l'accord du parent (« Sites de confiance »). Migration 0027 :
+`lesson_resources` accepte `fondamentaux`, `maitrelucas` et le type `lesson` ; l'application
+publiée saute ces ressources (type inconnu), la nouvelle les ouvre.
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

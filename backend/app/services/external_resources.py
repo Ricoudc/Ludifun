@@ -32,6 +32,7 @@ from app.db.base import Database
 from app.domain.knowledge import MaterialQuestion, QuestionSource
 from app.domain.resources import (
     LICENCES,
+    LINKED_SITES,
     PER_PROVIDER,
     CatalogueEntry,
     Provider,
@@ -39,11 +40,13 @@ from app.domain.resources import (
     ResourceKind,
     catalogue_entries,
     choose_mathalea,
+    linked_resource,
     lumni_resource,
     parse_quiz,
     quiz_material,
     vikidia_page_url,
 )
+from app.domain.sources import keywords
 from app.domain.validation import check_question, needs_picture, needs_support
 from app.services.lesson_store import add_questions, load_units
 from app.services.web_sources import SearchUnavailable, WebSources
@@ -205,6 +208,24 @@ async def prepare(
                 finally:
                     if web is None:
                         await lumni.aclose()
+
+                # Les Fondamentaux, Maître Lucas : des pages sur la leçon, pour la classe de l'enfant.
+                topic = keywords(" ".join([query, *(n.label for n in notions)]))
+                for site in LINKED_SITES:
+                    if lesson.grade not in site.grades:
+                        continue
+                    search = web or WebSources(settings.web_search_url, site.sites)
+                    try:
+                        for result in await search.search(f"{query} {site.search}"):
+                            found = linked_resource(site, result.url, result.title, topic)
+                            same = [r for r in resources if r.provider is site.provider]
+                            if found and len(same) < PER_PROVIDER and found.url not in {r.url for r in same}:
+                                resources.append(found)
+                    except SearchUnavailable as exc:
+                        logger.warning("%s : %s", site.provider.value, exc)
+                    finally:
+                        if web is None:
+                            await search.aclose()
         finally:
             if client is None:
                 await http.aclose()
