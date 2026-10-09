@@ -50,11 +50,13 @@ class Settings(BaseSettings):
     # « recherche » : http://recherche:8080) ; vide = désactivée. Sites autorisés, séparés par des
     # virgules (vide = liste par défaut : Vikidia, Lumni, Éduscol, Sésamath, Wikipédia…).
     web_search_url: str | None = None
-    # Images des leçons (étape 27) : moteur sur le PC (sdcpp = stable-diffusion.cpp, comfyui),
-    # « fake » pour les tests, « none » sans images. Les images attendent la validation du parent.
-    image_engine: Literal["none", "fake", "sdcpp", "comfyui"] = "none"
+    # Images des leçons (étape 27) : moteur sur le PC (sdcpp = stable-diffusion.cpp, comfyui), ou
+    # en ligne (pollinations, avec image_api_key), « fake » pour les tests, « none » sans images.
+    # Les images attendent la validation du parent.
+    image_engine: Literal["none", "fake", "sdcpp", "comfyui", "pollinations"] = "none"
     image_url: str | None = None  # par exemple http://host.docker.internal:7860
     image_model: str | None = None
+    image_api_key: SecretStr | None = None  # service en ligne (Pollinations : clé secrète sk_…)
     media_dir: str = "data/images"  # images générées (jamais de photo d'enfant)
     web_sources: str = ""
     # Ressources des sites de confiance (étape 30), si le parent l'a permis : exercices MathALÉA,

@@ -41,7 +41,7 @@ class ImageEngine(Protocol):
 
     @property
     def base_url(self) -> str | None:
-        """Adresse du moteur sur le PC (None : moteur en mémoire, pour les tests)."""
+        """Adresse du moteur sur le PC (None : moteur en mémoire ou en ligne, rien à décharger)."""
 
     async def generate(self, request: ImageRequest) -> GeneratedImage: ...
 

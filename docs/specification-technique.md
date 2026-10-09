@@ -698,9 +698,14 @@ Chaîne, entièrement sur le PC de la famille et **une étape à la fois sur la 
 Moteurs (`app/ai/imagegen/`, interface `ImageEngine` : `generate`, `release`) :
 `sdcpp` (stable-diffusion.cpp, `sd-server`, route `POST /sdapi/v1/txt2img`, Vulkan : fonctionne
 sur les cartes AMD sous Windows sans ROCm), `comfyui` (graphe SDXL envoyé à `POST /prompt`,
-résultat par `/history` et `/view`, carte vidée par `POST /free`), `fake` (tests). Modèle par
-défaut : SDXL-Lightning 4 étapes (Euler, `sgm_uniform`, CFG 1). Réglages :
-`LUDIFUN_IMAGE_ENGINE` (`none` par défaut), `LUDIFUN_IMAGE_URL`, `LUDIFUN_IMAGE_MODEL`.
+résultat par `/history` et `/view`, carte vidée par `POST /free`), `pollinations` (service en
+ligne, sans carte graphique : `GET https://gen.pollinations.ai/image/{prompt}`, clé secrète `sk_…`
+dans l'en-tête `Authorization`, modèle par défaut `black-forest-labs/flux.1-schnell`, filtres
+`safe=privacy,sexual,violence` ; pas de prompt négatif sur cette route ; Ollama n'est pas
+déchargé ; seul le prompt construit par le code part chez Pollinations), `fake` (tests). Modèle
+par défaut des moteurs du PC : SDXL-Lightning 4 étapes (Euler, `sgm_uniform`, CFG 1). Réglages :
+`LUDIFUN_IMAGE_ENGINE` (`none` par défaut), `LUDIFUN_IMAGE_URL`, `LUDIFUN_IMAGE_MODEL`,
+`LUDIFUN_IMAGE_API_KEY` (Pollinations ; sans clé, pas d'images).
 
 Base : table `lesson_images` (migration 0018 ; une image par leçon, supprimée avec elle),
 statuts `generating`, `to_review`, `approved`, `rejected`, `failed` (avec la raison). Le
