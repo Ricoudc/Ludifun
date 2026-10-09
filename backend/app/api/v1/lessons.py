@@ -22,7 +22,7 @@ from app.api.deps import (
     get_database,
     rate_limit,
 )
-from app.api.errors import ApiError
+from app.api.errors import FAILURE_CATEGORIES, ApiError
 from app.api.v1.lesson_resources import visible_resources
 from app.api.v1.schemas_learning import (
     AiStepOut,
@@ -110,6 +110,9 @@ async def summary_of(db: DbSession, child: Child, lesson: Lesson) -> LessonSumma
         id=lesson.id,
         status=lesson.status,
         failure_reason=lesson.failure_reason,
+        failure_category=category.value
+        if (category := FAILURE_CATEGORIES.get(lesson.failure_reason or ""))
+        else None,
         subject=lesson.subject,
         title=lesson.title,
         created_at=lesson.created_at,

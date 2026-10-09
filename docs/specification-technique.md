@@ -1086,6 +1086,22 @@ du clavier du téléphone).
   `POST /v1/teach/{id}/answers`. Parent : `GET /v1/children/{c}/teach` (explications de
   l'enfant, bilan, règle). Table `teach_sessions` (migration 0025), export RGPD.
 
+### 5.34 Catégories d'erreurs (octobre 2026, CDC §135)
+
+Toute erreur de l'API a la forme `{"error": {"code", "category", "message"}}` (`category` est
+nouveau et facultatif pour l'application publiée) :
+
+- `category` : `USER_ERROR` (introuvable, déjà fait : 404, 409), `VALIDATION_ERROR` (400, 413,
+  415, 422), `AUTH_ERROR` (401, 403), `RATE_LIMIT` (429), `AI_ERROR` (plafond de coût, moteur
+  d'images), `DATABASE_ERROR`, `TIMEOUT` (504), `UNKNOWN_ERROR` ; `OCR_ERROR` pour une leçon
+  illisible (`failure_category` de la leçon, avec `AI_ERROR`, `USER_ERROR` « pas une leçon »,
+  `VALIDATION_ERROR` « trop longue ») ; `NETWORK_ERROR` et `TIMEOUT` sont déduits par
+  l'application (pas de réseau, serveur trop lent).
+- Une erreur inattendue (bug, base injoignable) ne sort jamais brute : `CatchUnexpected` répond
+  `internal_error` (500, « Petit souci de notre côté : réessaie dans un moment. ») ou
+  `database_unavailable` (503) et écrit le détail technique dans le journal (méthode et chemin,
+  aucune donnée d'enfant).
+
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1296,7 +1312,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 130 | Maîtrise jamais définitive | ✅ | Révisions espacées : une notion maîtrisée revient et peut redescendre ; entre deux révisions, oubli estimé (§5.32) qui fait remonter les notions anciennes et l'explique au parent. Reste : maîtrise en reconnaissance mais pas en application (niveaux de compréhension, §114), en leçon mais pas en problème réel (transfert). |
 | 131 | Explications au parent fondées sur les faits | ✅ | Par notion : le fait observé chiffré (« Sur les 8 dernières activités : 4 réussies seul, 2 avec une aide, 2 ratées. Erreur la plus fréquente : … ») séparé de l'interprétation du moteur (💬). |
 | 132-134 | Règles de travail des IA de codage | ✅ | `CLAUDE.md` à la racine (lecture du CDC, plan avant de modifier, vérifications, compte rendu honnête). |
-| 135 | Erreurs catégorisées, jamais brutes | 🟡 | Erreurs de l'API : code et message en français, jamais de 500 brut côté application ; raisons d'échec d'analyse expliquées (« Voir ce qui se passe »). Pas encore la liste de catégories du §135. |
+| 135 | Erreurs catégorisées, jamais brutes | ✅ | Chaque erreur de l'API porte un code, une catégorie du §135 et un message en français ; une erreur inattendue du serveur répond au même format (jamais de 500 brut) ; l'échec d'analyse d'une leçon a sa catégorie ; l'application déduit `NETWORK_ERROR` et `TIMEOUT` (§5.34). |
 | 136 | Observabilité de l'IA | ✅ | `ai_runs` : fournisseur, modèle, version du prompt, durée, jetons, coût, statut, avertissements de validation ; page `/suivi`, `Rapport-Ludifun.bat`. Manquent `input_type` et `fallback_used` explicites. |
 | 137 | Prompts versionnés | ✅ | `app/ai/prompts/*.v1.md`, `*.v2.md` ; versions enregistrées par leçon et par appel. |
 | 138 | Version du moteur pédagogique | ✅ | `version` de `engine_rules.toml`, enregistrée sur chaque séance (`sessions.engine_version`) et affichée au parent. |

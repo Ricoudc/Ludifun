@@ -55,6 +55,9 @@ class LessonSummaryOut(BaseModel):
     id: uuid.UUID
     status: str
     failure_reason: str | None
+    failure_category: str | None = Field(
+        None, description="Catégorie du §135 de l'échec : OCR_ERROR, AI_ERROR, USER_ERROR, VALIDATION_ERROR."
+    )
     subject: str | None
     title: str | None
     created_at: datetime

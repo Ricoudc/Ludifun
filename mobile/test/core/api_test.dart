@@ -37,8 +37,31 @@ void main() {
           isA<ApiException>()
               .having((e) => e.code, 'code', 'invalid_link_code')
               .having((e) => e.status, 'status', 400)
-              .having((e) => e.message, 'message', 'Ce code ne marche pas.'),
+              .having((e) => e.message, 'message', 'Ce code ne marche pas.')
+              // Ancien serveur, sans catégorie : déduite du statut (§135).
+              .having((e) => e.category, 'category', 'VALIDATION_ERROR'),
         ),
+      );
+    });
+
+    test('la catégorie du §135 vient du serveur', () async {
+      server.on(
+        'GET /v1/me',
+        (_) => (
+          503,
+          {
+            'error': {
+              'code': 'ai_budget_exhausted',
+              'category': 'AI_ERROR',
+              'message': 'Réessaie demain.',
+            },
+          },
+        ),
+      );
+      final api = (await start(server, MemoryCredentialStore(child))).read(apiProvider);
+      await expectLater(
+        api.me(),
+        throwsA(isA<ApiException>().having((e) => e.category, 'category', 'AI_ERROR')),
       );
     });
 
@@ -47,7 +70,11 @@ void main() {
       final api = (await start(server, MemoryCredentialStore(child))).read(apiProvider);
       await expectLater(
         api.me(),
-        throwsA(isA<ApiException>().having((e) => e.code, 'code', 'network')),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.code, 'code', 'network')
+              .having((e) => e.category, 'category', 'NETWORK_ERROR'),
+        ),
       );
     });
 
@@ -56,7 +83,11 @@ void main() {
       final api = (await start(server, MemoryCredentialStore(child))).read(apiProvider);
       await expectLater(
         api.me(),
-        throwsA(isA<ApiException>().having((e) => e.message, 'message', ApiException.unexpected)),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.message, 'message', ApiException.unexpected)
+              .having((e) => e.category, 'category', 'UNKNOWN_ERROR'),
+        ),
       );
     });
   });
