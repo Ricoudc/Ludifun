@@ -47,6 +47,13 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+      # La compilation remplissait le disque de la machine de GitHub (« No space left on
+      # device ») : on retire des outils préinstallés qui ne servent pas ici.
+      - name: Place sur le disque
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift
+          df -h /
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
