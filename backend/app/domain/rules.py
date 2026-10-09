@@ -96,6 +96,10 @@ class ConfidenceRules(_Section):
     low: float = Field(gt=0, le=1)
 
 
+class ReminderRules(_Section):
+    after_hour: int = Field(ge=0, le=23)
+
+
 class TeachRules(_Section):
     follow_ups: int = Field(ge=0, le=5)
     explain_ratio: float = Field(gt=0, le=1)
@@ -115,6 +119,7 @@ class EngineRules(_Section):
     teach: TeachRules
     difficulty: DifficultyRules
     confidence: ConfidenceRules
+    reminders: ReminderRules
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

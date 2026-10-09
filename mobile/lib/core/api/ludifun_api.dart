@@ -8,6 +8,7 @@ import '../../models/figure.dart';
 import '../../models/assistant.dart';
 import '../../models/homework.dart';
 import '../../models/lesson_sheet.dart';
+import '../../models/reminder.dart';
 import '../../models/teach.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
@@ -636,6 +637,12 @@ class LudifunApi {
   Future<Teach> teachAnswer(String id, String text) => _call(() async {
     final r = await _dio.post<Json>('/v1/teach/$id/answers', data: {'text': text});
     return Teach.fromJson(r.data!);
+  });
+
+  /// Rappels du jour pour le parent : au plus un par enfant (§48).
+  Future<List<ParentReminder>> reminders() => _call(() async {
+    final r = await _dio.get<List<dynamic>>('/v1/parent/reminders');
+    return [for (final item in r.data!) ParentReminder.fromJson(item as Json)];
   });
 
   /// Assistant parent : les questions et leurs réponses, calculées à partir des données réelles.

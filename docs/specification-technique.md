@@ -43,7 +43,7 @@ ont été mises à jour depuis.
 | §44-§45 | Historique, graphiques | ✅ historique paginé, progression par semaine | `services/dashboard.py` |
 | §46 | Assistant parent | ✅ questions fixes, réponses calculées à partir des données réelles, sans IA (§5.36) ; 🔮 question libre | `domain/parent_assistant.py` |
 | §47 | Objectifs parent | ✅ étape 16 : temps quotidien, matière prioritaire, contrôles | `features/parent/goals_screen.dart` |
-| §48 | Notifications | 🔮 V5 | |
+| §48 | Notifications | ✅ rappels du jour dans l'application du parent, un au plus par enfant (§5.39) ; 🔮 notifications du téléphone | `domain/reminders.py` |
 | §59-§61, §68 | IA en étapes, fournisseur interchangeable, contrats JSON stricts, contrôle qualité | ✅ lecture → analyse → matériel par notion, schémas Pydantic, validateurs, relance ciblée, `ai_runs` | `ai/`, `services/lesson_pipeline.py` |
 | §69-§70 | Sécurité, RGPD (effacement, export, consentement, minimisation) | ✅ côté code ; reste l'hébergement et les documents (README) | V1 §16 |
 | §71 | Conservation des photos | ✅ mode temporaire uniquement (jamais stockées) | voir arbitrage A3 |
@@ -1175,6 +1175,22 @@ peut-être mal lue ou inventée). Les raisons sont gardées pour le parent.
   à l'IA » ou reprendre la photo.
 - Migration 0026 : `knowledge_items.confidence`, `doubts`, `confirmed_at` ; les notions analysées
   avant restent utilisées comme avant.
+
+### 5.39 Rappels du jour (octobre 2026, CDC §48, règles 1.9.0)
+
+En haut de l'accueil du parent, une carte « Aujourd'hui » (`GET /v1/parent/reminders`) : **au plus
+un rappel par enfant et par jour**, le plus utile, calculé par le code (`domain/reminders.py`) :
+
+1. un contrôle aujourd'hui ou demain (« 📅 Contrôle « Fractions » demain : une petite séance avec
+   Emma, pour l'aborder sereinement ? ») ;
+2. des notions à revoir aujourd'hui (« 🔁 2 notion(s) à revoir aujourd'hui pour Emma… Quelques
+   minutes suffisent. ») ;
+3. pas encore de séance aujourd'hui, seulement à partir de `reminders.after_hour` (17 h) et pour
+   un enfant qui a une habitude (objectif quotidien, ou au moins 2 jours de révision sur 7).
+
+Aucun rappel pour un enfant qui a déjà révisé aujourd'hui. Le ton propose, sans reproche ; un
+rappel ouvre le tableau de bord de l'enfant ; « Masquer pour aujourd'hui ». Pas de notification
+du téléphone (il faudrait un service d'envoi et une extension Android) : à faire plus tard.
 
 ---
 

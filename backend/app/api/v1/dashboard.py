@@ -51,7 +51,7 @@ from app.api.v1.schemas_dashboard import (
 )
 from app.db import models as db_models
 from app.domain import mistakes as mistakes_domain
-from app.domain import parent_assistant
+from app.domain import parent_assistant, reminders
 from app.domain.activities.registry import default_registry
 from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
@@ -60,9 +60,10 @@ from app.domain.help import HelpKind
 from app.domain.knowledge import SkillVerb
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
-from app.services import dashboard, export
+from app.services import accounts, dashboard, export
 from app.services import parent_assistant as parent_assistant_service
 from app.services import programme as programme_service
+from app.services import reminders as reminders_service
 from app.services.dashboard import WeekStats
 
 router = APIRouter(tags=["espace parent"])
@@ -550,3 +551,27 @@ async def assistant(
             for a in parent_assistant.answers(facts)
         ]
     )
+
+
+class ReminderOut(BaseModel):
+    child_id: uuid.UUID
+    child_name: str
+    kind: str = Field(description="exam, review ou no_session.")
+    text: str
+
+
+@router.get("/parent/reminders")
+async def parent_reminders(parent: CurrentParent, db: DbSession, settings: AppSettings) -> list[ReminderOut]:
+    """Rappels du jour (§48) : au plus un par enfant, le plus utile, sans pression ; aucun pour
+    un enfant qui a déjà révisé aujourd'hui."""
+    tz, now = ZoneInfo(settings.family_timezone), clock.now()
+    found = []
+    for child in await accounts.list_children(db, parent.parent_id):
+        day = await reminders_service.child_day(db, child, now, tz)
+        if (shown := reminders.reminder(day)) is not None:
+            found.append(
+                ReminderOut(
+                    child_id=child.id, child_name=child.display_name, kind=shown.kind.value, text=shown.text
+                )
+            )
+    return found

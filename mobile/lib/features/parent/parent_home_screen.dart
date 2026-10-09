@@ -13,6 +13,7 @@ import '../../models/account.dart';
 import 'email_banner.dart';
 import 'feedback_dialog.dart';
 import 'parent_providers.dart';
+import 'reminders_card.dart';
 
 /// Écran P2 : les enfants de la famille.
 class ParentHomeScreen extends ConsumerWidget {
@@ -77,12 +78,14 @@ class ParentHomeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () {
           ref.invalidate(parentProfileProvider);
+          ref.invalidate(remindersProvider);
           return ref.refresh(childrenProvider.future);
         },
         child: CenteredBody(
           top: true,
           children: [
             const EmailVerificationBanner(),
+            const RemindersCard(),
             ...switch (children) {
               AsyncData(value: final list) when list.isEmpty => [
                 const Text('👋', textAlign: TextAlign.center, style: TextStyle(fontSize: 48)),

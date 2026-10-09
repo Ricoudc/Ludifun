@@ -1124,6 +1124,27 @@ void main() {
     expect(find.text('Dans 3/4, quel est le nombre du haut ?\n✅ 3'), findsOneWidget);
   });
 
+  testWidgets('§48 : un rappel du jour sur l\'accueil, masquable pour la journée', (tester) async {
+    server.on(
+      'GET /v1/parent/reminders',
+      (_) => (
+        200,
+        [
+          {
+            'child_id': 'c1',
+            'child_name': 'Emma',
+            'kind': 'exam',
+            'text': '📅 Contrôle « Fractions » demain : une petite séance avec Emma, pour l\'aborder sereinement ?',
+          },
+        ],
+      ),
+    );
+    await launch(tester);
+    expect(find.textContaining('Contrôle « Fractions » demain'), findsOneWidget);
+    await tap(tester, find.text('Masquer pour aujourd\'hui'));
+    expect(find.textContaining('Contrôle « Fractions » demain'), findsNothing);
+  });
+
   testWidgets('§115 : une notion mal lue est montrée au parent, qui la confirme', (tester) async {
     var confirmed = false;
     Map<String, Object?> notion() => {
