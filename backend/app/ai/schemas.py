@@ -7,7 +7,7 @@ validation métier est faite ensuite par `app.domain.validation`, élément par 
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
@@ -17,6 +17,7 @@ from app.domain.knowledge import (
     RelationType,
     SkillVerb,
     Subject,
+    Theme,
 )
 
 # --------------------------------------------------------------------------- #
@@ -111,6 +112,16 @@ class KnowledgeOut(BaseModel):
     attributes: AttributesOut
     source_excerpt: str = Field(description="Citation EXACTE du texte de la leçon qui justifie la notion.")
     relations: list[RelationOut]
+    theme: Theme | None = Field(
+        None,
+        description="Thème de la notion dans la liste, s'il y en a un qui convient vraiment ; sinon null.",
+    )
+
+    @field_validator("theme", mode="before")
+    @classmethod
+    def _unknown_theme_is_none(cls, value: Any) -> Any:
+        """Un thème hors liste ne doit pas faire échouer toute l'analyse : il est simplement oublié."""
+        return value if value is None or value in list(Theme) else None
 
 
 class SkillOut(BaseModel):

@@ -40,6 +40,67 @@ class Grade(StrEnum):
     TROISIEME = "3e"
 
 
+class Theme(StrEnum):
+    """Thème d'une notion, choisi par l'IA dans cette liste fermée (spécification technique §5.47).
+
+    Il déclenche les jeux calculés par le code (heure, monnaie, conjugaison…) même quand le nom
+    de la notion ne contient pas les mots attendus. Le code le contrôle (`theme_fits`) : un thème
+    inconnu ou qui ne va pas avec la matière de la leçon est retiré, la notion est gardée.
+    """
+
+    ADDITION = "addition"
+    SUBTRACTION = "soustraction"
+    MULTIPLICATION = "multiplication"
+    DIVISION = "division"
+    DOUBLE = "double_moitie"
+    PLACE_VALUE = "valeur_chiffres"
+    COMPARE = "comparer_nombres"
+    FRACTIONS = "fractions"
+    DECIMALS = "decimaux"
+    PERCENT = "pourcentages"
+    PROPORTION = "proportionnalite"
+    PERIMETER = "perimetre"
+    AREA = "aire"
+    PRIORITY = "priorites"
+    POWERS = "puissances"
+    EQUATIONS = "equations"
+    PYTHAGORE = "pythagore"
+    CLOCK = "heure"
+    MONEY = "monnaie"
+    ALIGNMENT = "alignement"
+    CONJUGATION = "conjugaison"
+    HOMOPHONES = "homophones"
+    WORD_NATURE = "nature_mots"
+    NUMBER = "singulier_pluriel"
+    GENDER = "masculin_feminin"
+    ALPHABET = "ordre_alphabetique"
+
+
+FRENCH_THEMES = frozenset(
+    {
+        Theme.CONJUGATION,
+        Theme.HOMOPHONES,
+        Theme.WORD_NATURE,
+        Theme.NUMBER,
+        Theme.GENDER,
+        Theme.ALPHABET,
+    }
+)
+
+
+def theme_subject(theme: Theme) -> Subject:
+    return Subject.FRENCH if theme in FRENCH_THEMES else Subject.MATH
+
+
+def theme_fits(value: object, subject: Subject) -> Theme | None:
+    """Le thème proposé par l'IA, s'il fait partie de la liste et va avec la matière ; sinon None."""
+    try:
+        theme = Theme(str(value))
+    except ValueError:
+        return None
+    return theme if theme_subject(theme) == subject else None
+
+
 class KnowledgeType(StrEnum):
     DATE = "date"
     PERSON = "person"
@@ -163,6 +224,7 @@ class KnowledgeItem(_Model):
     attributes: dict[str, Any] = Field(default_factory=dict)
     source_excerpt: NonEmpty  # citation exacte du texte OCR (garde-fou contre les inventions)
     relations: list[Relation] = Field(default_factory=list)
+    theme: Theme | None = None  # contrôlé par `validate_analysis` (§5.47)
 
     @model_validator(mode="after")
     def _attributes_match_type(self) -> "KnowledgeItem":

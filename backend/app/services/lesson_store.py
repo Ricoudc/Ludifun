@@ -23,6 +23,7 @@ from app.domain.knowledge import (
     KnowledgeUnit,
     MaterialQuestion,
     Subject,
+    Theme,
 )
 from app.domain.mastery import Mastery, lesson_review
 from app.domain.math_generator import generated_questions, math_only
@@ -126,6 +127,7 @@ async def save_pipeline_result(session: AsyncSession, lesson: db.Lesson, result:
             required_levels=sorted(result.required_levels.get(item.id, {1})),
             confidence=(confidence := notion_confidence(item, pages)).value,
             doubts=list(confidence.reasons),
+            theme=item.theme,
         )
         session.add(row)
         await session.flush()
@@ -204,6 +206,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
             attributes=item.attributes,
             source_excerpt=item.source_excerpt,
             relations=item.relations,
+            theme=item.theme if item.theme in list(Theme) else None,
         )
         # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
         checked = consistent(KnowledgeMaterial.model_validate(material.material))

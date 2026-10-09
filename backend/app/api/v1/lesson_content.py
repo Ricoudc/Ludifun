@@ -19,7 +19,7 @@ from app.db import models as db_models
 from app.domain.confidence import Confidence
 from app.domain.duplicates import deduplicate
 from app.domain.instructions import instruction
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis
+from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis, Theme
 from app.domain.material_view import material_blocks
 from app.domain.text import clean_markup
 from app.services.ai_settings import AiResolver
@@ -209,6 +209,7 @@ async def rework_notion(
         attributes=row.attributes,
         source_excerpt=row.source_excerpt,
         relations=row.relations,
+        theme=row.theme if row.theme in list(Theme) else None,
     )
     analysis = LessonAnalysis.model_validate(lesson.analysis)
     pipeline = LessonPipeline(ocr, llm, registry, pupil_grade=child.grade)

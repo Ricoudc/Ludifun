@@ -31,7 +31,9 @@ from app.domain.knowledge import (
     Skill,
     Sorting,
     Spelling,
+    Subject,
     WorkedExample,
+    theme_fits,
 )
 from app.domain.text import (
     clean_markup,
@@ -183,6 +185,9 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
         raw_item, repaired = repair_attributes(raw_item)
         if repaired:
             repairs.append(f"{element} : {repaired}")
+        raw_item, theme_problem = _check_theme(raw_item, lesson.subject)
+        if theme_problem:
+            repairs.append(f"{element} : {theme_problem}")
         try:
             item = KnowledgeItem.model_validate(raw_item)
         except ValidationError as exc:
@@ -217,6 +222,18 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
         warnings=warnings,
     )
     return AnalysisValidation(analysis, rejected)
+
+
+def _check_theme(raw_item: Any, subject: Subject) -> tuple[Any, str | None]:
+    """Thème hors de la liste ou d'une autre matière : retiré, la notion est gardée (§5.47)."""
+    if not isinstance(raw_item, dict) or raw_item.get("theme") is None:
+        return raw_item, None
+    proposed = raw_item["theme"]
+    theme = theme_fits(proposed, subject)
+    cleaned = {**raw_item, "theme": theme}
+    if theme is None:
+        return cleaned, f"thème « {str(proposed)[:40]} » retiré (hors liste ou autre matière)"
+    return cleaned, None
 
 
 # Un seul texte manquant, que la phrase « à retenir » dit déjà (petits modèles : souvent oublié).

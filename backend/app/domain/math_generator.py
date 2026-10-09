@@ -20,7 +20,7 @@ from enum import StrEnum
 from fractions import Fraction
 
 from app.domain.errors import ErrorType
-from app.domain.knowledge import Grade, KnowledgeItem, KnowledgeMaterial, MaterialQuestion
+from app.domain.knowledge import Grade, KnowledgeItem, KnowledgeMaterial, MaterialQuestion, Theme
 from app.domain.text import normalize
 
 PER_DIFFICULTY = 6  # questions créées par thème et par difficulté
@@ -74,6 +74,29 @@ _TOPICS: tuple[tuple[Topic, str, Grade], ...] = (
 )
 # Calcul mental, nombres, opérations : sans mot plus précis, les opérations de la classe.
 _GENERIC = re.compile(r"calcul|operation|nombre")
+_SINCE = {topic: since for topic, _, since in _TOPICS}
+# Thème choisi par l'IA (§5.47) → thème de calcul ; « alignement » a son propre jeu (ALIGN).
+_BY_THEME: dict[Theme, Topic] = {
+    Theme.ADDITION: Topic.ADD,
+    Theme.SUBTRACTION: Topic.SUB,
+    Theme.MULTIPLICATION: Topic.MUL,
+    Theme.DIVISION: Topic.DIV,
+    Theme.DOUBLE: Topic.DOUBLE,
+    Theme.PLACE_VALUE: Topic.PLACE,
+    Theme.COMPARE: Topic.COMPARE,
+    Theme.FRACTIONS: Topic.FRACTION,
+    Theme.DECIMALS: Topic.DECIMAL,
+    Theme.PERCENT: Topic.PERCENT,
+    Theme.PROPORTION: Topic.PROPORTION,
+    Theme.PERIMETER: Topic.PERIMETER,
+    Theme.AREA: Topic.AREA,
+    Theme.PRIORITY: Topic.PRIORITY,
+    Theme.POWERS: Topic.POWER,
+    Theme.EQUATIONS: Topic.EQUATION,
+    Theme.PYTHAGORE: Topic.PYTHAGORE,
+    Theme.CLOCK: Topic.CLOCK,
+    Theme.MONEY: Topic.MONEY,
+}
 
 
 def _rank(grade: Grade) -> int:
@@ -81,13 +104,18 @@ def _rank(grade: Grade) -> int:
 
 
 def topics(item: KnowledgeItem, grade: Grade) -> list[Topic]:
-    """Les thèmes de calcul de la notion, au programme de la classe (au plus `MAX_TOPICS`)."""
+    """Les thèmes de calcul de la notion, au programme de la classe (au plus `MAX_TOPICS`) : celui
+    choisi par l'IA s'il y en a un, puis ceux que désignent les mots de la notion."""
     text = normalize(item.corpus())
     found = [
         topic
         for topic, pattern, since in _TOPICS
         if re.search(pattern, text) and _rank(grade) >= _rank(since)
     ]
+    named = _BY_THEME.get(item.theme) if item.theme is not None else None
+    if named is not None and _rank(grade) >= _rank(_SINCE[named]):
+        # Le thème choisi par l'IA passe d'abord : il vaut même sans les mots attendus.
+        found = [named, *(topic for topic in found if topic is not named)]
     if not found and _GENERIC.search(text):
         found = [Topic.ADD, Topic.SUB] if _rank(grade) <= _rank(Grade.CP) else [Topic.ADD, Topic.MUL]
     return found[:MAX_TOPICS]

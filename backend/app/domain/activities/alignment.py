@@ -29,7 +29,7 @@ from app.domain.activities.base import (
     parse_response,
 )
 from app.domain.errors import ErrorType
-from app.domain.knowledge import KnowledgeUnit, Subject
+from app.domain.knowledge import KnowledgeUnit, Subject, Theme
 from app.domain.text import normalize
 
 _TOPIC = re.compile(r"\balign")
@@ -45,7 +45,10 @@ class AlignSelection(ResponseModel):
 
 
 def is_alignment(unit: KnowledgeUnit) -> bool:
-    return unit.subject == Subject.MATH and bool(_TOPIC.search(normalize(unit.item.corpus())))
+    """Leçon de maths sur les alignements : thème choisi par l'IA (§5.47) ou mots de la notion."""
+    if unit.subject != Subject.MATH:
+        return False
+    return unit.item.theme == Theme.ALIGNMENT or bool(_TOPIC.search(normalize(unit.item.corpus())))
 
 
 class Alignment(ActivityType):

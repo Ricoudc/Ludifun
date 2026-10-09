@@ -668,3 +668,33 @@ async def test_migration_0028_calculatice_and_sesamath(engine: AsyncEngine, db: 
         providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
     assert providers == ["maitrelucas"]
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0029_theme_of_the_notions(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Thème facultatif des notions : les notions déjà analysées restent sans thème ; retour
+    arrière : la colonne disparaît, les notions restent."""
+    await create_full_lesson(db)
+    await db.commit()
+    async with engine.connect() as conn:
+        themes = (await conn.execute(text("SELECT theme FROM knowledge_items"))).scalars().all()
+    assert themes and set(themes) == {None}
+    async with engine.begin() as conn:
+        await conn.execute(text("UPDATE knowledge_items SET theme = 'fractions'"))
+    count = len(themes)
+    await run_alembic("downgrade", "0028")
+    async with engine.connect() as conn:
+        columns = (
+            (
+                await conn.execute(
+                    text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = 'knowledge_items'"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        kept = await conn.scalar(text("SELECT count(*) FROM knowledge_items"))
+    assert "theme" not in columns and kept == count
+    await run_alembic("upgrade", "head")

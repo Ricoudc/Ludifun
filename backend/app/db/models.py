@@ -476,6 +476,8 @@ class KnowledgeItem(Base):
     confidence: Mapped[float | None] = mapped_column(REAL)
     doubts: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # par le parent
+    # Thème choisi par l'IA dans une liste fermée (§5.47) ; NULL : aucun ou analysée avant.
+    theme: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         UniqueConstraint("lesson_id", "key"),

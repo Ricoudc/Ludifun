@@ -42,13 +42,28 @@ from app.domain.french import (
     tense_of,
     verbs_of,
 )
-from app.domain.knowledge import ClassificationAttributes, KnowledgeType, KnowledgeUnit, Subject
+from app.domain.knowledge import ClassificationAttributes, KnowledgeType, KnowledgeUnit, Subject, Theme
 from app.domain.knowledge import Grade as SchoolGrade
 from app.domain.text import normalize
 
+# Thème choisi par l'IA (§5.47) → thème de français des jeux.
+_BY_THEME = {
+    Theme.CONJUGATION: FrenchTopic.CONJUGATION,
+    Theme.HOMOPHONES: FrenchTopic.HOMOPHONES,
+    Theme.WORD_NATURE: FrenchTopic.NATURE,
+    Theme.NUMBER: FrenchTopic.NUMBER,
+    Theme.GENDER: FrenchTopic.GENDER,
+    Theme.ALPHABET: FrenchTopic.ALPHABET,
+}
+
 
 def _french(unit: KnowledgeUnit) -> list[FrenchTopic]:
-    return french_topics(unit.item.corpus()) if unit.subject == Subject.FRENCH else []
+    """Le thème choisi par l'IA s'il y en a un, puis ceux que désignent les mots de la notion."""
+    if unit.subject != Subject.FRENCH:
+        return []
+    found = french_topics(unit.item.corpus())
+    named = _BY_THEME.get(unit.item.theme) if unit.item.theme is not None else None
+    return found if named is None else [named, *(topic for topic in found if topic is not named)]
 
 
 def _result(activity: BuiltActivity, score: float, error: ErrorType, details: list[dict[str, Any]]) -> Grade:
@@ -248,6 +263,8 @@ class Homophones(ActivityType):
         if unit.subject != Subject.FRENCH:
             return []
         pairs = homophone_pairs(unit.item.corpus())
+        if not pairs and unit.item.theme == Theme.HOMOPHONES:
+            pairs = list(HOMOPHONES)  # une leçon d'homophones qui n'en nomme aucun
         if unit.grade in (SchoolGrade.CP, SchoolGrade.CE1) and len(pairs) > len(EARLY_PAIRS):
             pairs = [p for p in pairs if p in EARLY_PAIRS]
         return pairs

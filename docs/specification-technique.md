@@ -22,7 +22,7 @@ ont été mises à jour depuis.
 | §8.5 | Texte collé ou saisi | ✅ étape 15 : `POST /v1/lessons/text`, écran « Coller une leçon » | `features/capture/text_import_screen.dart` |
 | §9 | OCR et vision multimodale | ✅ texte, titres, tableaux, formules ; 🟡 schémas et cartes décrits, pas exploités | `ai/ocr/vision_llm.py` |
 | §10 | Ne jamais inventer ; faire vérifier une lecture incertaine | ✅ citation source obligatoire par notion ; étape 15 : passages douteux vérifiés par l'enfant avant l'analyse | `domain/ocr_review.py`, `features/analysis/review_form.dart` |
-| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation | `domain/knowledge.py`, `prompts/analysis.v6.md` |
+| §11-§12 | Analyse pédagogique, modèle de connaissance structuré | ✅ notions typées (10 types), importance 1-5, relations, citation, thème contrôlé (§5.47) | `domain/knowledge.py`, `prompts/analysis.v7.md` |
 | §11, §13 | Compétences | ✅ étape 13 : extraites par l'analyse, reliées aux notions, niveau affiché | `domain/knowledge.py` (`Skill`), tables `skills`, `skill_knowledge` |
 | §14 | Maîtrise 0-5 | ✅ étape 13 : niveau 0-5 par notion et par compétence, avec explication | `domain/understanding.py` |
 | §15, §65 | Mémorisation vs compréhension, transfert | ✅ étapes 13-14 : niveaux 1 reconnaître, 2 se rappeler, 3 appliquer (exigés), 4 expliquer et 5 transférer (questions ouvertes d'approfondissement) | `domain/understanding.py` |
@@ -1368,6 +1368,39 @@ encore » pour le parent.
 
 L'heure et la monnaie ne donnent pas de QCM calculés (`math_generator` saute ces thèmes) : elles
 se travaillent par ces jeux dessinés.
+
+### 5.47 Thème des notions choisi par l'IA, contrôlé par le code (octobre 2026, analyse v7, schéma 0029)
+
+Jusqu'ici, les jeux calculés (§5.41 à §5.46) se déclenchaient sur des mots de la notion
+(« conjugaison », « horloge », « fraction »…) : une notion nommée « Le cadran » ou « Les verbes
+chanter et danser » n'en recevait aucun. L'analyse (prompt `analysis.v7`) demande maintenant à
+l'IA un `theme` par notion, **dans une liste fermée** (`app.domain.knowledge.Theme`) :
+
+- maths : `addition`, `soustraction`, `multiplication`, `division`, `double_moitie`,
+  `valeur_chiffres`, `comparer_nombres`, `fractions`, `decimaux`, `pourcentages`,
+  `proportionnalite`, `perimetre`, `aire`, `priorites`, `puissances`, `equations`, `pythagore`,
+  `heure`, `monnaie`, `alignement` ;
+- français : `conjugaison`, `homophones`, `nature_mots`, `singulier_pluriel`,
+  `masculin_feminin`, `ordre_alphabetique` ;
+- autres matières : pas de thème (null).
+
+L'IA propose, le code décide (§112) :
+
+1. Lecture de la sortie de l'IA : un thème hors liste devient null (la sortie reste lisible ; la
+   liste est aussi donnée dans le schéma JSON envoyé au modèle).
+2. `validate_analysis` : un thème hors liste ou d'une autre matière que la leçon
+   (`theme_fits`) est retiré avec un avertissement ; **la notion est gardée**.
+3. Enregistrement : colonne facultative `knowledge_items.theme` (migration 0029, sans contrainte :
+   la liste est contrôlée par le code, une valeur inconnue est ignorée au chargement). Les leçons
+   déjà analysées restent sans thème.
+4. Jeux : le thème passe d'abord, puis les mots de la notion comme avant
+   (`math_generator.topics`, `word_games._french`, `alignment.is_alignment`). Il respecte la
+   classe (pas de Pythagore en CE1 même si l'IA le propose) et la matière de la leçon. Une leçon
+   « homophones » qui n'en nomme aucun reçoit les paires de la classe.
+
+Tests : `tests/domain/test_themes.py` (contrôle, déclenchement de chaque jeu par le thème seul,
+liste complète dans le prompt), `tests/api/test_math_exercises.py` (IA → base → jeux),
+`tests/db/test_schema.py` (migration 0029).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1559,7 +1592,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 
 | § | Règle | État | Ce qui existe / ce qui manque |
 | --- | --- | --- | --- |
-| 112.1, 113 | Le LLM propose, le moteur décide ; une génération ratée ne touche pas la progression | ✅ | L'IA ne sert qu'à l'analyse d'une leçon (lecture, notions, matériel) et à la correction des questions rédigées. Maîtrise, niveaux, choix des activités, notation, révisions espacées, remédiation : code déterministe (`app/domain/`), rejouable par la graine de séance. Une analyse invalide fait échouer la leçon sans rien enregistrer. |
+| 112.1, 113 | Le LLM propose, le moteur décide ; une génération ratée ne touche pas la progression | ✅ | L'IA ne sert qu'à l'analyse d'une leçon (lecture, notions, matériel) et à la correction des questions rédigées. Maîtrise, niveaux, choix des activités, notation, révisions espacées, remédiation : code déterministe (`app/domain/`), rejouable par la graine de séance. Une analyse invalide fait échouer la leçon sans rien enregistrer. Le thème d'une notion, proposé par l'IA dans une liste fermée, est contrôlé par le code avant de déclencher un jeu (§5.47). |
 | 114 | État structuré de l'enfant (reconnaître, se rappeler, appliquer, expliquer, transférer, autonomie) | ✅ | Par notion : score 0-100, boîte, prochaine révision, niveaux validés, et depuis l'étape 23 un taux de réussite par niveau de compréhension (10 dernières réponses) et l'autonomie (part des réussites sans aide), calculés depuis les réponses enregistrées (`app/domain/state.py`) ; visibles par le parent. Reste : l'état par compétence (les compétences sont rattachées aux notions). |
 | 115 | Niveau de confiance et confirmation | ✅ | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire ; confiance de chaque notion extraite, calculée par le code, avec confirmation du parent (§5.38) ; correction d'une réponse rédigée : confiance de l'IA, sous 0,4 corrigée par mots clés. |
 | 116 | Chaque connaissance reliée à sa source | ✅ | `source_excerpt` obligatoire, vérifié dans le texte lu ; la page est retrouvée et affichée : « Pourquoi cette notion ? C'est écrit dans ta leçon, page 2 : « … » » (étape 23). |
