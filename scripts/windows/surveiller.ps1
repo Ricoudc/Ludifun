@@ -5,7 +5,7 @@
 . (Join-Path $PSScriptRoot 'commun.ps1')
 
 Titre 'Surveillance de Ludifun'
-if (-not (Docker-Pret)) { Echec 'Docker n''est pas lancé : lance d''abord Demarrer-Ludifun.bat.' }
+if (-not (Docker-Pret)) { Echec "Docker n'est pas lancé : lance d'abord $(Choix 1) (démarrer)." }
 
 # Docker écrit en UTF-8 : sans ce réglage, les accents du journal deviennent illisibles.
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
@@ -156,4 +156,4 @@ try { Set-Clipboard -Value ([System.IO.File]::ReadAllText($fichier, $utf8)) } ca
 Ok "Surveillance enregistrée : $fichier"
 Write-Host 'Elle est aussi copiée : colle-la (Ctrl+V) dans la conversation avec Claude, ou envoie le fichier.' -ForegroundColor Green
 try { Start-Process notepad.exe $fichier } catch { }
-Read-Host 'Appuie sur Entrée pour fermer cette fenêtre (le serveur continue de tourner)'
+Attendre-Fermeture

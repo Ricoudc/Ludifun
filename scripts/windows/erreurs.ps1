@@ -14,4 +14,4 @@ if (Get-Command ollama -ErrorAction SilentlyContinue) {
 }
 Write-Host ''
 Write-Host 'La clé d''API n''apparaît jamais ici. Tu peux copier ce texte pour demander de l''aide.'
-Read-Host 'Appuie sur Entrée pour fermer'
+if ($DepuisMenu) { Read-Host 'Appuie sur Entrée pour revenir au menu' } else { Read-Host 'Appuie sur Entrée pour fermer' }

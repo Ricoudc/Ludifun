@@ -41,14 +41,14 @@ EXPLANATIONS = (
      "ou une IA en ligne."),
     ("s'est arrêté", "Ollama s'est arrêté pendant la lecture, même avec une photo réduite : le modèle "
      "ne tient sans doute pas dans la mémoire de la carte graphique (« ollama ps » : une part en CPU). "
-     "Vérifiez LUDIFUN_OLLAMA_NUM_CTX=8192 dans .env et les réglages d'Ollama (Rapport-Ludifun.bat), "
+     "Vérifiez LUDIFUN_OLLAMA_NUM_CTX=8192 dans .env et les réglages d'Ollama (Ludifun.bat, choix 10), "
      "ou prenez un modèle plus léger (qwen2.5vl:3b)."),
     ("injoignable", "Le serveur n'arrive pas à joindre Ollama : est-il lancé ? Sur un autre ordinateur, "
      "il faut OLLAMA_HOST=0.0.0.0 et le port 11434 ouvert."),
     ("connexion impossible", "Le serveur n'arrive pas à joindre l'IA en ligne : connexion Internet du PC ?"),
     ("absent", "Le modèle choisi n'est pas installé dans Ollama (« ollama pull … » sur le PC)."),
     ("model_not_found", "Ce modèle n'existe plus chez ce fournisseur (retiré) : choisissez-en un autre "
-     "(Changer-IA-Ludifun.bat, ou « Intelligence artificielle » dans l'espace parent)."),
+     "(Ludifun.bat, choix 4, ou « Intelligence artificielle » dans l'espace parent)."),
     ("401", "La clé d'API a été refusée : vérifiez-la dans l'espace parent."),
     ("403", "La clé d'API a été refusée ou n'a pas accès à ce modèle."),
     ("429", "L'IA en ligne limite le nombre de demandes (quota ou offre gratuite épuisée) : "
@@ -58,7 +58,7 @@ EXPLANATIONS = (
     ("hors schéma", "L'IA a répondu, mais pas dans le format attendu : le modèle suit mal les consignes "
      "(fréquent avec les petits modèles). Réessayez, ou choisissez un modèle plus grand."),
     ("réponse vide", "L'IA a renvoyé une réponse vide."),
-    ("erreur interne", "Erreur dans le serveur Ludifun lui-même : envoyez le rapport (Rapport-Ludifun.bat)."),
+    ("erreur interne", "Erreur dans le serveur Ludifun : envoyez le rapport (Ludifun.bat, choix 10)."),
 )  # fmt: skip
 STAGE_ORDER = ("ocr", "analysis", "material", "evaluation")
 FAILURE_EXPLANATIONS = {

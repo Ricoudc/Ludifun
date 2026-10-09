@@ -20,7 +20,7 @@ from enum import StrEnum
 from fractions import Fraction
 
 from app.domain.errors import ErrorType
-from app.domain.knowledge import Grade, KnowledgeItem, MaterialQuestion
+from app.domain.knowledge import Grade, KnowledgeItem, KnowledgeMaterial, MaterialQuestion
 from app.domain.text import normalize
 
 PER_DIFFICULTY = 6  # questions créées par thème et par difficulté
@@ -514,3 +514,16 @@ def generated_questions(
                 if kept == PER_DIFFICULTY:
                     break
     return found
+
+
+# Question de français glissée dans une leçon de maths (« Quelle est la bonne orthographe de
+# numérateur ? ») : une leçon de maths ne fait réviser que les maths (règles 1.11.0).
+_SPELLING = re.compile(r"orthograph|bien ecrit|correctement ecrit|comment s ecrit|s ecrit")
+
+
+def math_only(material: KnowledgeMaterial) -> KnowledgeMaterial:
+    """Le matériel d'une notion de maths sans exercice d'orthographe."""
+    questions = [q for q in material.questions if not _SPELLING.search(normalize(q.stem))]
+    if len(questions) == len(material.questions) and material.spelling is None:
+        return material
+    return material.model_copy(update={"questions": questions, "spelling": None})

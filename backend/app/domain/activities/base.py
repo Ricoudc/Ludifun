@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit
+from app.domain.rules import RULES
 
 
 class ActivityCode(StrEnum):
@@ -118,8 +119,10 @@ class ActivityType(ABC):
     max_units: ClassVar[int] = 1
 
     def accepts(self, unit: KnowledgeUnit) -> bool:
-        """La notion est d'un type compatible (§7.2) et a le matériel nécessaire."""
-        return unit.type in self.knowledge_types and self._has_material(unit)
+        """La notion est d'un type compatible (§7.2), sa matière admet ce jeu (une leçon de maths :
+        pas de jeu d'orthographe) et elle a le matériel nécessaire."""
+        excluded = EXCLUDED_BY_SUBJECT.get(unit.subject.value, frozenset()) if unit.subject else frozenset()
+        return unit.type in self.knowledge_types and self.code not in excluded and self._has_material(unit)
 
     def can_build(self, units: list[KnowledgeUnit], difficulty: int) -> bool:
         return (
@@ -162,3 +165,4 @@ class ActivityType(ABC):
 
 
 ALL_TYPES = frozenset(KnowledgeType)
+EXCLUDED_BY_SUBJECT = RULES.subjects.excluded_activities

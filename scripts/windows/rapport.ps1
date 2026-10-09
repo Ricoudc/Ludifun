@@ -22,6 +22,11 @@ foreach ($cle in 'LUDIFUN_AI_PROVIDER', 'LUDIFUN_AI_MODEL', 'LUDIFUN_OLLAMA_BASE
     if ($reglages[$cle]) { Ajouter "$cle=$($reglages[$cle])" }
 }
 
+Section 'Version'
+$installee = Version-Installee
+Ajouter $(if ($installee) { "Ludifun $installee" } else { 'Ludifun : version inconnue (ZIP pas encore mis à jour par le menu)' })
+Ajouter $(if (Installe-Avec-Git) { 'Mise à jour : git' } elseif (Test-Path $FichierJeton) { 'Mise à jour : ZIP, jeton GitHub enregistré' } else { 'Mise à jour : ZIP, pas de jeton GitHub' })
+
 Section 'Docker'
 if (Docker-Pret) { Ajouter (& docker compose ps -a 2>&1) } else { Ajouter 'Docker n''est pas lancé' }
 
@@ -58,7 +63,7 @@ if ($reglages['LUDIFUN_IMAGE_ENGINE'] -eq 'sdcpp') {
         $journal = Join-Path $reglages['LUDIFUN_IMAGE_DIR'] $nom
         if (Test-Path $journal) { Ajouter "$($nom) (fin) :"; Ajouter (Get-Content $journal -Tail 25 -Encoding UTF8) }
     }
-} else { Ajouter 'pas installé (facultatif : Installer-Images-Ludifun.bat)' }
+} else { Ajouter "pas installé (facultatif : $(Choix 8))" }
 
 Section 'Journal du serveur (IA et erreurs)'
 if (Docker-Pret) {

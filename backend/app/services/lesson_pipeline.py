@@ -48,7 +48,7 @@ from app.domain.validation import (
 )
 
 logger = logging.getLogger("ludifun.lessons")
-# Journal du serveur (Voir-les-erreurs-Ludifun.bat) : où en est l'IA, et combien de temps chaque étape.
+# Journal du serveur (Ludifun.bat, choix 9) : où en est l'IA, et combien de temps chaque étape.
 STAGE_LABELS: dict[Stage, str] = {
     "ocr": "lecture de la leçon",
     "analysis": "identification des notions",

@@ -45,7 +45,7 @@ def create_app(
         if settings.environment == "dev" and settings.uses_dev_secret:
             logging.getLogger("ludifun").warning(
                 "LUDIFUN_JWT_SECRET n'est pas défini : secret de développement public. "
-                "Sur un réseau partagé, définissez-le dans .env (Demarrer-Ludifun.bat le fait)."
+                "Sur un réseau partagé, définissez-le dans .env (Ludifun.bat le fait)."
             )
         try:
             async with app.state.database.sessionmaker() as session:

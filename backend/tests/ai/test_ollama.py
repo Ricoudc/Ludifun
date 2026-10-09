@@ -420,7 +420,7 @@ async def test_photos_are_read_as_plain_text_one_page_at_a_time() -> None:
 
 
 async def test_each_call_logs_where_the_time_went(caplog: pytest.LogCaptureFixture) -> None:
-    """Pour `Surveiller-Ludifun.bat` : une ligne technique par appel, sans texte de leçon."""
+    """Surveillance (`Ludifun.bat`, choix 11) : une ligne technique par appel, sans texte de leçon."""
 
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(

@@ -78,7 +78,7 @@ if (Docker-Pret) {
     & docker compose up -d
     if ($LASTEXITCODE -eq 0) { Attendre-Serveur | Out-Null; Ok 'Serveur prêt' }
 } else {
-    Write-Host 'Lance Demarrer-Ludifun.bat : le moteur d''images démarrera avec le serveur.' -ForegroundColor Yellow
+    Write-Host "Lance $(Choix 1) (démarrer) : le moteur d'images démarrera avec le serveur." -ForegroundColor Yellow
 }
 Write-Host ''
 Write-Host 'Prochaine leçon analysée : une image sera proposée dans l''espace parent (écran des questions'

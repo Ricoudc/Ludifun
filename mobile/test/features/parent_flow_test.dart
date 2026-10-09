@@ -687,7 +687,7 @@ void main() {
     ]);
     expect(find.text('✅ Ollama répond, « qwen2.5vl:7b » est installé.'), findsOneWidget);
     // Serveur sans moteur de recherche : l'interrupteur dit comment l'installer (étape 24).
-    expect(find.textContaining('Activer-Recherche-Ludifun.bat'), findsOneWidget);
+    expect(find.textContaining('Ludifun.bat (choix 7)'), findsOneWidget);
 
     // Choisir un autre modèle le vérifie aussitôt ; l'enregistrement n'en refait pas un.
     await tap(tester, find.widgetWithText(ActionChip, 'llama3:8b'));
@@ -802,7 +802,7 @@ void main() {
         if (!available) {
           // Pas de moteur de recherche sur le serveur : l'interrupteur dit comment l'installer.
           expect(tester.widget<SwitchListTile>(title).onChanged, isNull);
-          expect(find.textContaining('Activer-Recherche-Ludifun.bat'), findsOneWidget);
+          expect(find.textContaining('Ludifun.bat (choix 7)'), findsOneWidget);
           return;
         }
         expect(find.textContaining('des questions d\'entraînement s\'ajoutent'), findsOneWidget);

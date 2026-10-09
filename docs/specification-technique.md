@@ -947,8 +947,8 @@ abîmerait le binaire) vers `%LOCALAPPDATA%\Ludifun\sauvegardes` (14 gardées) ;
 transforme la base (dernière migration du dossier différente de celle notée), sinon une fois par
 jour, sans jamais empêcher le démarrage. `Restaurer-Base` : la sauvegarde est chargée dans une
 base à part (`ludifun_restauration`), la base actuelle n'est remplacée (renommage) que si tout a
-réussi ; le serveur redémarré applique les migrations manquantes. `Sauvegarder-Ludifun.bat`,
-`Restaurer-Ludifun.bat`. Essayé de bout en bout avec PowerShell 7 sous Linux et un faux `docker`
+réussi ; le serveur redémarré applique les migrations manquantes. `Ludifun.bat` (choix 5 et
+6). Essayé de bout en bout avec PowerShell 7 sous Linux et un faux `docker`
 branché sur PostgreSQL (sauvegarde, restauration, fichier abîmé, sauvegarde au schéma 0021) ;
 pas encore sous Windows avec Docker Desktop.
 
@@ -1257,6 +1257,39 @@ parent n'est pas touché. Chaque activité ajoutée porte la règle `extra_pract
 complétée pour durer au moins 5 minutes… », `repeat` pour un rappel espacé). Ni migration ni
 changement d'API : les questions calculées sont des QCM, que l'application publiée sait jouer.
 
+**Maths seulement** (règles 1.11.0, `[subjects] excluded_activities`) : une leçon de maths ne
+propose plus de jeu de français. Mot éclair, lettres mélangées et dictée y sont retirés ;
+« Démêler » n'y garde que les égalités écrites en chiffres (« 7 + 8 = 15 »), jamais une phrase ;
+les questions d'orthographe (« Quelle est la bonne orthographe ? ») et le matériel `spelling` sont
+écartés au chargement (`math_generator.math_only`).
+
+
+### 5.42 Un seul `Ludifun.bat` et mise à jour automatique (octobre 2026)
+
+Les onze fichiers `.bat` sont remplacés par **`Ludifun.bat`**, qui ouvre un menu
+(`scripts/windows/menu.ps1`) : démarrer, arrêter, mettre à jour, choisir l'IA, sauvegarder,
+remettre une sauvegarde, recherche, moteur d'images, erreurs, rapport, surveillance, raccourci sur
+le Bureau. Chaque action garde son script `.ps1` et tourne dans sa propre fenêtre PowerShell, puis
+revient au menu (`LUDIFUN_MENU=1` : « Entrée pour revenir au menu »). Le menu affiche l'état du
+serveur, l'adresse pour le téléphone et « une nouvelle version est disponible » (vérifié en 4 s au
+plus, sans rien demander).
+
+**Mise à jour** (`mettre-a-jour.ps1`) : `git pull` si le dossier vient de git ; sinon l'archive
+de la dernière version est téléchargée par l'API de GitHub, décompressée et copiée dans le dossier
+(`robocopy`, jamais `.env`) ; les fichiers retirés de Ludifun depuis la dernière mise à jour
+(liste `.ludifun-fichiers`) et les anciens `.bat` sont effacés ; `.ludifun-version` garde la
+version installée. Puis sauvegarde, `docker compose up -d --build`, et téléchargement de l'APK de
+test (release `apk-test`) dans `telephone/ludifun.apk` s'il a changé. Le menu se relance ensuite
+(code 3) avec la nouvelle version.
+
+Le dépôt étant privé, l'API demande un **jeton GitHub en lecture seule** (fine-grained,
+*Contents : Read-only*, limité au dépôt), demandé une fois et vérifié auprès de GitHub. Il est
+chiffré par DPAPI pour la session Windows dans `%LOCALAPPDATA%\Ludifun\jeton-github.txt`, hors
+du dossier et du dépôt ; il n'est envoyé qu'à l'API de GitHub (les redirections vers l'archive et
+le fichier APK sont suivies sans lui). Testé sous Linux avec PowerShell 7 contre un faux GitHub
+(dépôt privé, redirections, jeton jamais transmis après une redirection, fichiers retirés
+effacés, `.env` gardé, APK téléchargé une seule fois) ; pas encore essayé sous Windows
+(PowerShell 5.1, `robocopy`, DPAPI, raccourci sur le Bureau).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
@@ -1468,7 +1501,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 131 | Explications au parent fondées sur les faits | ✅ | Par notion : le fait observé chiffré (« Sur les 8 dernières activités : 4 réussies seul, 2 avec une aide, 2 ratées. Erreur la plus fréquente : … ») séparé de l'interprétation du moteur (💬). |
 | 132-134 | Règles de travail des IA de codage | ✅ | `CLAUDE.md` à la racine (lecture du CDC, plan avant de modifier, vérifications, compte rendu honnête). |
 | 135 | Erreurs catégorisées, jamais brutes | ✅ | Chaque erreur de l'API porte un code, une catégorie du §135 et un message en français ; une erreur inattendue du serveur répond au même format (jamais de 500 brut) ; l'échec d'analyse d'une leçon a sa catégorie ; l'application déduit `NETWORK_ERROR` et `TIMEOUT` (§5.34). |
-| 136 | Observabilité de l'IA | ✅ | `ai_runs` : fournisseur, modèle, version du prompt, durée, jetons, coût, statut, avertissements de validation ; page `/suivi`, `Rapport-Ludifun.bat`. Manquent `input_type` et `fallback_used` explicites. |
+| 136 | Observabilité de l'IA | ✅ | `ai_runs` : fournisseur, modèle, version du prompt, durée, jetons, coût, statut, avertissements de validation ; page `/suivi`, le rapport de `Ludifun.bat` (choix 10). Manquent `input_type` et `fallback_used` explicites. |
 | 137 | Prompts versionnés | ✅ | `app/ai/prompts/*.v1.md`, `*.v2.md` ; versions enregistrées par leçon et par appel. |
 | 138 | Version du moteur pédagogique | ✅ | `version` de `engine_rules.toml`, enregistrée sur chaque séance (`sessions.engine_version`) et affichée au parent. |
 | 139, 140 | Leçons de référence, non-régression | ✅ | 6 leçons de référence (CP français, CE2 sciences, CM1 histoire, CM2 maths, 6e géographie, 3e maths) jouées par tous les tests paramétrés, et comportement attendu de chacune (`tests/domain/test_reference_lessons.py` : notions, compétences, activités possibles, jeu de la première séance, un élève qui apprend finit par tout maîtriser). Mesure sur de vraies leçons : `app.tools.evaluate` (en attente des leçons). |

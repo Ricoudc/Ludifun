@@ -23,16 +23,23 @@ function Titre([string]$texte) {
 function Etape([string]$texte) { Write-Host "-> $texte" -ForegroundColor Yellow }
 function Ok([string]$texte) { Write-Host "OK  $texte" -ForegroundColor Green }
 
+# Lancé depuis le menu de Ludifun.bat : on revient au menu au lieu de fermer la fenêtre.
+$DepuisMenu = $env:LUDIFUN_MENU -eq '1'
+
+# Où trouver une action, pour les messages : tout passe par Ludifun.bat.
+function Choix([int]$numero) { return "Ludifun.bat, choix $numero" }
+
 function Echec([string]$texte) {
     Write-Host ''
     Write-Host "ERREUR : $texte" -ForegroundColor Red
     Write-Host 'Envoie ce message (ou une capture de cette fenêtre) pour avoir de l''aide.'
-    Read-Host 'Appuie sur Entrée pour fermer'
+    if ($DepuisMenu) { Read-Host 'Appuie sur Entrée pour revenir au menu' } else { Read-Host 'Appuie sur Entrée pour fermer' }
     exit 1
 }
 
 function Attendre-Fermeture {
     Write-Host ''
+    if ($DepuisMenu) { Read-Host 'Appuie sur Entrée pour revenir au menu'; return }
     Read-Host 'Appuie sur Entrée pour fermer cette fenêtre (le serveur continue de tourner)'
 }
 
@@ -158,7 +165,7 @@ function Conseils-Ollama-Injoignable([string]$url) {
     $repondIci = $false
     try { Invoke-RestMethod -Uri 'http://localhost:11434/api/tags' -TimeoutSec 3 | Out-Null; $repondIci = $true } catch { }
     if (-not $local -and $repondIci) {
-        $conseils += 'Ollama tourne sur ce PC : Changer-IA-Ludifun.bat, choisis Ollama et garde l''adresse proposée (http://host.docker.internal:11434).'
+        $conseils += 'Ollama tourne sur ce PC : $(Choix 4), choisis Ollama et garde l''adresse proposée (http://host.docker.internal:11434).'
     } elseif (-not $repondIci -and (Get-Command ollama -ErrorAction SilentlyContinue)) {
         $conseils += 'Ollama est installé mais pas lancé : ouvre Ollama (menu Démarrer), attends l''icône du lama près de l''horloge, puis réessaie.'
     }
@@ -357,14 +364,14 @@ function Attendre-Serveur {
         } catch { }
         Start-Sleep -Seconds 2
     }
-    Echec 'Le serveur ne répond pas. Double-clique sur Voir-les-erreurs-Ludifun.bat et envoie le résultat.'
+    Echec "Le serveur ne répond pas. Lance $(Choix 9) (voir les erreurs) et envoie le résultat."
 }
 
 function Afficher-IA($sante) {
     if ($sante.ai -and $sante.ai -ne 'fake') {
         Ok "IA : $(Nom-IA $sante.ai) (vraie analyse des photos)"
     } else {
-        Write-Host 'IA : factice (toute photo devient une leçon d''exemple). Pour la vraie IA : Changer-IA-Ludifun.bat' -ForegroundColor Yellow
+        Write-Host "IA : factice (toute photo devient une leçon d'exemple). Pour la vraie IA : $(Choix 4)" -ForegroundColor Yellow
     }
 }
 
@@ -412,7 +419,7 @@ function Demarrer-Moteur-Images($valeurs) {
     $modele = Join-Path $dossier 'modeles\sdxl_lightning_4step.safetensors'
     $vae = Join-Path $dossier 'modeles\sdxl_vae.safetensors'
     if (-not $exe -or -not (Test-Path $modele)) {
-        Write-Host "Moteur d'images incomplet dans $dossier : relance Installer-Images-Ludifun.bat." -ForegroundColor Yellow
+        Write-Host "Moteur d'images incomplet dans $dossier : relance $(Choix 8)." -ForegroundColor Yellow
         return
     }
     $aide = (& $exe.FullName -h 2>&1 | Out-String)
@@ -575,4 +582,142 @@ function Restaurer-Base([string]$chemin) {
     }
     & docker compose exec -T db dropdb -U ludifun --if-exists ludifun_avant_restauration *> $null
     return ''
+}
+
+# --- Mises à jour (GitHub) --------------------------------------------------------------
+
+# Le code et l'application du téléphone sont sur GitHub. Le dépôt étant privé, la mise à jour a
+# besoin d'une clé de lecture (« jeton »), demandée une fois. Elle est chiffrée pour la session
+# Windows (DPAPI) et rangée avec les réglages, hors du dossier de Ludifun : jamais dans le dépôt,
+# jamais envoyée ailleurs qu'à GitHub.
+$DepotGitHub = if ($env:LUDIFUN_DEPOT) { $env:LUDIFUN_DEPOT } else { 'Ricoudc/Ludifun' }
+$ApiGitHub = if ($env:LUDIFUN_API_GITHUB) { $env:LUDIFUN_API_GITHUB } else { 'https://api.github.com' }  # autre adresse : tests
+$FichierJeton = Join-Path $env:LOCALAPPDATA 'Ludifun\jeton-github.txt'
+$MarqueVersion = Join-Path $Racine '.ludifun-version'
+$ListeFichiers = Join-Path $Racine '.ludifun-fichiers'
+$DossierTelephone = Join-Path $Racine 'telephone'
+$MarqueApk = Join-Path $DossierTelephone 'version.txt'
+
+function Installe-Avec-Git {
+    return [bool]((Get-Command git -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $Racine '.git')))
+}
+
+function Jeton-GitHub {
+    if (-not (Test-Path $FichierJeton)) { return $null }
+    try {
+        $secret = Get-Content $FichierJeton -Raw | ConvertTo-SecureString
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+        try { return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+    } catch { return $null }  # autre session Windows, fichier abîmé : on le redemandera
+}
+
+function Client-Http([bool]$suivre) {
+    Add-Type -AssemblyName System.Net.Http
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    $gestion = New-Object System.Net.Http.HttpClientHandler
+    $gestion.AllowAutoRedirect = $suivre
+    $client = New-Object System.Net.Http.HttpClient($gestion)
+    $client.Timeout = [TimeSpan]::FromMinutes(15)
+    $client.DefaultRequestHeaders.UserAgent.ParseAdd('Ludifun-mise-a-jour')
+    return $client
+}
+
+# Appel à l'API de GitHub. Une redirection (archive, fichier d'une version) est suivie SANS le
+# jeton : il ne part que vers l'API. Renvoie la réponse (à lire puis libérer).
+function Requete-GitHub([string]$url, [string]$accept, $jeton, [int]$delai = 0) {
+    $client = Client-Http $false
+    if ($delai -gt 0) { $client.Timeout = [TimeSpan]::FromSeconds($delai) }
+    $demande = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::Get, $url)
+    $demande.Headers.Accept.ParseAdd($accept)
+    $demande.Headers.Add('X-GitHub-Api-Version', '2022-11-28')
+    if ($jeton) { $demande.Headers.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $jeton) }
+    $reponse = $client.SendAsync($demande, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+    $code = [int]$reponse.StatusCode
+    if ($code -ge 300 -and $code -lt 400 -and $reponse.Headers.Location) {
+        $suite = Client-Http $true
+        return $suite.GetAsync($reponse.Headers.Location, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+    }
+    return $reponse
+}
+
+# Objet JSON de l'API ; $null si GitHub refuse (dépôt privé sans jeton valable) ; une exception
+# si GitHub est injoignable.
+function Api-GitHub([string]$chemin, $jeton, [int]$delai = 0) {
+    $reponse = Requete-GitHub "$ApiGitHub/repos/$DepotGitHub$chemin" 'application/vnd.github+json' $jeton $delai
+    $code = [int]$reponse.StatusCode
+    if ($code -in 401, 403, 404) { return $null }
+    if (-not $reponse.IsSuccessStatusCode) { throw "GitHub a répondu $code" }
+    return $reponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+}
+
+function Telecharger-GitHub([string]$url, [string]$accept, $jeton, [string]$sortie) {
+    $reponse = Requete-GitHub $url $accept $jeton
+    if (-not $reponse.IsSuccessStatusCode) { throw "téléchargement refusé ($([int]$reponse.StatusCode))" }
+    $flux = $reponse.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+    $fichier = [IO.File]::Create($sortie)
+    try { $flux.CopyTo($fichier) } finally { $fichier.Close(); $flux.Close() }
+}
+
+function Demander-Jeton {
+    Write-Host ''
+    Write-Host 'Le code de Ludifun est privé sur GitHub : il faut une clé de lecture, une seule fois.' -ForegroundColor Cyan
+    Write-Host 'La page de GitHub va s''ouvrir (connecte-toi si besoin), puis :'
+    Write-Host '  1. Token name : Ludifun PC ; Expiration : 1 an (ou plus) ;'
+    Write-Host '  2. Repository access : « Only select repositories » → Ludifun ;'
+    Write-Host '  3. Permissions → Repository permissions → Contents : « Read-only » ;'
+    Write-Host '  4. « Generate token », copie le jeton (github_pat_…) et colle-le ici.'
+    Write-Host 'Il reste chiffré sur ce PC, pour ta session Windows ; il ne permet que de lire Ludifun.'
+    Start-Process 'https://github.com/settings/personal-access-tokens/new'
+    for ($essai = 0; $essai -lt 3; $essai++) {
+        $secret = Read-Host 'Jeton GitHub (il ne s''affiche pas ; Entrée seule pour abandonner)' -AsSecureString
+        if ($secret.Length -eq 0) { return $null }
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secret)
+        try { $jeton = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr).Trim() }
+        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
+        if (Api-GitHub '' $jeton) {
+            New-Item -ItemType Directory -Force -Path (Split-Path $FichierJeton) | Out-Null
+            ConvertTo-SecureString $jeton -AsPlainText -Force | ConvertFrom-SecureString | Set-Content $FichierJeton
+            Ok 'Jeton enregistré : les prochaines mises à jour seront automatiques.'
+            return $jeton
+        }
+        Write-Host 'GitHub refuse ce jeton (mal copié, ou sans accès à Ludifun en lecture). Réessaie.' -ForegroundColor Yellow
+    }
+    return $null
+}
+
+# Le jeton s'il en faut un : aucun si le dépôt est public, celui enregistré, sinon demandé.
+# $false : pas d'accès (abandon) ; une exception : GitHub injoignable.
+function Acces-GitHub([bool]$demander = $true) {
+    if (Api-GitHub '' $null) { return '' }
+    $jeton = Jeton-GitHub
+    if ($jeton -and (Api-GitHub '' $jeton)) { return $jeton }
+    if ($jeton) { Write-Host 'Le jeton GitHub enregistré ne marche plus (expiré ?) : il en faut un nouveau.' -ForegroundColor Yellow }
+    if (-not $demander) { return $false }
+    $nouveau = Demander-Jeton
+    if ($nouveau) { return $nouveau } else { return $false }
+}
+
+function Version-Installee {
+    if (Installe-Avec-Git) { return (& git -C $Racine rev-parse HEAD 2>$null) }
+    if (Test-Path $MarqueVersion) { return (Get-Content $MarqueVersion -Raw).Trim() }
+    return ''
+}
+
+# Dernière version publiée (branche principale) : son identifiant et sa date.
+function Derniere-Version($jeton, [int]$delai = 0) {
+    $commits = Api-GitHub '/commits?per_page=1' $jeton $delai
+    if (-not $commits) { return $null }
+    $dernier = @($commits)[0]
+    return [pscustomobject]@{ Sha = $dernier.sha; Date = $dernier.commit.committer.date }
+}
+
+# Pour le menu : vrai si une version plus récente attend (vérifié vite, sans rien demander).
+function Mise-A-Jour-Disponible {
+    try {
+        $jeton = if (Api-GitHub '' $null 4) { '' } else { Jeton-GitHub }
+        if ($null -eq $jeton) { return $false }
+        $derniere = Derniere-Version $jeton 4
+        return [bool]($derniere -and $derniere.Sha -ne (Version-Installee))
+    } catch { return $false }
 }

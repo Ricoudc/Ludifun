@@ -510,7 +510,7 @@ class _AiFormState extends ConsumerState<_AiForm> {
                       '(« D\'après … »). Seule la notion part sur Internet, jamais le prénom de '
                       'l\'enfant ni sa photo.'
                 : 'Pas encore possible : le serveur n\'a pas de moteur de recherche. Sur le PC '
-                      'du serveur, double-cliquez sur Activer-Recherche-Ludifun.bat, puis revenez ici.',
+                      'du serveur, double-cliquez sur Ludifun.bat (choix 7), puis revenez ici.',
           ),
         ),
         if (family != null) ...[

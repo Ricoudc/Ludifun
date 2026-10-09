@@ -69,7 +69,7 @@ async def data(request: Request, db: DbSession, settings: AppSettings) -> dict[s
 
 @router.get("/suivi/rapport.txt")
 async def text(request: Request, db: DbSession, settings: AppSettings) -> Response:
-    """Le rapport en texte simple (Rapport-Ludifun.bat), à copier dans une conversation."""
+    """Le rapport en texte simple (Ludifun.bat, choix 10), à copier dans une conversation."""
     _allowed(settings)
     content = monitoring.as_text(await report(request, db))
     return Response(content, media_type="text/plain; charset=utf-8", headers=HEADERS)

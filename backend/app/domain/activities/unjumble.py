@@ -5,6 +5,9 @@ rien n'est demandé à l'IA. Chaque mot à sa place compte.
 Un calcul a plusieurs écritures justes : « 8 + 7 = 15 » vaut « 7 + 8 = 15 » (le code calcule,
 `app.domain.arithmetic`), et « la somme de 8 et 7 » vaut « la somme de 7 et 8 ». Les signes
 (+, =, ×) comptent comme des mots : « 7 = 8 + 15 » est faux.
+
+Dans une leçon de maths, seulement des calculs (« 7 + 8 = 15 ») : pas de phrase à remettre en
+ordre, qui serait un exercice de français (règles 1.11.0).
 """
 
 import random
@@ -24,7 +27,7 @@ from app.domain.activities.base import (
 )
 from app.domain.arithmetic import equality_holds, swapped_terms
 from app.domain.errors import ErrorType
-from app.domain.knowledge import KnowledgeUnit
+from app.domain.knowledge import KnowledgeUnit, Subject
 from app.domain.text import normalize
 
 WORDS = (4, 10)  # assez de mots pour un jeu, assez peu pour un écran de téléphone
@@ -50,12 +53,19 @@ def accepted(placed: list[str], expected: list[str]) -> bool:
     )
 
 
+def _calculation(words: list[str]) -> bool:
+    """Une égalité écrite en chiffres (« 3 × 4 = 12 ») : pas une phrase."""
+    return "=" in words and all(any(c.isdigit() for c in w) or not w.isalpha() for w in words)
+
+
 def sentences_of(unit: KnowledgeUnit) -> list[str]:
     """Les phrases vraies de la notion (tirées de la leçon) qui ont le bon nombre de mots."""
     found: list[str] = []
     for text in [*unit.material.true_statements, unit.item.statement]:
         words = text.split()
         if WORDS[0] <= len(words) <= WORDS[1] and len({normalize(w) for w in words}) > 1:
+            if unit.subject == Subject.MATH and not _calculation(words):
+                continue
             sentence = " ".join(words)
             if sentence not in found:
                 found.append(sentence)

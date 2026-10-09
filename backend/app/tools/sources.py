@@ -25,7 +25,7 @@ NOT_ENABLED = (
     "Recherche de sources désactivée : ajoutez dans .env\n"
     "  COMPOSE_PROFILES=recherche\n"
     "  LUDIFUN_WEB_SEARCH_URL=http://recherche:8080\n"
-    "puis relancez Demarrer-Ludifun.bat."
+    "puis relancez Ludifun.bat (choix 1)."
 )
 
 

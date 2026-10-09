@@ -38,3 +38,8 @@ surveillance-ludifun.txt
 
 # Images des leçons générées sur le PC (jamais dans le dépôt)
 backend/data/
+
+# Mises à jour Windows : version installée, fichiers installés, application du téléphone
+.ludifun-version
+.ludifun-fichiers
+telephone/

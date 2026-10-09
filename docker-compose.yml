@@ -30,7 +30,7 @@ services:
     environment:
       LUDIFUN_ENVIRONMENT: dev
       LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
-      # Secrets propres à ce PC, tirés au hasard dans .env par Demarrer-Ludifun.bat (ailleurs :
+      # Secrets propres à ce PC, tirés au hasard dans .env par Ludifun.bat (démarrer) (ailleurs :
       # LUDIFUN_JWT_SECRET=… et LUDIFUN_SECRETS_KEY=… dans .env, 32 signes aléatoires ou plus).
       # Sans eux, le secret public du dépôt : à éviter dès que le port 8000 est ouvert au réseau.
       LUDIFUN_JWT_SECRET: ${LUDIFUN_JWT_SECRET:-}
@@ -38,7 +38,7 @@ services:
       # IA du serveur : Ollama sur ce PC par défaut (gratuit, rien ne sort de la maison). Chaque
       # famille peut en choisir une autre dans l'espace parent (« Intelligence artificielle »).
       # Autre choix par défaut, dans un fichier .env à la racine du dépôt (Windows :
-      # Changer-IA-Ludifun.bat) :
+      # Ludifun.bat, choix 4) :
       #   LUDIFUN_AI_PROVIDER=claude      (ou openai, gemini, mistral, groq, xai, compatible, fake)
       #   ANTHROPIC_API_KEY=sk-ant-...    (ou la clé du fournisseur choisi)
       #   LUDIFUN_AI_DAILY_BUDGET_USD=5

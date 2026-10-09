@@ -25,7 +25,7 @@ from app.domain.knowledge import (
     Subject,
 )
 from app.domain.mastery import Mastery, lesson_review
-from app.domain.math_generator import generated_questions
+from app.domain.math_generator import generated_questions, math_only
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
 from app.domain.validation import Rejection
 from app.services.lesson_pipeline import PipelineResult
@@ -207,6 +207,8 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         )
         # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
         checked = consistent(KnowledgeMaterial.model_validate(material.material))
+        if lesson.subject == Subject.MATH:
+            checked = math_only(checked)  # pas d'exercice d'orthographe dans une leçon de maths
         stems.update(q.stem for q in checked.questions)
         if grade is not None and (created := generated_questions(domain_item, grade, stems)):
             # Leçon de maths : des exercices calculés par le code, à la classe de l'enfant.

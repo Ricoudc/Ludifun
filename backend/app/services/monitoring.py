@@ -1,4 +1,4 @@
-"""Suivi de l'IA : page `/suivi` (en direct) et `Rapport-Ludifun.bat` (texte à partager).
+"""Suivi de l'IA : page `/suivi` (en direct) et le rapport de `Ludifun.bat` (choix 10) (texte à partager).
 
 Uniquement des données techniques : étapes, modèles, durées, statuts et erreurs. Ni prénom, ni
 titre ou texte de leçon, ni clé d'API ; une leçon est désignée par le début de son identifiant.
@@ -162,7 +162,7 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
 
 
 def as_text(data: dict[str, Any]) -> str:
-    """Le même contenu, en texte simple (Rapport-Ludifun.bat)."""
+    """Le même contenu, en texte simple (Ludifun.bat, choix 10)."""
     lines = [
         f"Rapport du {data['generated_at']}",
         f"IA du serveur : {data['server_ai']}",

@@ -66,8 +66,9 @@ de suppression du compte, bundle signé pour le Play Store. Restent des décisio
 
 ## Démarrage rapide
 
-**Windows, sans ligne de commande** : double-cliquer sur `Demarrer-Ludifun.bat` (choix de l'IA,
-serveur, adresse à saisir sur le téléphone) ; voir
+**Windows, sans ligne de commande** : double-cliquer sur `Ludifun.bat` : un menu pour démarrer
+(choix de l'IA, serveur, adresse à saisir sur le téléphone), mettre à jour tout seul (serveur et
+application du téléphone), sauvegarder… ; voir
 [`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).
 
 ```bash

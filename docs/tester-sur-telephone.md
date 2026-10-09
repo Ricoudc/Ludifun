@@ -16,21 +16,40 @@ Le téléphone joint l'ordinateur par le Wi-Fi : les deux doivent être sur **le
 ## Le plus simple : Windows, en double-cliquant
 
 Une fois le dépôt téléchargé (`git clone`, ou le ZIP de GitHub décompressé) et Docker Desktop
-installé, tout se fait depuis l'Explorateur de fichiers, dans le dossier `Ludifun` :
+installé, tout se fait en double-cliquant sur **`Ludifun.bat`**, dans le dossier `Ludifun`. Un
+menu propose toutes les actions ; taper le numéro puis Entrée (Entrée seule : démarrer si le
+serveur est arrêté). Le choix 12 crée un raccourci « Ludifun » sur le Bureau. Le menu affiche
+aussi l'adresse à saisir sur le téléphone quand le serveur tourne, et prévient quand une
+nouvelle version est disponible.
 
-| Double-cliquer sur | Ce que ça fait |
+| Choix | Ce que ça fait |
 |---|---|
-| `Demarrer-Ludifun.bat` | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
-| `Changer-IA-Ludifun.bat` | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
-| `Installer-Images-Ludifun.bat` | facultatif : installe le moteur d'images (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) pour illustrer chaque leçon d'une image ; voir « Image de la leçon » ci-dessous |
-| `Activer-Recherche-Ludifun.bat` | active (ou désactive) la recherche sur les sites éducatifs de confiance (Vikidia, Lumni, Éduscol, Sésamath, Wikipédia) : moteur de recherche dans Docker, serveur redémarré. Ensuite, dans l'application : espace parent → Mon compte → Intelligence artificielle → « 📚 Utiliser des sites éducatifs de confiance ». Donne les explications sourcées de « Je n'ai pas compris » et des questions d'entraînement « D'après … » pour les leçons analysées ensuite. Le même réglage ajoute « 🌐 Pour s'entraîner autrement » sur l'écran de la leçon : exercices MathALÉA (maths, CM1 à 3e), quiz Vikidia, vidéos Lumni, films des Fondamentaux (Canopé, CP-6e), leçons de Maître Lucas (CP-CM2), jeux de calcul mental Calcul@TICE (maths, CP-6e) et pages du manuel Sésamath (maths, 6e-3e), ouverts dans l'application ; MathALÉA et Vikidia marchent même sans ce moteur de recherche (il suffit d'autoriser les sites dans l'application), Lumni, Les Fondamentaux, Maître Lucas, Calcul@TICE et Sésamath en ont besoin. Les ressources sont cherchées à l'analyse d'une leçon ; pour une leçon plus ancienne, le parent touche « Chercher des ressources » sur la relecture de la leçon. `Demarrer-Ludifun.bat` le propose une fois |
-| `Sauvegarder-Ludifun.bat` | sauvegarder tout de suite les données (comptes, leçons, résultats des enfants) dans `%LOCALAPPDATA%\Ludifun\sauvegardes` ; les 14 plus récentes sont gardées. `Demarrer-Ludifun.bat` et `Mettre-a-jour-Ludifun.bat` en font aussi une **automatiquement** : une par jour, et toujours avant qu'une nouvelle version transforme la base |
-| `Restaurer-Ludifun.bat` | revenir à une sauvegarde choisie dans la liste (taper `OUI` pour confirmer). La base actuelle est d'abord sauvegardée (« avant-restauration ») ; une sauvegarde illisible ne change rien ; une sauvegarde d'une version plus ancienne est mise à jour au redémarrage |
-| `Arreter-Ludifun.bat` | arrêter le serveur et le moteur d'images (les données sont gardées) |
-| `Mettre-a-jour-Ludifun.bat` | récupérer la dernière version (`git pull`) et redémarrer |
-| `Voir-les-erreurs-Ludifun.bat` | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
-| `Rapport-Ludifun.bat` | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
-| `Surveiller-Ludifun.bat` | à lancer **avant** un essai : note au fil de l'eau le journal du serveur (chaque appel à Ollama : chargement du modèle, jetons lus et écrits, vitesse, raison de l'arrêt ; éléments refusés ; erreurs, redémarrages), la charge du processeur et de la carte graphique et le modèle chargé par Ollama. Entrée pour finir : le fichier `surveillance-ludifun.txt` est copié, à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
+| 1. Démarrer | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
+| 2. Arrêter | arrêter le serveur et le moteur d'images (les données sont gardées) |
+| 3. Mettre à jour | **tout seul** : télécharge la dernière version depuis GitHub, l'installe dans le dossier (`.env`, données et sauvegardes gardés ; un fichier retiré de Ludifun est effacé), sauvegarde la base, redémarre le serveur, puis télécharge la nouvelle application du téléphone dans le dossier `telephone` (`ludifun.apk`, ouvert dans l'Explorateur, à copier sur le téléphone). Dossier venu de `git clone` : `git pull`. La première fois, comme le dépôt est privé, il demande une **clé de lecture GitHub** (voir ci-dessous) |
+| 4. Choisir l'IA | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
+| 5. Sauvegarder | sauvegarder tout de suite les données (comptes, leçons, résultats des enfants) dans `%LOCALAPPDATA%\Ludifun\sauvegardes` ; les 14 plus récentes sont gardées. Les choix 1 et 3 en font aussi une **automatiquement** : une par jour, et toujours avant qu'une nouvelle version transforme la base |
+| 6. Remettre une sauvegarde | revenir à une sauvegarde choisie dans la liste (taper `OUI` pour confirmer). La base actuelle est d'abord sauvegardée (« avant-restauration ») ; une sauvegarde illisible ne change rien ; une sauvegarde d'une version plus ancienne est mise à jour au redémarrage |
+| 7. Recherche sur les sites éducatifs | active (ou désactive) la recherche sur les sites éducatifs de confiance (Vikidia, Lumni, Éduscol, Sésamath, Wikipédia) : moteur de recherche dans Docker, serveur redémarré. Ensuite, dans l'application : espace parent → Mon compte → Intelligence artificielle → « 📚 Utiliser des sites éducatifs de confiance ». Donne les explications sourcées de « Je n'ai pas compris » et des questions d'entraînement « D'après … » pour les leçons analysées ensuite. Le même réglage ajoute « 🌐 Pour s'entraîner autrement » sur l'écran de la leçon : exercices MathALÉA (maths, CM1 à 3e), quiz Vikidia, vidéos Lumni, films des Fondamentaux (Canopé, CP-6e), leçons de Maître Lucas (CP-CM2), jeux de calcul mental Calcul@TICE (maths, CP-6e) et pages du manuel Sésamath (maths, 6e-3e), ouverts dans l'application ; MathALÉA et Vikidia marchent même sans ce moteur de recherche (il suffit d'autoriser les sites dans l'application), Lumni, Les Fondamentaux, Maître Lucas, Calcul@TICE et Sésamath en ont besoin. Les ressources sont cherchées à l'analyse d'une leçon ; pour une leçon plus ancienne, le parent touche « Chercher des ressources » sur la relecture de la leçon. le choix 1 le propose une fois |
+| 8. Moteur d'images | facultatif : installe le moteur d'images (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) pour illustrer chaque leçon d'une image ; voir « Image de la leçon » ci-dessous |
+| 9. Voir les erreurs | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
+| 10. Rapport de diagnostic | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
+| 11. Surveiller un essai | à lancer **avant** un essai : note au fil de l'eau le journal du serveur (chaque appel à Ollama : chargement du modèle, jetons lus et écrits, vitesse, raison de l'arrêt ; éléments refusés ; erreurs, redémarrages), la charge du processeur et de la carte graphique et le modèle chargé par Ollama. Entrée pour finir : le fichier `surveillance-ludifun.txt` est copié, à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
+
+**Clé de lecture GitHub (une seule fois, pour la mise à jour automatique).** Le dépôt est privé :
+pour télécharger Ludifun sans passer par le site, le choix 3 a besoin d'un jeton. Il ouvre la
+page <https://github.com/settings/personal-access-tokens/new> ; y choisir un nom (« Ludifun
+PC »), une expiration (1 an), *Repository access* → *Only select repositories* → **Ludifun**, puis
+*Permissions* → *Repository permissions* → **Contents : Read-only** ; *Generate token*, copier le
+jeton (`github_pat_…`) et le coller dans la fenêtre (il ne s'affiche pas). Il ne permet que de
+lire Ludifun ; il est chiffré pour la session Windows dans
+`%LOCALAPPDATA%\Ludifun\jeton-github.txt`, jamais dans le dossier ni sur GitHub. À son
+expiration, le choix 3 en redemande un.
+
+**Ancien dossier avec plusieurs `.bat`** (`Demarrer-Ludifun.bat`, `Mettre-a-jour-Ludifun.bat`…) :
+télécharger une dernière fois le ZIP à la main, ou lancer l'ancien `Mettre-a-jour-Ludifun.bat`
+si le dossier vient de `git clone`. Ensuite, seul `Ludifun.bat` sert ; la mise à jour efface les
+anciens `.bat`.
 
 Sur le téléphone, l'écran d'analyse a un bloc « Voir ce qui se passe » : chaque étape de l'IA
 (modèle, durée, résultat) et, si l'analyse échoue, la raison en clair puis le message de l'IA.
@@ -153,7 +172,7 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 
 1. Installez Ollama (<https://ollama.com/download>) et lancez-le.
 2. Téléchargez un modèle qui sait lire les images : `ollama pull qwen2.5vl:7b` (environ 6 Go ;
-   plus léger : `gemma3:4b`). Sous Windows, `Demarrer-Ludifun.bat` le propose.
+   plus léger : `gemma3:4b`). Sous Windows, `Ludifun.bat` (choix 1) le propose.
 3. Le serveur utilise Ollama par défaut. Dans l'application, **espace parent → Mon compte →
    Intelligence artificielle** : « Ollama (sur ce PC) » est proposé en premier et **vérifié
    aussitôt** : Ollama répond, le modèle est installé et sait lire les images, et une petite
@@ -166,7 +185,7 @@ pour Copilot) avec sa clé : elle vaut pour toute la famille.
 
 Choisir l'IA du serveur (celle des familles qui n'ont rien choisi) :
 
-Sous Windows : `Changer-IA-Ludifun.bat`. Sinon, créez un fichier `.env` à la racine du dépôt
+Sous Windows : `Ludifun.bat`, choix 4. Sinon, créez un fichier `.env` à la racine du dépôt
 (il n'est jamais envoyé sur GitHub) :
 
 ```
@@ -186,11 +205,11 @@ le temps de l'image (quelques dizaines de secondes à quelques minutes). L'image
 **facultative** (aucune question n'en dépend) et **l'enfant ne la voit qu'une fois validée par
 le parent**.
 
-1. Double-cliquez sur `Installer-Images-Ludifun.bat` : choisissez le dossier (de préférence sur
+1. Dans `Ludifun.bat`, choix 8 : choisissez le dossier (de préférence sur
    un SSD, 8 Go libres), le script télécharge le programme et le modèle (le téléchargement
    reprend là où il s'est arrêté si on le relance), règle `.env` et redémarre le serveur.
-2. `Demarrer-Ludifun.bat` lance ensuite le moteur d'images avec le serveur, en arrière-plan ;
-   `Arreter-Ludifun.bat` l'arrête.
+2. Le choix 1 (démarrer) lance ensuite le moteur d'images avec le serveur, en arrière-plan ;
+   le choix 2 (arrêter) l'arrête.
 3. Dans l'application, **espace parent → l'enfant → la leçon → questions de la leçon** : la
    carte « Image de la leçon » montre l'image à valider. **Valider** : l'enfant la voit avec sa
    leçon. **Refuser** : il ne la voit pas. **Refaire** : une nouvelle image, en précisant si
@@ -205,7 +224,7 @@ ou « Valider les N images »), elles s'affichent avec la notion dans la leçon 
 servent aux jeux **« Image et mot »** et **« Quelle image ? »** (trois images validées au moins).
 Pour une leçon analysée avant l'installation du moteur : « Préparer les images ».
 
-Si le moteur ne répond pas, la leçon reste complète, sans image ; `Rapport-Ludifun.bat` montre
+Si le moteur ne répond pas, la leçon reste complète, sans image ; le rapport de diagnostic (choix 10) montre
 la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 
 ## En cas de problème
@@ -215,14 +234,14 @@ la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 | « Serveur injoignable » | Même Wi-Fi ? Pas de VPN sur le téléphone ? Le pare-feu de l'ordinateur doit autoriser le port 8000 sur le réseau privé (Windows : autoriser Docker Desktop). Un Wi-Fi public ou d'entreprise peut isoler les appareils : essayez le partage de connexion du téléphone. |
 | `/health/ready` répond `database_unavailable` | `docker compose ps` : la base doit être `healthy` ; sinon `docker compose up -d` à nouveau. |
 | « Ollama injoignable » ou le test échoue | Ollama est-il lancé (icône près de l'horloge) ? Dans le navigateur du PC, <http://localhost:11434> doit afficher « Ollama is running ». Sinon, définissez la variable d'environnement Windows `OLLAMA_HOST=0.0.0.0`, relancez Ollama, puis `Demarrer-Ludifun.bat`. |
-| L'analyse reste longtemps sur « Lecture de ta leçon… » (Ollama) | L'IA du PC travaille : sans carte graphique, une leçon peut demander 10 à 30 minutes (l'écran affiche le temps écoulé ; on peut fermer l'application). `Voir-les-erreurs-Ludifun.bat` montre l'avancement (« IA : lecture de la leçon terminée en 240 s »). Plus rapide : un modèle plus léger (`ollama pull qwen2.5vl:3b`, puis `Changer-IA-Ludifun.bat`), ou une IA en ligne choisie dans l'espace parent (Gemini et Groq ont une offre gratuite). |
-| Ollama lent avec une carte graphique AMD | Pendant une analyse, `ollama ps` (ou `Voir-les-erreurs-Ludifun.bat`) indique où tourne le modèle : `100% GPU` va bien ; `CPU` signifie qu'Ollama n'utilise pas la carte. Mettez Ollama à jour ; les Radeon RX 6600/6700 ne sont pas toutes prises en charge sous Windows (selon la version, le moteur Vulkan s'active avec la variable d'environnement `OLLAMA_VULKAN=1`, puis redémarrage d'Ollama). Avec 8 Go de mémoire graphique, `qwen2.5vl:3b` tient entièrement sur la carte. |
-| Ollama lent alors que la carte graphique est utilisée (moins de 15 jetons/s dans `Surveiller-Ludifun.bat`) | Le modèle déborde de la carte graphique dans la mémoire du PC : le Gestionnaire des tâches (Performance, GPU) montre la mémoire dédiée pleine et la mémoire partagée qui monte. Dans les réglages d'Ollama, « Context length » sur **4k** (Ludifun donne sa propre taille, 8192) ; dans une invite de commandes : `setx OLLAMA_FLASH_ATTENTION 1`, `setx OLLAMA_KV_CACHE_TYPE q8_0`, `setx OLLAMA_NUM_PARALLEL 1`, puis quitter et relancer Ollama. PC d'essai (RX 6600, 8 Go) : de 9 à 43 jetons/s. Modèles rangés sur un disque SSD : chargement plus rapide. |
+| L'analyse reste longtemps sur « Lecture de ta leçon… » (Ollama) | L'IA du PC travaille : sans carte graphique, une leçon peut demander 10 à 30 minutes (l'écran affiche le temps écoulé ; on peut fermer l'application). `Ludifun.bat`, choix 9, montre l'avancement (« IA : lecture de la leçon terminée en 240 s »). Plus rapide : un modèle plus léger (`ollama pull qwen2.5vl:3b`, puis `Ludifun.bat, choix 4`), ou une IA en ligne choisie dans l'espace parent (Gemini et Groq ont une offre gratuite). |
+| Ollama lent avec une carte graphique AMD | Pendant une analyse, `ollama ps` (ou `Ludifun.bat`, choix 9) indique où tourne le modèle : `100% GPU` va bien ; `CPU` signifie qu'Ollama n'utilise pas la carte. Mettez Ollama à jour ; les Radeon RX 6600/6700 ne sont pas toutes prises en charge sous Windows (selon la version, le moteur Vulkan s'active avec la variable d'environnement `OLLAMA_VULKAN=1`, puis redémarrage d'Ollama). Avec 8 Go de mémoire graphique, `qwen2.5vl:3b` tient entièrement sur la carte. |
+| Ollama lent alors que la carte graphique est utilisée (moins de 15 jetons/s dans la surveillance (`Ludifun.bat`, choix 11)) | Le modèle déborde de la carte graphique dans la mémoire du PC : le Gestionnaire des tâches (Performance, GPU) montre la mémoire dédiée pleine et la mémoire partagée qui monte. Dans les réglages d'Ollama, « Context length » sur **4k** (Ludifun donne sa propre taille, 8192) ; dans une invite de commandes : `setx OLLAMA_FLASH_ATTENTION 1`, `setx OLLAMA_KV_CACHE_TYPE q8_0`, `setx OLLAMA_NUM_PARALLEL 1`, puis quitter et relancer Ollama. PC d'essai (RX 6600, 8 Go) : de 9 à 43 jetons/s. Modèles rangés sur un disque SSD : chargement plus rapide. |
 | « modèle Ollama absent » | `ollama pull qwen2.5vl:7b` (ou le modèle choisi) dans un terminal. |
-| Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Changer-IA-Ludifun.bat`). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
-| Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Voir-les-erreurs-Ludifun.bat` montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
-| « Clé d'IA d'une famille illisible : le secret du serveur a changé » dans le journal ; l'enfant voit « L'IA choisie par tes parents n'est pas prête » | Ludifun a été lancé depuis un autre dossier, avec un nouveau `.env` (secrets différents) : la base garde la clé chiffrée avec l'ancien secret. Dans l'application : espace parent → Mon compte → Intelligence artificielle, collez la clé de nouveau (« ⚠️ Clé à coller de nouveau ») et enregistrez. Ou recopiez le `.env` de l'ancien dossier puis relancez `Demarrer-Ludifun.bat`. Depuis octobre 2026, les réglages sont repris d'un dossier à l'autre. |
-| `port is already allocated` au démarrage | Un autre serveur occupe le port (souvent une autre copie de Ludifun, par exemple un ZIP téléchargé à nouveau). `Demarrer-Ludifun.bat` arrête maintenant les autres copies et n'utilise plus le port 5432 ; gardez un seul dossier de Ludifun. Si le port 8000 est pris par un autre logiciel, fermez-le. |
+| Toute photo devient « La Révolution française » | C'est l'IA factice : `/health/ready` affiche `"ai":"fake"`. Voir §5 (Windows : `Ludifun.bat`, choix 4). Les leçons déjà analysées le restent : photographiez-les à nouveau. |
+| Avec la vraie IA, « Petit souci » à l'analyse | Clé invalide ou sans crédit : `Ludifun.bat`, choix 9, montre la raison (la clé n'y apparaît pas). Vérifiez la clé et le crédit sur console.anthropic.com. |
+| « Clé d'IA d'une famille illisible : le secret du serveur a changé » dans le journal ; l'enfant voit « L'IA choisie par tes parents n'est pas prête » | Ludifun a été lancé depuis un autre dossier, avec un nouveau `.env` (secrets différents) : la base garde la clé chiffrée avec l'ancien secret. Dans l'application : espace parent → Mon compte → Intelligence artificielle, collez la clé de nouveau (« ⚠️ Clé à coller de nouveau ») et enregistrez. Ou recopiez le `.env` de l'ancien dossier puis relancez `Ludifun.bat`, choix 1. Depuis octobre 2026, les réglages sont repris d'un dossier à l'autre. |
+| `port is already allocated` au démarrage | Un autre serveur occupe le port (souvent une autre copie de Ludifun, par exemple un ZIP téléchargé à nouveau). Le choix 1 (démarrer) arrête maintenant les autres copies et n'utilise plus le port 5432 ; gardez un seul dossier de Ludifun. Si le port 8000 est pris par un autre logiciel, fermez-le. |
 | « Ce code ne marche pas » | Le code dure 10 minutes et ne sert qu'une fois : demandez-en un nouveau dans l'espace parent. |
 | L'outil de démonstration refuse | Le compte existe déjà : ajoutez `--replace`. |
 | Pas de `ludifun-test.apk` sur la page « apk-test » | L'APK de la dernière modification est en cours de fabrication (8 minutes environ) : onglet **Actions**, workflow **Mobile**. |

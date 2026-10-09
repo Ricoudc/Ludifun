@@ -7,4 +7,4 @@ if (-not (Docker-Pret)) { Ok 'Docker est déjà arrêté : rien à faire.'; Atte
 & docker compose down
 if ($LASTEXITCODE -ne 0) { Echec 'L''arrêt n''a pas fonctionné.' }
 Ok 'Ludifun est arrêté (tes données sont gardées).'
-Read-Host 'Appuie sur Entrée pour fermer'
+if ($DepuisMenu) { Read-Host 'Appuie sur Entrée pour revenir au menu' } else { Read-Host 'Appuie sur Entrée pour fermer' }

@@ -109,6 +109,11 @@ class TeachRules(_Section):
     explain_ratio: float = Field(gt=0, le=1)
 
 
+class SubjectRules(_Section):
+    # Matière → jeux jamais proposés pour ses leçons (codes d'activité).
+    excluded_activities: dict[str, frozenset[str]] = Field(default_factory=dict)
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -124,6 +129,7 @@ class EngineRules(_Section):
     difficulty: DifficultyRules
     confidence: ConfidenceRules
     reminders: ReminderRules
+    subjects: SubjectRules = Field(default_factory=SubjectRules)
 
 
 def load_rules(path: Path | None = None) -> EngineRules:
