@@ -10,9 +10,19 @@ import 'quick_rating.dart';
 
 /// Écran 7 : bilan de la séance.
 class ReportView extends StatelessWidget {
-  const ReportView({required this.report, this.onRate, super.key});
+  const ReportView({
+    required this.report,
+    this.onRate,
+    this.stars = 0,
+    this.bestStreak = 0,
+    super.key,
+  });
 
   final Report report;
+
+  /// Étoiles gagnées pendant la séance et meilleure série de bonnes réponses (point 4).
+  final int stars;
+  final int bestStreak;
 
   /// Note rapide de la séance ; sans elle, pas de question.
   final Future<void> Function(int rating)? onRate;
@@ -47,6 +57,16 @@ class ReportView extends StatelessWidget {
           minHeight: 14,
           borderRadius: BorderRadius.circular(7),
         ),
+        if (stars > 0) ...[
+          const SizedBox(height: 16),
+          Text(
+            '⭐ Tu as gagné $stars étoile${stars > 1 ? 's' : ''} !'
+            '${bestStreak >= 2 ? '\n🔥 Meilleure série : $bestStreak bonnes réponses d\'affilée' : ''}',
+            key: const Key('session-stars'),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, height: 1.4),
+          ),
+        ],
         if (report.rewards case final rewards?) ...[
           const SizedBox(height: 20),
           RewardsCard(rewards),

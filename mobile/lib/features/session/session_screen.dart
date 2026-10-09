@@ -6,10 +6,13 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/session.dart';
+import '../../core/sounds.dart';
+import '../../models/session.dart';
 import '../home/home_providers.dart';
 import '../report/report_view.dart';
 import 'activities/activity_registry.dart';
 import 'activities/common.dart';
+import 'cheers.dart';
 import 'correction_view.dart';
 import 'help_sheet.dart';
 import 'report_question.dart';
@@ -66,6 +69,23 @@ class SessionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Sons : la correction (juste, presque, pas tout à fait) et la fin de la séance.
+    ref.listen(sessionControllerProvider(sessionId), (previous, next) {
+      if (previous?.phase == next.phase) return;
+      final sounds = ref.read(soundsProvider);
+      switch (next.phase) {
+        case Phase.correction:
+          sounds.play(switch (next.correction?.result) {
+            AttemptResult.correct => Sound.correct,
+            AttemptResult.partial => Sound.partial,
+            _ => Sound.wrong,
+          });
+        case Phase.report:
+          sounds.play(Sound.finish);
+        default:
+          break;
+      }
+    });
     final state = ref.watch(sessionControllerProvider(sessionId));
     final controller = ref.read(sessionControllerProvider(sessionId).notifier);
     final (index, total) = state.counter;
@@ -87,6 +107,28 @@ class SessionScreen extends ConsumerWidget {
                       : 'Question $index / $total',
                 )
               : null,
+          actions: [
+            if (_playing(state) && state.stars > 0)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Text(
+                    '⭐ ${state.stars}',
+                    key: const Key('stars-counter'),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            IconButton(
+              tooltip: ref.watch(soundOnProvider).value ?? true
+                  ? 'Couper le son'
+                  : 'Remettre le son',
+              icon: Icon(
+                ref.watch(soundOnProvider).value ?? true ? Icons.volume_up : Icons.volume_off,
+              ),
+              onPressed: () => ref.read(soundOnProvider.notifier).toggle(),
+            ),
+          ],
           bottom: _playing(state) && !state.inReplay && !state.inBonus
               ? PreferredSize(
                   preferredSize: const Size.fromHeight(8),
@@ -170,6 +212,9 @@ class SessionScreen extends ConsumerWidget {
               Phase.correction when item != null && state.correction != null => CorrectionView(
                 item: item,
                 correction: state.correction!,
+                stars: starsFor(state.correction!.score),
+                streak: state.streak,
+                onStar: () => ref.read(soundsProvider).play(Sound.star),
                 onContinue: controller.next,
                 report: ReportQuestionButton(
                   key: ValueKey(item.id),
@@ -212,6 +257,8 @@ class SessionScreen extends ConsumerWidget {
               ),
               Phase.report when state.report != null => ReportView(
                 report: state.report!,
+                stars: state.stars,
+                bestStreak: state.bestStreak,
                 onRate: (rating) => ref
                     .read(apiProvider)
                     .sendFeedback(rating: rating, screen: 'report', sessionId: sessionId),

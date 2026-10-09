@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/app.dart';
 import 'package:ludifun/app/router.dart';
 import 'package:ludifun/core/offline.dart';
+import 'package:ludifun/core/sounds.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/session/session_controller.dart';
 
@@ -26,14 +27,19 @@ void main() {
       ..on('GET /v1/lessons', (_) => (200, <Object>[]));
   });
 
-  Future<void> open(WidgetTester tester, String sessionId, {OfflineStore? offline}) async {
+  Future<void> open(
+    WidgetTester tester,
+    String sessionId, {
+    OfflineStore? offline,
+    FakeSoundPlayer? sounds,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          ...overridesFor(server, MemoryCredentialStore(child), null, offline),
+          ...overridesFor(server, MemoryCredentialStore(child), null, offline, sounds),
           stopwatchProvider.overrideWithValue(() => clock),
           nowForOfflineProvider.overrideWithValue(() => clock),
         ],
@@ -132,6 +138,46 @@ void main() {
     await tapAndSettle(tester, 'Revoir mes erreurs');
     expect(find.text('Question 1 / 1'), findsOneWidget);
     expect(server.routes, contains('GET /v1/sessions/s2'));
+  });
+
+  testWidgets('point 4 : étoiles, série, sons, bouton muet, puis le bilan', (tester) async {
+    final sounds = FakeSoundPlayer();
+    FakeSessionBackend(server, 's1', [mcq('i1'), mcq('i2'), trueFalse('i3'), mcq('i4')]);
+    await open(tester, 's1', sounds: sounds);
+    expect(find.byKey(const Key('stars-counter')), findsNothing); // pas encore d'étoile
+
+    await tapAndSettle(tester, '1789');
+    expect(find.byKey(const Key('star-earned')), findsNWidgets(3));
+    expect(find.text('⭐ 3'), findsOneWidget);
+    expect(sounds.played, [Sound.correct, Sound.star, Sound.star, Sound.star]);
+    expect(find.textContaining('d\'affilée'), findsNothing); // une seule bonne réponse
+    await shot(tester, 's20_etoiles');
+    await tapAndSettle(tester, 'Continuer');
+
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+    // Troisième activité ratée : pas d'étoile, la série retombe à zéro.
+    await tapAndSettle(tester, '❌ Faux');
+    expect(find.byKey(const Key('star-empty')), findsNWidgets(3));
+    expect(sounds.played.last, Sound.wrong);
+    expect(find.text('⭐ 6'), findsOneWidget);
+    await tapAndSettle(tester, 'Continuer');
+
+    // 🔇 : plus aucun son, l'animation reste.
+    await tester.tap(find.byTooltip('Couper le son'));
+    await tester.pumpAndSettle();
+    final heard = sounds.played.length;
+    await tapAndSettle(tester, '1789');
+    expect(sounds.played, hasLength(heard));
+    expect(find.byTooltip('Remettre le son'), findsOneWidget);
+    await tapAndSettle(tester, 'Continuer');
+
+    // Bilan : les étoiles de la séance et la meilleure série.
+    expect(
+      find.text('⭐ Tu as gagné 9 étoiles !\n🔥 Meilleure série : 2 bonnes réponses d\'affilée'),
+      findsOneWidget,
+    );
+    await shot(tester, 's21_bilan_etoiles', height: 1400);
   });
 
   testWidgets('étape 20 : étapes de la mission, puis XP et badges au bilan', (tester) async {

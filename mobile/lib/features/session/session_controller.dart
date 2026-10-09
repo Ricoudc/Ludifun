@@ -6,6 +6,7 @@ import '../../core/session.dart';
 import '../../models/session.dart';
 import '../home/home_providers.dart';
 import 'activities/activity_registry.dart';
+import 'cheers.dart';
 
 /// §14.4 : loading → question ⇄ submitting → correction → question (suivante)
 ///   └→ fin des activités principales : reprise des erreurs → question …
@@ -36,6 +37,9 @@ class SessionState {
     this.report,
     this.error,
     this.offline = false,
+    this.stars = 0,
+    this.streak = 0,
+    this.bestStreak = 0,
   });
 
   final Phase phase;
@@ -49,6 +53,13 @@ class SessionState {
   final Correction? correction;
   final Report? report;
   final String? error;
+
+  /// Étoiles gagnées dans cette séance (3 par jeu tout juste ; pour le plaisir, pas la note).
+  final int stars;
+
+  /// Bonnes réponses d'affilée, et la meilleure série de la séance.
+  final int streak;
+  final int bestStreak;
 
   bool get inReplay => current?.block == Block.replay;
 
@@ -117,6 +128,9 @@ class SessionState {
     Report? report,
     String? error,
     bool? offline,
+    int? stars,
+    int? streak,
+    int? bestStreak,
   }) => SessionState(
     phase: phase ?? this.phase,
     items: items ?? this.items,
@@ -125,6 +139,9 @@ class SessionState {
     report: report ?? this.report,
     error: error,
     offline: offline ?? this.offline,
+    stars: stars ?? this.stars,
+    streak: streak ?? this.streak,
+    bestStreak: bestStreak ?? this.bestStreak,
   );
 }
 
@@ -236,6 +253,7 @@ class SessionController extends Notifier<SessionState> {
       final correction = await ref
           .read(apiProvider)
           .answer(sessionId, item.id, response, durationMs: durationMs);
+      final streak = correction.result == AttemptResult.correct ? state.streak + 1 : 0;
       // Remédiation : les activités insérées se jouent juste après celle-ci.
       final marked = _mark(item, correction.result);
       final at = marked.indexWhere((i) => i.id == item.id) + 1;
@@ -248,6 +266,9 @@ class SessionController extends Notifier<SessionState> {
           ...marked.skip(at),
         ],
         correction: correction,
+        stars: state.stars + starsFor(correction.score),
+        streak: streak,
+        bestStreak: streak > state.bestStreak ? streak : state.bestStreak,
       );
     } on ApiException catch (error) {
       if (error.code == 'already_answered') return load(); // double envoi : on se recale

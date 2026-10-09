@@ -49,6 +49,7 @@ dependencies:
   flutter_tts: ^4.2.5
   webview_flutter: ^4.14.1
   file_picker: ^13.1.0
+  audioplayers: ^6.8.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -65,6 +66,10 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Petits sons des séances, synthétisés par tool/sons.py (aucun enregistrement).
+  assets:
+    - assets/sounds/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

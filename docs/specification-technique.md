@@ -1472,6 +1472,25 @@ courriel). Maintenant :
    acceptée.
 
 Tests : `tests/api/test_phone_app.py`, `mobile/test/features/app_update_test.dart`.
+
+### 5.51 Séances plus vivantes : étoiles, séries, animations, sons (octobre 2026)
+
+Pour que l'enfant ait envie de jouer, la correction de chaque jeu s'anime (application seule ;
+rien ne change dans le moteur ni dans la note) :
+
+- **Étoiles** : 3 si tout est juste, 2 à partir de 60 %, 1 pour un début, 0 sinon
+  (`starsFor`) ; elles apparaissent une à une avec un petit son. Le total de la séance s'affiche
+  dans la barre (« ⭐ 9 ») et au bilan (« ⭐ Tu as gagné 9 étoiles ! »).
+- **Série** : bonnes réponses d'affilée ; « 🔥 3 bonnes réponses d'affilée ! » à partir de 3 ;
+  la meilleure série est rappelée au bilan.
+- **Animations** : confettis sur une bonne réponse, petite secousse sur une erreur (jamais de
+  rouge criard ni de buzzer). Coupées si le téléphone demande moins d'animations.
+- **Sons** : juste, presque, pas tout à fait (deux notes graves et douces), étoile, fin de
+  séance. Synthétisés par `mobile/tool/sons.py` (aucun enregistrement, aucun droit d'auteur),
+  joués par `audioplayers`. Bouton 🔊 / 🔇 dans la barre de la séance, gardé sur le téléphone.
+
+Tests : `mobile/test/activities/cheers_test.dart` (étoiles, série, animations réduites),
+`mobile/test/features/session_flow_test.dart` (« point 4 » : étoiles, sons, bouton muet, bilan).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

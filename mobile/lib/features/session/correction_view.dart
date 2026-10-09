@@ -7,6 +7,7 @@ import '../../models/figure.dart';
 import '../../models/session.dart';
 import 'activities/activity_registry.dart';
 import 'activities/figure_canvas.dart';
+import 'cheers.dart';
 
 /// Écran 6 : correction immédiate, jamais culpabilisante.
 class CorrectionView extends StatelessWidget {
@@ -16,6 +17,9 @@ class CorrectionView extends StatelessWidget {
     required this.onContinue,
     this.onPause,
     this.report,
+    this.stars,
+    this.streak = 0,
+    this.onStar,
     super.key,
   });
 
@@ -28,6 +32,15 @@ class CorrectionView extends StatelessWidget {
 
   /// « 🚩 Signaler un problème » (absent dans les tests des jeux seuls).
   final Widget? report;
+
+  /// Étoiles gagnées par ce jeu (0 à 3) ; absentes : pas d'étoiles montrées.
+  final int? stars;
+
+  /// Bonnes réponses d'affilée, celle-ci comprise.
+  final int streak;
+
+  /// Chaque étoile qui apparaît (petit son).
+  final VoidCallback? onStar;
 
   @override
   Widget build(BuildContext context) {
@@ -43,48 +56,59 @@ class CorrectionView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color, width: 2),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: Theme.of(context).textTheme.headlineMedium
-                    ?.copyWith(color: color, fontWeight: FontWeight.w800),
-              ),
-              if (showAnswer && openQuestion && correction.correctAnswer != null) ...[
-                const SizedBox(height: 12),
+        if (stars case final stars?) ...[
+          StarsRow(stars, onStar: onStar),
+          const SizedBox(height: 8),
+        ],
+        if (correction.result == AttemptResult.correct && streak >= 3) ...[
+          StreakChip(streak),
+          const SizedBox(height: 12),
+        ],
+        Cheer(
+          happy: correction.result == AttemptResult.correct,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: color, width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Text(
-                  'Une réponse possible : ${correction.correctAnswer}',
-                  style: const TextStyle(fontSize: 19),
+                  title,
+                  style: Theme.of(context).textTheme.headlineMedium
+                      ?.copyWith(color: color, fontWeight: FontWeight.w800),
                 ),
-              ] else if (showAnswer && correction.correctAnswer != null) ...[
-                const SizedBox(height: 12),
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'La bonne réponse est '),
-                      TextSpan(
-                        text: correction.correctAnswer,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
+                if (showAnswer && openQuestion && correction.correctAnswer != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Une réponse possible : ${correction.correctAnswer}',
+                    style: const TextStyle(fontSize: 19),
                   ),
-                  style: const TextStyle(fontSize: 20),
-                ),
+                ] else if (showAnswer && correction.correctAnswer != null) ...[
+                  const SizedBox(height: 12),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        const TextSpan(text: 'La bonne réponse est '),
+                        TextSpan(
+                          text: correction.correctAnswer,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const TextSpan(text: '.'),
+                      ],
+                    ),
+                    style: const TextStyle(fontSize: 20),
+                  ),
+                ],
+                if (item.type == 'SPEED_CHALLENGE' && correction.correctAnswer != null) ...[
+                  const SizedBox(height: 8),
+                  Text(correction.correctAnswer!, style: const TextStyle(fontSize: 18)),
+                ],
               ],
-              if (item.type == 'SPEED_CHALLENGE' && correction.correctAnswer != null) ...[
-                const SizedBox(height: 8),
-                Text(correction.correctAnswer!, style: const TextStyle(fontSize: 18)),
-              ],
-            ],
+            ),
           ),
         ),
         // Carte et coloriage : les bonnes zones sur le dessin (vert trouvé, orange manqué, rouge touché

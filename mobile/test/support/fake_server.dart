@@ -8,6 +8,7 @@ import 'package:ludifun/core/offline.dart';
 import 'package:ludifun/core/api/ludifun_api.dart';
 import 'package:ludifun/core/link_opener.dart';
 import 'package:ludifun/core/session.dart';
+import 'package:ludifun/core/sounds.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/lesson/resource_screen.dart';
 
@@ -107,12 +108,23 @@ class FakeLinkOpener implements LinkOpener {
   }
 }
 
+/// Sons joués pendant les tests, sans lecteur audio.
+class FakeSoundPlayer implements SoundPlayer {
+  final played = <Sound>[];
+
+  @override
+  Future<void> play(Sound sound) async => played.add(sound);
+}
+
 List<Override> overridesFor(
   FakeServer server,
   CredentialStore store, [
   LinkOpener? links,
   OfflineStore? offline,
+  FakeSoundPlayer? sounds,
 ]) => [
+  soundPlayerProvider.overrideWithValue(sounds ?? FakeSoundPlayer()),
+  soundSettingStoreProvider.overrideWithValue(MemorySoundSettingStore()),
   credentialStoreProvider.overrideWithValue(store),
   linkOpenerProvider.overrideWithValue(links ?? FakeLinkOpener()),
   bareDioProvider.overrideWithValue(buildDio('http://api.test')..httpClientAdapter = server),
