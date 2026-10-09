@@ -73,9 +73,9 @@ class Alignment(ActivityType):
                 "choices": YES_NO,
             }
             display = (
-                f"Oui : {a}, {b} et {c} sont sur une même droite."
+                f"Oui, {a}, {b} et {c} sont sur une même droite."
                 if aligned
-                else f"Non : {b} n'est pas sur la droite qui passe par {a} et {c}."
+                else f"Non, {b} n'est pas sur la droite qui passe par {a} et {c}."
             )
             return question, {"choice_id": "oui" if aligned else "non", "display": display, **feedback(unit)}
         if difficulty == 2:

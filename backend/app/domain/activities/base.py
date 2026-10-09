@@ -51,6 +51,10 @@ class ActivityCode(StrEnum):
     PICTURE_FIND = "PICTURE_FIND"  # quelle image ? : une phrase, toucher l'image qui la montre
     # Géométrie : figure dessinée par le code.
     ALIGN = "ALIGN"  # points alignés : oui / non, toucher les points alignés
+    # Jeux de maths calculés par le code, à la classe de l'enfant.
+    NUMBER_LINE = "NUMBER_LINE"  # droite graduée : placer ou lire un nombre
+    FRACTION_BAR = "FRACTION_BAR"  # fraction à colorier : colorier ou lire une fraction
+    COLUMN_OP = "COLUMN_OP"  # opération posée : addition, soustraction, multiplication
 
 
 Result = Literal["correct", "partial", "incorrect"]

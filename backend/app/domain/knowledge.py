@@ -364,6 +364,8 @@ class KnowledgeUnit(_Model):
     # Matière de la leçon : en français (et en anglais), l'orthographe est ce qui est appris,
     # une réponse écrite doit être exacte. Absente : tolérance des petites fautes de frappe.
     subject: Subject | None = None
+    # Classe de l'enfant : les jeux de maths calculés par le code en tirent la taille des nombres.
+    grade: Grade | None = None
 
     @model_validator(mode="after")
     def _same_knowledge(self) -> "KnowledgeUnit":

@@ -1313,6 +1313,32 @@ lesquels étaient alignés. Un point oublié ou en trop donne une réponse parti
 méthode pour le parent). L'application dessine la figure (`alignment_view.dart`, clous ou points,
 points touchés entourés) et marche sans connexion ; l'application publiée saute ce type inconnu.
 D'autres figures (symétrie, angles droits, quadrillages) pourront suivre sur le même principe.
+
+### 5.44 Jeux de maths calculés et variété des jeux (octobre 2026, règles 1.12.0)
+
+« On retrouve toujours les mêmes jeux » : deux causes, deux corrections.
+
+**Variété d'une séance à l'autre** (`session.vary_formats`). Le composeur évitait déjà les
+questions des dernières séances, pas les formats. Les empreintes des questions récentes commencent
+par leur format : à difficulté égale, le format le moins joué récemment passe maintenant devant
+(après la règle « jeu visuel d'abord » et avant le choix au hasard).
+
+**Trois jeux de maths fabriqués par le code** (`activities/math_games.py`), à la classe de
+l'enfant (`KnowledgeUnit.grade`, tirée de la leçon), sur le thème de la notion
+(`math_generator.topics`). Aucune IA : la réponse est calculée.
+
+| Jeu | Thèmes | Difficulté 1 | 2 | 3 |
+|---|---|---|---|---|
+| `NUMBER_LINE` droite graduée | nombres, comparer, addition, soustraction, fractions, décimaux | placer un nombre (pas simple, graduation du milieu écrite) | lire le nombre de la flèche (4 choix, erreurs d'une graduation, lecture à l'envers) | placer avec un pas plus grand (entiers), au centième (décimaux), de 0 à 2 (fractions) |
+| `FRACTION_BAR` fraction à colorier | fractions | colorier les 3/5 d'une bande ou d'un disque (n'importe quelles parts) | lire la fraction coloriée (inversée, la part non coloriée…) | colorier une fraction égale (les 1/2 d'une bande en 6 parts) |
+| `COLUMN_OP` opération posée | addition, soustraction (CE1), multiplication (CE2) | sans retenue | avec retenue | nombres plus grands, 2 chiffres × 2 chiffres (CM1) |
+
+L'opération posée s'écrit de droite à gauche, comme au cahier, avec une ligne de retenues en
+brouillon ; un résultat « sans retenue » (colonne par colonne) est reconnu et l'aide dit
+d'où vient l'erreur. Ces jeux comptent pour le niveau « appliquer » (lire la droite ou la fraction
+: « reconnaître »). Ils marchent sans connexion ; l'application publiée saute ces types
+inconnus. Les textes de correction n'ont pas de deux-points (la typographie française du serveur
+y ajoute une espace).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

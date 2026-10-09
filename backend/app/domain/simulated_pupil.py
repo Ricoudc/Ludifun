@@ -85,6 +85,16 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             }
         case ActivityCode.RANDOM_CARDS:
             return {"cards": [{"id": c, "knew": knows(k)} for c, k in s["knowledge_by_card"].items()]}
+        case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choice_id" in s:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.NUMBER_LINE:
+            return {"index": s["index"] if single_ok else s["index"] + 1}
+        case ActivityCode.FRACTION_BAR:
+            count = s["count"] if single_ok else s["count"] - 1 or 2
+            return {"colored": list(range(count))}
+        case ActivityCode.COLUMN_OP:
+            return {"result": s["result"] if single_ok else str(int(s["result"]) + 1)}
         case ActivityCode.ALIGN:
             if "choice_id" in s:
                 return {

@@ -128,6 +128,8 @@ async def test_dashboard_over_several_weeks(
         "BOX",
         "RANDOM_CARDS",
         "UNJUMBLE",
+        "NUMBER_LINE",  # leçon de maths : jeux calculés par le code
+        "FRACTION_BAR",
     }
 
     # Réussite par matière : maîtrise pondérée par l'importance des notions travaillées.

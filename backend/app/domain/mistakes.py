@@ -59,6 +59,14 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
     match code:
         case ActivityCode.MCQ:
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choices" in payload:
+            given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.NUMBER_LINE:
+            given = f"Graduation n° {response.get('index', '?')}"
+        case ActivityCode.FRACTION_BAR:
+            given = f"{len(response.get('colored', []))} part(s) coloriée(s) sur {payload.get('parts', '?')}"
+        case ActivityCode.COLUMN_OP:
+            given = str(response.get("result", "")).strip() or "(rien écrit)"
         case ActivityCode.ALIGN if payload.get("task") == "yes_no":
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
         case ActivityCode.ALIGN:

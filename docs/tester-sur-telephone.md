@@ -168,6 +168,10 @@ Un appareil sert **un seul espace**. Pour tester les deux :
 - **Une fiche de géométrie sur les alignements** (« Repérer des alignements ») : la séance
   propose « Points alignés » ; vérifier que les points se touchent facilement du doigt, que
   les clous et les lettres se lisent, et que la correction est juste.
+- **Une leçon de fractions, de nombres ou d'opérations** : droite graduée (toucher la bonne
+  graduation, lire la flèche), fraction à colorier (bande ou disque) et opération posée (taper
+  les chiffres de droite à gauche, noter les retenues) ; vérifier que tout se touche bien du
+  doigt et que les nombres conviennent à la classe. D'une séance à l'autre, les jeux changent.
 - **Une leçon de maths** : plus aucun jeu de français (mot éclair, lettres mélangées, dictée,
   phrase à remettre dans l'ordre).
 

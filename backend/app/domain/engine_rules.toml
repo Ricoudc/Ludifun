@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.11.0"
+version = "1.12.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -17,6 +17,7 @@ level_up_score = 50         # à partir de ce score, on vise le niveau de compr�
 deepen_score = 80           # notion maîtrisée et due : expliquer ou transférer
 missing_level_score = 70    # score retenu pour la priorité d'une notion à qui il manque un niveau
 visual_first = true         # approfondissement : ranger, remettre dans l'ordre, colorier d'abord (1.1.0)
+vary_formats = true         # à difficulté égale, les jeux les moins joués aux dernières séances d'abord (1.12.0)
 # Durée d'une séance (1.10.0) : une leçon courte (2 ou 3 questions) ne donne plus une séance de
 # 2 minutes. Sous `min_minutes` estimées, la séance est complétée par d'autres questions sur les
 # notions de la leçon (autre format ou autre question), sans dépasser `max_minutes`.

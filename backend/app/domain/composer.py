@@ -13,6 +13,7 @@ séance, ce qui permet de rejouer exactement un problème signalé.
 import itertools
 import math
 import random
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -29,6 +30,8 @@ from app.domain.scoring import Evidence
 from app.domain.text import normalize
 from app.domain.understanding import cognitive_level, required_levels
 
+CODES = frozenset(code.value for code in ActivityCode)
+
 # Seuils réglés dans engine_rules.toml (§125).
 BLOCK_SIZE = RULES.session.block_size
 STRONG_NOTIONS_NEEDED = RULES.session.strong_notions_needed
@@ -40,6 +43,7 @@ LEVEL_UP_SCORE = RULES.session.level_up_score
 DEEPEN_SCORE = RULES.session.deepen_score
 MISSING_LEVEL_SCORE = RULES.session.missing_level_score
 VISUAL_FIRST = RULES.session.visual_first
+VARY_FORMATS = RULES.session.vary_formats
 MIN_SECONDS = RULES.session.min_minutes * 60
 MAX_SECONDS = RULES.session.max_minutes * 60
 EXTRA_ROUNDS = 40  # tours essayés au plus pour compléter une séance trop courte
@@ -50,7 +54,16 @@ TRANSITION_S = 5
 CORRECTION_S = 8
 REPLAY_PROVISION_S = 0.3 * REPLAY_MAX * 20
 
-EASY = frozenset({ActivityCode.MCQ, ActivityCode.TRUE_FALSE, ActivityCode.ALIGN})
+EASY = frozenset(
+    {
+        ActivityCode.MCQ,
+        ActivityCode.TRUE_FALSE,
+        ActivityCode.ALIGN,
+        ActivityCode.NUMBER_LINE,
+        ActivityCode.FRACTION_BAR,
+        ActivityCode.COLUMN_OP,
+    }
+)
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
 # jamais « par défaut », ni dans la reprise des erreurs.
 ON_REQUEST = frozenset({ActivityCode.OPEN_QUESTION})
@@ -78,6 +91,9 @@ INTERMEDIATE = frozenset(
         ActivityCode.DICTATION,
         ActivityCode.UNJUMBLE,
         ActivityCode.ALIGN,
+        ActivityCode.NUMBER_LINE,
+        ActivityCode.FRACTION_BAR,
+        ActivityCode.COLUMN_OP,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les
@@ -159,6 +175,7 @@ class SessionComposer:
     def __init__(self, registry: ActivityRegistry) -> None:
         self.registry = registry
         self.recent: frozenset[str] = frozenset()
+        self.played: Counter[ActivityCode] = Counter()  # formats joués aux dernières séances
         self.history: Mapping[str, Sequence[RecentAnswer]] = {}
         self.adjusted: dict[str, Difficulty] = {}
 
@@ -184,6 +201,8 @@ class SessionComposer:
         ajuster la difficulté (§36)."""
         rng = random.Random(seed)
         self.recent = recent
+        # Formats des questions des dernières séances (l'empreinte commence par le format).
+        self.played = Counter(ActivityCode(p.split(":", 1)[0]) for p in recent if p.split(":", 1)[0] in CODES)
         self.history, self.adjusted = history or {}, {}
         eligible = _eligible(units)
         first = not any(u.id in masteries for u in units)
@@ -663,6 +682,9 @@ class SessionComposer:
                 rng.shuffle(codes)
                 if VISUAL_FIRST:
                     codes.sort(key=lambda code: code not in VISUAL)
+                if VARY_FORMATS:
+                    # Le jeu le moins joué aux dernières séances de la leçon passe devant.
+                    codes.sort(key=lambda code: self.played.get(code, 0))
                 result += [(code, difficulty) for code in codes if (code, difficulty) not in result]
         # Les formats dont toutes les questions ont déjà été posées aux séances précédentes passent
         # en dernier, quelle que soit leur difficulté (l'ordre reste sinon celui des préférences).

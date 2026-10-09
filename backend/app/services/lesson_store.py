@@ -220,6 +220,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
                 material=checked,
                 picture=pictures.get(item.id),
                 subject=lesson.subject if lesson.subject in Subject else None,
+                grade=Grade(lesson.grade) if lesson.grade in list(Grade) else None,
             )
         )
         key_to_id[item.key] = item.id

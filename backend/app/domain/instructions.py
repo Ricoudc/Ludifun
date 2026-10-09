@@ -140,6 +140,21 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Regarde la figure : touche les points alignés, ou réponds oui ou non.",
         "Observe la figure et repère les points alignés.",
     ),
+    ActivityCode.NUMBER_LINE: (
+        "Regarde la droite. Touche la bonne graduation.",
+        "Compte les graduations : touche celle du nombre demandé, ou lis le nombre de la flèche.",
+        "Repère le pas de la graduation, puis place ou lis le nombre.",
+    ),
+    ActivityCode.FRACTION_BAR: (
+        "Touche les parts pour les colorier.",
+        "Colorie le bon nombre de parts, ou dis quelle fraction est coloriée.",
+        "Colorie la fraction demandée, ou retrouve la fraction coloriée.",
+    ),
+    ActivityCode.COLUMN_OP: (
+        "Calcule en colonnes. Écris le résultat chiffre par chiffre.",
+        "Pose l'opération : commence par les unités, n'oublie pas les retenues.",
+        "Effectue l'opération posée, en commençant par la droite.",
+    ),
     ActivityCode.COLORING: (
         "Choisis une couleur. Puis touche le dessin.",
         "Choisis une couleur de la légende, puis touche les zones à colorier.",

@@ -58,6 +58,16 @@ def wrong_response(activity: BuiltActivity) -> dict[str, Any]:
             }
         case ActivityCode.TRUE_FALSE:
             return {"value": not s["value"]}
+        case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choice_id" in s:
+            return {
+                "choice_id": next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            }
+        case ActivityCode.NUMBER_LINE:
+            return {"index": s["index"] + 1}
+        case ActivityCode.FRACTION_BAR:
+            return {"colored": list(range(s["count"] + 1))}
+        case ActivityCode.COLUMN_OP:
+            return {"result": str(int(s["result"]) + 10)}
         case ActivityCode.ALIGN if "choice_id" in s:
             return {"choice_id": "non" if s["choice_id"] == "oui" else "oui"}
         case ActivityCode.ALIGN:

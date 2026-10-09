@@ -13,6 +13,7 @@ from app.domain.activities.find_match import FindMatch
 from app.domain.activities.flashcard import Flashcard
 from app.domain.activities.lucky import Box, RandomCards, Wheel
 from app.domain.activities.match import Match
+from app.domain.activities.math_games import ColumnOperation, FractionBar, NumberLine
 from app.domain.activities.mcq import Mcq
 from app.domain.activities.memory import Memory
 from app.domain.activities.open_question import OpenQuestionActivity
@@ -101,5 +102,9 @@ def default_registry() -> ActivityRegistry:
             PictureFind(),
             # Géométrie : figure dessinée par le code
             Alignment(),
+            # Jeux de maths calculés par le code
+            NumberLine(),
+            FractionBar(),
+            ColumnOperation(),
         ]
     )

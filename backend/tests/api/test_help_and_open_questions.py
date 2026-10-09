@@ -87,12 +87,15 @@ async def test_error_types_are_recorded(
     client: AsyncClient,
     db: AsyncSession,
     fake_llm: FakeProvider,
+    monkeypatch: pytest.MonkeyPatch,
     now: list[datetime],  # noqa: F811
 ) -> None:
+    monkeypatch.setattr("app.services.learning.new_seed", lambda: 7)  # séance toujours la même
     family, lesson = await fractions(client, fake_llm)
     token = family["device"]
     session = await start(client, token, lesson["id"])
-    first, second = session["items"][:2]
+    # Deux questions à choix (une leçon de maths propose aussi des jeux calculés : droite, fraction).
+    first, second = [i for i in session["items"] if i["type"] in ("MCQ", "TRUE_FALSE")][:2]
     wrong = await db.get(SessionItem, uuid.UUID(first["id"]))
     assert wrong is not None and wrong.activity_type in ("MCQ", "TRUE_FALSE")
     response = (

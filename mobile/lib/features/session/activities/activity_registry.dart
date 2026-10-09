@@ -10,6 +10,7 @@ import 'flashcard_view.dart';
 import 'fun_games_views.dart';
 import 'map_view.dart';
 import 'match_view.dart';
+import 'math_games_views.dart';
 import 'mcq_view.dart';
 import 'memory_view.dart';
 import 'open_question_view.dart';
@@ -57,6 +58,10 @@ final activityRegistry = <String, ActivityBuilder>{
   'PICTURE_FIND': (payload, onSubmit) => PictureFindView(payload: payload, onSubmit: onSubmit),
   // Géométrie : figure dessinée à partir des coordonnées du serveur
   'ALIGN': (payload, onSubmit) => AlignmentView(payload: payload, onSubmit: onSubmit),
+  // Jeux de maths calculés par le serveur
+  'NUMBER_LINE': (payload, onSubmit) => NumberLineView(payload: payload, onSubmit: onSubmit),
+  'FRACTION_BAR': (payload, onSubmit) => FractionBarView(payload: payload, onSubmit: onSubmit),
+  'COLUMN_OP': (payload, onSubmit) => ColumnOperationView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

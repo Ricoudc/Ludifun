@@ -81,6 +81,9 @@ const activityLabels = {
   'BOX': ('🎁', 'Boîtes à ouvrir'),
   'RANDOM_CARDS': ('🃏', 'Cartes aléatoires'),
   'ALIGN': ('📐', 'Points alignés'),
+  'NUMBER_LINE': ('📏', 'Droites graduées'),
+  'FRACTION_BAR': ('🍕', 'Fractions à colorier'),
+  'COLUMN_OP': ('🧮', 'Opérations posées'),
 };
 
 /// Avatars proposés à la création d'un profil.

@@ -184,6 +184,116 @@ void main() {
     ]);
   });
 
+  testWidgets('droite graduée : toucher une graduation, valider', (tester) async {
+    await show(tester, 'NUMBER_LINE', {
+      'prompt': 'Touche la graduation du nombre 3/4.',
+      'task': 'place',
+      'intervals': 4,
+      'labels': [
+        {'index': 0, 'text': '0'},
+        {'index': 4, 'text': '1'},
+      ],
+    });
+    final line = tester.getRect(find.byKey(const Key('number-line')));
+    final step = (line.width - 48) / 4;
+    await tester.tapAt(Offset(line.left + 24 + 3 * step, line.center.dy));
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'index': 3},
+    ]);
+  });
+
+  testWidgets('droite graduée : lire le nombre de la flèche', (tester) async {
+    await show(tester, 'NUMBER_LINE', {
+      'prompt': 'Quel nombre montre la flèche ?',
+      'task': 'read',
+      'intervals': 10,
+      'arrow': 7,
+      'labels': [
+        {'index': 0, 'text': '2'},
+        {'index': 10, 'text': '3'},
+      ],
+      'choices': [
+        {'id': 'a', 'text': '2,7'},
+        {'id': 'b', 'text': '2,6'},
+        {'id': 'c', 'text': '7'},
+        {'id': 'd', 'text': '2,8'},
+      ],
+    });
+    await tester.tap(find.text('2,7'));
+    expect(sent, [
+      {'choice_id': 'a'},
+    ]);
+  });
+
+  testWidgets('fraction à colorier : toucher les parts de la bande', (tester) async {
+    await show(tester, 'FRACTION_BAR', {
+      'prompt': 'Colorie les 2/5 de la bande.',
+      'task': 'color',
+      'shape': 'bar',
+      'parts': 5,
+    });
+    final bar = tester.getRect(find.byKey(const Key('fraction-shape')));
+    final part = bar.width / 5;
+    for (final i in [4, 1, 2]) {
+      await tester.tapAt(Offset(bar.left + (i + 0.5) * part, bar.center.dy));
+      await tester.pump();
+    }
+    await tester.tapAt(Offset(bar.left + 2.5 * part, bar.center.dy)); // décolorier
+    await tester.pump();
+    expect(find.text('Parts coloriées : 2 sur 5'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'colored': [1, 4],
+      },
+    ]);
+  });
+
+  testWidgets('fraction à colorier : lire la fraction du disque', (tester) async {
+    await show(tester, 'FRACTION_BAR', {
+      'prompt': 'Quelle fraction du disque est coloriée ?',
+      'task': 'read',
+      'shape': 'disc',
+      'parts': 6,
+      'colored': [0, 1],
+      'choices': [
+        {'id': 'a', 'text': '2/6'},
+        {'id': 'b', 'text': '6/2'},
+        {'id': 'c', 'text': '4/6'},
+        {'id': 'd', 'text': '2/4'},
+      ],
+    });
+    await tester.tap(find.text('2/6'));
+    expect(sent, [
+      {'choice_id': 'a'},
+    ]);
+  });
+
+  testWidgets('opération posée : écrire de droite à gauche, effacer, valider', (tester) async {
+    await show(tester, 'COLUMN_OP', {
+      'prompt': 'Pose et calcule : 347 + 285',
+      'operator': '+',
+      'operands': ['347', '285'],
+      'boxes': 4,
+    });
+    expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+    for (final digit in ['2', '3', '9']) {
+      await tester.tap(find.widgetWithText(OutlinedButton, digit));
+      await tester.pump();
+    }
+    await tester.tap(find.byIcon(Icons.backspace_outlined)); // le 9 retiré
+    await tester.pump();
+    await tester.tap(find.widgetWithText(OutlinedButton, '6'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Valider'));
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'result': '632'},
+    ]);
+  });
+
   testWidgets('points alignés : oui ou non', (tester) async {
     await show(tester, 'ALIGN', {
       'prompt': 'Les 3 points sont-ils alignés ?',

@@ -37,6 +37,15 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
     alignment = registry.get(ActivityCode.ALIGN)
     for difficulty in sorted(alignment.difficulties):
         built.append(alignment.build([alignment_unit()], difficulty, random.Random(3)))
+    # Jeux de maths calculés : une notion sur les fractions, une sur l'addition posée.
+    for label, code in (
+        ("Les fractions", ActivityCode.NUMBER_LINE),
+        ("Les fractions", ActivityCode.FRACTION_BAR),
+        ("L'addition posée", ActivityCode.COLUMN_OP),
+    ):
+        game = registry.get(code)
+        for difficulty in sorted(game.difficulties):
+            built.append(game.build([alignment_unit(label)], difficulty, random.Random(3)))
     # Jeux en images : seulement avec des images validées par le parent (étape 28).
     units = list(load_lesson(LESSON_FILES[0]).units.values())[:3]
     with_pictures = [u.model_copy(update={"picture": f"/img/{i}"}) for i, u in enumerate(units)]
