@@ -6,6 +6,7 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/app_update.dart';
 import '../../core/link_opener.dart';
 import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
@@ -84,6 +85,7 @@ class ParentHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
+            const AppUpdateBanner(),
             const EmailVerificationBanner(),
             const RemindersCard(),
             ...switch (children) {

@@ -67,6 +67,7 @@ function Recuperer-Apk($jeton) {
     try {
         $release = Api-GitHub '/releases/tags/apk-test' $jeton
         $apk = if ($release) { @($release.assets | Where-Object { $_.name -like '*.apk' })[0] } else { $null }
+        $fiche = if ($release) { @($release.assets | Where-Object { $_.name -like '*.json' })[0] } else { $null }
         if (-not $apk) { Write-Host 'Pas encore d''application de test publiée sur GitHub.' -ForegroundColor Yellow; return }
         $connue = if (Test-Path $MarqueApk) { (Get-Content $MarqueApk -Raw).Trim() } else { '' }
         $fichier = Join-Path $DossierTelephone 'ludifun.apk'
@@ -74,9 +75,15 @@ function Recuperer-Apk($jeton) {
         Etape 'Téléchargement de la nouvelle application du téléphone…'
         New-Item -ItemType Directory -Force -Path $DossierTelephone | Out-Null
         Telecharger-GitHub $apk.url 'application/octet-stream' $jeton $fichier
+        # Fiche de la version (numéro de construction) : le serveur la lit pour proposer la mise à
+        # jour au téléphone (« Nouvelle version de Ludifun »).
+        $carte = Join-Path $DossierTelephone 'ludifun.json'
+        if ($fiche) { Telecharger-GitHub $fiche.url 'application/octet-stream' $jeton $carte }
+        else { Remove-Item $carte -Force -ErrorAction SilentlyContinue }
         Set-Content -Path $MarqueApk -Value $apk.updated_at
         Ok "Nouvelle application du téléphone : $fichier"
-        Write-Host '  À installer sur le téléphone : copie ludifun.apk (câble USB, Google Drive, e-mail…) puis ouvre-le.'
+        Write-Host '  Le téléphone la proposera tout seul à la prochaine ouverture de Ludifun (« Mettre à jour »),'
+        Write-Host '  quand le serveur tourne. Sinon : copie ludifun.apk sur le téléphone puis ouvre-le.'
         Write-Host '  Tes réglages et ton compte restent dans l''application.'
         Start-Process explorer.exe $DossierTelephone
     } catch {

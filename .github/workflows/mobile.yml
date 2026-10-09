@@ -58,7 +58,11 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - name: Compilation
-        run: flutter build apk --debug
+        # Numéro de construction croissant : l'application compare le sien à celui que propose le
+        # serveur de la maison (bandeau « Nouvelle version », spécification technique §5.50).
+        run: >-
+          flutter build apk --debug --build-number=${{ github.run_number }}
+          --dart-define=LUDIFUN_BUILD=${{ github.run_number }}
       # APK de test à télécharger : page « Releases » du dépôt, version « apk-test »
       # (https://github.com/Ricoudc/Ludifun/releases/tag/apk-test), remplacé à chaque envoi de
       # code. Les « Artifacts » d'Actions ne servent plus : leur quota de stockage était plein
@@ -75,4 +79,5 @@ jobs:
           gh release view apk-test >/dev/null 2>&1 || gh release create apk-test --prerelease \
             --target "${{ github.sha }}" --title "APK de test" --notes "$NOTES"
           gh release edit apk-test --notes "$NOTES"
-          gh release upload apk-test ludifun-test.apk --clobber
+          echo '{"build": ${{ github.run_number }}, "commit": "${{ github.sha }}"}' > ludifun-test.json
+          gh release upload apk-test ludifun-test.apk ludifun-test.json --clobber

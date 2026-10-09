@@ -70,8 +70,12 @@ services:
       LUDIFUN_IMAGE_ENGINE: ${LUDIFUN_IMAGE_ENGINE:-none}
       LUDIFUN_IMAGE_URL: ${LUDIFUN_IMAGE_URL:-}
       LUDIFUN_IMAGE_MODEL: ${LUDIFUN_IMAGE_MODEL:-}
+      # Application du téléphone (APK de test) rangée par la mise à jour Windows dans telephone/,
+      # proposée au téléphone par le serveur (« Nouvelle version de Ludifun »).
+      LUDIFUN_PHONE_APP_DIR: /app/telephone
     volumes:
       - images:/app/data/images  # images des leçons : jamais les photos, qui ne sont pas gardées
+      - ./telephone:/app/telephone:ro
     ports:
       - "8000:8000"
     extra_hosts:

@@ -26,7 +26,7 @@ nouvelle version est disponible.
 |---|---|
 | 1. Démarrer | lance Docker si besoin ; la première fois, demande quelle IA utiliser (colle ta clé Anthropic, ou IA factice) et propose la famille de démonstration ; démarre le serveur ; affiche **l'adresse à saisir sur le téléphone** et l'IA active |
 | 2. Arrêter | arrêter le serveur et le moteur d'images (les données sont gardées) |
-| 3. Mettre à jour | **tout seul** : télécharge la dernière version depuis GitHub, l'installe dans le dossier (`.env`, données et sauvegardes gardés ; un fichier retiré de Ludifun est effacé), sauvegarde la base, redémarre le serveur, puis télécharge la nouvelle application du téléphone dans le dossier `telephone` (`ludifun.apk`, ouvert dans l'Explorateur, à copier sur le téléphone). Dossier venu de `git clone` : `git pull`. La première fois, comme le dépôt est privé, il demande une **clé de lecture GitHub** (voir ci-dessous) |
+| 3. Mettre à jour | **tout seul** : télécharge la dernière version depuis GitHub, l'installe dans le dossier (`.env`, données et sauvegardes gardés ; un fichier retiré de Ludifun est effacé), sauvegarde la base, redémarre le serveur, puis télécharge la nouvelle application du téléphone dans le dossier `telephone` (`ludifun.apk` et sa fiche `ludifun.json`) : le téléphone la propose tout seul à l'ouverture de Ludifun (« Mettre à jour »), sinon copiez `ludifun.apk` sur le téléphone. Dossier venu de `git clone` : `git pull`. La première fois, comme le dépôt est privé, il demande une **clé de lecture GitHub** (voir ci-dessous) |
 | 4. Choisir l'IA | choisir l'IA : Claude, ChatGPT, Gemini, Mistral, Groq, Grok, un service compatible OpenAI (Azure OpenAI pour Copilot, OpenRouter, Ollama) ou l'IA factice ; coller la clé ; redémarrer |
 | 5. Sauvegarder | sauvegarder tout de suite les données (comptes, leçons, résultats des enfants) dans `%LOCALAPPDATA%\Ludifun\sauvegardes` ; les 14 plus récentes sont gardées. Les choix 1 et 3 en font aussi une **automatiquement** : une par jour, et toujours avant qu'une nouvelle version transforme la base |
 | 6. Remettre une sauvegarde | revenir à une sauvegarde choisie dans la liste (taper `OUI` pour confirmer). La base actuelle est d'abord sauvegardée (« avant-restauration ») ; une sauvegarde illisible ne change rien ; une sauvegarde d'une version plus ancienne est mise à jour au redémarrage |
@@ -118,6 +118,13 @@ votre adresse). Si la page ne s'ouvre pas, voir « En cas de problème ».
 3. Sur le téléphone, ouvrez le fichier et acceptez l'installation depuis cette source
    (« sources inconnues »). Si Play Protect prévient, choisissez « Installer quand même » :
    c'est normal pour une application de test non publiée.
+
+**Les fois suivantes**, plus besoin de recopier le fichier : après « 3. Mettre à jour » sur le PC
+(qui range le nouvel APK dans `telephone/`), l'application affiche au démarrage « 📲 Une nouvelle
+version de Ludifun est prête » (côté parent comme côté enfant). Le bouton **Mettre à jour**
+télécharge l'APK depuis le serveur de la maison ; ouvrez-le et acceptez l'installation : le
+compte et les réglages sont gardés. Seules les applications installées depuis la page
+« apk-test » le proposent (pas une application construite à la main ni celle du Play Store).
 
 > Avec Flutter installé et le téléphone branché en USB (débogage USB activé), on peut aussi
 > lancer directement : `cd mobile && flutter run`.

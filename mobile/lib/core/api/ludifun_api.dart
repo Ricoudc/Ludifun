@@ -663,6 +663,23 @@ class LudifunApi {
         return TeachPage.fromJson(r.data!);
       });
 
+  /// La dernière application du téléphone que le serveur peut donner (§5.50) ; null s'il n'en
+  /// a pas ou ne connaît pas son numéro.
+  Future<({int build, String url})?> latestApp() => _call(() async {
+    final r = await _dio.get<Json>(
+      '/v1/app/latest',
+      options: Options(validateStatus: (status) => status == 200 || status == 404),
+    );
+    final body = r.data;
+    if (r.statusCode != 200 || body == null || body['build'] is! int) return null;
+    final url = body['url'];
+    // Seulement un chemin de ce serveur : jamais une autre adresse (« @autre-site… »).
+    if (url is! String || !RegExp(r'^/v1/[\w./-]+$').hasMatch(url) || url.contains('..')) {
+      return null;
+    }
+    return (build: body['build'] as int, url: url);
+  });
+
   /// Leçon en fichier (PDF, Word .docx, LibreOffice .odt) : le serveur lit son texte, ou ses
   /// pages comme des photos si c'est un PDF scanné. Le fichier n'est pas gardé.
   Future<Lesson> lessonFromDocument(

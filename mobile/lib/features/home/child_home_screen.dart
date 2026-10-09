@@ -7,6 +7,7 @@ import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
 import '../../core/api/api_exception.dart';
+import '../../core/app_update.dart';
 import '../../core/offline.dart';
 import '../../core/session.dart';
 import '../../core/storage/credentials.dart';
@@ -43,6 +44,7 @@ class ChildHomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
             ] else
               const SizedBox(height: 8),
+            const AppUpdateBanner(forChild: true),
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),

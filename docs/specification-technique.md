@@ -1447,6 +1447,31 @@ sans autorisation à demander sur Android), fichier trop lourd refusé avant l'e
 Tests : `tests/services/test_documents.py` (Word, tableaux, LibreOffice, PDF texte, PDF scanné,
 fichiers refusés), `tests/api/test_documents.py` (route, analyse, refus),
 `mobile/test/features/child_flow_test.dart` (annulation, trop lourd, envoi).
+
+### 5.50 Nouvelle version de l'application proposée par le serveur de la maison (octobre 2026)
+
+Avant, une nouvelle application de test devait être recopiée à la main sur le téléphone (câble,
+courriel). Maintenant :
+
+1. CI (`mobile.yml`) : l'APK de test porte un numéro de construction croissant
+   (`--build-number` et `--dart-define=LUDIFUN_BUILD`, numéro de la construction GitHub) ; sa
+   fiche `ludifun-test.json` (`{"build", "commit"}`) est publiée avec lui dans la release
+   « apk-test ».
+2. Windows (`mettre-a-jour.ps1`) : l'APK et sa fiche sont rangés dans `telephone/`
+   (`ludifun.apk`, `ludifun.json`), monté en lecture seule dans le conteneur de l'API
+   (`LUDIFUN_PHONE_APP_DIR=/app/telephone`).
+3. Serveur : `GET /v1/app/latest` → `{build, size, url}` (404 `no_phone_app` sans APK ;
+   `build` null si la fiche manque ou est illisible) et `GET /v1/app/ludifun.apk` (le fichier,
+   type Android). Routes anonymes : l'application n'est pas secrète ; aucun autre fichier du
+   dossier n'est servi.
+4. Application : au démarrage, si son numéro (`LUDIFUN_BUILD`) est connu et plus petit que celui
+   du serveur, bandeau « 📲 Une nouvelle version de Ludifun est prête » (enfant : « Demande à
+   un adulte ! ») ; « Mettre à jour » ouvre le téléchargement dans le navigateur, Android propose
+   l'installation par-dessus (compte et réglages gardés). Une application sans numéro
+   (construite à la main, Play Store) ne demande rien ; seule une adresse `/v1/…` du serveur est
+   acceptée.
+
+Tests : `tests/api/test_phone_app.py`, `mobile/test/features/app_update_test.dart`.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)
