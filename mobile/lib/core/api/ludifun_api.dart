@@ -564,6 +564,16 @@ class LudifunApi {
     return Homework.fromJson(r.data!);
   });
 
+  /// Exercice en fichier (PDF, Word, LibreOffice) : son texte devient l'énoncé (§5.53).
+  Future<Homework> homeworkFromDocument(Uint8List bytes, String filename) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/homework/document',
+      data: FormData.fromMap({'document': _document(bytes, filename)}),
+      options: Options(contentType: 'multipart/form-data', sendTimeout: const Duration(minutes: 2)),
+    );
+    return Homework.fromJson(r.data!);
+  });
+
   /// Mode devoirs : l'énoncé recopié.
   Future<Homework> homeworkFromText(String text) => _call(() async {
     final r = await _dio.post<Json>('/v1/homework/text', data: {'text': text});
@@ -680,6 +690,20 @@ class LudifunApi {
     return (build: body['build'] as int, url: url);
   });
 
+  static MultipartFile _document(Uint8List bytes, String filename) => MultipartFile.fromBytes(
+    bytes,
+    filename: filename,
+    contentType: switch (filename.split('.').last.toLowerCase()) {
+      'pdf' => DioMediaType('application', 'pdf'),
+      'docx' => DioMediaType(
+        'application',
+        'vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ),
+      'odt' => DioMediaType('application', 'vnd.oasis.opendocument.text'),
+      _ => DioMediaType('application', 'octet-stream'),
+    },
+  );
+
   /// Leçon en fichier (PDF, Word .docx, LibreOffice .odt) : le serveur lit son texte, ou ses
   /// pages comme des photos si c'est un PDF scanné. Le fichier n'est pas gardé.
   Future<Lesson> lessonFromDocument(
@@ -688,22 +712,7 @@ class LudifunApi {
     void Function(int sent, int total)? onProgress,
     String? childId,
   }) => _call(() async {
-    final extension = filename.split('.').last.toLowerCase();
-    final form = FormData.fromMap({
-      'document': MultipartFile.fromBytes(
-        bytes,
-        filename: filename,
-        contentType: switch (extension) {
-          'pdf' => DioMediaType('application', 'pdf'),
-          'docx' => DioMediaType(
-            'application',
-            'vnd.openxmlformats-officedocument.wordprocessingml.document',
-          ),
-          'odt' => DioMediaType('application', 'vnd.oasis.opendocument.text'),
-          _ => DioMediaType('application', 'octet-stream'),
-        },
-      ),
-    });
+    final form = FormData.fromMap({'document': _document(bytes, filename)});
     final r = await _dio.post<Json>(
       '/v1/lessons/document',
       data: form,

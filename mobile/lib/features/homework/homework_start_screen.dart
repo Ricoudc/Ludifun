@@ -70,6 +70,24 @@ class _HomeworkStartScreenState extends ConsumerState<HomeworkStartScreen> {
     await _send(() => ref.read(apiProvider).homeworkFromPhoto([compressed]));
   }
 
+  /// Exercice reçu en PDF ou en Word (ENT, courriel de l'enseignant).
+  Future<void> _document() async {
+    setState(() => _error = null);
+    final PickedDocument? document;
+    try {
+      document = await ref.read(documentPickerProvider)();
+    } on Exception {
+      setState(() => _error = 'Impossible d\'ouvrir les fichiers. Vérifie les autorisations.');
+      return;
+    }
+    if (document == null || !mounted) return;
+    if (document.bytes.length > maxDocumentBytes) {
+      setState(() => _error = 'Ce fichier est trop lourd (15 Mo au plus).');
+      return;
+    }
+    await _send(() => ref.read(apiProvider).homeworkFromDocument(document!.bytes, document.name));
+  }
+
   @override
   Widget build(BuildContext context) {
     final text = _text.text.trim();
@@ -90,6 +108,12 @@ class _HomeworkStartScreenState extends ConsumerState<HomeworkStartScreen> {
             onPressed: _sending ? null : _photo,
             icon: const Icon(Icons.photo_camera_outlined),
             label: const Text('Prendre l\'exercice en photo'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _sending ? null : _document,
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('J\'ai l\'exercice en PDF ou Word'),
           ),
           const SizedBox(height: 24),
           const Text('Ou recopie l\'énoncé :', style: TextStyle(fontSize: 17)),

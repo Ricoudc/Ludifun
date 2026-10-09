@@ -1511,6 +1511,17 @@ L'écran « Compétences par leçon » montre, sous chaque compétence et sans l
 API : `GET /v1/children/{id}/skills`, champ facultatif `report` par compétence
 (`status`, `summary`, `facts`, `weakest`, `advice`). Tests : `tests/domain/test_skill_report.py`,
 `tests/api/test_skills.py`, `mobile/test/features/parent_flow_test.dart`.
+
+### 5.53 Exercice des devoirs envoyé en PDF ou en Word (octobre 2026)
+
+Même lecture que pour une leçon (§5.49, `app/services/documents.py`) :
+`POST /v1/homework/document` (multipart `document`, 15 Mo au plus). Le texte d'un PDF, d'un
+Word ou d'un LibreOffice devient l'énoncé (10 à 3 000 caractères, comme un énoncé recopié) ; un
+PDF scanné donne ses deux premières pages, lues comme les photos de l'exercice. Refus : 413
+trop lourd, 415 format refusé (dont ancien .doc), 422 illisible, protégé, trop court ou trop
+long. Le fichier n'est jamais gardé. Application : bouton « J'ai l'exercice en PDF ou Word »
+sur l'écran « Aide aux devoirs ». Tests : `tests/api/test_homework.py`,
+`mobile/test/features/child_flow_test.dart`.
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

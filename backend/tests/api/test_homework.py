@@ -2,6 +2,7 @@
 le parent voit l'aide utilisée. IA factice : soustraction quand l'énoncé parle de donner."""
 
 from typing import Any
+from unittest.mock import ANY
 
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import AiRun
 from app.domain.homework import ATTEMPTS_BEFORE_SOLUTION
 from tests.api.helpers import PHOTO, auth, family_with_device
+from tests.support_documents import docx, odt, scanned_pdf
 
 BILLES = "Paul a 24 billes. Il en donne 16 à Léa. Combien de billes lui reste-t-il ?"
 
@@ -116,3 +118,25 @@ async def test_a_photo_is_read_then_forgotten(client: AsyncClient) -> None:
     assert homework["status"] == "ready" and homework["statement"]  # le texte lu, pas la photo
     too_short = await client.post("/v1/homework/text", json={"text": "trop"}, headers=auth(token))
     assert too_short.status_code == 422
+
+
+async def test_homework_sent_as_a_document(client: AsyncClient) -> None:
+    """§5.53 : un exercice en Word devient l'énoncé ; un PDF scanné est lu comme une photo."""
+    token = (await family_with_device(client))["device"]
+
+    async def send(name: str, data: bytes) -> tuple[int, dict[str, Any]]:
+        r = await client.post(
+            "/v1/homework/document", files={"document": (name, data, "x")}, headers=auth(token)
+        )
+        if r.status_code != 202:
+            return r.status_code, r.json()
+        return 202, (await client.get(f"/v1/homework/{r.json()['id']}", headers=auth(token))).json()
+
+    status, word = await send("exercice.docx", docx(["Exercice 3", BILLES]))
+    assert status == 202 and word["status"] == "ready"
+    assert word["statement"] == f"Exercice 3\n{BILLES}"
+    status, scan = await send("scan.pdf", scanned_pdf(pages=3))
+    assert status == 202 and scan["status"] == "ready" and scan["statement"]  # lu sur l'image
+    assert (await send("vide.docx", docx(["Ex. 3"])))[1]["error"]["code"] == "text_too_short"
+    assert (await send("long.odt", odt(["mot " * 1000])))[1]["error"]["code"] == "too_long"
+    assert await send("vieux.doc", b"\xd0\xcf\x11\xe0" + b"\0" * 64) == (415, ANY)

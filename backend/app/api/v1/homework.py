@@ -5,6 +5,7 @@ voit les étapes une par une, essaie sa réponse, et la correction guidée n'arr
 plusieurs essais (`app.domain.homework`). La réponse attendue n'est jamais envoyée avant.
 """
 
+import asyncio
 import uuid
 from datetime import datetime
 from typing import Annotated, Literal
@@ -27,7 +28,7 @@ from app.api.deps import (
 )
 from app.api.errors import ApiError
 from app.api.v1.children import own_child
-from app.api.v1.lessons import ensure_ai_budget
+from app.api.v1.lessons import UNSUPPORTED, ensure_ai_budget
 from app.db.models import Homework
 from app.domain.homework import (
     STATEMENT_MAX_LENGTH,
@@ -39,6 +40,7 @@ from app.domain.homework import (
 )
 from app.domain.text import display_text
 from app.services import homework as homework_service
+from app.services.documents import DocumentError, read_document
 
 router = APIRouter(tags=["devoirs"])
 
@@ -202,6 +204,48 @@ async def create_homework_from_text(
     text = body.text.strip()
     if len(text) < MIN_STATEMENT:
         raise ApiError(422, "text_too_short", "Recopie tout l'énoncé de l'exercice.")
+    row = await _start(request, db, settings, child.id, "text")
+    row.statement = text
+    await db.commit()
+    background.add_task(homework_service.prepare, get_database(request), ai.ocr, ai.llm, row.id)
+    return homework_out(row)
+
+
+@router.post("/homework/document", status_code=status.HTTP_202_ACCEPTED)
+async def create_homework_from_document(
+    request: Request,
+    child: ChildInScope,
+    db: DbSession,
+    settings: AppSettings,
+    ai: ChildAi,
+    background: BackgroundTasks,
+    document: Annotated[
+        UploadFile, File(description="L'exercice en PDF, Word (.docx) ou LibreOffice (.odt)")
+    ],
+) -> HomeworkOut:
+    """Exercice reçu en fichier (§5.53) : son texte devient l'énoncé, comme un énoncé collé ; un
+    PDF scanné donne ses deux premières pages, lues comme des photos. Le fichier n'est pas gardé."""
+    data = await document.read(settings.max_document_bytes + 1)
+    if len(data) > settings.max_document_bytes:
+        raise ApiError(413, "document_too_large", "Ce fichier est trop lourd.")
+    try:
+        read = await asyncio.to_thread(read_document, data, 2, settings.max_image_bytes)
+    except DocumentError as exc:
+        raise ApiError(415 if exc.code in UNSUPPORTED else 422, exc.code, exc.message) from exc
+    if read.images:
+        row = await _start(request, db, settings, child.id, "photo")
+        await db.commit()
+        background.add_task(
+            homework_service.prepare, get_database(request), ai.ocr, ai.llm, row.id, read.images
+        )
+        return homework_out(row)
+    text = read.text.strip()
+    if len(text) < MIN_STATEMENT:
+        raise ApiError(422, "text_too_short", "Ce fichier ne contient presque pas de texte.")
+    if len(text) > STATEMENT_MAX_LENGTH:
+        raise ApiError(
+            422, "too_long", "Ce fichier est trop long pour un exercice : colle seulement l'énoncé."
+        )
     row = await _start(request, db, settings, child.id, "text")
     row.statement = text
     await db.commit()

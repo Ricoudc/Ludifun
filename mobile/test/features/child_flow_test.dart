@@ -965,6 +965,22 @@ void main() {
     expect(find.text('✔️ Pour vérifier : 8 + 16 = 24 : c\'est bon.'), findsOneWidget);
   });
 
+  testWidgets('aide aux devoirs : l\'exercice en PDF ou Word', (tester) async {
+    server
+      ..on('POST /v1/homework/document', (_) => (202, homeworkJson(status: 'preparing')))
+      ..on('GET /v1/homework/h1', (_) => (200, homeworkJson(status: 'ready')));
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Aide aux devoirs'));
+    await tester.pumpAndSettle();
+    document = (name: 'exercice.pdf', bytes: Uint8List.fromList(utf8.encode('%PDF-1.4')));
+    await tester.tap(find.text('J\'ai l\'exercice en PDF ou Word'));
+    await tester.pumpAndSettle();
+    final sent = server.requests.indexWhere((r) => r.path == '/v1/homework/document');
+    expect(sent, isNot(-1));
+    expect(latin1.decode(server.bodies[sent]), contains('filename="exercice.pdf"'));
+    expect(server.routes, contains('GET /v1/homework/h1'));
+  });
+
   testWidgets('enseigne-moi : l\'enfant explique une notion à Ludi, puis le bilan', (tester) async {
     var answers = <String>[];
     Map<String, Object?> teachJson() {
