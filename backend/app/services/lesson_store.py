@@ -25,8 +25,8 @@ from app.domain.knowledge import (
     Subject,
     Theme,
 )
+from app.domain.lesson_context import in_context
 from app.domain.mastery import Mastery, lesson_review
-from app.domain.math_generator import generated_questions, math_only
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level, skill_level
 from app.domain.validation import Rejection
 from app.services.lesson_pipeline import PipelineResult
@@ -194,8 +194,6 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
     ).all()
     pictures = await approved_pictures(session, lesson.id)
     units, key_to_id, required, doubtful = [], {}, {}, set()
-    grade = Grade(lesson.grade) if lesson.subject == Subject.MATH and lesson.grade in list(Grade) else None
-    stems: set[str] = set()  # une question créée n'est posée qu'une fois dans la leçon
     for item, material in rows:
         domain_item = KnowledgeItem(
             id=item.key,
@@ -210,27 +208,15 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         )
         # Sans ce qui corrigerait faux une bonne réponse (leçons analysées avant ces contrôles).
         checked = consistent(KnowledgeMaterial.model_validate(material.material))
-        if lesson.subject == Subject.MATH:
-            checked = math_only(checked)  # pas d'exercice d'orthographe dans une leçon de maths
-        stems.update(q.stem for q in checked.questions)
-        if grade is not None and (created := generated_questions(domain_item, grade, stems)):
-            # Leçon de maths : des exercices calculés par le code, à la classe de l'enfant.
-            stems.update(q.stem for q in created)
-            checked = checked.model_copy(update={"questions": [*checked.questions, *created]})
-        units.append(
-            KnowledgeUnit(
-                item=domain_item,
-                material=checked,
-                picture=pictures.get(item.id),
-                subject=lesson.subject if lesson.subject in Subject else None,
-                grade=Grade(lesson.grade) if lesson.grade in list(Grade) else None,
-            )
-        )
+        units.append(KnowledgeUnit(item=domain_item, material=checked, picture=pictures.get(item.id)))
         key_to_id[item.key] = item.id
         required[item.key] = frozenset(item.required_levels)
         if item.confidence is not None and item.confidence < LOW_CONFIDENCE and item.confirmed_at is None:
             doubtful.add(item.key)
-    return LessonUnits(lesson, units, key_to_id, required, frozenset(doubtful))
+    # Matière et classe de la leçon ; en maths, exercices calculés à la classe de l'enfant.
+    subject = Subject(lesson.subject) if lesson.subject in list(Subject) else None
+    grade = Grade(lesson.grade) if lesson.grade in list(Grade) else None
+    return LessonUnits(lesson, in_context(units, subject, grade), key_to_id, required, frozenset(doubtful))
 
 
 @dataclass(frozen=True)

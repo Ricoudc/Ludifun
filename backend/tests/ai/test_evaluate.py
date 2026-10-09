@@ -23,6 +23,7 @@ from app.tools.evaluate import (
     score,
 )
 from tests.domain.conftest import load_lesson
+from tests.support_documents import docx, scanned_pdf
 
 EXAMPLE = Path(__file__).resolve().parents[3] / "eval" / "example"
 
@@ -150,3 +151,37 @@ async def test_a_photo_to_check_is_still_analysed_and_measured() -> None:
     assert "Emma Martin" not in report  # le rapport ne recopie jamais le nom
     assert "| Noms personnels dans le texte lu | 1 (1 leçon(s) annotée(s)) | 0 | ❌ |" in report
     assert "| Photos à faire vérifier (passages douteux) | 100 % | à suivre | · |" in report
+
+
+def test_real_lessons_as_documents_without_annotation(tmp_path: Path) -> None:
+    """Point 2 : une famille essaie ses vraies leçons en PDF ou en Word, sans rien annoter ; le
+    rapport montre ce que l'application en fait (thèmes, jeux possibles, séance)."""
+    lessons = tmp_path / "lecons"
+    word, scan = lessons / "revolution_word", lessons / "fiche_scannee"
+    word.mkdir(parents=True)
+    scan.mkdir()
+    text = LessonScript.from_file(DEMO_LESSON).ocr_text
+    (word / "lecon.docx").write_bytes(docx(text.split("\n")))
+    (scan / "fiche.pdf").write_bytes(scanned_pdf(pages=2))
+    corpus = {lesson.name: lesson for lesson in load_corpus(lessons)}
+    assert corpus["revolution_word"].text == text and corpus["revolution_word"].pages == []
+    assert len(corpus["fiche_scannee"].pages) == 2 and corpus["fiche_scannee"].text is None
+    assert corpus["revolution_word"].expected == Expected()  # pas d'annotation
+
+    assert main([str(lessons), "--provider", "fake", "--out", str(tmp_path / "out")]) == 0
+    [run_dir] = list((tmp_path / "out").iterdir())
+    session = (run_dir / "revolution_word.txt").read_text(encoding="utf-8")
+    assert "══ Jeux possibles par notion ══" in session and "══ Séance" in session
+    report = (run_dir / "report.md").read_text(encoding="utf-8")
+    assert "revolution_word" in report and "Matière correcte | —" in report  # rien à comparer
+
+
+def test_lessons_get_their_subject_games_in_the_report(tmp_path: Path) -> None:
+    """Les jeux de la matière (droite graduée, fractions…) apparaissent comme dans l'application."""
+    assert (
+        main([str(EXAMPLE), "--provider", "fake", "--out", str(tmp_path), "--only", "math_cm2_fractions"])
+        == 0
+    )
+    [run_dir] = list(tmp_path.iterdir())
+    games = (run_dir / "math_cm2_fractions.txt").read_text(encoding="utf-8").split("══ Jeux possibles")[1]
+    assert "FRACTION_BAR" in games or "NUMBER_LINE" in games

@@ -15,7 +15,8 @@ $Actions = [ordered]@{
     '9'  = @('Voir les erreurs du serveur', 'erreurs.ps1')
     '10' = @('Rapport de diagnostic (à envoyer en cas de problème)', 'rapport.ps1')
     '11' = @('Surveiller un essai (à lancer avant)', 'surveiller.ps1')
-    '12' = @('Créer un raccourci « Ludifun » sur le Bureau', '')
+    '12' = @('Essayer l''IA sur mes vraies leçons (photos, PDF, Word)', 'evaluer.ps1')
+    '13' = @('Créer un raccourci « Ludifun » sur le Bureau', '')
 }
 
 function Serveur-Demarre {
@@ -59,7 +60,7 @@ while ($true) {
     if (-not $choix) { $choix = $defaut }
     if ($choix -eq '0') { exit 0 }
     if (-not $Actions.Contains($choix)) { continue }
-    if ($choix -eq '12') { Creer-Raccourci; continue }
+    if ($choix -eq '13') { Creer-Raccourci; continue }
     Clear-Host
     & $powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot $Actions[$choix][1])
     if ($choix -eq '3') { exit 3 }  # nouvelle version : le menu se relance avec elle

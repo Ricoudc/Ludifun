@@ -3,8 +3,9 @@
     uv run python -m app.tools.evaluate ../eval/lessons
     uv run python -m app.tools.evaluate ../eval/example --provider fake
 
-Chaque leçon est un dossier contenant ses photos (page1.jpg, page2.jpg…) ou un
-`lesson.txt`, et un `expected.json` annoté par un adulte (voir eval/README.md).
+Chaque leçon est un dossier contenant ses photos (page1.jpg, page2.jpg…), un PDF, un Word
+(.docx) ou un LibreOffice (.odt), ou un `lesson.txt`, et si possible un `expected.json` annoté
+par un adulte (voir eval/README.md) ; sans lui, la leçon est analysée sans mesure de justesse.
 Le résultat est écrit dans un dossier horodaté : un rapport `report.md`, et pour
 chaque leçon le résultat complet (`<leçon>.json`) et la séance à relire (`<leçon>.txt`).
 """
@@ -32,10 +33,12 @@ from app.config import get_settings
 from app.domain.activities.registry import default_registry
 from app.domain.knowledge import Grade, KnowledgeItem, Subject
 from app.domain.text import contains_words, normalize
+from app.services.documents import DocumentError, read_document
 from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.analyze import media_type, report, to_json
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+DOCUMENT_SUFFIXES = {".pdf", ".docx", ".odt"}
 GRADES = [g.value for g in Grade]
 
 # Prix publics en dollars par million de jetons (entrée, sortie). Les jetons de
@@ -49,12 +52,13 @@ class ExpectedNotion(BaseModel):
 
 
 class Expected(BaseModel):
-    """Annotation d'une leçon par un adulte (`expected.json`)."""
+    """Annotation d'une leçon par un adulte (`expected.json`). Facultative : sans elle, la leçon
+    est seulement analysée (ce que l'application en fait), sans mesure de justesse."""
 
-    subject: Subject
-    grade: Grade
+    subject: Subject | None = None
+    grade: Grade | None = None
     support: str = "inconnu"  # manuscrit, manuel, photocopie…
-    essential: list[ExpectedNotion]  # notions indispensables pour une interrogation
+    essential: list[ExpectedNotion] = Field(default_factory=list)  # notions indispensables
     is_lesson: bool = True  # false pour un cas piège (photo qui n'est pas une leçon)
     # Noms écrits sur les pages (élève, école, enseignant) qui ne doivent pas se retrouver dans le
     # texte lu (AIPD, §4). Ils restent dans expected.json, hors du dépôt, et jamais dans le rapport.
@@ -143,8 +147,10 @@ def score(
     analysis = result.analysis
     if expected.is_lesson and analysis is not None and analysis.lesson is not None:
         lesson = analysis.lesson
-        s.subject_ok = lesson.subject == expected.subject
-        s.grade_ok = abs(GRADES.index(lesson.grade) - GRADES.index(expected.grade)) <= 1
+        if expected.subject is not None:
+            s.subject_ok = lesson.subject == expected.subject
+        if expected.grade is not None:
+            s.grade_ok = abs(GRADES.index(lesson.grade) - GRADES.index(expected.grade)) <= 1
     if expected.is_lesson:
         knowledge = analysis.knowledge if analysis else []
         s.found = {n.label: match_notion(n, knowledge) for n in expected.essential}
@@ -188,10 +194,9 @@ class Metric:
 
 def metrics(scores: list[LessonScore]) -> list[Metric]:
     lessons = [s for s in scores if s.expected.is_lesson]
-    analysed = [s for s in scores if s.subject_ok is not None]
     success = _pct([s.correct_outcome for s in scores])
-    subject = _pct([bool(s.subject_ok) for s in analysed])
-    grade = _pct([bool(s.grade_ok) for s in analysed])
+    subject = _pct([bool(s.subject_ok) for s in scores if s.subject_ok is not None])
+    grade = _pct([bool(s.grade_ok) for s in scores if s.grade_ok is not None])
     found = [v is not None for s in lessons for v in s.found.values()]
     recall = _pct(found)
     invented = sum(s.invented for s in scores)
@@ -343,16 +348,28 @@ def load_corpus(root: Path, only: set[str] | None = None) -> list[LessonInput]:
         if only and folder.name not in only:
             continue
         expected_file = folder / "expected.json"
-        if not expected_file.exists():
-            print(f"⚠ {folder.name} ignorée : pas de expected.json", file=sys.stderr)
-            continue
-        expected = Expected.model_validate_json(expected_file.read_text(encoding="utf-8"))
+        if expected_file.exists():
+            expected = Expected.model_validate_json(expected_file.read_text(encoding="utf-8"))
+        else:
+            print(
+                f"ℹ {folder.name} : pas de expected.json, analysée sans mesure de justesse", file=sys.stderr
+            )
+            expected = Expected()
         text_file = folder / "lesson.txt"
         text = text_file.read_text(encoding="utf-8") if text_file.exists() else None
         images = sorted(p for p in folder.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
         pages = [PageImage(p.read_bytes(), media_type(p.read_bytes(), p)) for p in images]
+        documents = sorted(p for p in folder.iterdir() if p.suffix.lower() in DOCUMENT_SUFFIXES)
+        if text is None and not pages and documents:
+            # Leçon en PDF, Word ou LibreOffice : lue comme dans l'application (§5.49).
+            try:
+                read = read_document(documents[0].read_bytes(), max_pages=6, max_image_bytes=8 * 2**20)
+            except DocumentError as exc:
+                print(f"⚠ {folder.name} ignorée : {exc.message}", file=sys.stderr)
+                continue
+            text, pages = (read.text or None), read.images
         if text is None and not pages:
-            print(f"⚠ {folder.name} ignorée : ni photo ni lesson.txt", file=sys.stderr)
+            print(f"⚠ {folder.name} ignorée : ni photo, ni PDF ou Word, ni lesson.txt", file=sys.stderr)
             continue
         lessons.append(LessonInput(folder.name, expected, pages, text))
     return lessons

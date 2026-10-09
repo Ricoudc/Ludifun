@@ -1551,6 +1551,27 @@ Tests : `tests/domain/test_daily_game.py` (une fois par séance, règles de la s
 jeu toute la journée, rotation), `tests/api/test_daily_game.py`,
 `mobile/test/features/session_flow_test.dart`. Les tests de structure exacte des séances
 (`test_composer.py`) composent sans le jeu du jour.
+
+### 5.55 Essayer l'IA sur ses vraies leçons, à la maison (octobre 2026)
+
+Le point 2 (vérifier sur de vraies leçons) ne peut se faire qu'avec les leçons des familles et
+l'IA de leur PC. Pour qu'il se fasse sans développeur :
+
+- `app.tools.evaluate` accepte aussi un PDF, un Word ou un LibreOffice par leçon (lus comme dans
+  l'application, §5.49), et `expected.json` devient facultatif (sans lui : pas de mesure de
+  justesse, seulement ce que l'application fait de la leçon) ;
+- le compte rendu de chaque leçon (`app.tools.analyze.report`) montre le **thème** de chaque
+  notion, les **jeux possibles par notion** et marque le **jeu du jour** ; la séance est
+  composée comme dans l'application : matière et classe de la leçon, exercices calculés en
+  maths (`app/domain/lesson_context.in_context`, désormais partagé avec `lesson_store`) — avant,
+  l'évaluation ne proposait ni les jeux de maths et de français, ni les exercices calculés ;
+- Windows : `Ludifun.bat`, choix 12 « Essayer l'IA sur mes vraies leçons »
+  (`scripts/windows/evaluer.ps1`) : crée `eval\lessons` et explique quoi y mettre, puis lance
+  l'évaluation dans le conteneur de l'API (`docker compose run --no-deps`, IA choisie au
+  choix 4) et ouvre les résultats. `eval/lessons` et `eval/results` restent hors du dépôt.
+
+Tests : `tests/ai/test_evaluate.py` (leçons en Word et PDF scanné sans annotation, jeux de la
+matière dans le compte rendu).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

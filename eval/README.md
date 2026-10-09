@@ -1,5 +1,13 @@
 # Évaluation sur de vraies leçons (étape 5)
 
+> **Essai rapide à la maison (Windows)** : `Ludifun.bat`, choix 12 « Essayer l'IA sur mes vraies
+> leçons ». Un dossier par leçon dans `eval\lessons` avec ses photos, **ou un PDF, un Word
+> (.docx) ou un LibreOffice (.odt)** ; `expected.json` est facultatif. Pour chaque leçon,
+> `eval\results\<date>\<leçon>.txt` montre le texte lu, les notions et leur **thème**, les
+> **jeux possibles par notion** et la séance complète (🎲 : jeu du jour), comme dans
+> l'application. Sans `expected.json`, le rapport ne mesure pas la justesse (matière, notions
+> indispensables) : il montre seulement ce que l'application en fait.
+
 But : vérifier que l'application transforme correctement une **vraie** leçon photographiée
 en une séance pertinente, avant de construire l'application (cahier des charges §17).
 

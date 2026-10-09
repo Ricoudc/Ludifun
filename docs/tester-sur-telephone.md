@@ -18,7 +18,7 @@ Le téléphone joint l'ordinateur par le Wi-Fi : les deux doivent être sur **le
 Une fois le dépôt téléchargé (`git clone`, ou le ZIP de GitHub décompressé) et Docker Desktop
 installé, tout se fait en double-cliquant sur **`Ludifun.bat`**, dans le dossier `Ludifun`. Un
 menu propose toutes les actions ; taper le numéro puis Entrée (Entrée seule : démarrer si le
-serveur est arrêté). Le choix 12 crée un raccourci « Ludifun » sur le Bureau. Le menu affiche
+serveur est arrêté). Le choix 12 essaie l'IA sur vos vraies leçons (photos, PDF ou Word rangés dans `eval\lessons`, voir `eval/README.md`) ; le choix 13 crée un raccourci « Ludifun » sur le Bureau. Le menu affiche
 aussi l'adresse à saisir sur le téléphone quand le serveur tourne, et prévient quand une
 nouvelle version est disponible.
 

@@ -26,6 +26,7 @@ from app.config import get_settings
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.activities.registry import default_registry
 from app.domain.composer import Block, SessionComposer
+from app.domain.lesson_context import in_context
 from app.services.lesson_pipeline import LessonPipeline, LessonStatus, PipelineResult
 
 BLOCK_TITLES = {
@@ -99,7 +100,9 @@ def report(result: PipelineResult, seed: int, out: TextIO) -> None:
             stars = "★" * notion.importance
             levels = ", ".join(str(level) for level in sorted(result.required_levels.get(notion.id, ())))
             niveaux = f", niveaux {levels}" if levels else ""
-            say(f"{mark} {notion.id} [{notion.type}, {stars}{niveaux}] {notion.label} — {notion.statement}")
+            theme = f", thème {notion.theme}" if notion.theme else ""
+            kind = f"{notion.type}, {stars}{niveaux}{theme}"
+            say(f"{mark} {notion.id} [{kind}] {notion.label} — {notion.statement}")
         say()
         say("══ Compétences ══")
         for skill in analysis.skills:
@@ -115,7 +118,19 @@ def report(result: PipelineResult, seed: int, out: TextIO) -> None:
 
     if result.ready:
         registry = default_registry()
-        plan = SessionComposer(registry).compose(result.units, {}, now=datetime.now(UTC), seed=seed)
+        # Comme dans l'application : matière et classe de la leçon, exercices calculés en maths.
+        lesson_info = analysis.lesson if analysis is not None else None
+        units = (
+            in_context(result.units, lesson_info.subject, lesson_info.grade)
+            if lesson_info is not None
+            else list(result.units)
+        )
+        say("══ Jeux possibles par notion ══")
+        for unit in units:
+            codes = sorted({str(code) for code, _ in registry.single_options(unit)})
+            say(f"  {unit.id} : {', '.join(codes)}")
+        say()
+        plan = SessionComposer(registry).compose(units, {}, now=datetime.now(UTC), seed=seed)
         say(f"══ Séance (graine {seed}) · durée estimée {plan.estimated_minutes} min ══")
         current: Block | None = None
         for item in plan.items:
@@ -123,7 +138,9 @@ def report(result: PipelineResult, seed: int, out: TextIO) -> None:
                 current = item.block
                 say(BLOCK_TITLES[item.block])
             lines = render_activity(item.activity)
-            say(f"  {item.position}. {lines[0]}  ({', '.join(item.activity.knowledge_ids)})")
+            daily = item.reason.get("rule") == "daily_game" or item.reason.get("facts", {}).get("daily_game")
+            mark = "  🎲 jeu du jour" if daily else ""
+            say(f"  {item.position}. {lines[0]}  ({', '.join(item.activity.knowledge_ids)}){mark}")
             for line in lines[1:]:
                 say(f"  {line}")
         say()
