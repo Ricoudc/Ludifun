@@ -749,16 +749,25 @@ class SessionComposer:
         self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int, rng: random.Random
     ) -> BuiltActivity:
         """L'activité, avec une question pas encore posée aux séances précédentes si la notion en
-        a une (autre question du QCM, autre affirmation, autre ordre…)."""
+        a une (autre question du QCM, autre affirmation, autre ordre…). La leçon prime (§5.58) :
+        parmi les activités nouvelles, celle tirée de la leçon (`from_lesson`) passe avant celle
+        inventée par le calcul ; les inventées viennent quand la leçon a tout donné."""
         activity_type = self.registry.get(code)
         first = activity_type.build([unit], difficulty, rng)
-        if not self.recent or fingerprint(first) not in self.recent:
+
+        def fresh(activity: BuiltActivity) -> bool:
+            return not self.recent or fingerprint(activity) not in self.recent
+
+        if fresh(first) and first.solution.get("from_lesson") is not False:
             return first
+        fallback = first if fresh(first) else None
         for attempt in range(FRESH_TRIES):
             other = activity_type.build([unit], difficulty, random.Random(f"{rng.random()}:{attempt}"))
-            if fingerprint(other) not in self.recent:
-                return other
-        return first
+            if fresh(other):
+                if other.solution.get("from_lesson") is not False:
+                    return other
+                fallback = fallback or other
+        return fallback or first
 
     def _has_fresh(self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int) -> bool:
         """Ce format peut encore poser à cette notion une question qu'elle n'a pas eue."""

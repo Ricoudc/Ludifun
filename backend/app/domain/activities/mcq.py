@@ -47,6 +47,8 @@ class Mcq(ActivityType):
         if own and len(own) < len(questions) and rng.random() >= OWN_SHARE:
             own = [q for q in questions if q.generated]
         question = rng.choice(own or questions)
+        # La leçon prime (§5.58) : le composeur préfère, tant qu'elles sont nouvelles, les
+        # questions de la leçon à celles créées par le calcul.
         texts = [question.answer, *question.distractors]
         rng.shuffle(texts)
         choices = [{"id": cid, "text": text} for cid, text in zip(CHOICE_IDS, texts, strict=True)]
@@ -65,6 +67,8 @@ class Mcq(ActivityType):
             "misconceptions": misconceptions,
             **feedback(unit),
         }
+        if any(q.generated for q in questions) and any(not q.generated for q in questions):
+            solution["from_lesson"] = not question.generated
         if question.source is not None:
             # Question d'un site de confiance (§117) : l'enfant sait d'où elle vient, et la
             # correction cite la phrase qui prouve la réponse.

@@ -129,6 +129,8 @@ def topics(item: KnowledgeItem, grade: Grade) -> list[Topic]:
     if named is not None and _rank(grade) >= _rank(_SINCE[named]):
         # Le thème choisi par l'IA passe d'abord : il vaut même sans les mots attendus.
         found = [named, *(topic for topic in found if topic is not named)]
+    if Topic.COMPLEMENT in found and Topic.ADD in found:
+        found.remove(Topic.ADD)  # « j'additionne le tout » d'un complément : la leçon est le complément
     if not found and _GENERIC.search(text):
         found = [Topic.ADD, Topic.SUB] if _rank(grade) <= _rank(Grade.CP) else [Topic.ADD, Topic.MUL]
     # Le plafond ne vaut que pour les exercices calculés ; un jeu dessiné (heure, règle…) reste.
@@ -154,9 +156,46 @@ _LIMIT = {
 }
 
 
-def _limit(grade: Grade, difficulty: int) -> int:
+def _limit(grade: Grade, difficulty: int, cap: int | None = None) -> int:
+    """Plus grand nombre d'un exercice inventé ; `cap` : le plus grand nombre de la leçon, que
+    l'exercice inventé ne dépasse pas (§5.58)."""
     top = _LIMIT[grade]
-    return max(10, {1: top // 10, 2: top // 3, 3: top}[difficulty])
+    base = {1: top // 10, 2: top // 3, 3: top}[difficulty]
+    return max(10, base if cap is None else min(base, cap))
+
+
+# --------------------------------------------------------------------------- #
+# Les nombres de la leçon (§5.58) : la leçon prime ; les exercices inventés restent dans ses nombres
+# --------------------------------------------------------------------------- #
+
+_NUMBER = re.compile(r"(?<![\d,])\d{1,6}(?![\d,])")
+_OPERATION = re.compile(r"(?<![\d,])(\d{1,4}) ?([+−-]) ?(\d{1,4})(?![\d,])")
+
+
+def lesson_text(item: KnowledgeItem, material: KnowledgeMaterial) -> str:
+    """Ce que la leçon dit de la notion : la notion et ses exercices (pas ceux du calcul)."""
+    own = [f"{q.stem} {q.answer}" for q in material.questions if not q.generated]
+    return " ".join([item.corpus(), *own])
+
+
+def lesson_ceiling(text: str) -> int | None:
+    """Le plus grand nombre de la leçon s'il vaut au moins 10 (21 pour une bande numérique de 1
+    à 21) ; None sinon : les exercices inventés suivent alors la classe."""
+    numbers = [int(n) for n in _NUMBER.findall(text)]
+    top = max(numbers, default=0)
+    return top if top >= 10 else None
+
+
+def lesson_operations(text: str) -> list[tuple[int, str, int]]:
+    """Les additions et soustractions écrites dans la leçon (« 10 + 4 », « 16 - 6 »), sans
+    doublon, dans l'ordre ; une soustraction au résultat négatif est écartée."""
+    found: dict[tuple[int, str, int], None] = {}
+    for a, sign, b in _OPERATION.findall(text):
+        operator = "+" if sign == "+" else "−"
+        if operator == "−" and int(a) < int(b):
+            continue
+        found[(int(a), operator, int(b))] = None
+    return list(found)
 
 
 def fmt(value: int | float | Fraction) -> str:
@@ -204,12 +243,12 @@ def _question(draft: _Draft, difficulty: int) -> MaterialQuestion | None:
 # Un générateur par thème : (aléa, classe, difficulté) → question
 # --------------------------------------------------------------------------- #
 
-Maker = Callable[[random.Random, Grade, int], _Draft | None]
+Maker = Callable[..., _Draft | None]  # (aléa, classe, difficulté[, plafond de la leçon])
 C, M, R, K = ErrorType.CALCULATION, ErrorType.METHOD, ErrorType.READING, ErrorType.KNOWLEDGE
 
 
-def _add(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
-    top = _limit(grade, difficulty)
+def _add(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft:
+    top = _limit(grade, difficulty, cap)
     a, b = rng.randint(1, top // 2), rng.randint(1, top // 2)
     s = a + b
     return _Draft(
@@ -219,8 +258,8 @@ def _add(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
     )
 
 
-def _sub(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
-    top = _limit(grade, difficulty)
+def _sub(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft:
+    top = _limit(grade, difficulty, cap)
     a = rng.randint(top // 4 + 2, top)
     b = rng.randint(1, a - 1)
     d = a - b
@@ -237,22 +276,23 @@ def _sub(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
     )
 
 
-def _complement(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
+def _complement(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft:
     """« Combien faut-il ajouter à 35 pour arriver à 100 ? » : jusqu'à la dizaine suivante
     (difficulté 1), une dizaine plus loin (2), la centaine (3) ; au CP, jusqu'à 10 ou 20."""
     if _rank(grade) <= _rank(Grade.CP):
         target = 10 if difficulty == 1 else 20
         a = rng.randint(1, target - 1)
     elif difficulty == 1:
-        a = rng.randint(11, 99)
+        a = rng.randint(11, 99 if cap is None else max(12, min(99, cap - 1)))
         a += 1 if a % 10 == 0 else 0
         target = (a // 10 + 1) * 10
     elif difficulty == 2:
         a = rng.randint(11, 59)
         target = (a // 10 + rng.randint(2, 4)) * 10
     else:
-        target = 100
-        a = rng.randint(11, 89)
+        # Jusqu'à 100, ou la plus grande dizaine de la leçon si elle s'arrête avant.
+        target = 100 if cap is None or cap >= 100 else max(20, cap // 10 * 10)
+        a = rng.randint(11, target - 11)
     d = target - a
     # Erreur typique : compléter chaque chiffre à 10 (35 → 75 au lieu de 65 pour aller à 100).
     return _Draft(
@@ -288,8 +328,8 @@ def _div(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
     )
 
 
-def _double(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
-    n = rng.randint(2, max(10, _limit(grade, difficulty) // 2))
+def _double(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft:
+    n = rng.randint(2, max(10, _limit(grade, difficulty, cap) // 2))
     if rng.random() < 0.5:
         return _Draft(
             f"Quel est le double de {fmt(n)} ?",
@@ -307,8 +347,8 @@ def _double(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
 _PLACES = ("unités", "dizaines", "centaines", "milliers")
 
 
-def _place(rng: random.Random, grade: Grade, difficulty: int) -> _Draft | None:
-    size = min(4, max(2, len(str(_limit(grade, difficulty))) - 1))
+def _place(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft | None:
+    size = min(4, max(2, len(str(_limit(grade, difficulty, cap))) - 1))
     digits = rng.sample(range(1, 10), size)
     number = int("".join(map(str, digits)))
     position = rng.randint(1, size - 1)  # pas les unités : trop facile
@@ -321,8 +361,8 @@ def _place(rng: random.Random, grade: Grade, difficulty: int) -> _Draft | None:
     )
 
 
-def _compare(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
-    top = _limit(grade, difficulty)
+def _compare(rng: random.Random, grade: Grade, difficulty: int, cap: int | None = None) -> _Draft:
+    top = _limit(grade, difficulty, cap)
     base = rng.randint(top // 10 + 10, max(top, top // 10 + 20))
     s = str(base)
     swapped = int(s[::-1]) if s[::-1][0] != "0" else base - 9
@@ -560,18 +600,26 @@ MAKERS: dict[Topic, Maker] = {
 }
 
 
-def _drafts(topic: Topic, rng: random.Random, grade: Grade, difficulty: int) -> Iterator[MaterialQuestion]:
+# Thèmes dont les nombres suivent ceux de la leçon (§5.58).
+_CAPPED = frozenset({Topic.ADD, Topic.SUB, Topic.COMPLEMENT, Topic.DOUBLE, Topic.PLACE, Topic.COMPARE})
+
+
+def _drafts(
+    topic: Topic, rng: random.Random, grade: Grade, difficulty: int, cap: int | None
+) -> Iterator[MaterialQuestion]:
     for _ in range(PER_DIFFICULTY * 4):  # quelques essais de plus : un tirage peut être écarté
-        draft = MAKERS[topic](rng, grade, difficulty)
+        maker = MAKERS[topic]
+        draft = maker(rng, grade, difficulty, cap) if topic in _CAPPED else maker(rng, grade, difficulty)
         if draft is not None and (question := _question(draft, difficulty)) is not None:
             yield question
 
 
 def generated_questions(
-    item: KnowledgeItem, grade: Grade, existing: Collection[str] = ()
+    item: KnowledgeItem, grade: Grade, existing: Collection[str] = (), ceiling: int | None = None
 ) -> list[MaterialQuestion]:
     """Les questions créées pour la notion (vide si elle ne parle pas de calcul) ; aucune n'a
-    l'énoncé d'une question existante."""
+    l'énoncé d'une question existante. `ceiling` : le plus grand nombre de la leçon
+    (`lesson_ceiling`), que les nombres inventés ne dépassent pas."""
     rng = random.Random(f"{item.id}:{normalize(item.label)}:{grade.value}")
     seen = set(existing)
     found: list[MaterialQuestion] = []
@@ -580,7 +628,7 @@ def generated_questions(
             continue  # l'heure et la monnaie se travaillent par des jeux dessinés, pas par QCM
         for difficulty in (1, 2, 3):
             kept = 0
-            for question in _drafts(topic, rng, grade, difficulty):
+            for question in _drafts(topic, rng, grade, difficulty, ceiling):
                 if question.stem in seen:
                     continue
                 seen.add(question.stem)

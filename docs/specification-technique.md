@@ -1623,6 +1623,40 @@ application saute (§133).
 Tests : `tests/domain/test_vocabulary_games.py` (réponses recontrôlées sur les banques, une
 seule bonne réponse par ligne, mots de la leçon d'abord, pièges), `test/activities/
 activities_test.dart` (case avant la forme, écran des familles).
+
+### 5.58 La leçon prime, l'invention vient après (octobre 2026)
+
+Demande de la famille : « il faut que la leçon prime ; après, il peut très bien inventer de
+nouveaux mots ou de nouvelles additions ». Avant, un QCM sur deux était inventé même quand
+les questions de la leçon n'avaient pas été posées, les nombres inventés suivaient la classe
+(jusqu'à 100 au CE1) et non la leçon, et les jeux ignoraient les calculs et les mots écrits
+dans la leçon. Désormais :
+
+- **ordre** : à chaque activité, le composeur prend d'abord ce qui vient de la leçon
+  (`from_lesson` dans la solution) et que l'enfant n'a pas eu aux séances précédentes ; puis
+  une activité inventée nouvelle ; puis, à défaut, ce qui a déjà été posé (`composer._fresh`).
+  Marquent leur origine : le QCM (question de la leçon ou calculée), la droite graduée et
+  l'opération posée (calcul de la leçon ou inventé) ;
+- **nombres** : les exercices inventés ne dépassent pas le plus grand nombre de la leçon
+  (`math_generator.lesson_ceiling`, à partir de 10) : une bande numérique de 1 à 21 donne des
+  additions et des droites dans ces nombres, pas « 33 − 22 » ;
+- **calculs de la leçon** (`lesson_operations` : « 10 + 4 », « 16 - 6 ») : la droite graduée
+  les fait faire comme la fiche (« Pars de 9 et avance de 4. Touche le nombre où tu arrives »,
+  le départ écrit) ; l'opération posée pose ceux qui se posent (35 + 65) ; une leçon qui calcule
+  autrement (bande numérique, sans opération posée ni mot « poser », « retenue ») n'a plus
+  d'opération posée inventée ;
+- **complément** : une leçon de complément (« j'additionne le tout ») ne reçoit plus
+  d'additions ordinaires ;
+- **mots** : « Relie les synonymes » met d'abord les synonymes que la leçon écrit (« une forêt
+  et un bois sont synonymes ») ou sa paire d'association, même absents de la banque ; « Le mot
+  de la même famille » d'abord la paire de la leçon (ventilateur → vent), avec le piège de la
+  banque s'il existe.
+
+Rien n'est demandé de plus à l'IA : ce qui vient de la leçon est ce que l'analyse a déjà
+validé (notion, questions, paire d'association).
+
+Tests : `tests/domain/test_lesson_first.py` (fiches « bande numérique », « complément »,
+« synonymes », « familles de mots » de CE1).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

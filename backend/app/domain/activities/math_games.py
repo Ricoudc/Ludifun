@@ -31,7 +31,8 @@ from app.domain.activities.base import (
 from app.domain.errors import ErrorType
 from app.domain.knowledge import Grade as SchoolGrade
 from app.domain.knowledge import KnowledgeType, KnowledgeUnit, Subject
-from app.domain.math_generator import Topic, fmt, topics
+from app.domain.math_generator import Topic, fmt, lesson_ceiling, lesson_operations, lesson_text, topics
+from app.domain.text import normalize
 
 GRADES = list(SchoolGrade)
 DEFAULT_GRADE = SchoolGrade.CM1
@@ -49,6 +50,22 @@ def _topics(unit: KnowledgeUnit) -> set[Topic]:
     if unit.subject != Subject.MATH:
         return set()
     return set(topics(unit.item, _grade_of(unit)))
+
+
+# La leçon prime (§5.58) : quand la leçon écrit ses calculs (« 10 + 4 », « 16 - 6 »), un jeu sur
+# deux en est tiré, marqué `from_lesson` ; le composeur choisit d'abord ceux-là tant qu'ils sont
+# nouveaux pour l'enfant. Les autres sont inventés, dans les nombres de la leçon.
+LESSON_SHARE = 0.5
+
+
+def _ceiling(unit: KnowledgeUnit) -> int | None:
+    return lesson_ceiling(lesson_text(unit.item, unit.material)) if unit.subject == Subject.MATH else None
+
+
+def _operations(unit: KnowledgeUnit, operators: list[str]) -> list[tuple[int, str, int]]:
+    if unit.subject != Subject.MATH:
+        return []
+    return [op for op in lesson_operations(lesson_text(unit.item, unit.material)) if op[1] in operators]
 
 
 def _choices(answer: str, wrong: list[str], rng: random.Random) -> tuple[list[dict[str, str]], str] | None:
@@ -220,7 +237,13 @@ class NumberLine(ActivityType):
         else:
             steps = INTEGER_STEPS.get(grade, (100, 500, 1000))
             step = Fraction(steps[difficulty - 1])
-            start = step * 10 * rng.randint(0, 4 if grade == SchoolGrade.CP else 9)
+            most = 4 if grade == SchoolGrade.CP else 9
+            if (cap := _ceiling(unit)) is not None:
+                # Dans les nombres de la leçon : une bande de 1 à 21 donne des droites jusqu'à 30.
+                limit = max(10, -(-cap // 10) * 10)
+                step = next((Fraction(v) for v in (step, 5, 2, 1) if v * 10 <= limit), Fraction(1))
+                most = min(most, max(0, int(limit // (step * 10)) - 1))
+            start = step * 10 * rng.randint(0, most)
             intervals = 10
             labeled = [0, 5, 10] if difficulty == 1 else [0, 10]
 
@@ -238,6 +261,40 @@ class NumberLine(ActivityType):
             "step": step_text,
         }
 
+    @staticmethod
+    def _moves(unit: KnowledgeUnit) -> list[tuple[int, str, int]]:
+        """Les calculs de la leçon qui se font en avançant ou en reculant sur la droite."""
+        kind = _topics(unit)
+        operators = [o for o, t in (("+", Topic.ADD), ("−", Topic.SUB)) if t in kind]
+        return [(a, o, b) for a, o, b in _operations(unit, operators) if 1 <= b <= 9]
+
+    @staticmethod
+    def _move(
+        unit: KnowledgeUnit, move: tuple[int, str, int], rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]] | None:
+        """Comme sur la bande numérique de la leçon : « Pars de 9 et avance de 4 », toucher où
+        l'on arrive. Le départ est écrit sur la droite, l'arrivée non."""
+        a, operator, b = move
+        result = a + b if operator == "+" else a - b
+        starts = [s for s in range(max(0, max(a, result) - 10), min(a, result) + 1) if 1 <= result - s <= 9]
+        if not starts:
+            return None
+        start = rng.choice([s for s in starts if s % 5 == 0] or starts)
+        labeled = sorted({0, 10, a - start})
+        verb = "avance" if operator == "+" else "recule"
+        payload = {
+            "prompt": f"Pars de {a} et {verb} de {b}. Touche le nombre où tu arrives.",
+            "task": "place",
+            "intervals": 10,
+            "labels": [{"index": i, "text": str(start + i)} for i in labeled],
+        }
+        return payload, {
+            "index": result - start,
+            "display": f"{a} {operator} {b} = {result} : de {a}, on {verb} de {b}.",
+            "from_lesson": True,
+            **feedback(unit),
+        }
+
     def _build(
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -245,6 +302,14 @@ class NumberLine(ActivityType):
         year = _year(unit)
         if year is not None and not _topics(unit) & NUMBER_TOPICS:
             return self._frise(unit, year, difficulty, rng)
+        moves = self._moves(unit) if difficulty != 2 else []
+        if (
+            moves
+            and rng.random() < LESSON_SHARE
+            and (built := self._move(unit, rng.choice(moves), rng)) is not None
+        ):
+            return built
+        lesson = {"from_lesson": False} if moves else {}
         for _ in range(20):
             line = self._line(unit, difficulty, rng)
             target, text = line["target"], line["text"]
@@ -259,7 +324,7 @@ class NumberLine(ActivityType):
                     "task": "place",
                     **base,
                 }
-                return payload, {"index": target, "display": display, **feedback(unit)}
+                return payload, {"index": target, "display": display, **lesson, **feedback(unit)}
             wrong = [
                 (text(target + 1), ErrorType.CALCULATION),
                 (text(target - 1), ErrorType.CALCULATION),
@@ -425,6 +490,9 @@ def without_carry(a: int, b: int, operator: str) -> int | None:
     return int("".join(map(str, column)))
 
 
+_POSED = re.compile(r"\bpos(e|er|ee|ees)\b|colonne|retenue")
+
+
 class ColumnOperation(ActivityType):
     code = ActivityCode.COLUMN_OP
     knowledge_types = ALL_TYPES
@@ -432,7 +500,15 @@ class ColumnOperation(ActivityType):
     base_duration_s = 45
 
     def _has_material(self, unit: KnowledgeUnit) -> bool:
-        return _rank(_grade_of(unit)) >= _rank(SchoolGrade.CE1) and bool(self._operators(unit))
+        if _rank(_grade_of(unit)) < _rank(SchoolGrade.CE1) or not (operators := self._operators(unit)):
+            return False
+        # La leçon prime (§5.58) : une leçon qui calcule autrement (« 9 + 4 » sur la bande
+        # numérique) n'a pas d'opération posée, sauf si elle en parle ou en pose une.
+        text = normalize(lesson_text(unit.item, unit.material))
+        operations = _operations(unit, operators)
+        return (
+            not operations or bool(_POSED.search(text)) or any(a >= 10 and b >= 10 for a, _, b in operations)
+        )
 
     @staticmethod
     def _operators(unit: KnowledgeUnit) -> list[str]:
@@ -443,9 +519,13 @@ class ColumnOperation(ActivityType):
         return operators
 
     @staticmethod
-    def _numbers(operator: str, grade: SchoolGrade, difficulty: int, rng: random.Random) -> tuple[int, int]:
+    def _numbers(
+        operator: str, grade: SchoolGrade, difficulty: int, rng: random.Random, cap: int | None = None
+    ) -> tuple[int, int]:
         width = DIGITS.get(grade, 5) + (1 if difficulty == 3 and grade != SchoolGrade.CE1 else 0)
         low, high = 10 ** (width - 1), 10**width - 1
+        if cap is not None and low < cap < high:
+            high = cap  # dans les nombres de la leçon (§5.58)
         for _ in range(200):
             if operator == "×":
                 if difficulty == 3 and _rank(grade) >= _rank(SchoolGrade.CM1):
@@ -470,8 +550,16 @@ class ColumnOperation(ActivityType):
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
-        operator = rng.choice(self._operators(unit))
-        a, b = self._numbers(operator, _grade_of(unit), difficulty, rng)
+        operators = self._operators(unit)
+        # Les calculs à poser de la leçon (deux nombres d'au moins deux chiffres) d'abord.
+        posed = [(a, o, b) for a, o, b in _operations(unit, operators) if a >= 10 and b >= 10]
+        lesson: dict[str, bool] = {"from_lesson": False} if posed else {}
+        if posed and rng.random() < LESSON_SHARE:
+            a, operator, b = rng.choice(posed)
+            lesson = {"from_lesson": True}
+        else:
+            operator = rng.choice(operators)
+            a, b = self._numbers(operator, _grade_of(unit), difficulty, rng, _ceiling(unit))
         result = a + b if operator == "+" else a - b if operator == "−" else a * b
         boxes = (
             len(str(max(a, b))) + 1
@@ -490,6 +578,7 @@ class ColumnOperation(ActivityType):
             "result": str(result),
             "carry_slip": without_carry(a, b, operator),
             "display": f"{fmt(a)} {operator} {fmt(b)} = {fmt(result)}",
+            **lesson,
             **feedback(unit),
         }
 

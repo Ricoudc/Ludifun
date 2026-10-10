@@ -337,6 +337,51 @@ class Pronoun(ActivityType):
 # --------------------------------------------------------------------------- #
 
 
+_WORD = r"[a-zàâçéèêëîïôûùüœ]+"
+# « Une forêt et un bois sont deux mots synonymes. »
+_SAID_SYNONYMS = re.compile(
+    rf"({_WORD}) et (?:une? |le |la |les |l'|des )?({_WORD}) sont (?:des |deux )?(?:mots )?synonymes"
+)
+
+
+def _lesson_pair(unit: KnowledgeUnit) -> tuple[str, str] | None:
+    """La paire d'association de la notion, si ce sont deux mots seuls (« gommer » → « effacer »)."""
+    pair = unit.material.pair
+    if pair is None:
+        return None
+    left, right = pair.left.strip().lower(), pair.right.strip().lower()
+    if not (re.fullmatch(_WORD, left) and re.fullmatch(_WORD, right)) or left == right:
+        return None
+    if "synonym" in left + right or "famille" in left + right:
+        return None  # « synonymes » → « même sens » : la notion, pas une paire de mots
+    return left, right
+
+
+def lesson_synonyms(unit: KnowledgeUnit) -> list[tuple[str, str]]:
+    """Les synonymes que donne la leçon : écrits dans la notion, ou sa paire d'association."""
+    found = [(a, b) for a, b in _SAID_SYNONYMS.findall(unit.item.corpus().lower()) if a != b]
+    if (pair := _lesson_pair(unit)) is not None:
+        found.append(pair)
+    kept: list[tuple[str, str]] = []
+    for a, b in found:  # chaque mot une seule fois : une seule bonne réponse
+        if not {a, b} & {w for p in kept for w in p}:
+            kept.append((a, b))
+    return kept
+
+
+def _stem(word: str) -> str:
+    return normalize(word)[:4]
+
+
+def lesson_family(unit: KnowledgeUnit) -> tuple[str, str] | None:
+    """Deux mots de la même famille donnés par la leçon (« jardinier » → « jardin ») : la paire
+    d'association de la notion quand les deux mots ont la même partie commune."""
+    pair = _lesson_pair(unit)
+    if pair is None or len(min(pair, key=len)) < 4 or _stem(pair[0]) != _stem(pair[1]):
+        return None
+    return pair
+
+
 def _lesson_first(unit: KnowledgeUnit, groups: list[tuple[str, ...]], rng: random.Random) -> list[int]:
     """Les indices des groupes de mots, ceux dont un mot est dans la leçon d'abord."""
     words = set(re.findall(r"[a-zàâçéèêëîïôûùüœ]+", unit.item.corpus().lower()))
@@ -362,7 +407,13 @@ class Synonyms(ActivityType):
         self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
-        chosen = [SYNONYMS[i] for i in _lesson_first(unit, list(SYNONYMS), rng)[: self.PAIRS[difficulty]]]
+        # La leçon prime (§5.58) : ses synonymes d'abord, puis la banque (ceux de la leçon en tête).
+        chosen = lesson_synonyms(unit)[: self.PAIRS[difficulty]]
+        for index in _lesson_first(unit, list(SYNONYMS), rng):
+            if len(chosen) == self.PAIRS[difficulty]:
+                break
+            if not set(SYNONYMS[index]) & {w for p in chosen for w in p}:
+                chosen.append(SYNONYMS[index])
         chosen = [pair if rng.random() < 0.5 else (pair[1], pair[0]) for pair in chosen]
         left = [{"id": f"l{i}", "text": a} for i, (a, _) in enumerate(chosen, start=1)]
         rights = [(b, f"l{i}") for i, (_, b) in enumerate(chosen, start=1)]
@@ -416,15 +467,24 @@ class WordFamilyGame(ActivityType):
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         unit = units[0]
         groups = [family.words for family in WORD_FAMILIES]
-        order = _lesson_first(unit, groups, rng)[: self.ROUNDS[difficulty]]
+        # La leçon prime (§5.58) : sa paire de mots d'abord, puis la banque (ses familles en tête).
+        rounds: list[tuple[str, str, int | None]] = []  # (mot montré, réponse, famille de la banque)
+        if (pair := lesson_family(unit)) is not None:
+            known = next((i for i, g in enumerate(groups) if set(pair) & set(g)), None)
+            rounds.append((pair[0], pair[1], known))
+        used = {_stem(w) for shown, answer, _ in rounds for w in (shown, answer)}
+        for index in _lesson_first(unit, groups, rng):
+            if len(rounds) == self.ROUNDS[difficulty]:
+                break
+            if _stem(groups[index][0]) not in used:
+                shown, answer = rng.sample(groups[index], 2)
+                rounds.append((shown, answer, index))
         items, expected, display = [], {}, []
-        for n, index in enumerate(order, start=1):
-            family = WORD_FAMILIES[index]
-            shown, answer = rng.sample(family.words, 2)
-            others = [i for i in range(len(WORD_FAMILIES)) if i != index]
-            wrong = [rng.choice(WORD_FAMILIES[i].words) for i in rng.sample(others, 3)]
-            if difficulty >= 2:
-                wrong = [family.trap, *wrong[:2]]
+        for n, (shown, answer, family) in enumerate(rounds, start=1):
+            others = [i for i in range(len(groups)) if i != family and _stem(groups[i][0]) != _stem(answer)]
+            wrong = [rng.choice(groups[i]) for i in rng.sample(others, 3)]
+            if difficulty >= 2 and family is not None:
+                wrong = [WORD_FAMILIES[family].trap, *wrong[:2]]
             choices = [answer, *wrong]
             rng.shuffle(choices)
             items.append(
