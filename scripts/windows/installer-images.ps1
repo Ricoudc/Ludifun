@@ -1,10 +1,59 @@
-﻿# Installe le moteur d'images de Ludifun (étape 27) sur ce PC : stable-diffusion.cpp (Vulkan :
-# marche avec les cartes AMD, NVIDIA et Intel, sans kit à installer) et le modèle SDXL-Lightning.
-# Tout reste sur ce PC ; les images attendent la validation du parent avant d'être montrées.
+﻿# Choisit le moteur d'images de Ludifun (étape 27) : sur ce PC, stable-diffusion.cpp (Vulkan :
+# marche avec les cartes AMD, NVIDIA et Intel, sans kit à installer) et le modèle SDXL-Lightning ;
+# ou en ligne, Pollinations (sans carte graphique, avec une clé). Les images attendent la
+# validation du parent avant d'être montrées.
 . (Join-Path $PSScriptRoot 'commun.ps1')
 
-Titre 'Installation du moteur d''images de Ludifun'
-Write-Host 'L''image de la leçon est facultative : sans ce moteur, Ludifun marche comme avant.'
+Titre 'Images des leçons'
+Write-Host 'L''image de la leçon est facultative : sans moteur d''images, Ludifun marche comme avant.'
+Write-Host ''
+Write-Host 'Où dessiner les images ?'
+Write-Host '  1. Sur ce PC (gratuit, tout reste à la maison ; carte graphique conseillée, 8 Go de disque)'
+Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
+Write-Host '  0. Pas d''images'
+$ou = (Read-Host 'Tape le numéro puis Entrée (Entrée seule = 1)').Trim()
+if ($ou -eq '0') {
+    $reglages = Lire-Env
+    $reglages['LUDIFUN_IMAGE_ENGINE'] = 'none'
+    Ecrire-Env $reglages
+    Ok 'Images désactivées (prise en compte au prochain démarrage)'
+    Attendre-Fermeture
+    exit 0
+}
+if ($ou -eq '2') {
+    Write-Host ''
+    Write-Host 'Pollinations dessine en ligne : seule une description écrite par Ludifun part (le sujet de la'
+    Write-Host 'notion, jamais de photo ni de prénom). Crée une clé secrète (elle commence par sk_) sur :'
+    Write-Host '  https://enter.pollinations.ai/keys'
+    $reglages = Lire-Env
+    $cle = ''
+    while (-not $cle) {
+        $cle = (Read-Host 'Colle la clé (clic droit pour coller)').Trim()
+        if ($cle -and -not $cle.StartsWith('sk_')) {
+            $sur = Read-Host 'D''habitude, cette clé commence par sk_. La garder quand même ? (O/N)'
+            if ($sur -notmatch '^[oOyY]') { $cle = '' }
+        }
+    }
+    $reglages['LUDIFUN_IMAGE_ENGINE'] = 'pollinations'
+    $reglages['LUDIFUN_IMAGE_API_KEY'] = $cle
+    $reglages.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
+    Ecrire-Env $reglages
+    Ok 'Ludifun réglé pour dessiner les images avec Pollinations'
+    if (Docker-Pret) {
+        Etape 'Redémarrage du serveur avec ce réglage…'
+        Arreter-Anciennes-Copies
+        & docker compose up -d
+        if ($LASTEXITCODE -eq 0) { Attendre-Serveur | Out-Null; Ok 'Serveur prêt' }
+    } else {
+        Write-Host "Lance $(Choix 1) (démarrer) : le réglage sera pris en compte." -ForegroundColor Yellow
+    }
+    Write-Host ''
+    Write-Host 'Prochaine leçon analysée : une image sera proposée dans l''espace parent (écran des questions'
+    Write-Host 'de la leçon). Valide-la pour que l''enfant la voie, ou demande de la refaire.'
+    Attendre-Fermeture
+    exit 0
+}
+Write-Host ''
 Write-Host 'Il faut environ 8 Go d''espace disque (modèle de 7 Go) ; un SSD rend chaque image plus rapide.'
 try {
     foreach ($carte in Get-CimInstance Win32_VideoController) { Write-Host "Carte graphique : $($carte.Name)" }

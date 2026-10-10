@@ -31,7 +31,7 @@ nouvelle version est disponible.
 | 5. Sauvegarder | sauvegarder tout de suite les données (comptes, leçons, résultats des enfants) dans `%LOCALAPPDATA%\Ludifun\sauvegardes` ; les 14 plus récentes sont gardées. Les choix 1 et 3 en font aussi une **automatiquement** : une par jour, et toujours avant qu'une nouvelle version transforme la base |
 | 6. Remettre une sauvegarde | revenir à une sauvegarde choisie dans la liste (taper `OUI` pour confirmer). La base actuelle est d'abord sauvegardée (« avant-restauration ») ; une sauvegarde illisible ne change rien ; une sauvegarde d'une version plus ancienne est mise à jour au redémarrage |
 | 7. Recherche sur les sites éducatifs | active (ou désactive) la recherche sur les sites éducatifs de confiance (Vikidia, Lumni, Éduscol, Sésamath, Wikipédia) : moteur de recherche dans Docker, serveur redémarré. Ensuite, dans l'application : espace parent → Mon compte → Intelligence artificielle → « 📚 Utiliser des sites éducatifs de confiance ». Donne les explications sourcées de « Je n'ai pas compris » et des questions d'entraînement « D'après … » pour les leçons analysées ensuite. Le même réglage ajoute « 🌐 Pour s'entraîner autrement » sur l'écran de la leçon : exercices MathALÉA (maths, CM1 à 3e), quiz Vikidia, vidéos Lumni, films des Fondamentaux (Canopé, CP-6e), leçons de Maître Lucas (CP-CM2), jeux de calcul mental Calcul@TICE (maths, CP-6e) et pages du manuel Sésamath (maths, 6e-3e), ouverts dans l'application ; MathALÉA et Vikidia marchent même sans ce moteur de recherche (il suffit d'autoriser les sites dans l'application), Lumni, Les Fondamentaux, Maître Lucas, Calcul@TICE et Sésamath en ont besoin. Les ressources sont cherchées à l'analyse d'une leçon ; pour une leçon plus ancienne, le parent touche « Chercher des ressources » sur la relecture de la leçon. le choix 1 le propose une fois |
-| 8. Moteur d'images | facultatif : installe le moteur d'images (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) pour illustrer chaque leçon d'une image ; voir « Image de la leçon » ci-dessous |
+| 8. Images des leçons | facultatif : dessiner une image pour chaque leçon, **sur ce PC** (stable-diffusion.cpp et le modèle SDXL-Lightning, environ 8 Go) ou **en ligne avec Pollinations** (sans carte graphique, avec une clé) ; voir « Image de la leçon » ci-dessous |
 | 9. Voir les erreurs | afficher l'état et les derniers messages du serveur, à envoyer en cas de problème |
 | 10. Rapport de diagnostic | rapport de diagnostic (ordinateur, carte graphique, réglages sans les clés, appels à l'IA avec leurs durées et erreurs, Ollama) copié dans le presse-papiers : à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
 | 11. Surveiller un essai | à lancer **avant** un essai : note au fil de l'eau le journal du serveur (chaque appel à Ollama : chargement du modèle, jetons lus et écrits, vitesse, raison de l'arrêt ; éléments refusés ; erreurs, redémarrages), la charge du processeur et de la carte graphique et le modèle chargé par Ollama. Entrée pour finir : le fichier `surveillance-ludifun.txt` est copié, à coller dans la conversation avec Claude. Ni prénom, ni texte de leçon, ni clé |
@@ -227,9 +227,15 @@ le temps de l'image (quelques dizaines de secondes à quelques minutes). L'image
 **facultative** (aucune question n'en dépend) et **l'enfant ne la voit qu'une fois validée par
 le parent**.
 
-1. Dans `Ludifun.bat`, choix 8 : choisissez le dossier (de préférence sur
-   un SSD, 8 Go libres), le script télécharge le programme et le modèle (le téléchargement
-   reprend là où il s'est arrêté si on le relance), règle `.env` et redémarre le serveur.
+1. Dans `Ludifun.bat`, choix 8 :
+   - **1. Sur ce PC** : choisissez le dossier (de préférence sur un SSD, 8 Go libres), le
+     script télécharge le programme et le modèle (le téléchargement reprend là où il s'est
+     arrêté si on le relance), règle `.env` et redémarre le serveur ;
+   - **2. En ligne avec Pollinations** (sans carte graphique) : créez une clé secrète
+     (`sk_…`) sur https://enter.pollinations.ai/keys et collez-la ; seule une description
+     écrite par Ludifun part chez Pollinations (le sujet de la notion, jamais de photo ni de
+     prénom). Rien à lancer ensuite : les étapes 2 ne s'appliquent pas ;
+   - **0** : plus d'images.
 2. Le choix 1 (démarrer) lance ensuite le moteur d'images avec le serveur, en arrière-plan ;
    le choix 2 (arrêter) l'arrête.
 3. Dans l'application, **espace parent → l'enfant → la leçon → questions de la leçon** : la
