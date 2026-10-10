@@ -93,6 +93,9 @@ const activityLabels = {
   'RULER': ('📏', 'Mesurer à la règle'),
   'SYMMETRY': ('🦋', 'Symétrie'),
   'SYLLABLES': ('👏', 'Syllabes'),
+  'PRONOUN': ('🙋', 'Trouver le bon pronom'),
+  'SYNONYMS': ('🔗', 'Synonymes'),
+  'WORD_FAMILY': ('🌳', 'Familles de mots'),
 };
 
 /// Avatars proposés à la création d'un profil.

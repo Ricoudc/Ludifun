@@ -58,6 +58,9 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
         ("Les homophones a / à", ActivityCode.HOMOPHONE),
         ("L'ordre alphabétique", ActivityCode.ALPHA_ORDER),
         ("Les syllabes", ActivityCode.SYLLABLES),
+        ("Le verbe aller au présent", ActivityCode.PRONOUN),
+        ("Les synonymes", ActivityCode.SYNONYMS),
+        ("Les mots de la même famille", ActivityCode.WORD_FAMILY),
     ):
         game = registry.get(code)
         for difficulty in sorted(game.difficulties):

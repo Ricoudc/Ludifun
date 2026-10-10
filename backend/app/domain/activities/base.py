@@ -65,6 +65,9 @@ class ActivityCode(StrEnum):
     RULER = "RULER"  # mesurer un segment avec une règle graduée (cm, puis mm)
     SYMMETRY = "SYMMETRY"  # compléter une figure par symétrie sur un quadrillage
     SYLLABLES = "SYLLABLES"  # couper des mots en syllabes
+    PRONOUN = "PRONOUN"  # trouve le bon pronom : « ___ allons » → nous
+    SYNONYMS = "SYNONYMS"  # relier les synonymes
+    WORD_FAMILY = "WORD_FAMILY"  # trouver le mot de la même famille
 
 
 Result = Literal["correct", "partial", "incorrect"]

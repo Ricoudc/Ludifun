@@ -124,6 +124,8 @@ class ConjugationView extends StatefulWidget {
 class _ConjugationViewState extends State<ConjugationView> {
   late final List<Choice> _rows = choicesOf(widget.payload['items']);
   late final List<Choice> _chips = choicesOf(widget.payload['choices']);
+  // « Trouve le bon pronom » (PRONOUN) : la case vient avant la forme (« ___ allons »).
+  late final bool _blankFirst = widget.payload['blank_first'] == true;
   final _placed = <String, String>{}; // ligne → forme
   bool _sent = false;
 
@@ -148,12 +150,14 @@ class _ConjugationViewState extends State<ConjugationView> {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
+              textDirection: _blankFirst ? TextDirection.rtl : TextDirection.ltr,
               children: [
                 SizedBox(
-                  width: 72,
+                  width: _blankFirst ? 110 : 72,
                   child: Text(
                     row.text,
-                    textAlign: TextAlign.right,
+                    textAlign: _blankFirst ? TextAlign.left : TextAlign.right,
+                    textDirection: TextDirection.ltr,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                 ),

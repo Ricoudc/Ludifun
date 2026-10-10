@@ -74,6 +74,10 @@ final activityRegistry = <String, ActivityBuilder>{
   'RULER': (payload, onSubmit) => RulerView(payload: payload, onSubmit: onSubmit),
   'SYMMETRY': (payload, onSubmit) => SymmetryView(payload: payload, onSubmit: onSubmit),
   'SYLLABLES': (payload, onSubmit) => SyllableView(payload: payload, onSubmit: onSubmit),
+  // Vraies leçons de CE1 : mêmes écrans que la conjugaison, l'association et les homophones.
+  'PRONOUN': (payload, onSubmit) => ConjugationView(payload: payload, onSubmit: onSubmit),
+  'SYNONYMS': (payload, onSubmit) => MatchView(payload: payload, onSubmit: onSubmit),
+  'WORD_FAMILY': (payload, onSubmit) => HomophoneView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

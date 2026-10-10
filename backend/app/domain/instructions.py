@@ -165,6 +165,21 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Complète le tableau : une forme du verbe pour chaque personne.",
         "Conjugue le verbe à toutes les personnes demandées.",
     ),
+    ActivityCode.PRONOUN: (
+        "Touche le bon pronom pour chaque ligne.",
+        "Trouve le pronom qui va avec chaque forme du verbe.",
+        "Associe chaque forme conjuguée à son pronom personnel.",
+    ),
+    ActivityCode.SYNONYMS: (
+        "Relie les mots qui veulent dire la même chose.",
+        "Relie chaque mot à son synonyme : le mot qui a le même sens.",
+        "Associe chaque mot à son synonyme.",
+    ),
+    ActivityCode.WORD_FAMILY: (
+        "Touche le mot de la même famille.",
+        "Trouve le mot qui a la même partie commune et la même idée.",
+        "Choisis le mot de la même famille : même radical, même idée.",
+    ),
     ActivityCode.HOMOPHONE: (
         "Lis la phrase. Touche le bon mot.",
         "Lis chaque phrase et choisis le mot qui convient.",

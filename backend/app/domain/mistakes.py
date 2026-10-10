@@ -69,7 +69,12 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
             words = _texts(payload.get("words"))
             touched = [words.get(str(w), "?") for w in response.get("selected", [])]
             given = "Mots touchés : " + (", ".join(touched) if touched else "aucun")
-        case ActivityCode.CONJUGATION | ActivityCode.HOMOPHONE:
+        case (
+            ActivityCode.CONJUGATION
+            | ActivityCode.HOMOPHONE
+            | ActivityCode.PRONOUN
+            | ActivityCode.WORD_FAMILY
+        ):
             rows, chips = _texts(payload.get("items")), _texts(payload.get("choices"))
             chosen = dict(response.get("answers", []))
             picked = {row: chips.get(choice, choice) for row, choice in chosen.items()}
@@ -103,7 +108,7 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
             question = str(payload.get("front", ""))
             given = "« Je ne savais pas »"
             expected = str(payload.get("back", expected))
-        case ActivityCode.MATCH:
+        case ActivityCode.MATCH | ActivityCode.SYNONYMS:
             lefts, rights = _texts(payload.get("left")), _texts(payload.get("right"))
             chosen = dict(response.get("pairs", []))
             given = _lines(

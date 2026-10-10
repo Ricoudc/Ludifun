@@ -7,12 +7,16 @@
 - « Homophones » (HOMOPHONE) : a ou à, et ou est… dans des phrases écrites à la main.
 - « Ordre alphabétique » (ALPHA_ORDER) : ranger des mots comme dans le dictionnaire.
 - « Syllabes » (SYLLABLES) : couper des mots en syllabes (banque découpée à la main).
+- « Trouve le bon pronom » (PRONOUN) : « ___ allons » → nous ; le code conjugue.
+- « Relie les synonymes » (SYNONYMS) et « Le mot de la même famille » (WORD_FAMILY) : banques
+  écrites à la main, les mots de la leçon d'abord (vraies leçons de CE1, §5.57).
 
 La bonne réponse est toujours connue du code ; rien n'est demandé à l'IA pendant la séance.
 """
 
 import random
-from typing import Any
+import re
+from typing import Any, ClassVar
 
 from pydantic import Field
 
@@ -27,6 +31,7 @@ from app.domain.activities.base import (
     feedback,
     parse_response,
 )
+from app.domain.activities.match import MatchResponse
 from app.domain.activities.ordering import grade_order
 from app.domain.equivalence import separate_boxes
 from app.domain.errors import ErrorType
@@ -36,6 +41,8 @@ from app.domain.french import (
     HOMOPHONES,
     LEXICON,
     SYLLABLE_WORDS,
+    SYNONYMS,
+    WORD_FAMILIES,
     FrenchTopic,
     Tense,
     conjugate,
@@ -44,6 +51,7 @@ from app.domain.french import (
     pronoun,
     syllable_cuts,
     tense_of,
+    unique_persons,
     verbs_of,
     with_cuts,
 )
@@ -245,6 +253,201 @@ class Conjugation(ActivityType):
         details = [
             {"id": row, "correct": chips.get(answers.get(row, ""), "") == form, "expected": form}
             for row, form in expected.items()
+        ]
+        right = sum(d["correct"] for d in details)
+        score = 1.0 if right == len(details) else round(right / len(details) * 0.8, 2)
+        return _result(activity, score, ErrorType.KNOWLEDGE, details)
+
+
+class Pronoun(ActivityType):
+    """« Trouve le bon pronom » : chaque forme du verbe, son pronom (« ___ allons » → nous).
+    Seulement les formes qui n'ont qu'un pronom possible (« dis » : je ou tu, pas proposée)."""
+
+    code = ActivityCode.PRONOUN
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 40
+    ROWS: ClassVar[dict[int, int]] = {1: 3, 2: 4, 3: 6}
+
+    @staticmethod
+    def _verbs(unit: KnowledgeUnit) -> list[tuple[str, tuple[str, ...]]]:
+        if FrenchTopic.CONJUGATION not in _french(unit):
+            return []
+        tense = tense_of(unit.item.corpus())
+        found = []
+        for verb in verbs_of(unit.item.corpus(), tense):
+            forms = conjugate(verb, tense)
+            if forms is not None and len(unique_persons(forms)) >= 3:
+                found.append((verb, forms))
+        return found
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return bool(self._verbs(unit))
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        tense = tense_of(unit.item.corpus())
+        verb, forms = rng.choice(self._verbs(unit))
+        persons = sorted(
+            rng.sample(unique_persons(forms), min(self.ROWS[difficulty], len(unique_persons(forms))))
+        )
+        rows = [{"id": f"p{p}", "text": forms[p]} for p in persons]
+        # Tous les pronoms : les autres sont des intrus (« je » en trop pour « allons »).
+        chips = [pronoun(p, forms[p]) for p in range(6)]
+        if difficulty == 1:  # deux intrus seulement
+            extra = [p for p in range(6) if p not in persons]
+            chips = [pronoun(p, forms[p]) for p in sorted([*persons, *rng.sample(extra, min(2, len(extra)))])]
+        chips = list(dict.fromkeys(chips))
+        rng.shuffle(chips)
+        payload = {
+            "prompt": f"Trouve le bon pronom : verbe « {verb} » {TENSE_WORDS[tense]}.",
+            "word": verb,
+            "blank_first": True,
+            "items": rows,
+            "choices": [{"id": f"c{i}", "text": text} for i, text in enumerate(chips, start=1)],
+        }
+        expected = {f"p{p}": pronoun(p, forms[p]) for p in persons}
+        written = ", ".join(_with_pronoun(p, forms[p]) for p in persons)
+        return payload, {"expected": expected, "display": f"{written}.", **feedback(unit)}
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        chips = {c["id"]: c["text"] for c in activity.payload["choices"]}
+        answers = dict(parse_response(AnswersResponse, response).answers)
+        rows = {r["id"]: r["text"] for r in activity.payload["items"]}
+        if not set(answers) <= set(rows) or not set(answers.values()) <= set(chips):
+            raise InvalidResponse("case ou pronom inconnu")
+        expected: dict[str, str] = activity.solution["expected"]
+        details = [
+            {
+                "id": row,
+                "correct": chips.get(answers.get(row, ""), "") == who,
+                "expected": f"{who}{rows[row]}" if who.endswith("'") else f"{who} {rows[row]}",
+            }
+            for row, who in expected.items()
+        ]
+        right = sum(d["correct"] for d in details)
+        score = 1.0 if right == len(details) else round(right / len(details) * 0.8, 2)
+        return _result(activity, score, ErrorType.KNOWLEDGE, details)
+
+
+# --------------------------------------------------------------------------- #
+# Synonymes et familles de mots
+# --------------------------------------------------------------------------- #
+
+
+def _lesson_first(unit: KnowledgeUnit, groups: list[tuple[str, ...]], rng: random.Random) -> list[int]:
+    """Les indices des groupes de mots, ceux dont un mot est dans la leçon d'abord."""
+    words = set(re.findall(r"[a-zàâçéèêëîïôûùüœ]+", unit.item.corpus().lower()))
+    order = list(range(len(groups)))
+    rng.shuffle(order)
+    return sorted(order, key=lambda i: not any(w in words for w in groups[i]))
+
+
+class Synonyms(ActivityType):
+    """« Relie les synonymes » : chaque mot à celui qui a le même sens (même écran que
+    l'association). Les paires de la leçon d'abord, puis celles de la banque."""
+
+    code = ActivityCode.SYNONYMS
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 40
+    PAIRS: ClassVar[dict[int, int]] = {1: 3, 2: 4, 3: 5}
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return FrenchTopic.SYNONYMS in _french(unit)
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        chosen = [SYNONYMS[i] for i in _lesson_first(unit, list(SYNONYMS), rng)[: self.PAIRS[difficulty]]]
+        chosen = [pair if rng.random() < 0.5 else (pair[1], pair[0]) for pair in chosen]
+        left = [{"id": f"l{i}", "text": a} for i, (a, _) in enumerate(chosen, start=1)]
+        rights = [(b, f"l{i}") for i, (_, b) in enumerate(chosen, start=1)]
+        rng.shuffle(rights)
+        right = [{"id": f"r{i}", "text": text} for i, (text, _) in enumerate(rights, start=1)]
+        pairs = {left_id: f"r{i}" for i, (_, left_id) in enumerate(rights, start=1)}
+        payload = {"prompt": "Relie chaque mot à son synonyme.", "left": left, "right": right}
+        solution = {
+            "pairs": pairs,
+            "right_texts": {r["id"]: r["text"] for r in right},
+            "display": " ; ".join(f"{a} = {b}" for a, b in chosen),
+            **feedback(unit),
+        }
+        return payload, solution
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        given = parse_response(MatchResponse, response).pairs
+        expected: dict[str, str] = activity.solution["pairs"]
+        if not {a for a, _ in given} <= set(expected) or not {b for _, b in given} <= set(expected.values()):
+            raise InvalidResponse("identifiant d'élément inconnu")
+        answers = dict(given)
+        details = [
+            {
+                "id": left,
+                "correct": answers.get(left) == right,
+                "expected": activity.solution["right_texts"][right],
+            }
+            for left, right in expected.items()
+        ]
+        right_count = sum(d["correct"] for d in details)
+        score = 1.0 if right_count == len(details) else round(right_count / len(details) * 0.8, 2)
+        return _result(activity, score, ErrorType.KNOWLEDGE, details)
+
+
+class WordFamilyGame(ActivityType):
+    """« Le mot de la même famille » : pour chaque mot, toucher celui de sa famille (même écran
+    que les homophones). Difficulté 1 : les autres choix sont d'autres familles ; 2 et 3 : un
+    piège qui lui ressemble (« poisson » : poison)."""
+
+    code = ActivityCode.WORD_FAMILY
+    knowledge_types = ALL_TYPES
+    difficulties = frozenset({1, 2, 3})
+    base_duration_s = 35
+    ROUNDS: ClassVar[dict[int, int]] = {1: 3, 2: 4, 3: 5}
+
+    def _has_material(self, unit: KnowledgeUnit) -> bool:
+        return FrenchTopic.FAMILY in _french(unit)
+
+    def _build(
+        self, units: list[KnowledgeUnit], difficulty: int, rng: random.Random
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        unit = units[0]
+        groups = [family.words for family in WORD_FAMILIES]
+        order = _lesson_first(unit, groups, rng)[: self.ROUNDS[difficulty]]
+        items, expected, display = [], {}, []
+        for n, index in enumerate(order, start=1):
+            family = WORD_FAMILIES[index]
+            shown, answer = rng.sample(family.words, 2)
+            others = [i for i in range(len(WORD_FAMILIES)) if i != index]
+            wrong = [rng.choice(WORD_FAMILIES[i].words) for i in rng.sample(others, 3)]
+            if difficulty >= 2:
+                wrong = [family.trap, *wrong[:2]]
+            choices = [answer, *wrong]
+            rng.shuffle(choices)
+            items.append(
+                {"id": f"s{n}", "text": f"« {shown} » est de la même famille que ___.", "choices": choices}
+            )
+            expected[f"s{n}"] = answer
+            display.append(f"{shown} → {answer}")
+        payload = {"prompt": "Trouve le mot de la même famille.", "items": items}
+        return payload, {"expected": expected, "display": " ; ".join(display), **feedback(unit)}
+
+    def _grade(self, activity: BuiltActivity, response: dict[str, Any]) -> Grade:
+        answers = dict(parse_response(AnswersResponse, response).answers)
+        rounds = {i["id"]: i for i in activity.payload["items"]}
+        if not set(answers) <= set(rounds):
+            raise InvalidResponse("mot inconnu")
+        expected: dict[str, str] = activity.solution["expected"]
+        details = [
+            {
+                "id": sid,
+                "correct": answers.get(sid) == word,
+                "expected": rounds[sid]["text"].replace("___", word),
+            }
+            for sid, word in expected.items()
         ]
         right = sum(d["correct"] for d in details)
         score = 1.0 if right == len(details) else round(right / len(details) * 0.8, 2)

@@ -48,6 +48,11 @@ MEASURE_CODES = {
     ActivityCode.SYMMETRY,
     ActivityCode.SYLLABLES,
 }  # règle, symétrie, syllabes
+VOCABULARY_CODES = {
+    ActivityCode.PRONOUN,
+    ActivityCode.SYNONYMS,
+    ActivityCode.WORD_FAMILY,
+}  # vraies leçons de CE1 : bon pronom, synonymes, familles de mots
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -64,6 +69,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | WORD_CODES
         | EVERYDAY_CODES
         | MEASURE_CODES
+        | VOCABULARY_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

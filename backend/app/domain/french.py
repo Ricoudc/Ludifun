@@ -150,6 +150,8 @@ class FrenchTopic(StrEnum):
     GENDER = "masculin et féminin"
     ALPHABET = "ordre alphabétique"
     SYLLABLES = "syllabes"
+    SYNONYMS = "synonymes"
+    FAMILY = "familles de mots"
 
 
 _TOPICS = (
@@ -169,6 +171,8 @@ _TOPICS = (
     (FrenchTopic.GENDER, r"\bfeminin|\bmasculin"),
     (FrenchTopic.ALPHABET, r"ordre alphabetique|\balphabet\b|\bdictionnaire"),
     (FrenchTopic.SYLLABLES, r"syllab"),
+    (FrenchTopic.SYNONYMS, r"synonym"),
+    (FrenchTopic.FAMILY, r"meme famille|familles? de mots"),
 )
 
 
@@ -450,3 +454,61 @@ def with_cuts(word: str, cuts: list[int]) -> str:
     """Le mot coupé comme l'enfant l'a fait : « vélo », [3] → « vél-o »."""
     bounds = [0, *sorted(set(cuts)), len(word)]
     return "-".join(word[a:b] for a, b in itertools.pairwise(bounds) if b > a)
+
+
+# --------------------------------------------------------------------------- #
+# Synonymes et familles de mots : écrits à la main, jamais devinés
+# --------------------------------------------------------------------------- #
+
+# Paires de synonymes du CE1 au CM (même sens ou sens très proche), dont celles des vraies leçons
+# de CE1 (gommer et effacer, bateau et navire…). Aucun mot n'apparaît dans deux paires.
+SYNONYMS: tuple[tuple[str, str], ...] = (
+    ("gommer", "effacer"), ("drôle", "amusant"), ("bus", "car"), ("bateau", "navire"),
+    ("forêt", "bois"), ("inscrire", "écrire"), ("flamber", "brûler"),
+    ("questionner", "interroger"), ("étrange", "bizarre"), ("commencer", "débuter"),
+    ("finir", "terminer"), ("content", "joyeux"), ("peur", "frayeur"), ("vélo", "bicyclette"),
+    ("voiture", "automobile"), ("docteur", "médecin"), ("chemin", "sentier"),
+    ("calme", "tranquille"), ("triste", "malheureux"), ("regarder", "observer"),
+    ("crier", "hurler"), ("joli", "beau"), ("dispute", "querelle"), ("cadeau", "présent"),
+    ("rapide", "vif"), ("habit", "vêtement"), ("répondre", "répliquer"), ("aider", "secourir"),
+)  # fmt: skip
+
+
+@dataclass(frozen=True)
+class WordFamily:
+    words: tuple[str, ...]  # le mot de base et ses dérivés
+    trap: str  # un mot qui leur ressemble mais n'est pas de la famille
+
+
+# Familles de mots du CE1 au CM, dont celles des vraies leçons de CE1 (nage, dent, boxe…). Le
+# piège ressemble aux mots de la famille sans en être : la difficulté 2 et 3 le proposent.
+WORD_FAMILIES: tuple[WordFamily, ...] = (
+    WordFamily(("nage", "nager", "nageur", "nageoire"), "neige"),
+    WordFamily(("dent", "dentiste", "dentifrice", "dentier"), "danse"),
+    WordFamily(("jardin", "jardinier", "jardiner", "jardinage"), "jarre"),
+    WordFamily(("vent", "ventilateur", "venteux"), "vendre"),
+    WordFamily(("boxe", "boxeur", "boxer"), "boîte"),
+    WordFamily(("dessin", "dessiner", "dessinateur"), "destin"),
+    WordFamily(("arroser", "arrosoir", "arrosage"), "arrêt"),
+    WordFamily(("monter", "montée", "remonter"), "montrer"),
+    WordFamily(("interdire", "interdiction", "interdit"), "intérieur"),
+    WordFamily(("garder", "gardien", "garderie"), "gare"),
+    WordFamily(("peindre", "peintre", "peinture"), "peigne"),
+    WordFamily(("poisson", "poissonnier", "poissonnerie"), "poison"),
+    WordFamily(("lait", "laitier", "laitage"), "laid"),
+    WordFamily(("fleur", "fleuriste", "fleurir"), "flûte"),
+    WordFamily(("terre", "terrain", "terrier", "enterrer"), "terrible"),
+    WordFamily(("chausser", "chaussure", "chaussette", "chausson"), "chose"),
+    WordFamily(("coiffer", "coiffeur", "coiffure"), "coffre"),
+    WordFamily(("glace", "glacier", "glaçon"), "glisser"),
+    WordFamily(("école", "écolier", "écolière"), "écorce"),
+    WordFamily(("chant", "chanter", "chanteur", "chanson"), "champ"),
+    WordFamily(("sel", "saler", "salière"), "selle"),
+    WordFamily(("lire", "lecture", "lecteur", "relire"), "lit"),
+)
+
+
+def unique_persons(forms: tuple[str, ...]) -> list[int]:
+    """Les personnes dont la forme n'appartient qu'à elles : « vais » (je), mais pas « dis »
+    (je et tu) ; « Trouve le bon pronom » n'a ainsi qu'une bonne réponse par forme."""
+    return [p for p, form in enumerate(forms) if forms.count(form) == 1]

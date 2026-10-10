@@ -24,7 +24,16 @@ from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.spelling import Dictation, Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
 from app.domain.activities.unjumble import Unjumble
-from app.domain.activities.word_games import AlphaOrder, Conjugation, Homophones, Syllables, WordHunt
+from app.domain.activities.word_games import (
+    AlphaOrder,
+    Conjugation,
+    Homophones,
+    Pronoun,
+    Syllables,
+    Synonyms,
+    WordFamilyGame,
+    WordHunt,
+)
 from app.domain.knowledge import KnowledgeUnit
 
 
@@ -118,5 +127,8 @@ def default_registry() -> ActivityRegistry:
             Ruler(),
             Symmetry(),
             Syllables(),
+            Pronoun(),
+            Synonyms(),
+            WordFamilyGame(),
         ]
     )

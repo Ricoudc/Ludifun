@@ -67,6 +67,7 @@ def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel
     if code in (
         ActivityCode.COLUMN_OP,
         ActivityCode.CONJUGATION,
+        ActivityCode.PRONOUN,
         ActivityCode.HOMOPHONE,
         ActivityCode.RULER,
         ActivityCode.SYMMETRY,

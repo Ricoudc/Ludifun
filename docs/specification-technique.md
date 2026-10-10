@@ -1597,6 +1597,32 @@ Restent sans jeu propre (questions de l'IA seulement) : synonymes et mots de la 
 
 Tests : `tests/domain/test_word_games.py` (tables recopiées du Bescherelle, verbe de la leçon
 jamais remplacé), `tests/domain/test_math_generator.py` (compléments recalculés).
+
+### 5.57 Trois jeux tirés des fiches de CE1 (octobre 2026)
+
+Les fiches de CE1 de la famille (§5.56) ont des exercices que l'application n'avait pas. Trois
+jeux calculés par le code, sans IA pendant la séance, la bonne réponse toujours connue :
+
+- **Trouve le bon pronom** (`PRONOUN`) : chaque forme du verbe, son pronom (« ___ allons » →
+  nous), avec des pronoms en trop comme intrus. Mêmes verbes que la conjugaison (§5.56) ; une
+  forme qui va avec deux pronoms (« dis » : je ou tu) n'est jamais demandée
+  (`french.unique_persons`). Écran de la conjugaison, la case avant la forme (`blank_first`).
+- **Relie les synonymes** (`SYNONYMS`) : 3 à 5 paires d'une banque écrite à la main
+  (`french.SYNONYMS`, dont gommer/effacer, bateau/navire, forêt/bois des vraies leçons), celles
+  que nomme la leçon d'abord. Écran de l'association.
+- **Le mot de la même famille** (`WORD_FAMILY`) : « « boxeur » est de la même famille que ___ »,
+  trois à cinq mots ; les autres choix sont d'autres familles et, aux difficultés 2 et 3, un
+  piège qui ressemble au mot sans être de la famille (poisson / poison). Banque écrite à la
+  main (`french.WORD_FAMILIES`), les familles de la leçon d'abord. Écran des homophones.
+
+Leçons concernées : celles dont les mots parlent de conjugaison, de synonymes ou de mots de la
+même famille (`french.french_topics`) ; pas de nouveau thème d'IA, donc pas de nouvelle version
+du prompt d'analyse. Contrat d'API inchangé : trois types d'activité nouveaux, qu'une ancienne
+application saute (§133).
+
+Tests : `tests/domain/test_vocabulary_games.py` (réponses recontrôlées sur les banques, une
+seule bonne réponse par ligne, mots de la leçon d'abord, pièges), `test/activities/
+activities_test.dart` (case avant la forme, écran des familles).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

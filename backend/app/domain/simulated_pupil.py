@@ -98,13 +98,18 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"result": s["result"] if single_ok else str(int(s["result"]) + 1)}
         case ActivityCode.WORD_HUNT:
             return {"selected": s["expected"] if single_ok else s["expected"][1:]}
-        case ActivityCode.CONJUGATION:
+        case ActivityCode.CONJUGATION | ActivityCode.PRONOUN:
             by_text = {c["text"]: c["id"] for c in activity.payload["choices"]}
             rows = list(s["expected"].items())
             if not single_ok:  # deux lignes inversées
                 rows = [(rows[1][0], rows[0][1]), (rows[0][0], rows[1][1]), *rows[2:]]
             return {"answers": [[row, by_text[form]] for row, form in rows]}
-        case ActivityCode.HOMOPHONE:
+        case ActivityCode.SYNONYMS:
+            pairs = list(s["pairs"].items())
+            if not single_ok:  # deux mots reliés à l'envers
+                pairs = [(pairs[0][0], pairs[1][1]), (pairs[1][0], pairs[0][1]), *pairs[2:]]
+            return {"pairs": [list(p) for p in pairs]}
+        case ActivityCode.HOMOPHONE | ActivityCode.WORD_FAMILY:
             choices = {i["id"]: i["choices"] for i in activity.payload["items"]}
             return {
                 "answers": [

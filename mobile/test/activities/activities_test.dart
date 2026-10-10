@@ -354,6 +354,65 @@ void main() {
     ]);
   });
 
+  testWidgets('bon pronom : la case avant la forme, chaque pronom une fois', (tester) async {
+    await show(tester, 'PRONOUN', {
+      'prompt': 'Trouve le bon pronom : verbe « aller » au présent.',
+      'word': 'aller',
+      'blank_first': true,
+      'items': [
+        {'id': 'p3', 'text': 'allons'},
+        {'id': 'p5', 'text': 'vont'},
+      ],
+      'choices': [
+        {'id': 'c1', 'text': 'ils'},
+        {'id': 'c2', 'text': 'nous'},
+        {'id': 'c3', 'text': 'je'},
+      ],
+    });
+    // La case est à gauche de la forme.
+    final box = tester.getTopLeft(find.text('allons'));
+    await tester.tap(find.text('nous'));
+    await tester.pump();
+    expect(tester.getTopLeft(find.text('nous')).dx, lessThan(box.dx));
+    await tester.tap(find.text('ils'));
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'answers': [
+          ['p3', 'c2'],
+          ['p5', 'c1'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('synonymes et familles de mots : écrans de l\'association et des homophones', (
+    tester,
+  ) async {
+    await show(tester, 'WORD_FAMILY', {
+      'prompt': 'Trouve le mot de la même famille.',
+      'items': [
+        {
+          'id': 's1',
+          'text': '« boxeur » est de la même famille que ___.',
+          'choices': ['boîte', 'boxe', 'fleur', 'lait'],
+        },
+      ],
+    });
+    await tester.tap(find.text('boxe'));
+    await tester.pump();
+    expect(sent, [
+      {
+        'answers': [
+          ['s1', 'boxe'],
+        ],
+      },
+    ]);
+    expect(activityRegistry.containsKey('SYNONYMS'), isTrue);
+    expect(activityRegistry.containsKey('PRONOUN'), isTrue);
+  });
+
   testWidgets('homophones : une phrase à la fois, réponse après la dernière', (tester) async {
     await show(tester, 'HOMOPHONE', {
       'prompt': 'Choisis le bon mot pour chaque phrase.',
