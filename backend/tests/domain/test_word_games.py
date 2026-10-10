@@ -71,6 +71,14 @@ TABLES = {
     ("aller", Tense.FUTUR): ("irai", "iras", "ira", "irons", "irez", "iront"),
     ("faire", Tense.PRESENT): ("fais", "fais", "fait", "faisons", "faites", "font"),
     ("nager", Tense.IMPARFAIT): ("nageais", "nageais", "nageait", "nagions", "nagiez", "nageaient"),
+    # Les verbes du 3e groupe du programme du CE1-CE2.
+    ("dire", Tense.PRESENT): ("dis", "dis", "dit", "disons", "dites", "disent"),
+    ("prendre", Tense.PRESENT): ("prends", "prends", "prend", "prenons", "prenez", "prennent"),
+    ("venir", Tense.PRESENT): ("viens", "viens", "vient", "venons", "venez", "viennent"),
+    ("pouvoir", Tense.FUTUR): ("pourrai", "pourras", "pourra", "pourrons", "pourrez", "pourront"),
+    ("vouloir", Tense.PRESENT): ("veux", "veux", "veut", "voulons", "voulez", "veulent"),
+    ("voir", Tense.IMPARFAIT): ("voyais", "voyais", "voyait", "voyions", "voyiez", "voyaient"),
+    ("voir", Tense.PASSE_COMPOSE): ("ai vu", "as vu", "a vu", "avons vu", "avez vu", "ont vu"),
 }
 
 
@@ -82,6 +90,17 @@ def test_the_code_conjugates_right(verb: str, tense: Tense) -> None:
 def test_unknown_verbs_and_tenses_are_refused() -> None:
     assert conjugate("appeler", Tense.PRESENT) is None  # radical qui change : pas proposé
     assert conjugate("aller", Tense.PASSE_COMPOSE) is None  # auxiliaire être : accord incertain
+    assert conjugate("venir", Tense.PASSE_COMPOSE) is None
+
+
+def test_the_verb_of_the_lesson_never_another(registry: ActivityRegistry) -> None:
+    """Vraie leçon de CE1 « Le verbe dire au présent » : on conjugue dire ; une leçon sur un verbe
+    que le code ne connaît pas n'a pas de jeu, plutôt que « chanter » à sa place."""
+    game = registry.get(C.CONJUGATION)
+    dire = unit("Le verbe dire au présent", grade=Grade.CE1)
+    assert {game.build([dire], 2, random.Random(seed)).payload["word"] for seed in range(10)} == {"dire"}
+    assert not game.accepts(unit("Le verbe partir au présent", grade=Grade.CE1))
+    assert game.accepts(unit("Les verbes du 1er groupe au présent"))
 
 
 def test_the_tense_comes_from_the_notion() -> None:

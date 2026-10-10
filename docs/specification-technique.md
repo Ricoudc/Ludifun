@@ -1572,6 +1572,31 @@ l'IA de leur PC. Pour qu'il se fasse sans développeur :
 
 Tests : `tests/ai/test_evaluate.py` (leçons en Word et PDF scanné sans annotation, jeux de la
 matière dans le compte rendu).
+
+### 5.56 Premières vraies leçons : huit pages de CE1 (octobre 2026)
+
+La famille a envoyé huit pages de cahier de CE1 : les verbes aller, être et avoir, dire, faire au
+présent ; les synonymes ; les mots de la même famille ; ajouter ou retrancher sur la bande
+numérique ; calculer un complément. Sans IA branchée, leur analyse a été écrite à la main comme
+l'IA la rendrait, puis passée dans le vrai moteur (jeux possibles, séance). Les photos et ces
+analyses restent hors du dépôt. Trois défauts trouvés et corrigés :
+
+- **verbe inconnu remplacé par un autre** : « Le verbe dire au présent » donnait un jeu de
+  conjugaison sur « chanter » ou « finir ». Une leçon qui nomme un verbe que le code ne sait pas
+  conjuguer n'a plus de jeu de conjugaison (`french.verbs_of`) ; et les verbes du programme du
+  CE1-CE2 sont ajoutés à la table : dire, prendre, venir, pouvoir, vouloir, voir (présent,
+  imparfait, futur ; passé composé avec avoir seulement) ;
+- **titre sans le mot « conjugaison »** : « Le verbe aller au présent » est reconnu comme une
+  leçon de conjugaison même sans le thème de l'IA ;
+- **compléments** : « 35 + … = 100 » donnait des additions ordinaires. Nouveau thème de calcul
+  `complément` (mots : compléter, complément, pour arriver à) : jusqu'à la dizaine suivante, une
+  dizaine plus loin, la centaine (au CP : 10 et 20) ; mauvaise réponse typique : chaque chiffre
+  complété à 10 (75 au lieu de 65). Il passe avant l'addition quand l'IA a choisi « addition ».
+
+Restent sans jeu propre (questions de l'IA seulement) : synonymes et mots de la même famille.
+
+Tests : `tests/domain/test_word_games.py` (tables recopiées du Bescherelle, verbe de la leçon
+jamais remplacé), `tests/domain/test_math_generator.py` (compléments recalculés).
 ---
 
 ## 6. Contrats JSON de l'IA (versions 2)

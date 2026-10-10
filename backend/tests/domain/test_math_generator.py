@@ -7,7 +7,7 @@ from fractions import Fraction
 import pytest
 
 from app.domain.errors import ErrorType
-from app.domain.knowledge import Grade, KnowledgeItem, MaterialQuestion
+from app.domain.knowledge import Grade, KnowledgeItem, MaterialQuestion, Theme
 from app.domain.math_generator import PER_DIFFICULTY, Topic, fmt, generated_questions, topics
 
 
@@ -51,6 +51,8 @@ def check(question: MaterialQuestion) -> None:
         expected = Fraction(int(m[1]), 100) * number(m[2])
     elif m := re.fullmatch(r"Combien font (.+) \?", stem):
         expected = evaluate(m[1])
+    elif m := re.fullmatch(r"Combien faut-il ajouter à ([\d ]+) pour arriver à ([\d ]+) \?", stem):
+        expected = number(m[2]) - number(m[1])
     elif m := re.fullmatch(r"Combien vaut (\d+)\^(\d+) \?", stem):
         expected = Fraction(int(m[1]) ** int(m[2]))
     elif m := re.fullmatch(r"Quel est le (double|la moitié) de ([\d ]+) \?", stem):
@@ -112,6 +114,8 @@ def check(question: MaterialQuestion) -> None:
 CASES = [
     ("La soustraction", Grade.CP, {Topic.SUB}),
     ("Les doubles et les moitiés", Grade.CP, {Topic.DOUBLE}),
+    ("Compléter pour arriver à 10", Grade.CP, {Topic.COMPLEMENT}),
+    ("Calculer un complément", Grade.CE1, {Topic.COMPLEMENT}),
     ("Les dizaines et les unités", Grade.CP, {Topic.PLACE}),
     ("Comparer et ranger des nombres", Grade.CE1, {Topic.COMPARE}),
     ("Les tables de multiplication", Grade.CE1, {Topic.MUL}),
@@ -198,3 +202,20 @@ def test_french_number_format() -> None:
     assert fmt(Fraction(7, 2)) == "3,5"
     assert fmt(Fraction(10, 1)) == "10"
     assert fmt(899.5) == "899,5"
+
+
+def test_complements_like_the_ce1_lesson() -> None:
+    """Vraie leçon de CE1 « Calculer un complément » (35 + 65 = 100), que l'IA classe en
+    addition : les compléments passent d'abord, avec l'erreur du chiffre complété à 10."""
+    item = notion("Calculer un complément", "Je complète à la dizaine suivante, puis aux dizaines.")
+    item = item.model_copy(update={"theme": Theme.ADDITION})
+    assert topics(item, Grade.CE1)[0] is Topic.COMPLEMENT
+    questions = generated_questions(item, Grade.CE1)
+    hardest = [q for q in questions if q.difficulty == 3 and "ajouter" in q.stem]
+    assert hardest and all(q.stem.endswith("pour arriver à 100 ?") for q in hardest)
+    for question in hardest:
+        a = int(re.findall(r"\d+", question.stem)[0])
+        wrong = str(100 - a + 10)  # 35 → 75 : chaque chiffre complété à 10
+        assert question.misconceptions[question.distractors.index(wrong)] == ErrorType.METHOD
+    cp = [q for q in generated_questions(item, Grade.CP) if "ajouter" in q.stem]
+    assert cp and all(int(q.answer) < 20 for q in cp)

@@ -31,6 +31,7 @@ GRADES = list(Grade)
 class Topic(StrEnum):
     ADD = "addition"
     SUB = "soustraction"
+    COMPLEMENT = "complément"
     MUL = "multiplication"
     DIV = "division"
     DOUBLE = "double et moitié"
@@ -68,6 +69,8 @@ _TOPICS: tuple[tuple[Topic, str, Grade], ...] = (
     (Topic.DECIMAL, r"decima|virgule|dixieme|centieme", Grade.CM1),
     (Topic.DIV, r"division|diviser|quotient|partag", Grade.CE2),
     (Topic.MUL, r"multipli|produit|\btables?\b|\bfois\b", Grade.CE1),
+    # Avant l'addition : « 35 + … = 100 » se travaille par un complément, pas une somme.
+    (Topic.COMPLEMENT, r"complement|completer|pour (arriver|aller) a|combien (faut il )?ajouter", Grade.CP),
     (Topic.SUB, r"soustra|difference|retrancher|enlever", Grade.CP),
     (Topic.ADD, r"addition|additionner|\bsomme|ajouter", Grade.CP),
     (Topic.DOUBLE, r"\bdouble|moitie", Grade.CP),
@@ -121,6 +124,8 @@ def topics(item: KnowledgeItem, grade: Grade) -> list[Topic]:
         if re.search(pattern, text) and _rank(grade) >= _rank(since)
     ]
     named = _BY_THEME.get(item.theme) if item.theme is not None else None
+    if named is Topic.ADD and Topic.COMPLEMENT in found:
+        named = Topic.COMPLEMENT  # « compléter jusqu'à 100 » : la forme précise de l'addition
     if named is not None and _rank(grade) >= _rank(_SINCE[named]):
         # Le thème choisi par l'IA passe d'abord : il vaut même sans les mots attendus.
         found = [named, *(topic for topic in found if topic is not named)]
@@ -229,6 +234,31 @@ def _sub(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
         f"Combien font {fmt(a)} − {fmt(b)} ?",
         fmt(d),
         [(fmt(swapped), M), (fmt(d + 10), C), (fmt(d + 1), C), (fmt(d - 1), C), (fmt(a + b), M)],
+    )
+
+
+def _complement(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
+    """« Combien faut-il ajouter à 35 pour arriver à 100 ? » : jusqu'à la dizaine suivante
+    (difficulté 1), une dizaine plus loin (2), la centaine (3) ; au CP, jusqu'à 10 ou 20."""
+    if _rank(grade) <= _rank(Grade.CP):
+        target = 10 if difficulty == 1 else 20
+        a = rng.randint(1, target - 1)
+    elif difficulty == 1:
+        a = rng.randint(11, 99)
+        a += 1 if a % 10 == 0 else 0
+        target = (a // 10 + 1) * 10
+    elif difficulty == 2:
+        a = rng.randint(11, 59)
+        target = (a // 10 + rng.randint(2, 4)) * 10
+    else:
+        target = 100
+        a = rng.randint(11, 89)
+    d = target - a
+    # Erreur typique : compléter chaque chiffre à 10 (35 → 75 au lieu de 65 pour aller à 100).
+    return _Draft(
+        f"Combien faut-il ajouter à {fmt(a)} pour arriver à {fmt(target)} ?",
+        fmt(d),
+        [(fmt(d + 10), M), (fmt(d - 10), C), (fmt(d + 1), C), (fmt(d - 1), C), (fmt(target + a), M)],
     )
 
 
@@ -511,6 +541,7 @@ def _pythagore(rng: random.Random, grade: Grade, difficulty: int) -> _Draft:
 MAKERS: dict[Topic, Maker] = {
     Topic.ADD: _add,
     Topic.SUB: _sub,
+    Topic.COMPLEMENT: _complement,
     Topic.MUL: _mul,
     Topic.DIV: _div,
     Topic.DOUBLE: _double,

@@ -4,8 +4,10 @@ pluriel, masculin et féminin). Tout est écrit ici à la main ou calculé par d
 aucune réponse n'est devinée.
 
 Les verbes retenus sont réguliers (1er groupe sans changement de radical, 2e groupe) ou appris
-par cœur (être, avoir, aller, faire). Au passé composé, seulement l'auxiliaire avoir : avec
-être, l'accord dépendrait de qui parle.
+par cœur : ceux du programme du CE1-CE2 (être, avoir, aller, faire, dire, prendre, venir,
+pouvoir, vouloir, voir). Au passé composé, seulement l'auxiliaire avoir : avec être, l'accord
+dépendrait de qui parle. Une leçon sur un verbe que le code ne connaît pas n'a pas de jeu de
+conjugaison : jamais un autre verbe à sa place.
 """
 
 import itertools
@@ -53,6 +55,41 @@ IRREGULAR: dict[str, dict[Tense, tuple[str, ...]]] = {
         Tense.IMPARFAIT: ("faisais", "faisais", "faisait", "faisions", "faisiez", "faisaient"),
         Tense.FUTUR: ("ferai", "feras", "fera", "ferons", "ferez", "feront"),
         Tense.PASSE_COMPOSE: ("ai fait", "as fait", "a fait", "avons fait", "avez fait", "ont fait"),
+    },
+    "dire": {
+        Tense.PRESENT: ("dis", "dis", "dit", "disons", "dites", "disent"),
+        Tense.IMPARFAIT: ("disais", "disais", "disait", "disions", "disiez", "disaient"),
+        Tense.FUTUR: ("dirai", "diras", "dira", "dirons", "direz", "diront"),
+        Tense.PASSE_COMPOSE: ("ai dit", "as dit", "a dit", "avons dit", "avez dit", "ont dit"),
+    },
+    "prendre": {
+        Tense.PRESENT: ("prends", "prends", "prend", "prenons", "prenez", "prennent"),
+        Tense.IMPARFAIT: ("prenais", "prenais", "prenait", "prenions", "preniez", "prenaient"),
+        Tense.FUTUR: ("prendrai", "prendras", "prendra", "prendrons", "prendrez", "prendront"),
+        Tense.PASSE_COMPOSE: ("ai pris", "as pris", "a pris", "avons pris", "avez pris", "ont pris"),
+    },
+    "venir": {
+        Tense.PRESENT: ("viens", "viens", "vient", "venons", "venez", "viennent"),
+        Tense.IMPARFAIT: ("venais", "venais", "venait", "venions", "veniez", "venaient"),
+        Tense.FUTUR: ("viendrai", "viendras", "viendra", "viendrons", "viendrez", "viendront"),
+    },
+    "pouvoir": {
+        Tense.PRESENT: ("peux", "peux", "peut", "pouvons", "pouvez", "peuvent"),
+        Tense.IMPARFAIT: ("pouvais", "pouvais", "pouvait", "pouvions", "pouviez", "pouvaient"),
+        Tense.FUTUR: ("pourrai", "pourras", "pourra", "pourrons", "pourrez", "pourront"),
+        Tense.PASSE_COMPOSE: ("ai pu", "as pu", "a pu", "avons pu", "avez pu", "ont pu"),
+    },
+    "vouloir": {
+        Tense.PRESENT: ("veux", "veux", "veut", "voulons", "voulez", "veulent"),
+        Tense.IMPARFAIT: ("voulais", "voulais", "voulait", "voulions", "vouliez", "voulaient"),
+        Tense.FUTUR: ("voudrai", "voudras", "voudra", "voudrons", "voudrez", "voudront"),
+        Tense.PASSE_COMPOSE: ("ai voulu", "as voulu", "a voulu", "avons voulu", "avez voulu", "ont voulu"),
+    },
+    "voir": {
+        Tense.PRESENT: ("vois", "vois", "voit", "voyons", "voyez", "voient"),
+        Tense.IMPARFAIT: ("voyais", "voyais", "voyait", "voyions", "voyiez", "voyaient"),
+        Tense.FUTUR: ("verrai", "verras", "verra", "verrons", "verrez", "verront"),
+        Tense.PASSE_COMPOSE: ("ai vu", "as vu", "a vu", "avons vu", "avez vu", "ont vu"),
     },
 }
 AVOIR_PRESENT = IRREGULAR["avoir"][Tense.PRESENT]
@@ -119,7 +156,9 @@ _TOPICS = (
     (
         FrenchTopic.CONJUGATION,
         r"conjug|present de l indicatif|\bfutur\b|imparfait|passe compose|groupe des verbes"
-        r"|verbes? du (1er|2e|premier|deuxieme) groupe",
+        r"|verbes? du (1er|2e|premier|deuxieme) groupe"
+        # « Le verbe aller au présent », « Les verbes avoir et être au présent » (vraies leçons de CE1).
+        r"|\bverbes?\b.{0,40}\b(au present|au futur|a l imparfait|au passe compose)",
     ),
     (FrenchTopic.HOMOPHONES, r"homophone"),
     (
@@ -152,6 +191,10 @@ def tense_of(text: str) -> Tense:
     return Tense.PRESENT
 
 
+# « le verbe dire », « les verbes partir et sortir » : un infinitif nommé par la leçon.
+_ASKED_VERB = re.compile(r"\bverbes? (?:[a-zàâçéèêëîïôûùü]+(?:er|ir|re|oir))\b")
+
+
 def verbs_of(text: str, tense: Tense) -> list[str]:
     """Les verbes à conjuguer : ceux que nomme la notion, sinon ceux de son groupe, sinon tous."""
     words = set(re.findall(r"[a-zàâçéèêëîïôûùü]+", text.lower()))
@@ -159,6 +202,8 @@ def verbs_of(text: str, tense: Tense) -> list[str]:
     named = [v for v in known if v in words]
     if named:
         return named
+    if _ASKED_VERB.search(text.lower()):
+        return []  # « le verbe partir » : un verbe que le code ne sait pas conjuguer, pas un autre
     plain = normalize(text)
     if re.search(r"(2e|deuxieme) groupe", plain):
         return list(SECOND_GROUP)
