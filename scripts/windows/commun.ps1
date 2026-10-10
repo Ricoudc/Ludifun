@@ -248,7 +248,7 @@ function Verifier-Ollama([string]$modele, [string]$url = 'http://localhost:11434
     }
 }
 
-function Choisir-IA {
+function Choisir-IA-Texte {
     $valeurs = Lire-Env
     Write-Host ''
     Write-Host 'Quelle IA doit lire les photos et créer les jeux ?'
@@ -315,6 +315,68 @@ function Choisir-IA {
     if ($choix.Code -eq 'gemini') {
         Write-Host 'Gemini gratuit peut réutiliser les données envoyées : pour des leçons d''enfants, active la facturation (offre payante).' -ForegroundColor Yellow
     }
+}
+
+# Choix de l'IA en deux temps : celle qui lit les photos (OCR) et crée les jeux, puis celle qui
+# dessine les images des leçons (facultatif : sur ce PC, ou en ligne avec Pollinations).
+function Choisir-IA {
+    Choisir-IA-Texte
+    Choisir-Images
+}
+
+function Regler-Pollinations($valeurs) {
+    Write-Host 'Pollinations dessine en ligne : seule une description écrite par Ludifun part (le sujet de la'
+    Write-Host 'notion, jamais de photo ni de prénom). Crée une clé secrète (elle commence par sk_) sur :'
+    Write-Host '  https://enter.pollinations.ai/keys'
+    $actuelle = $valeurs['LUDIFUN_IMAGE_API_KEY']
+    if ($actuelle) {
+        $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
+        $garder = Read-Host "Une clé Pollinations est déjà enregistrée (…$fin). La garder ? (O/N)"
+        if ($garder -match '^[nN]') { $actuelle = '' }
+    }
+    $cle = $actuelle
+    while (-not $cle) {
+        $cle = (Read-Host 'Colle la clé (clic droit pour coller)').Trim()
+        if ($cle -and -not $cle.StartsWith('sk_')) {
+            $sur = Read-Host 'D''habitude, cette clé commence par sk_. La garder quand même ? (O/N)'
+            if ($sur -notmatch '^[oOyY]') { $cle = '' }
+        }
+    }
+    $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'pollinations'
+    $valeurs['LUDIFUN_IMAGE_API_KEY'] = $cle
+    $valeurs.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
+}
+
+$NomsImages = @{
+    'none' = 'pas d''images'; 'sdcpp' = 'sur ce PC'; 'comfyui' = 'ComfyUI sur ce PC'
+    'pollinations' = 'en ligne avec Pollinations'
+}
+
+function Choisir-Images {
+    $valeurs = Lire-Env
+    $actuel = $valeurs['LUDIFUN_IMAGE_ENGINE']
+    if (-not $actuel) { $actuel = 'none' }
+    Write-Host ''
+    Write-Host 'Et pour les images des leçons (facultatif), qui les dessine ?'
+    Write-Host '  0. Pas d''images'
+    Write-Host "  1. Sur ce PC (gratuit, tout reste à la maison ; s'installe une fois avec $(Choix 8))"
+    Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
+    $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsImages[$actuel]))").Trim()
+    switch ($num) {
+        '0' { $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'none' }
+        '1' {
+            if (-not $valeurs['LUDIFUN_IMAGE_DIR']) {
+                Write-Host "Le moteur d'images n'est pas encore installé sur ce PC : lance $(Choix 8), option 1." -ForegroundColor Yellow
+                return
+            }
+            $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'sdcpp'
+            $valeurs['LUDIFUN_IMAGE_URL'] = "http://host.docker.internal:$PortImages"
+        }
+        '2' { Regler-Pollinations $valeurs }
+        default { return }
+    }
+    Ecrire-Env $valeurs
+    Ok "Images : $($NomsImages[$valeurs['LUDIFUN_IMAGE_ENGINE']])"
 }
 
 function Secret-Aleatoire {

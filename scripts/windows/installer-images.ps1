@@ -22,21 +22,8 @@ if ($ou -eq '0') {
 }
 if ($ou -eq '2') {
     Write-Host ''
-    Write-Host 'Pollinations dessine en ligne : seule une description écrite par Ludifun part (le sujet de la'
-    Write-Host 'notion, jamais de photo ni de prénom). Crée une clé secrète (elle commence par sk_) sur :'
-    Write-Host '  https://enter.pollinations.ai/keys'
     $reglages = Lire-Env
-    $cle = ''
-    while (-not $cle) {
-        $cle = (Read-Host 'Colle la clé (clic droit pour coller)').Trim()
-        if ($cle -and -not $cle.StartsWith('sk_')) {
-            $sur = Read-Host 'D''habitude, cette clé commence par sk_. La garder quand même ? (O/N)'
-            if ($sur -notmatch '^[oOyY]') { $cle = '' }
-        }
-    }
-    $reglages['LUDIFUN_IMAGE_ENGINE'] = 'pollinations'
-    $reglages['LUDIFUN_IMAGE_API_KEY'] = $cle
-    $reglages.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
+    Regler-Pollinations $reglages
     Ecrire-Env $reglages
     Ok 'Ludifun réglé pour dessiner les images avec Pollinations'
     if (Docker-Pret) {
