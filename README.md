@@ -73,7 +73,7 @@ application du téléphone), sauvegarder… ; voir
 
 ```bash
 docker compose up -d --build
-curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0013"}
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0030",…}
 
 docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
 cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)
@@ -83,3 +83,18 @@ Voir [`backend/README.md`](backend/README.md) et [`mobile/README.md`](mobile/REA
 
 **Essayer sur un téléphone Android** (APK de test téléchargeable depuis GitHub, serveur sur votre
 ordinateur) : [`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).
+
+**Développer sur son PC Windows** (sans attendre GitHub) :
+
+- `scripts\windows\verifier.ps1` : les mêmes vérifications que GitHub — serveur (ruff, mypy,
+  pytest sur la base `ludifun_test`, jamais celle de la famille), application (format, analyse,
+  tests) et scripts Windows (syntaxe, UTF-8 avec BOM, CRLF) ; résumé à la fin, code de sortie 1
+  si quelque chose échoue. `-Serveur`, `-Application` ou `-Scripts` pour une seule partie.
+  Outils : Docker Desktop, [uv](https://docs.astral.sh/uv/), Flutter.
+- `scripts\windows\construire-apk.ps1` : construit l'APK de test (Flutter et Android Studio) et
+  le range dans `telephone\ludifun.apk` avec un numéro de construction plus grand que le
+  précédent : le serveur le propose au téléphone (« Nouvelle version »). Une nouvelle version
+  publiée sur GitHub le remplace à la mise à jour suivante (choix 3).
+
+Lancement depuis PowerShell, à la racine de Ludifun :
+`powershell -ExecutionPolicy Bypass -File scripts\windows\verifier.ps1`.
