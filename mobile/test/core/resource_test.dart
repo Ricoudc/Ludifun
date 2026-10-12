@@ -74,4 +74,26 @@ void main() {
     );
     expect(ResourceProvider.calculatice.allows(Uri.parse('https://ac-lille.fr/')), isFalse);
   });
+
+  test('§5.60 : les sites choisis par la famille s\'ouvrent, chacun sur son site', () {
+    LessonResource? parse(String provider, String url) => LessonResource.tryParse({
+      'id': 'r1',
+      'provider': provider,
+      'kind': 'lesson',
+      'title': 'Homophones a / à',
+      'url': url,
+    });
+    expect(
+      parse('boutdegomme', 'https://www.boutdegomme.fr/homophones-a-a')?.provider.label,
+      'Bout de Gomme',
+    );
+    expect(parse('khanacademy', 'https://fr.khanacademy.org/math/x')?.provider.emoji, '🎓');
+    expect(parse('meteofrance', 'https://meteofrance.fr/comprendre'), isNotNull);
+    expect(parse('louvre', 'https://collections.louvre.fr/ark:/1'), isNotNull);
+    expect(parse('boutdegomme', 'https://www.lumni.fr/x'), isNull); // pas son site
+    expect(parse('nouveausite', 'https://exemple.fr/x'), isNull); // inconnu : sauté
+    // Les sites à compte : un nom, une explication ; la BRNE passe par l'ENT (pas de lien).
+    expect(accountSites.map((s) => s.name), contains('Pix'));
+    expect(accountSites.where((s) => s.url == null).map((s) => s.name), ['BRNE']);
+  });
 }

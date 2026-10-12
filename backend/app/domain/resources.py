@@ -22,6 +22,13 @@ Trois sites, trois façons de faire, toutes dans l'application :
 - **Sésamath** (manuels libres du collège) : les pages du manuel en ligne sur la notion ; ses
   cahiers PDF servent aussi aux explications et questions « D'après… » (`sources.DEFAULT_SITES`).
 
+- **Les sites choisis par la famille** (§5.60) : Logiciel Éducatif et Bout de Gomme (exercices
+  et jeux de l'école), Mathador (calcul mental), Khan Academy en français (vidéos et exercices
+  de maths), La Main à la Pâte et l'Espace Juniors de la Cité des sciences (sciences),
+  Vie-publique et Géoconfluences (éducation civique, géographie, au collège), Annabac (fiches
+  du brevet) et les partenaires d'Éduthèque ouverts sans compte (Louvre, BnF, INA, CNES,
+  Météo-France, château de Versailles). Tous en consultation : rien n'est copié.
+
 Pour ces sites, le moteur de recherche du serveur trouve les pages ; le code ne garde que celles
 qui parlent de la leçon (`linked_resource`). Un PDF n'est jamais proposé dans la visionneuse (le
 téléphone ne l'affiche pas) : il sert seulement de source de texte.
@@ -49,6 +56,21 @@ class Provider(StrEnum):
     MAITRE_LUCAS = "maitrelucas"
     CALCULATICE = "calculatice"
     SESAMATH = "sesamath"
+    LOGICIEL_EDUCATIF = "logicieleducatif"
+    BOUT_DE_GOMME = "boutdegomme"
+    MATHADOR = "mathador"
+    KHAN_ACADEMY = "khanacademy"
+    LAMAP = "lamap"
+    CITE_SCIENCES = "citesciences"
+    VIE_PUBLIQUE = "viepublique"
+    GEOCONFLUENCES = "geoconfluences"
+    ANNABAC = "annabac"
+    LOUVRE = "louvre"
+    BNF = "bnf"
+    INA = "ina"
+    CNES = "cnes"
+    METEO_FRANCE = "meteofrance"
+    VERSAILLES = "versailles"
 
 
 class ResourceKind(StrEnum):
@@ -69,6 +91,21 @@ ALLOWED_HOSTS: dict[Provider, tuple[str, ...]] = {
     Provider.MAITRE_LUCAS: ("maitrelucas.fr",),
     Provider.CALCULATICE: ("calculatice.ac-lille.fr",),
     Provider.SESAMATH: ("sesamath.net",),
+    Provider.LOGICIEL_EDUCATIF: ("logicieleducatif.fr",),
+    Provider.BOUT_DE_GOMME: ("boutdegomme.fr",),
+    Provider.MATHADOR: ("mathador.fr",),
+    Provider.KHAN_ACADEMY: ("fr.khanacademy.org",),
+    Provider.LAMAP: ("fondation-lamap.org",),
+    Provider.CITE_SCIENCES: ("cite-sciences.fr",),
+    Provider.VIE_PUBLIQUE: ("vie-publique.fr",),
+    Provider.GEOCONFLUENCES: ("geoconfluences.ens-lyon.fr",),
+    Provider.ANNABAC: ("annabac.com",),
+    Provider.LOUVRE: ("louvre.fr",),
+    Provider.BNF: ("bnf.fr",),
+    Provider.INA: ("ina.fr",),
+    Provider.CNES: ("cnes.fr",),
+    Provider.METEO_FRANCE: ("meteofrance.com", "meteofrance.fr"),
+    Provider.VERSAILLES: ("chateauversailles.fr",),
 }
 LICENCES: dict[Provider, str] = {
     Provider.MATHALEA: "MathALÉA, Coopmaths (logiciel libre AGPL)",
@@ -78,6 +115,21 @@ LICENCES: dict[Provider, str] = {
     Provider.MAITRE_LUCAS: "Maître Lucas (consultation seulement, rien n'est copié)",
     Provider.CALCULATICE: "Calcul@TICE, académie de Lille et Sésamath (exercices en ligne)",
     Provider.SESAMATH: "Sésamath, association de professeurs de mathématiques (licence libre)",
+    Provider.LOGICIEL_EDUCATIF: "Logiciel Éducatif (jeux en ligne, consultation seulement)",
+    Provider.BOUT_DE_GOMME: "Bout de Gomme, enseignante (consultation seulement, rien n'est copié)",
+    Provider.MATHADOR: "Mathador, Réseau Canopé (consultation seulement)",
+    Provider.KHAN_ACADEMY: "Khan Academy en français (CC BY-NC-SA, consultation)",
+    Provider.LAMAP: "Fondation La Main à la Pâte (consultation seulement)",
+    Provider.CITE_SCIENCES: "Cité des sciences et de l'industrie, Espace Juniors (consultation)",
+    Provider.VIE_PUBLIQUE: "Vie-publique.fr, Direction de l'information légale et administrative",
+    Provider.GEOCONFLUENCES: "Géoconfluences, ENS de Lyon et ministère de l'Éducation nationale",
+    Provider.ANNABAC: "Annabac, Hatier (fiches gratuites, consultation seulement)",
+    Provider.LOUVRE: "Musée du Louvre, partenaire d'Éduthèque (consultation seulement)",
+    Provider.BNF: "Bibliothèque nationale de France, partenaire d'Éduthèque (consultation)",
+    Provider.INA: "INA, partenaire d'Éduthèque (consultation seulement)",
+    Provider.CNES: "CNES, partenaire d'Éduthèque (consultation seulement)",
+    Provider.METEO_FRANCE: "Météo-France, partenaire d'Éduthèque (consultation seulement)",
+    Provider.VERSAILLES: "Château de Versailles, partenaire d'Éduthèque (consultation seulement)",
 }
 PER_PROVIDER = 3  # ressources proposées au plus par site et par leçon
 
@@ -373,6 +425,10 @@ class LinkedSite:
 
 
 PRIMARY = frozenset({Grade.CP, Grade.CE1, Grade.CE2, Grade.CM1, Grade.CM2})
+COLLEGE = frozenset({Grade.SIXIEME, Grade.CINQUIEME, Grade.QUATRIEME, Grade.TROISIEME})
+CYCLE_3 = frozenset({Grade.CM1, Grade.CM2, Grade.SIXIEME})
+ALL_GRADES = PRIMARY | COLLEGE
+SCIENCES = frozenset({Subject.SCIENCE})
 LINKED_SITES = (
     LinkedSite(
         Provider.FONDAMENTAUX,
@@ -408,6 +464,138 @@ LINKED_SITES = (
         subjects=frozenset({Subject.MATH}),
         query=re.compile(r"(^|&)(ouvrage|page|chapitre|exo|exercice|id)="),  # manuel numérique
         kind=ResourceKind.LESSON,
+    ),
+    # Les sites choisis par la famille (§5.60), du plus proche de l'école au plus général.
+    LinkedSite(
+        Provider.LOGICIEL_EDUCATIF,
+        ("www.logicieleducatif.fr",),
+        "logiciel éducatif jeu",
+        PRIMARY,
+        site_name="Logiciel Éducatif",
+        subjects=frozenset({Subject.FRENCH, Subject.MATH, Subject.ENGLISH, Subject.GEOGRAPHY}),
+        kind=ResourceKind.GAME,
+    ),
+    LinkedSite(
+        Provider.BOUT_DE_GOMME,
+        ("www.boutdegomme.fr", "boutdegomme.fr"),
+        "bout de gomme exercices",
+        PRIMARY,
+        site_name="Bout de Gomme",
+        kind=ResourceKind.LESSON,  # fiches d'exercices et leçons de l'école
+    ),
+    LinkedSite(
+        Provider.MATHADOR,
+        ("www.mathador.fr", "mathador.fr"),
+        "mathador calcul mental",
+        frozenset({Grade.CE2, Grade.CM1, Grade.CM2, Grade.SIXIEME, Grade.CINQUIEME}),
+        site_name="Mathador",
+        subjects=frozenset({Subject.MATH}),
+        kind=ResourceKind.GAME,
+    ),
+    LinkedSite(
+        Provider.KHAN_ACADEMY,
+        ("fr.khanacademy.org",),
+        "khan academy",
+        ALL_GRADES,
+        site_name="Khan Academy",
+        subjects=frozenset({Subject.MATH}),
+    ),
+    LinkedSite(
+        Provider.LAMAP,
+        ("fondation-lamap.org", "www.fondation-lamap.org"),
+        "la main à la pâte",
+        PRIMARY | {Grade.SIXIEME, Grade.CINQUIEME},
+        site_name="La main à la pâte",
+        subjects=SCIENCES,
+    ),
+    LinkedSite(
+        Provider.CITE_SCIENCES,
+        ("www.cite-sciences.fr",),
+        "cité des sciences juniors",
+        PRIMARY | {Grade.SIXIEME},
+        site_name="Cité des sciences",
+        subjects=SCIENCES,
+    ),
+    LinkedSite(
+        Provider.VIE_PUBLIQUE,
+        ("www.vie-publique.fr",),
+        "vie publique fiche",
+        COLLEGE,
+        site_name="Vie publique",
+        subjects=frozenset({Subject.CIVICS, Subject.HISTORY}),
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.GEOCONFLUENCES,
+        ("geoconfluences.ens-lyon.fr",),
+        "géoconfluences",
+        frozenset({Grade.QUATRIEME, Grade.TROISIEME}),
+        site_name="Géoconfluences",
+        subjects=frozenset({Subject.GEOGRAPHY}),
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.ANNABAC,
+        ("www.annabac.com",),
+        "annabac brevet fiche",
+        frozenset({Grade.QUATRIEME, Grade.TROISIEME}),
+        site_name="Annabac",
+        kind=ResourceKind.LESSON,
+    ),
+    # Partenaires d'Éduthèque dont les pages s'ouvrent sans compte enseignant.
+    LinkedSite(
+        Provider.LOUVRE,
+        ("www.louvre.fr", "collections.louvre.fr"),
+        "louvre",
+        CYCLE_3 | COLLEGE,
+        site_name="Louvre",
+        subjects=frozenset({Subject.HISTORY, Subject.OTHER}),
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.BNF,
+        ("essentiels.bnf.fr", "classes.bnf.fr", "expositions.bnf.fr"),
+        "bnf",
+        CYCLE_3 | COLLEGE,
+        site_name="BnF",
+        subjects=frozenset({Subject.FRENCH, Subject.HISTORY}),
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.INA,
+        ("fresques.ina.fr", "www.ina.fr"),
+        "ina vidéo",
+        CYCLE_3 | COLLEGE,
+        site_name="INA",
+        subjects=frozenset({Subject.HISTORY, Subject.CIVICS, Subject.GEOGRAPHY}),
+        kind=ResourceKind.VIDEO,
+    ),
+    LinkedSite(
+        Provider.CNES,
+        ("cnes.fr",),
+        "cnes espace",
+        ALL_GRADES,
+        site_name="CNES",
+        subjects=SCIENCES,
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.METEO_FRANCE,
+        ("meteofrance.com", "meteofrance.fr"),
+        "météo-france comprendre",
+        ALL_GRADES,
+        site_name="Météo-France",
+        subjects=frozenset({Subject.SCIENCE, Subject.GEOGRAPHY}),
+        kind=ResourceKind.ARTICLE,
+    ),
+    LinkedSite(
+        Provider.VERSAILLES,
+        ("www.chateauversailles.fr",),
+        "château de versailles",
+        CYCLE_3 | COLLEGE,
+        site_name="Château de Versailles",
+        subjects=frozenset({Subject.HISTORY}),
+        kind=ResourceKind.ARTICLE,
     ),
 )
 # Pages de navigation, jamais une leçon.

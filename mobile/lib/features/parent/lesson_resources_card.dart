@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
+import '../../core/link_opener.dart';
 import '../../core/session.dart';
 import '../../models/resource.dart';
 import '../lesson/resource_screen.dart';
@@ -95,7 +96,8 @@ class _LessonResourcesCardState extends ConsumerState<LessonResourcesCard> {
             const SizedBox(height: 6),
             Text(
               value.available
-                  ? 'Exercices MathALÉA, quiz Vikidia et vidéos Lumni sur le sujet de la leçon. '
+                  ? 'Exercices, jeux, vidéos et fiches des sites de confiance (MathALÉA, Vikidia, '
+                        'Lumni, Logiciel Éducatif, Bout de Gomme, Khan Academy…) sur le sujet de la leçon. '
                         'Ils s\'ouvrent dans l\'application, sans quitter le site choisi. Le score '
                         'des exercices est gardé ici ; il ne change pas la progression de l\'enfant.'
                   : 'Autorisez les sites éducatifs de confiance (Mon compte → Intelligence '
@@ -158,6 +160,25 @@ class _LessonResourcesCardState extends ConsumerState<LessonResourcesCard> {
                 ),
               ),
             ],
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              shape: const Border(),
+              title: const Text('Autres sites de confiance (avec un compte)'),
+              children: [
+                for (final site in accountSites)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Text(site.emoji, style: const TextStyle(fontSize: 24)),
+                    title: Text(site.name),
+                    subtitle: Text(site.about),
+                    trailing: site.url == null ? null : const Icon(Icons.open_in_new),
+                    onTap: switch (site.url) {
+                      final url? => () => ref.read(linkOpenerProvider).open(url),
+                      null => null,
+                    },
+                  ),
+              ],
+            ),
           ],
         ),
       ),

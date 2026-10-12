@@ -1690,6 +1690,37 @@ erreur aussi précise : le parent la corrige lui-même.
   sélectionnables au doigt (`SelectionArea`) ; boutons « Copier le texte » (la leçon lue par
   l'IA), « Copier » (les questions d'une notion) et « Copier toutes les questions ».
 
+### 5.60 Les sites de confiance choisis par la famille (octobre 2026, schéma 0030)
+
+La famille a donné sa liste : Lumni, Éduthèque et ses partenaires, la BRNE, le CNED (Jules, Ma
+classe à la maison), Les Fondamentaux, Logiciel Éducatif, Mathador, La Main à la Pâte,
+Sésamath / Mathenpoche, Pix, l'Espace Juniors de la Cité des sciences, Khan Academy, Géoconfluences,
+Vie-publique, Annabac, Éduscol, et Bout de Gomme (« il y a pas mal d'exercices »). Chaque site
+va là où il sert :
+
+- **Textes lus et cités** (`sources.DEFAULT_SITES`, explications « D'après… » et questions
+  d'entraînement) : Éduscol à sa nouvelle adresse (`eduscol.education.fr`, l'ancienne reste),
+  Cité des sciences, La Main à la Pâte, Vie-publique, Géoconfluences, BnF Essentiels, à côté de
+  Vikidia, Lumni, Sésamath et Wikipédia. Les sites pour enfants restent en tête.
+- **Ressources proposées telles quelles** (`resources.LINKED_SITES`, visionneuse limitée au
+  site, rien de copié) : 15 fournisseurs de plus, chacun pour ses classes et ses matières —
+  Logiciel Éducatif (jeux, CP-CM2), Bout de Gomme (fiches, CP-CM2 ; ses PDF ne sont pas
+  proposés, le téléphone ne les affiche pas), Mathador (calcul mental, CE2-5e), Khan Academy
+  (maths), La Main à la Pâte et Cité des sciences (sciences), Vie-publique (éducation civique,
+  histoire, collège), Géoconfluences (géographie, 4e-3e), Annabac (4e-3e), et les partenaires
+  d'Éduthèque ouverts sans compte : Louvre, BnF, INA, CNES, Météo-France, château de Versailles.
+  Migration 0030 : la contrainte `lesson_resources.provider` les accepte (retour arrière : leurs
+  ressources sont retirées). Une ancienne application saute un fournisseur qu'elle ne connaît
+  pas.
+- **Sites à compte** (CNED, Pix, portail Éduthèque, BRNE par l'ENT) : Ludifun ne peut pas y
+  chercher ; l'application les liste pour le parent (« Autres sites de confiance (avec un
+  compte) »), ouverts dans son navigateur.
+
+Non vérifié : les adresses et la forme des pages de ces sites n'ont pas pu être consultées
+depuis l'environnement de développement (réseau fermé) ; les filtres (`linked_resource`) sont
+ceux, génériques, des autres sites (page sur le sujet de la leçon, pas d'accueil, de recherche
+ni de PDF).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

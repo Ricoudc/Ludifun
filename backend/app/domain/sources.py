@@ -17,12 +17,21 @@ from app.domain.text import fuzzy_contains, normalize
 
 # Sites éducatifs de confiance, du plus adapté aux enfants au plus général. Modifiable par
 # LUDIFUN_WEB_SOURCES ; un sous-domaine d'un site autorisé l'est aussi.
+# Les trois premiers sont aussi cherchés un par un (« site: ») quand la recherche libre trouve
+# peu. Ce sont des sites dont le texte se lit et se cite (pas de jeux ni de vidéos seules) ; les
+# autres sites de confiance sont proposés tels quels (`resources.LINKED_SITES`).
 DEFAULT_SITES = (
     "fr.vikidia.org",
     "www.lumni.fr",
+    "eduscol.education.fr",  # Éduscol (nouvelle adresse) ; l'ancienne reste acceptée
     "eduscol.education.gouv.fr",
     "www.education.gouv.fr",
+    "www.cite-sciences.fr",  # Espace Juniors de la Cité des sciences
+    "fondation-lamap.org",  # La Main à la Pâte (sciences)
     "sesamath.net",  # manuels et cahiers libres du collège (pages et PDF)
+    "www.vie-publique.fr",  # fiches d'éducation civique
+    "geoconfluences.ens-lyon.fr",  # géographie (collège)
+    "essentiels.bnf.fr",  # BnF, partenaire d'Éduthèque (littérature, histoire)
     "fr.wikipedia.org",
 )
 EXCERPT_CHARS = 800  # un extrait : quelques paragraphes, assez court pour une petite IA locale

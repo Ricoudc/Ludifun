@@ -378,6 +378,9 @@ class LessonImage(Base):
 
 RESOURCE_PROVIDERS = (  # domain.resources.Provider
     "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas", "calculatice", "sesamath",
+    "logicieleducatif", "boutdegomme", "mathador", "khanacademy", "lamap", "citesciences",
+    "viepublique", "geoconfluences", "annabac", "louvre", "bnf", "ina", "cnes", "meteofrance",
+    "versailles",
 )  # fmt: skip
 RESOURCE_KINDS = (  # domain.resources.ResourceKind
     "exercise", "quiz", "video", "article", "lesson", "game",

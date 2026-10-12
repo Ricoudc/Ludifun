@@ -12,7 +12,23 @@ enum ResourceProvider {
   fondamentaux('🎬', 'Les Fondamentaux (Canopé)', ['reseau-canope.fr']),
   maitrelucas('👨‍🏫', 'Maître Lucas', ['maitrelucas.fr']),
   calculatice('🧠', 'Calcul@TICE', ['calculatice.ac-lille.fr']),
-  sesamath('📐', 'Sésamath', ['sesamath.net']);
+  sesamath('📐', 'Sésamath', ['sesamath.net']),
+  // Les sites choisis par la famille (§5.60).
+  logicieleducatif('🎲', 'Logiciel Éducatif', ['logicieleducatif.fr']),
+  boutdegomme('✏️', 'Bout de Gomme', ['boutdegomme.fr']),
+  mathador('🎯', 'Mathador', ['mathador.fr']),
+  khanacademy('🎓', 'Khan Academy', ['fr.khanacademy.org']),
+  lamap('🔬', 'La Main à la Pâte', ['fondation-lamap.org']),
+  citesciences('🚀', 'Cité des sciences (Juniors)', ['cite-sciences.fr']),
+  viepublique('🏛️', 'Vie-publique', ['vie-publique.fr']),
+  geoconfluences('🌍', 'Géoconfluences', ['geoconfluences.ens-lyon.fr']),
+  annabac('📝', 'Annabac', ['annabac.com']),
+  louvre('🖼️', 'Musée du Louvre', ['louvre.fr']),
+  bnf('📚', 'BnF', ['bnf.fr']),
+  ina('🎞️', 'INA', ['ina.fr']),
+  cnes('🛰️', 'CNES', ['cnes.fr']),
+  meteofrance('⛅', 'Météo-France', ['meteofrance.com', 'meteofrance.fr']),
+  versailles('👑', 'Château de Versailles', ['chateauversailles.fr']);
 
   const ResourceProvider(this.emoji, this.label, this.hosts);
 
@@ -25,6 +41,39 @@ enum ResourceProvider {
   bool allows(Uri uri) =>
       uri.scheme == 'https' && hosts.any((h) => uri.host == h || uri.host.endsWith('.$h'));
 }
+
+/// Sites de confiance qui demandent un compte (élève, enseignant, ENT) : Ludifun ne peut pas y
+/// chercher pour la leçon ; le parent les ouvre dans son navigateur.
+typedef AccountSite = ({String emoji, String name, String about, Uri? url});
+
+final accountSites = <AccountSite>[
+  (
+    emoji: '🏫',
+    name: 'CNED (Jules, Ma classe à la maison)',
+    about: 'Assistant de devoirs et cours du CNED, avec un compte CNED.',
+    url: Uri.parse('https://www.cned.fr/'),
+  ),
+  (
+    emoji: '💻',
+    name: 'Pix',
+    about: 'Compétences numériques, au collège, avec le compte donné par l\'établissement.',
+    url: Uri.parse('https://pix.fr/'),
+  ),
+  (
+    emoji: '🗂️',
+    name: 'Éduthèque',
+    about:
+        'Portail des grands établissements (Louvre, BnF, INA, CNES, Météo-France, Versailles) : '
+        'compte enseignant. Leurs pages ouvertes à tous sont proposées avec les leçons.',
+    url: Uri.parse('https://www.edutheque.fr/'),
+  ),
+  (
+    emoji: '🎒',
+    name: 'BRNE',
+    about: 'Banque de ressources numériques pour l\'école : par l\'ENT du collège de l\'enfant.',
+    url: null,
+  ),
+];
 
 enum ResourceKind {
   exercise('Exercice noté'),

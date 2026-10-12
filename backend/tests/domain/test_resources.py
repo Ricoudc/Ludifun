@@ -281,3 +281,98 @@ def test_calculatice_and_sesamath_for_math_lessons() -> None:
         and Grade.CINQUIEME not in calcul.grades
     )
     assert sesamath.subjects == frozenset({Subject.MATH}) and Grade.CM2 not in sesamath.grades
+
+
+def test_family_sites() -> None:
+    """§5.60 : les sites choisis par la famille. Une page sur la leçon, pour la bonne classe et la
+    bonne matière ; jamais un PDF, une recherche, un autre site."""
+    from app.domain.knowledge import Subject
+    from app.domain.resources import (
+        ALLOWED_HOSTS,
+        LICENCES,
+        LINKED_SITES,
+        Provider,
+        ResourceKind,
+        host_allowed,
+        linked_resource,
+    )
+    from app.domain.sources import DEFAULT_SITES, allowed, keywords
+
+    sites = {s.provider: s for s in LINKED_SITES}
+    # Chaque site a son adresse, sa licence, et sa recherche (sauf ceux qui ont la leur).
+    assert set(ALLOWED_HOSTS) == set(LICENCES) == set(Provider)
+    assert set(sites) == set(Provider) - {Provider.MATHALEA, Provider.VIKIDIA, Provider.LUMNI}
+    for site in LINKED_SITES:
+        assert all(host_allowed(f"https://{host}/x", site.provider) for host in site.sites), site
+
+    topic = keywords("Les homophones a et à")
+    gomme = sites[Provider.BOUT_DE_GOMME]
+    page = linked_resource(
+        gomme, "https://www.boutdegomme.fr/homophones-a-a-ce2", "Homophones a / à - Bout de Gomme", topic
+    )
+    assert page is not None and page.title == "Homophones a / à" and page.kind is ResourceKind.LESSON
+    for url, title in [
+        ("https://www.boutdegomme.fr/homophones.pdf", "Homophones"),
+        ("https://www.boutdegomme.fr/?s=homophones", "Homophones"),
+        ("https://www.boutdegomme.fr/", "Homophones - Bout de Gomme"),
+        ("https://boutdegomme.fr.example.com/homophones", "Homophones"),
+    ]:
+        assert linked_resource(gomme, url, title, topic) is None, url
+    assert gomme.grades == frozenset({Grade.CP, Grade.CE1, Grade.CE2, Grade.CM1, Grade.CM2})
+
+    jeu = linked_resource(
+        sites[Provider.LOGICIEL_EDUCATIF],
+        "https://www.logicieleducatif.fr/francais/grammaire/homophones-a-a.php",
+        "Homophones a / à : jeu - Logiciel Éducatif",
+        topic,
+    )
+    assert jeu is not None and jeu.kind is ResourceKind.GAME
+
+    khan = sites[Provider.KHAN_ACADEMY]
+    fractions = keywords("Les fractions équivalentes")
+    video = linked_resource(
+        khan,
+        "https://fr.khanacademy.org/math/cm1/fractions/v/fractions-equivalentes",
+        "Fractions équivalentes (vidéo) | Khan Academy",
+        fractions,
+    )
+    assert (
+        video is not None
+        and video.kind is ResourceKind.VIDEO
+        and video.title == "Fractions équivalentes (vidéo)"
+    )
+    assert khan.subjects == frozenset({Subject.MATH})
+
+    # Chaque site pour ses classes et ses matières.
+    assert (
+        Grade.CP not in sites[Provider.ANNABAC].grades and Grade.TROISIEME in sites[Provider.ANNABAC].grades
+    )
+    assert sites[Provider.VIE_PUBLIQUE].subjects == frozenset({Subject.CIVICS, Subject.HISTORY})
+    assert sites[Provider.GEOCONFLUENCES].subjects == frozenset({Subject.GEOGRAPHY})
+    assert (
+        sites[Provider.LAMAP].subjects
+        == sites[Provider.CITE_SCIENCES].subjects
+        == frozenset({Subject.SCIENCE})
+    )
+    assert sites[Provider.MATHADOR].kind is ResourceKind.GAME
+    louvre = linked_resource(
+        sites[Provider.LOUVRE],
+        "https://collections.louvre.fr/ark:/53355/cl010062370",
+        "La Joconde - Louvre",
+        keywords("La Renaissance Léonard de Vinci la Joconde"),
+    )
+    assert louvre is not None and louvre.kind is ResourceKind.ARTICLE
+    assert host_allowed("https://meteofrance.com/comprendre/nuages", Provider.METEO_FRANCE)
+    assert host_allowed("https://fresques.ina.fr/jalons/fiche", Provider.INA)
+
+    # Les textes lisibles et citables servent aussi aux explications « D'après… ».
+    for url in [
+        "https://eduscol.education.fr/page",
+        "https://www.vie-publique.fr/fiches/23838-quest-ce-que-la-republique",
+        "https://geoconfluences.ens-lyon.fr/glossaire/metropole",
+        "https://fondation-lamap.org/sequence",
+        "https://www.cite-sciences.fr/fr/juniors/volcans",
+        "https://essentiels.bnf.fr/fr/litterature/moyen-age",
+    ]:
+        assert allowed(url, DEFAULT_SITES), url
+    assert DEFAULT_SITES[:2] == ("fr.vikidia.org", "www.lumni.fr")  # les sites pour enfants d'abord

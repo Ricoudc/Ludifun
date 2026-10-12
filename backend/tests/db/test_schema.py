@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.db.base import Base
 from app.db.models import (
+    RESOURCE_PROVIDERS,
     AiRun,
     Attempt,
     AttemptEvidence,
@@ -697,4 +698,33 @@ async def test_migration_0029_theme_of_the_notions(engine: AsyncEngine, db: Asyn
         )
         kept = await conn.scalar(text("SELECT count(*) FROM knowledge_items"))
     assert "theme" not in columns and kept == count
+    await run_alembic("upgrade", "head")
+
+
+async def test_migration_0030_family_sites(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Les sites choisis par la famille (Bout de Gomme, Khan Academy, Louvre…) acceptés ; retour
+    arrière : leurs ressources disparaissent, les autres restent."""
+    from app.domain.resources import Provider
+
+    await create_full_lesson(db)
+    await db.commit()
+    lesson = await db.scalar(select(Lesson.id).limit(1))
+    await db.commit()
+    insert = text(
+        "INSERT INTO lesson_resources (id, lesson_id, provider, kind, title, url, position) "
+        "VALUES (:id, :lesson, :provider, :kind, 'Titre', :url, :position)"
+    )
+    async with engine.begin() as conn:
+        for position, provider in enumerate(["boutdegomme", "khanacademy", "louvre", "lumni"]):
+            await conn.execute(
+                insert,
+                {"id": uuid.uuid4(), "lesson": lesson, "provider": provider, "kind": "lesson",
+                 "url": f"https://exemple.fr/{position}", "position": position},
+            )  # fmt: skip
+    # Le modèle et le domaine connaissent les mêmes sites.
+    assert set(RESOURCE_PROVIDERS) == {p.value for p in Provider}
+    await run_alembic("downgrade", "0029")
+    async with engine.connect() as conn:
+        providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
+    assert providers == ["lumni"]
     await run_alembic("upgrade", "head")
