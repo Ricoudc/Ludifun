@@ -9,14 +9,21 @@ Tout s'enchaîne sur la même carte graphique, jamais en même temps :
 
 Un échec (moteur éteint, scène refusée) ne touche jamais la leçon : elle reste sans image, et
 les jeux en images ne sont simplement pas proposés.
+
+Avant tout cela (§5.61), le code dessine ce qui doit être exact : les figures de géométrie d'une
+leçon de mathématiques, les schémas légendés et les cartes de la bibliothèque de figures
+(`app.domain.diagrams`). Sans IA ni carte graphique, en quelques millisecondes, et même sans
+moteur d'images ; ces notions ne sont pas demandées au moteur.
 """
 
 import asyncio
 import contextlib
+import json
 import logging
+import random
 import time
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,6 +38,9 @@ from app.ai.schemas import IllustrationOutput
 from app.config import Settings
 from app.db import models as db
 from app.db.base import Database
+from app.domain.diagrams import VERSION as DRAWING_VERSION
+from app.domain.diagrams import Drawing, DrawingPlan, Planned, draw_planned, find_shape, plan_drawings
+from app.domain.figures import default_library, figure_path
 from app.domain.illustration import (
     IllustrationPlan,
     ImageStatus,
@@ -40,8 +50,10 @@ from app.domain.illustration import (
     clean_remark,
     plan_illustrations,
 )
+from app.services.drawing_render import render
 
 logger = logging.getLogger("ludifun.images")
+CODE_ENGINE = "ludifun"  # image dessinée par le code (figure exacte, schéma légendé)
 
 EXTENSIONS = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 
@@ -77,6 +89,7 @@ def illustration_input(
     notions: list[Notion],
     remark: str | None,
     target: str | None = None,
+    drawn: Sequence[str] = (),
 ) -> str:
     def safe(text: str) -> str:
         return text.replace("<", "‹").replace(">", "›")
@@ -88,6 +101,8 @@ def illustration_input(
         f"Titre : {safe(lesson.title or '')}\nRésumé : {safe(lesson.summary or '')}\n"
         f"Notions :\n{lines}\n</lecon>",
     ]
+    if drawn:
+        parts.append(f"<deja_dessinees>{', '.join(drawn)}</deja_dessinees>")
     if target:
         parts.append(f"<cible>{target}</cible>")
     if remark:
@@ -181,14 +196,16 @@ async def _propose(
     notions: list[Notion],
     remark: str | None,
     target: str | None,
+    drawn: Sequence[str] = (),
 ) -> IllustrationPlan | str:
-    """La proposition de l'IA, contrôlée par le code ; ou la raison de l'échec."""
+    """La proposition de l'IA, contrôlée par le code ; ou la raison de l'échec. Les notions
+    `drawn` (dessinées par le code) ne sont pas demandées."""
     prompt = Prompt.load("illustration")
     started = time.perf_counter()
     try:
         result = await llm.structured(
             prompt=prompt,
-            input=illustration_input(lesson, grade, notions, remark, target),
+            input=illustration_input(lesson, grade, notions, remark, target, drawn),
             schema=IllustrationOutput,
         )
     except AIError as exc:
@@ -201,7 +218,7 @@ async def _propose(
         out.scene,
         out.alt,
         [ProposedPicture(p.notion, p.scene, p.alt) for p in out.pictures],
-        [n.ref for n in notions] if target in (None, COVER) else [target or ""],
+        [n.ref for n in notions if n.ref not in drawn] if target in (None, COVER) else [target or ""],
     )
     warnings = ([] if plan.cover or not plan.cover_needed else [plan.cover_issue]) + list(
         plan.refused.values()
@@ -211,6 +228,71 @@ async def _propose(
         _run(lesson.id, llm, prompt, result, started, "invalid_output" if nothing else "ok", warnings)
     )
     return plan
+
+
+def drawing_plan(lesson: db.Lesson, notions: Sequence[Notion]) -> DrawingPlan:
+    """Ce que le code dessine exactement pour cette leçon (§5.61)."""
+    return plan_drawings(
+        lesson.subject, lesson.title, [(n.ref, n.label, n.statement) for n in notions], default_library()
+    )
+
+
+def _figure_data(figure_id: str | None) -> dict[str, object] | None:
+    path = figure_path(figure_id) if figure_id else None
+    return json.loads(path.read_text(encoding="utf-8")) if path is not None else None
+
+
+async def _save_drawing(
+    session: AsyncSession, settings: Settings, row: db.LessonImage, drawing: Drawing
+) -> None:
+    """Le dessin du code, en PNG, enregistré en attente du parent (comme une image du moteur)."""
+    started = time.perf_counter()
+    data = await asyncio.to_thread(render, drawing)
+    old = image_path(settings, row)
+    name = f"{row.id}-{uuid.uuid4().hex[:8]}.png"
+    (media_dir(settings) / name).write_bytes(data)
+    if old is not None:
+        old.unlink(missing_ok=True)
+    row.file_name, row.media_type = name, "image/png"
+    row.alt, row.prompt = drawing.alt, drawing.key
+    row.engine, row.model = CODE_ENGINE, f"schéma v{DRAWING_VERSION}"
+    row.latency_ms = round((time.perf_counter() - started) * 1000)
+    row.status, row.error = ImageStatus.TO_REVIEW.value, None
+    await session.commit()
+
+
+async def _draw_planned(
+    session: AsyncSession,
+    settings: Settings,
+    row: db.LessonImage,
+    planned: Planned,
+    title: str,
+    variant: int = 0,
+) -> None:
+    figure = await asyncio.to_thread(_figure_data, planned.figure)
+    drawing = draw_planned(planned, figure, title, row.knowledge_id is None, variant)
+    await _save_drawing(session, settings, row, drawing)
+
+
+async def can_draw(
+    session: AsyncSession,
+    lesson_id: uuid.UUID,
+    knowledge_id: uuid.UUID | None = None,
+    remark: str | None = None,
+) -> bool:
+    """Le code sait-il dessiner cette image (celle de la leçon, ou d'une notion) sans moteur
+    d'images ? Oui pour une figure de géométrie ou un schéma, ou si le parent en nomme une."""
+    if remark and find_shape(remark) is not None:
+        return True
+    context = await _context(session, lesson_id, keep=knowledge_id)
+    if context is None:
+        return False
+    lesson, _, notions = context
+    plan = drawing_plan(lesson, notions)
+    if knowledge_id is None:
+        return plan.cover is not None
+    ref = next((n.ref for n in notions if n.id == knowledge_id), None)
+    return ref in plan.pictures
 
 
 async def _draw(
@@ -262,35 +344,56 @@ def _fail(row: db.LessonImage, reason: str, status: ImageStatus = ImageStatus.FA
 
 async def illustrate_lesson(
     database: Database,
-    llm: LLMProvider,
-    engine: ImageEngine,
+    llm: LLMProvider | None,
+    engine: ImageEngine | None,
     settings: Settings,
     lesson_id: uuid.UUID,
 ) -> None:
-    """Après l'analyse (image de la leçon déjà « en préparation ») : l'IA dit si une image aide et
-    quelles notions se dessinent ; le code contrôle, puis tout est dessiné à la suite."""
+    """Après l'analyse (image de la leçon déjà « en préparation ») : le code dessine d'abord ce
+    qui doit être exact (§5.61) ; puis, s'il y a un moteur d'images, l'IA dit si une image aide
+    et quelles autres notions se dessinent ; le code contrôle, puis tout est dessiné à la suite."""
     async with database.sessionmaker() as session:
         cover = await image_of(session, lesson_id, None)
         context = await _context(session, lesson_id)
         if cover is None or context is None:
             return
         lesson, grade, notions = context
-        plan = await _propose(session, llm, lesson, grade, notions, cover.remark, None)
+        title = lesson.title or "À retenir"
+        drawing = drawing_plan(lesson, notions)
+        by_ref = {n.ref: n for n in notions}
+        if drawing.cover is not None:
+            await _draw_planned(session, settings, cover, drawing.cover, title)
+        for ref, planned in drawing.pictures.items():
+            row = await start(session, lesson_id, None, by_ref[ref].id)
+            await _draw_planned(session, settings, row, planned, title)
+        drawn = list(drawing.pictures)
+        if engine is None or llm is None:
+            if drawing.cover is None:  # rien d'autre ne se dessine sans moteur d'images
+                await session.delete(cover)
+                await session.commit()
+            return
+        if drawing.cover is not None and len(drawn) == len(notions):
+            return  # tout est déjà dessiné, exactement
+        plan = await _propose(session, llm, lesson, grade, notions, cover.remark, None, drawn)
         if isinstance(plan, str):
-            _fail(cover, plan)
+            if drawing.cover is None:
+                _fail(cover, plan)
             await session.commit()
             logger.warning("Images de la leçon %s non faites : %s", lesson_id, plan)
             return
         jobs: list[tuple[db.LessonImage, Scene]] = []
-        if plan.cover is not None:
+        if drawing.cover is not None:
+            pass  # l'image de la leçon est la fiche mémo dessinée par le code
+        elif plan.cover is not None:
             jobs.append((cover, plan.cover))
         elif plan.cover_needed:
             _fail(cover, plan.cover_issue)
         else:
             _fail(cover, plan.cover_issue, ImageStatus.NOT_NEEDED)
             logger.info("Leçon %s : image jugée pas utile", lesson_id)  # sans la raison (texte)
-        by_ref = {n.ref: n for n in notions}
         for ref, scene in plan.pictures.items():
+            if ref in drawn:
+                continue
             row = await start(session, lesson_id, None, by_ref[ref].id)
             jobs.append((row, scene))
         await session.commit()
@@ -299,12 +402,15 @@ async def illustrate_lesson(
 
 async def illustrate_one(
     database: Database,
-    llm: LLMProvider,
-    engine: ImageEngine,
+    llm: LLMProvider | None,
+    engine: ImageEngine | None,
     settings: Settings,
     image_id: uuid.UUID,
 ) -> ImageStatus:
-    """Refait une image (déjà « en préparation ») à la demande du parent, avec sa remarque."""
+    """Refait une image (déjà « en préparation ») à la demande du parent, avec sa remarque.
+    Une figure nommée par le parent (« un carré ») est dessinée exactement par le code ; une
+    figure ou un schéma du code est redessiné par le code, sauf si le parent demande autre chose
+    avec un moteur d'images."""
     async with database.sessionmaker() as session:
         row = await session.get(db.LessonImage, image_id)
         if row is None:
@@ -316,6 +422,23 @@ async def illustrate_one(
             return ImageStatus.FAILED
         lesson, grade, notions = context
         ref = next((n.ref for n in notions if n.id == row.knowledge_id), None)
+        named = find_shape(row.remark) if row.remark else None
+        drawing = drawing_plan(lesson, notions)
+        planned = (
+            Planned(shapes=(named,))
+            if named is not None
+            else drawing.cover
+            if row.knowledge_id is None
+            else drawing.pictures.get(ref or "")
+        )
+        if planned is not None and (named is not None or not row.remark or engine is None or llm is None):
+            variant = random.randrange(1, 1000)  # une autre orientation de la figure
+            await _draw_planned(session, settings, row, planned, lesson.title or "À retenir", variant)
+            return ImageStatus(row.status)
+        if engine is None or llm is None:
+            _fail(row, "le serveur n'a pas de moteur d'images")
+            await session.commit()
+            return ImageStatus.FAILED
         target = COVER if row.knowledge_id is None else ref
         plan = await _propose(session, llm, lesson, grade, notions, row.remark, target)
         scene: Scene | None = None

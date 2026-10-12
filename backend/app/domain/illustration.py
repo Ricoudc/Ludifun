@@ -6,6 +6,11 @@ pour des enfants, aucune demande de texte dans l'image), puis construit seul le 
 Ludifun, âge de l'enfant, format carré, texte interdit. Une proposition refusée ne produit pas
 d'image : la leçon, elle, reste entière.
 
+Ce qui doit être exact (une figure de géométrie, un schéma légendé, une carte) n'est jamais
+demandé au moteur d'images : le code le dessine (`app.domain.diagrams`, §5.61). Le moteur fait
+le reste, dans le style d'un manuel scolaire : la chose à retenir, juste et bien visible, plutôt
+qu'une scène de livre d'histoires.
+
 L'image est facultative : l'IA dit d'abord si une image aide vraiment à retenir la leçon
 (une leçon de conjugaison ou de calcul mental s'en passe très bien) ; sinon, rien n'est dessiné
 et le parent le voit (« pas utile »), libre d'en demander une quand même. Les notions concrètes
@@ -54,15 +59,18 @@ AGES: dict[Grade, int] = {
 
 # Image d'une notion, pour les jeux : un seul sujet, bien reconnaissable.
 SINGLE_SUBJECT = "one single clear main subject in the center, easy to recognize"
+# Style d'un manuel scolaire (§5.61) : la chose à apprendre, juste et lisible, pas un décor.
 STYLE = (
-    "children's educational book illustration, soft flat colors, clean simple shapes, "
-    "friendly and calm, plain light background, high quality"
+    "clear educational textbook illustration, accurate shapes and true proportions, realistic "
+    "natural colors, clean outlines, the key feature clearly visible, plain white background, "
+    "high quality"
 )
 # Ce que l'image ne doit jamais contenir. Le texte surtout : les modèles d'image l'écrivent faux.
 NEGATIVE = (
     "text, letters, words, numbers, writing, caption, label, watermark, signature, logo, "
     "speech bubble, scary, horror, violent, blood, gore, weapon, nudity, photo, photorealistic, "
-    "deformed, extra limbs, blurry"
+    "deformed, extra limbs, blurry, fantasy, cute mascot, smiling objects, decorative border, "
+    "cluttered background"
 )
 # Une scène qui en parle est refusée (images pour des enfants de 6 à 14 ans).
 _FORBIDDEN = re.compile(
@@ -75,6 +83,16 @@ _FORBIDDEN = re.compile(
 _TEXT_REQUEST = re.compile(
     r"\b(text|word|words|letter|letters|written|writing|caption|label|labels|title|sign that says|"
     r"says|spelled|number|numbers|digit|digits)\b|[\"«»“”]",
+    re.IGNORECASE,
+)
+
+
+# Un schéma, une carte, une figure exacte : le moteur d'images les dessine faux ; le code les
+# dessine (`app.domain.diagrams`).
+_DIAGRAM_REQUEST = re.compile(
+    r"\b(diagrams?|charts?|graphs?|infographics?|maps?|blueprints?|worksheets?|geometric|geometry|"
+    r"cross[- ]sections?|cutaway|labell?ed|rhombus|parallelograms?|trapezoids?|polygons?|cuboids?|"
+    r"right angles?)\b",
     re.IGNORECASE,
 )
 
@@ -105,6 +123,8 @@ def validate_scene(description: str | None, alt: str | None) -> tuple[Scene | No
         return None, "la scène contient un mot interdit pour des enfants"
     if _TEXT_REQUEST.search(text):
         return None, "la scène demande du texte ou des chiffres dans l'image"
+    if _DIAGRAM_REQUEST.search(text):
+        return None, "un schéma ou une figure exacte ne se dessine pas avec le moteur d'images"
     if not caption or len(caption) > ALT_MAX:
         return None, "description pour le parent absente ou trop longue"
     return Scene(text.rstrip("."), caption), ""

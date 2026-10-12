@@ -817,6 +817,7 @@ class LessonImage {
     this.id,
     this.knowledgeId,
     this.label,
+    this.exact = false,
   });
 
   factory LessonImage.fromJson(Json json) => LessonImage(
@@ -835,6 +836,7 @@ class LessonImage {
     id: json['id'] as String?,
     knowledgeId: json['knowledge_id'] as String?,
     label: json['label'] as String?,
+    exact: json['exact'] as bool? ?? false,
   );
 
   final ImageStatus status;
@@ -851,6 +853,9 @@ class LessonImage {
   /// La notion montrée et son nom ; absents : l'image de la leçon.
   final String? knowledgeId;
   final String? label;
+
+  /// Figure ou schéma dessiné exactement par Ludifun (§5.61), pas par le moteur d'images.
+  final bool exact;
 
   bool get pending => status == ImageStatus.generating;
 }

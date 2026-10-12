@@ -268,3 +268,96 @@ async def test_double_tap_on_prepare_starts_one_image(
     url = f"/v1/children/{family['child']['id']}/lessons/{lesson['id']}/images/prepare"
     responses = await asyncio.gather(*(client.post(url, headers=auth(family["parent"])) for _ in range(3)))
     assert all(r.status_code == 202 for r in responses), [r.text for r in responses]
+
+
+async def test_geometry_is_drawn_exactly_by_the_code(
+    app: FastAPI, client: AsyncClient, db: AsyncSession, tmp_path: Path, fake_llm: FakeProvider
+) -> None:
+    """§5.61 : sans moteur d'images, les figures de géométrie sont dessinées par le code, avec
+    leur codage ; « un carré » demandé par le parent est un vrai carré, pas une illustration."""
+    from app.db.models import KnowledgeItem, Lesson
+
+    settings: Settings = app.state.settings
+    app.state.settings = settings.model_copy(update={"media_dir": str(tmp_path)})  # pas de moteur
+    family = await family_with_device(client)
+    parent = auth(family["parent"])
+    lesson = await upload_lesson(client, family["device"])
+    # La leçon devient une leçon de géométrie : deux notions nomment une figure.
+    row = await db.get(Lesson, lesson["id"])
+    assert row is not None
+    row.subject = "math"
+    items = list(await db.scalars(select(KnowledgeItem).where(KnowledgeItem.lesson_id == row.id)))
+    items[0].label, items[1].label = "Le carré", "Le triangle rectangle"
+    await db.commit()
+    base = f"/v1/children/{family['child']['id']}/lessons/{lesson['id']}"
+
+    r = await client.post(f"{base}/images/prepare", headers=parent)
+    assert r.status_code == 202, r.text
+    state = (await client.get(f"{base}/image", headers=parent)).json()
+    assert state["available"] is True
+    cover = state["image"]
+    assert cover["status"] == "to_review" and cover["exact"] is True
+    assert "carré" in cover["alt"] and "triangle rectangle" in cover["alt"]
+    pictures = {p["label"]: p for p in state["pictures"]}
+    assert set(pictures) == {"Le carré", "Le triangle rectangle"}
+    assert all(p["exact"] and p["status"] == "to_review" for p in pictures.values())
+    file = await client.get(cover["url"], headers=parent)
+    assert file.status_code == 200 and file.content.startswith(b"\x89PNG")
+    # Aucune IA appelée : le code a tout dessiné.
+    assert not [stage for stage, _ in fake_llm.calls if stage == "illustration"]
+
+    # Refaite à la demande : le parent demande « un carré » pour l'image du triangle.
+    triangle = pictures["Le triangle rectangle"]
+    r = await client.post(f"{base}/images/{triangle['id']}/redo", json={"remark": "un carré"}, headers=parent)
+    assert r.status_code == 202
+    redone = next(
+        p
+        for p in (await client.get(f"{base}/image", headers=parent)).json()["pictures"]
+        if p["id"] == triangle["id"]
+    )
+    assert redone["exact"] and redone["status"] == "to_review" and "carré" in redone["alt"]
+    image = await db.get(LessonImage, triangle["id"])
+    await db.refresh(image)
+    assert image is not None and image.engine == "ludifun" and image.prompt == "carre"
+
+    # Sans moteur d'images, la fiche de la leçon se redessine par le code, même avec une remarque.
+    r = await client.post(f"{base}/image/redo", json={"remark": "plus grand"}, headers=parent)
+    assert r.status_code == 202
+    assert (await client.get(f"{base}/image", headers=parent)).json()["image"]["status"] == "to_review"
+    # Une leçon sans figure : toujours rien sans moteur.
+    row.subject = "history"
+    await db.commit()
+    r = await client.post(f"{base}/images/prepare", headers=parent)
+    assert r.status_code == 503
+    app.state.settings = settings
+
+
+async def test_with_an_engine_the_ai_is_not_asked_for_what_the_code_draws(
+    client: AsyncClient, db: AsyncSession, images: Path, fake_llm: FakeProvider
+) -> None:
+    from app.db.models import KnowledgeItem, Lesson
+
+    family = await family_with_device(client)
+    parent = auth(family["parent"])
+    lesson = await upload_lesson(client, family["device"])
+    row = await db.get(Lesson, lesson["id"])
+    assert row is not None
+    row.subject = "math"
+    items = list(
+        await db.scalars(
+            select(KnowledgeItem)
+            .where(KnowledgeItem.lesson_id == row.id)
+            .order_by(KnowledgeItem.importance.desc(), KnowledgeItem.position)
+        )
+    )
+    items[0].label = "Le cercle"
+    await db.commit()
+    base = f"/v1/children/{family['child']['id']}/lessons/{lesson['id']}"
+    assert (await client.post(f"{base}/images/prepare", headers=parent)).status_code == 202
+    state = (await client.get(f"{base}/image", headers=parent)).json()
+    assert state["image"]["exact"] is True  # la fiche du cercle, pas une scène du moteur
+    by_label = {p["label"]: p for p in state["pictures"]}
+    assert by_label["Le cercle"]["exact"] is True
+    assert any(not p["exact"] for p in state["pictures"])  # les autres notions : le moteur
+    sent = [text for stage, text in fake_llm.calls if stage == "illustration"][-1]
+    assert "<deja_dessinees>N1</deja_dessinees>" in sent

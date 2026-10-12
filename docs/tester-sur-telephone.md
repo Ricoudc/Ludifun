@@ -252,6 +252,18 @@ ou « Valider les N images »), elles s'affichent avec la notion dans la leçon 
 servent aux jeux **« Image et mot »** et **« Quelle image ? »** (trois images validées au moins).
 Pour une leçon analysée avant l'installation du moteur : « Préparer les images ».
 
+**Figures exactes et schémas, même sans moteur d'images** : pour une leçon de géométrie (carré,
+rectangle, triangles, cercle, angles, droites parallèles ou perpendiculaires, symétrie, cube,
+périmètre, aire…), Ludifun dessine lui-même les figures, justes et codées comme au cahier
+(petits traits sur les côtés égaux, angle droit, sommets A, B, C) ; l'image de la leçon est une
+fiche à retenir (chaque figure, son nom, ses propriétés). De même pour les schémas de la
+bibliothèque (volcan, plante, squelette, cycle de l'eau, cartes de France et d'Europe) : les
+parties dont parle la leçon en couleur, numérotées, avec la légende. Ces images portent la
+mention « 📐 Figure exacte dessinée par Ludifun ». Pour en obtenir une, il suffit aussi de la
+nommer en refaisant une image (« un carré ») : c'est un vrai carré, pas une illustration. Le
+moteur d'images ne fait plus que le reste (animaux, plantes, objets, monuments, la vie à une
+époque), dans le style d'un manuel scolaire.
+
 Si le moteur ne répond pas, la leçon reste complète, sans image ; le rapport de diagnostic (choix 10) montre
 la fin de son journal (`moteur-images-erreurs.log` dans le dossier choisi).
 

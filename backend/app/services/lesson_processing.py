@@ -95,13 +95,14 @@ async def prepare_image(
     database: Database, llm: LLMProvider, settings: Settings, lesson_id: uuid.UUID, remark: str | None = None
 ) -> None:
     """Image de la leçon (étape 27), après tout le reste : la leçon est déjà prête, l'enfant
-    peut réviser pendant que l'image se prépare ; elle attendra la validation du parent."""
-    if image_engine_for(settings) is None:
-        return
+    peut réviser pendant que l'image se prépare ; elle attendra la validation du parent. Sans
+    moteur d'images, seules les figures et schémas dessinés par le code (§5.61)."""
     try:
         async with database.sessionmaker() as session:
             lesson = await session.get(Lesson, lesson_id)
             if lesson is None or lesson.status != "ready":
+                return
+            if image_engine_for(settings) is None and not await illustration.can_draw(session, lesson_id):
                 return
             await illustration.start(session, lesson_id, remark)
             await session.commit()
@@ -111,26 +112,24 @@ async def prepare_image(
     await draw_image(database, llm, settings, lesson_id)
 
 
-async def draw_image(database: Database, llm: LLMProvider, settings: Settings, lesson_id: uuid.UUID) -> None:
+async def draw_image(
+    database: Database, llm: LLMProvider | None, settings: Settings, lesson_id: uuid.UUID
+) -> None:
     """Images de la leçon (celle de la leçon déjà « en préparation ») ; un échec ne touche
     jamais la leçon."""
-    engine = image_engine_for(settings)
-    if engine is None:
-        return
     try:
-        await illustration.illustrate_lesson(database, llm, engine, settings, lesson_id)
+        await illustration.illustrate_lesson(database, llm, image_engine_for(settings), settings, lesson_id)
     except Exception:  # un bug ne doit laisser ni la leçon ni une image « en préparation »
         logger.exception("Leçon %s : images non préparées", lesson_id)
         await _unstick(database, LessonImage.lesson_id == lesson_id)
 
 
-async def redraw_image(database: Database, llm: LLMProvider, settings: Settings, image_id: uuid.UUID) -> None:
+async def redraw_image(
+    database: Database, llm: LLMProvider | None, settings: Settings, image_id: uuid.UUID
+) -> None:
     """Refait une image à la demande du parent (déjà « en préparation »)."""
-    engine = image_engine_for(settings)
-    if engine is None:
-        return
     try:
-        await illustration.illustrate_one(database, llm, engine, settings, image_id)
+        await illustration.illustrate_one(database, llm, image_engine_for(settings), settings, image_id)
     except Exception:
         logger.exception("Image %s non refaite", image_id)
         await _unstick(database, LessonImage.id == image_id)

@@ -1721,6 +1721,51 @@ depuis l'environnement de développement (réseau fermé) ; les filtres (`linked
 ceux, génériques, des autres sites (page sur le sujet de la leçon, pas d'accueil, de recherche
 ni de PDF).
 
+### 5.61 Des images pour apprendre : figures exactes et schémas dessinés par le code (octobre 2026, illustration v3)
+
+Remarque de la famille : « quand je demande un carré, il me sort une image illustrée ». Un
+moteur d'images (Stable Diffusion, Pollinations) dessine « à la manière de » : il ne sait pas
+tracer quatre côtés égaux, marquer un angle droit ni écrire une légende juste. Or l'image doit
+aider l'enfant à acquérir sa leçon, pas la décorer. D'où un partage :
+
+- **Le code dessine ce qui doit être exact** (`app/domain/diagrams.py`, pur ; rendu PNG par
+  `app/services/drawing_render.py`, Pillow, quelques millisecondes, sans carte graphique ni
+  IA) :
+  - leçons de **mathématiques** : la figure nommée par chaque notion (nom, sinon phrase) —
+    carré, rectangle, losange, parallélogramme, trapèze, triangles (quelconque, rectangle,
+    isocèle, équilatéral), cercle (centre, rayon, diamètre), angles (droit, aigu, obtus),
+    droites parallèles et perpendiculaires, segment / droite / demi-droite, axe de symétrie,
+    cube, pavé droit (arêtes cachées en pointillés), périmètre (le tour en couleur), aire (les
+    carreaux) — avec le codage du cahier (petits traits sur les côtés égaux, carré de l'angle
+    droit, sommets A, B, C, chevrons des côtés parallèles). « Mètre carré », « droite
+    graduée », « à droite », « axe chronologique » ne sont pas des figures ;
+  - **schémas de la bibliothèque** (étape 22 : volcan, plante, squelette, appareil digestif,
+    cycle de l'eau, système solaire, cartes) quand au moins deux notions (ou le titre) nomment
+    ses zones, dans la matière de la leçon : ces zones en couleur, les autres pâlies.
+- **Deux usages** : l'image d'une notion (jeux « Image et mot », « Quelle image ? ») ne porte
+  aucun nom — seulement les lettres des sommets ou la zone en couleur — sinon la réponse
+  serait écrite dessus ; l'image de la leçon est une **fiche à retenir** : chaque figure (4 au
+  plus), son nom et ses propriétés (« Il a 4 côtés de même longueur. Il a 4 angles droits. »),
+  ou le schéma, ses zones numérotées (numéros placés sans se chevaucher ni tomber sur une
+  autre zone) et la légende.
+- **Préparation** (`services/illustration.py`) : le code dessine d'abord ; l'IA (prompt
+  illustration v3) ne propose des scènes que pour les autres notions (`<deja_dessinees>`), et
+  l'image de la leçon reste la fiche du code. **Sans moteur d'images**, ces figures sont faites
+  quand même (`available` vrai pour une telle leçon) ; rien d'autre. **Refaire** : une figure
+  nommée par le parent (« un carré ») est dessinée par le code ; une figure du code est
+  redessinée par le code (autre orientation), sauf remarque du parent avec un moteur d'images.
+  Le parent valide toujours avant que l'enfant voie l'image. Champ nouveau et facultatif
+  `exact` (images) : l'application affiche « 📐 Figure exacte dessinée par Ludifun ».
+- **Le moteur d'images, pour le reste** : style d'un manuel scolaire (formes et proportions
+  justes, couleurs naturelles, le détail qui fait reconnaître, fond blanc) au lieu du livre
+  d'histoires ; une scène qui demande un schéma, une carte, une coupe, une figure géométrique
+  est refusée (`validate_scene`). Prompt illustration v3 : la chose à apprendre, juste et
+  entière ; les étapes d'un phénomène côte à côte ; pas de personnage de dessin animé.
+
+Non testé ici : le rendu des nouvelles consignes par un vrai moteur (Stable Diffusion,
+Pollinations) ; les figures du code, elles, sont vérifiées par les tests (côtés égaux, angles
+droits, rayon et diamètre recalculés) et ont été regardées en image.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

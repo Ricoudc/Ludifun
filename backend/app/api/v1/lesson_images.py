@@ -45,10 +45,15 @@ class LessonImageOut(BaseModel):
     id: uuid.UUID | None = Field(None, description="Pour les routes …/images/{id} (étape 28).")
     knowledge_id: uuid.UUID | None = Field(None, description="La notion montrée ; vide : la leçon.")
     label: str | None = Field(None, description="Nom de la notion montrée.")
+    exact: bool = Field(
+        False, description="Figure ou schéma dessiné par Ludifun (§5.61), pas par le moteur d'images."
+    )
 
 
 class ImagesOut(BaseModel):
-    available: bool = Field(description="Le serveur a un moteur d'images.")
+    available: bool = Field(
+        description="Le serveur a un moteur d'images, ou Ludifun sait dessiner les figures de la leçon."
+    )
     image: LessonImageOut | None = Field(None, description="L'image de la leçon.")
     pictures: list[LessonImageOut] = Field(
         [], description="Images des notions, pour les jeux « apprendre par l'image » (étape 28)."
@@ -109,6 +114,7 @@ def _out(row: db_models.LessonImage, child_id: uuid.UUID, label: str | None = No
         id=row.id,
         knowledge_id=row.knowledge_id,
         label=label,
+        exact=row.engine == illustration.CODE_ENGINE,
     )
 
 
@@ -147,7 +153,7 @@ async def get_image(
     ).all()
     cover = next((row for row, _ in rows if row.knowledge_id is None), None)
     return ImagesOut(
-        available=image_engine_for(settings) is not None,
+        available=image_engine_for(settings) is not None or await illustration.can_draw(db, lesson.id),
         image=_out(cover, child.id) if cover else None,
         pictures=[_out(row, child.id, label) for row, label in rows if row.knowledge_id is not None],
     )
@@ -248,22 +254,32 @@ async def _redo(
     lesson: db_models.Lesson,
     knowledge_id: uuid.UUID | None,
     remark: str | None,
-) -> tuple[db_models.LessonImage, LLMProvider | None]:
-    if image_engine_for(settings) is None:
+) -> tuple[db_models.LessonImage, LLMProvider | None, bool]:
+    """L'image remise « en préparation », l'IA de l'enfant (aucune si le code dessine seul) et
+    s'il faut lancer le dessin (non : déjà en préparation, un double appui ne relance rien)."""
+    engine = image_engine_for(settings) is not None
+    drawable = await illustration.can_draw(db, lesson.id, knowledge_id, remark)
+    if not engine and not drawable:
         raise ApiError(503, "images_unavailable", "Le serveur n'a pas de moteur d'images.")
     existing = await illustration.image_of(db, lesson.id, knowledge_id)
     if existing is not None and existing.status == ImageStatus.GENERATING:
-        return existing, None  # déjà en préparation : un double appui ne relance rien
-    await ensure_ai_budget(db, settings)
-    try:
-        _, llm = await resolver.for_child(db, child)
-    except AiConfigError as exc:
-        raise ApiError(
-            503, "ai_not_configured", "L'IA choisie n'est pas prête : vérifiez son réglage."
-        ) from exc
+        return existing, None, False
+    llm: LLMProvider | None = None
+    if engine:
+        try:
+            await ensure_ai_budget(db, settings)
+            _, llm = await resolver.for_child(db, child)
+        except AiConfigError as exc:
+            if not drawable:
+                raise ApiError(
+                    503, "ai_not_configured", "L'IA choisie n'est pas prête : vérifiez son réglage."
+                ) from exc
+        except ApiError:
+            if not drawable:
+                raise
     row = await illustration.start(db, lesson.id, remark, knowledge_id)
     await db.commit()
-    return row, llm
+    return row, llm, True
 
 
 @router.post("/children/{child_id}/lessons/{lesson_id}/image/redo", status_code=status.HTTP_202_ACCEPTED)
@@ -283,8 +299,8 @@ async def redo_image(
     interroger GET …/image."""
     child = await own_child(db, parent, child_id)
     lesson = await _lesson(db, child, lesson_id)
-    row, llm = await _redo(db, settings, resolver, child, lesson, None, body.remark)
-    if llm is not None:
+    row, llm, run = await _redo(db, settings, resolver, child, lesson, None, body.remark)
+    if run:
         background.add_task(redraw_image, get_database(request), llm, settings, row.id)
     return _out(row, child.id)
 
@@ -310,8 +326,8 @@ async def redo_any_image(
     current = await _image_by_id(db, lesson, image_id)
     if current is None:
         raise IMAGE_NOT_FOUND
-    row, llm = await _redo(db, settings, resolver, child, lesson, current.knowledge_id, body.remark)
-    if llm is not None:
+    row, llm, run = await _redo(db, settings, resolver, child, lesson, current.knowledge_id, body.remark)
+    if run:
         background.add_task(redraw_image, get_database(request), llm, settings, row.id)
     return _out(row, child.id)
 
@@ -331,8 +347,8 @@ async def prepare_images(
     tout est dessiné (pour une leçon analysée avant les images, ou pour tout reprendre)."""
     child = await own_child(db, parent, child_id)
     lesson = await _lesson(db, child, lesson_id)
-    row, llm = await _redo(db, settings, resolver, child, lesson, None, None)
-    if llm is not None:
+    row, llm, run = await _redo(db, settings, resolver, child, lesson, None, None)
+    if run:
         background.add_task(draw_image, get_database(request), llm, settings, lesson.id)
     return _out(row, child.id)
 

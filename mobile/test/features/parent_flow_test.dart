@@ -1206,6 +1206,43 @@ void main() {
     expect(find.text('Numérateur'), findsOneWidget);
   });
 
+  testWidgets('§5.61 : une figure exacte dessinée par Ludifun est signalée au parent', (
+    tester,
+  ) async {
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {'lesson_id': 'l2', 'title': 'Les quadrilatères', 'grade': 'CE2', 'notions': <Object?>[]},
+        ),
+      )
+      ..on(
+        'GET /v1/children/c1/lessons/l2/image',
+        (_) => (
+          200,
+          {
+            'available': true,
+            'image': {
+              'status': 'to_review',
+              'alt': 'Fiche à retenir : le carré, le rectangle.',
+              'url': '/v1/children/c1/lessons/l2/image/file',
+              'exact': true,
+            },
+          },
+        ),
+      )
+      ..on('GET /v1/children/c1/lessons/l2/image/file', (_) => (200, tinyPng));
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(
+      find.text('📐 Figure exacte dessinée par Ludifun (mesures et codage justes).'),
+      findsOneWidget,
+    );
+    await tap(tester, find.text('Refaire'));
+    expect(find.textContaining('nommez-la (« un carré »'), findsOneWidget);
+  });
+
   testWidgets('étape 27 : le parent valide, refuse et fait refaire l\'image d\'une leçon', (
     tester,
   ) async {

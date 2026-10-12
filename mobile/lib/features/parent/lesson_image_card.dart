@@ -271,6 +271,11 @@ class _ImageTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(alt, style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic)),
         ],
+        if (image.exact && ready)
+          const Text(
+            '📐 Figure exacte dessinée par Ludifun (mesures et codage justes).',
+            style: TextStyle(fontSize: 13, color: Colors.black54),
+          ),
         if (image.remark case final remark?) ...[
           const SizedBox(height: 6),
           Text(
@@ -364,6 +369,11 @@ class _RedoSheetState extends State<_RedoSheet> {
             labelText: 'Qu\'est-ce qui ne va pas ? (facultatif)',
             hintText: 'Par exemple : « montrer plutôt un arbre en automne »',
           ),
+        ),
+        const Text(
+          'Pour une figure de géométrie, nommez-la (« un carré », « un triangle rectangle ») : '
+          'Ludifun la dessine exactement, avec son codage.',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
         ),
         const SizedBox(height: 8),
         FilledButton(

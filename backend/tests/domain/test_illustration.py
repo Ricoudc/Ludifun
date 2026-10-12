@@ -23,6 +23,10 @@ def test_a_simple_scene_is_kept() -> None:
         ('A blackboard with the words "le pluriel" written on it', "texte"),
         ("A poster showing the numbers 7 x 8 = 56", "texte"),
         ("A shop sign that says « boulangerie »", "texte"),
+        # Schémas, cartes, figures exactes : dessinés par le code (§5.61), jamais par le moteur.
+        ("A labeled cross-section diagram of a volcano", "schéma"),
+        ("A map of France with its regions", "schéma"),
+        ("A blue rhombus and a parallelogram on a sheet", "schéma"),
     ],
 )
 def test_unsafe_or_textual_scenes_are_refused(description: str | None, why: str) -> None:
@@ -38,7 +42,7 @@ def test_the_parent_needs_a_description() -> None:
 @pytest.mark.parametrize(("grade", "age"), [("CP", 6), ("CM1", 9), ("3e", 14), (None, 9), ("inconnu", 9)])
 def test_the_prompt_is_built_by_the_code(grade: str | None, age: int) -> None:
     prompt = build_prompt(Scene("Children planting a tree", ALT), grade)
-    assert prompt.prompt.startswith("Children planting a tree. children's educational book illustration")
+    assert prompt.prompt.startswith("Children planting a tree. clear educational textbook illustration")
     assert f"{age}-year-old child" in prompt.prompt and prompt.prompt.endswith("no text")
     assert prompt.negative == NEGATIVE and "text" in NEGATIVE and "weapon" in NEGATIVE
     assert (prompt.width, prompt.height) == (1024, 1024)

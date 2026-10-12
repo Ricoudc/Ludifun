@@ -9,6 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN pip install --no-cache-dir "uv>=0.8,<0.9"
 
+# Police des figures dessinées par le code (§5.61) : accents, « ² », « ° ».
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Dépendances d'abord (couche mise en cache tant que uv.lock ne change pas).
