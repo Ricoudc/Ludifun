@@ -45,6 +45,14 @@ def _lines(lines: list[str]) -> str:
     return "\n".join(lines[:MAX_LINES] + ([f"… et {more} autre(s)"] if more > 0 else []))
 
 
+def _card(card: dict[str, Any]) -> str:
+    """Une carte du jeu des sons ou de l'anglais, telle que l'enfant l'a vue (ou entendue)."""
+    text = str(card.get("text") or "")
+    if text.startswith("🔊"):
+        text = f"🔊 « {card.get('say', '?')} »"
+    return " ".join(part for part in (str(card.get("picture") or ""), text) if part) or "?"
+
+
 def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict[str, Any]) -> Mistake | None:
     """None si la réponse ne se relit pas (type inconnu, format d'une ancienne version)."""
     try:
@@ -79,6 +87,11 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
             chosen = dict(response.get("answers", []))
             picked = {row: chips.get(choice, choice) for row, choice in chosen.items()}
             given = _lines([f"{rows.get(d['id'], '?')} → {picked.get(d['id'], 'rien')}" for d in wrong])
+            expected = _lines([d["expected"] for d in wrong])
+        case ActivityCode.SOUNDS | ActivityCode.ENGLISH_WORDS:
+            cards = {str(card.get("id")): _card(card) for card in payload.get("items", [])}
+            chosen = dict(response.get("answers", []))
+            given = _lines([f"{cards.get(d['id'], '?')} → {chosen.get(d['id'], 'rien')}" for d in wrong])
             expected = _lines([d["expected"] for d in wrong])
         case ActivityCode.COLUMN_OP:
             given = str(response.get("result", "")).strip() or "(rien écrit)"

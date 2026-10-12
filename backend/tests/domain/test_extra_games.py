@@ -180,3 +180,67 @@ def test_unjumble_accepts_every_true_order_of_a_calculation(
     # Le mélange proposé n'est jamais déjà une écriture juste.
     shuffled = [w["text"] for w in activity.payload["words"]]
     assert game.grade(activity, {"order": [ids[w] for w in shuffled]}).score < 1
+
+
+@pytest.mark.parametrize(
+    ("grade", "most"),
+    [("CP", 4), ("CE1", 5), ("CE2", 6), ("CM1", 7), ("CM2", 8), ("6e", 8), (None, 8)],
+)
+def test_unjumble_is_simpler_for_young_children(
+    registry: ActivityRegistry, grade: str | None, most: int
+) -> None:
+    """§5.63 : au CP et au CE1, peu d'étiquettes, et les petits mots restent avec le mot qui
+    les suit (« de la voisine ») ; la phrase reformée est toujours celle de la leçon."""
+    from app.domain.activities.unjumble import pieces
+    from app.domain.knowledge import Grade
+
+    level = Grade(grade) if grade else None
+    for sentence in (
+        "Les mammifères sont des animaux qui allaitent leurs petits.",
+        "Le chat de la voisine mange une souris grise.",
+        "Il a mangé l'orange de sa sœur ?",
+    ):
+        labels = pieces(sentence, level)
+        assert len(labels) <= most and " ".join(labels) == sentence
+        if level in (Grade.CP, Grade.CE1, Grade.CE2):
+            assert not {"le", "la", "les", "de", "une", "des", "il"} & {label.lower() for label in labels}
+    assert pieces("Le chat de la voisine mange une souris grise.", Grade.CE1) == [
+        "Le chat",
+        "de la voisine",
+        "mange",
+        "une souris",
+        "grise.",
+    ]
+    # Un calcul et une phrase à deux nombres : un mot par étiquette (8 + 7 ou 7 + 8).
+    assert pieces("7 + 8 = 15", Grade.CP) == ["7", "+", "8", "=", "15"]
+    assert pieces("La somme de 8 et 7 est 15.", Grade.CE1)[3:6] == ["8", "et", "7"]
+
+
+def test_unjumble_with_labels_builds_and_grades(registry: ActivityRegistry) -> None:
+    from app.domain.knowledge import Grade, KnowledgeItem, KnowledgeMaterial, KnowledgeType, KnowledgeUnit
+
+    long = "Les mammifères sont des animaux qui allaitent leurs petits et ont des poils."
+    short = "Le chat de la voisine mange une souris grise."
+    item = KnowledgeItem(
+        id="k1",
+        type=KnowledgeType.FACT,
+        label="Les mammifères",
+        statement=long,
+        importance=4,
+        source_excerpt="x",
+    )
+    material = KnowledgeMaterial(knowledge_id="k1", explanation="Relis.", true_statements=[short])
+    game = registry.get(ActivityCode.UNJUMBLE)
+    for grade, count in ((Grade.CE1, 5), (Grade.CM2, 8)):
+        unit = KnowledgeUnit(item=item, material=material, grade=grade)
+        for seed in range(10):
+            activity = game.build([unit], 2, random.Random(seed))
+            words = activity.payload["words"]
+            if grade is Grade.CE1:  # la phrase courte au CE1
+                assert activity.solution["sentence"] == short and len(words) == count
+            assert len(words) <= count
+            assert [w["id"] for w in words] != list(activity.solution["words"])  # mélangée
+            assert game.grade(activity, respond(activity, lambda _: True)).score == 1
+            assert game.grade(activity, respond(activity, lambda _: False)).score < 1
+            mistake = describe(registry, activity, respond(activity, lambda _: False))
+            assert mistake is not None and "Démêler" in mistake.question

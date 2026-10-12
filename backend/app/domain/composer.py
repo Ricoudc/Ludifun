@@ -95,6 +95,8 @@ EASY = frozenset(
         ActivityCode.SYLLABLES,
         ActivityCode.SYNONYMS,
         ActivityCode.WORD_FAMILY,
+        ActivityCode.SOUNDS,
+        ActivityCode.ENGLISH_WORDS,
     }
 )
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
@@ -109,6 +111,8 @@ VISUAL = frozenset(
         ActivityCode.SCRAMBLE,
         ActivityCode.UNJUMBLE,
         ActivityCode.ALIGN,
+        ActivityCode.SOUNDS,  # une image et la voix (§5.62)
+        ActivityCode.ENGLISH_WORDS,
     }
 )
 INTERMEDIATE = frozenset(
@@ -139,6 +143,8 @@ INTERMEDIATE = frozenset(
         ActivityCode.PRONOUN,
         ActivityCode.SYNONYMS,
         ActivityCode.WORD_FAMILY,
+        ActivityCode.SOUNDS,
+        ActivityCode.ENGLISH_WORDS,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les

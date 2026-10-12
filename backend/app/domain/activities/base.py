@@ -68,6 +68,9 @@ class ActivityCode(StrEnum):
     PRONOUN = "PRONOUN"  # trouve le bon pronom : « ___ allons » → nous
     SYNONYMS = "SYNONYMS"  # relier les synonymes
     WORD_FAMILY = "WORD_FAMILY"  # trouver le mot de la même famille
+    # Jeux de langue avec image et voix (§5.62)
+    SOUNDS = "SOUNDS"  # le bon son : ou, on, an, in, oi
+    ENGLISH_WORDS = "ENGLISH_WORDS"  # anglais en images
 
 
 Result = Literal["correct", "partial", "incorrect"]

@@ -11,6 +11,7 @@ from app.domain.activities.figures import Coloring, MapLocate
 from app.domain.activities.fill_blank import FillBlank
 from app.domain.activities.find_match import FindMatch
 from app.domain.activities.flashcard import Flashcard
+from app.domain.activities.language_games import EnglishWords, Sounds
 from app.domain.activities.lucky import Box, RandomCards, Wheel
 from app.domain.activities.match import Match
 from app.domain.activities.math_games import Clock, ColumnOperation, FractionBar, Money, NumberLine
@@ -130,5 +131,7 @@ def default_registry() -> ActivityRegistry:
             Pronoun(),
             Synonyms(),
             WordFamilyGame(),
+            Sounds(),
+            EnglishWords(),
         ]
     )

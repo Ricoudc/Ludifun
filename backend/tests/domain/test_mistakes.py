@@ -8,6 +8,7 @@ from app.domain.mistakes import describe
 from tests.domain.conftest import LESSON_FILES, load_lesson
 from tests.domain.test_activities import wrong_response
 from tests.domain.test_alignment import unit as alignment_unit
+from tests.domain.test_language_games import unit as language_unit
 from tests.domain.test_spelling_games import spelling_unit
 from tests.domain.test_word_games import unit as french_unit
 
@@ -65,6 +66,11 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
         game = registry.get(code)
         for difficulty in sorted(game.difficulties):
             built.append(game.build([french_unit(label)], difficulty, random.Random(3)))
+    # Jeux de langue avec image et voix (§5.62) : un son du CP, un thème d'anglais.
+    for code, sound_or_theme in ((ActivityCode.SOUNDS, "Le son ou"), (ActivityCode.ENGLISH_WORDS, "Colours")):
+        game = registry.get(code)
+        for difficulty in sorted(game.difficulties):
+            built.append(game.build([language_unit(sound_or_theme)], difficulty, random.Random(3)))
     # Jeux en images : seulement avec des images validées par le parent (étape 28).
     units = list(load_lesson(LESSON_FILES[0]).units.values())[:3]
     with_pictures = [u.model_copy(update={"picture": f"/img/{i}"}) for i, u in enumerate(units)]
