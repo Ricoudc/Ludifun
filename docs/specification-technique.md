@@ -1798,6 +1798,27 @@ jeux (type inconnu).
 Non testé : les voix sur un vrai téléphone (présence d'une voix anglaise, prononciation des mots
 isolés) et l'affichage des émojis, que le moteur de test ne dessine pas.
 
+### 5.63 « Démêler » plus simple pour les petits (octobre 2026)
+
+Remarque de la famille : remettre la phrase dans l'ordre est un peu compliqué au CE1. Le jeu
+(`UNJUMBLE`) s'adapte maintenant à la classe de la leçon, sans changer l'écran :
+
+- **Groupes de lecture au cycle 2** (CP, CE1, CE2) : les petits mots (le, la, les, un, des, de,
+  du, au, mon, ce, il, elle, on, ne, se…) restent collés au mot qui les suit, comme on lit :
+  « Le chat | de la voisine | mange | une souris | grise. ». Une ponctuation seule (« ? »)
+  va avec le mot d'avant.
+- **Nombre d'étiquettes au plus** : 4 au CP, 5 au CE1, 6 au CE2, 7 au CM1, 8 au CM2 et au-delà
+  (et quand la classe est inconnue). Au-delà, les deux étiquettes voisines les plus courtes
+  sont réunies (« qui allaitent »).
+- **Phrase courte d'abord** : au CP (7 mots au plus) et au CE1 (8 mots), une phrase courte de la
+  leçon est choisie s'il y en a une.
+- Un calcul, ou une phrase à deux nombres (« la somme de 8 et 7 est 15 »), garde un mot par
+  étiquette : « 7 et 8 » reste juste.
+
+La correction compare les étiquettes ; la phrase reformée est toujours exactement celle de la
+leçon. Une ancienne application affiche les étiquettes telles quelles (plusieurs mots par
+étiquette) : rien ne change pour elle.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
