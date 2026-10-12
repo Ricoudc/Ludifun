@@ -85,3 +85,56 @@ async def test_the_parent_reads_and_reworks_the_questions(
     stranger = (await register(client, "autre@example.fr"))["access_token"]
     assert (await client.get(url, headers=auth(stranger))).status_code == 404
     assert (await client.post(rework, json={"reason": "wrong"}, headers=auth(stranger))).status_code == 404
+
+
+async def test_the_parent_corrects_a_question(
+    client: AsyncClient,
+    db: AsyncSession,
+    fake_llm: FakeProvider,
+    now: Any,  # noqa: F811
+) -> None:
+    """§5.59 : la réponse retenue par l'IA est fausse ; le parent la corrige lui-même."""
+    family = await family_with_device(client)
+    parent, token, child_id = family["parent"], family["device"], family["child"]["id"]
+    lesson = await upload_lesson(client, token)
+    await revise(client, db, token, lesson["id"], lambda _: True)
+    masteries = await db.scalar(select(func.count()).select_from(KnowledgeMastery))
+    url = f"/v1/children/{child_id}/lessons/{lesson['id']}/content"
+    notion = (await client.get(url, headers=auth(parent))).json()["notions"][0]
+    question = next(e for e in notion["editable"] if e["kind"] == "question")
+    assert question["answer"] and len(question["distractors"]) == 3
+    edit_url = f"/v1/children/{child_id}/lessons/{lesson['id']}/notions/{notion['knowledge_id']}/material"
+    wrong = question["distractors"]
+    body = {
+        "kind": "question",
+        "index": question["index"],
+        "before": question["text"],
+        "text": question["text"],
+        "answer": wrong[0],
+        "distractors": [question["answer"], *wrong[1:]],
+    }
+    r = await client.put(edit_url, json=body, headers=auth(parent))
+    assert r.status_code == 200, r.text
+    fixed = next(
+        e for e in r.json()["editable"] if e["kind"] == "question" and e["index"] == question["index"]
+    )
+    assert fixed["answer"] == wrong[0] and fixed["distractors"][0] == question["answer"]
+    assert any(f"✅ {wrong[0]}" in line for b in r.json()["blocks"] for line in b["lines"])
+    again = (await client.get(url, headers=auth(parent))).json()["notions"][0]
+    assert again["editable"] == r.json()["editable"]
+    assert await db.scalar(select(func.count()).select_from(KnowledgeMastery)) == masteries
+
+    # Correction refusée : le message est pour le parent ; rien ne change.
+    same = await client.put(edit_url, json=body | {"answer": wrong[1]}, headers=auth(parent))
+    assert same.status_code == 422 and same.json()["error"]["code"] == "invalid_edit"
+    assert "différentes" in same.json()["error"]["message"]
+    stale = await client.put(edit_url, json=body | {"before": "Une ancienne question"}, headers=auth(parent))
+    assert stale.status_code == 422 and "entre-temps" in stale.json()["error"]["message"]
+    extra = await client.put(edit_url, json=body | {"stage": "x"}, headers=auth(parent))
+    assert extra.status_code == 422
+    assert (await client.get(url, headers=auth(parent))).json()["notions"][0] == again
+
+    # Réservé au parent de cet enfant.
+    assert (await client.put(edit_url, json=body, headers=auth(token))).status_code == 403
+    stranger = (await register(client, "autre@example.fr"))["access_token"]
+    assert (await client.put(edit_url, json=body, headers=auth(stranger))).status_code == 404

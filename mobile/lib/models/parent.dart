@@ -598,6 +598,7 @@ class QuestionReport {
     this.subject,
     this.given,
     this.expected,
+    this.edit,
   });
 
   factory QuestionReport.fromJson(Json json) => QuestionReport(
@@ -614,6 +615,7 @@ class QuestionReport {
     given: json['given'] as String?,
     expected: json['expected'] as String?,
     outcome: HelpOutcome.values.asNameMap()[json['outcome']] ?? HelpOutcome.unanswered,
+    edit: json['edit'] == null ? null : EditTarget.fromJson(json['edit'] as Json),
   );
 
   final String id;
@@ -631,6 +633,9 @@ class QuestionReport {
   final String? expected;
   final HelpOutcome outcome;
 
+  /// Présent : le parent peut corriger lui-même cette question (§5.59).
+  final EditTarget? edit;
+
   QuestionReport markedSeen() => QuestionReport(
     id: id,
     reportedAt: reportedAt,
@@ -644,6 +649,7 @@ class QuestionReport {
     given: given,
     expected: expected,
     outcome: outcome,
+    edit: edit,
   );
 }
 
@@ -678,6 +684,64 @@ class ContentBlock {
   final String? instruction;
 }
 
+/// Où se trouve, dans le matériel d'une notion, une question signalée que le parent peut
+/// corriger lui-même (§5.59).
+class EditTarget {
+  const EditTarget({required this.knowledgeId, required this.kind, required this.index});
+
+  factory EditTarget.fromJson(Json json) => EditTarget(
+    knowledgeId: json['knowledge_id'] as String,
+    kind: json['kind'] as String,
+    index: json['index'] as int,
+  );
+
+  final String knowledgeId;
+  final String kind;
+  final int index;
+}
+
+/// Un élément du matériel que le parent peut corriger lui-même (§5.59) : `question` (QCM),
+/// `statement` (vrai ou faux), `cloze` (texte à trous), `pair` (association), `flashcard`.
+class EditableElement {
+  const EditableElement({
+    required this.kind,
+    required this.index,
+    required this.text,
+    this.answer,
+    this.distractors = const [],
+    this.answers = const [],
+    this.isTrue,
+  });
+
+  factory EditableElement.fromJson(Json json) => EditableElement(
+    kind: json['kind'] as String,
+    index: json['index'] as int,
+    text: json['text'] as String,
+    answer: json['answer'] as String?,
+    distractors: (json['distractors'] as List<dynamic>? ?? const []).cast<String>(),
+    answers: (json['answers'] as List<dynamic>? ?? const []).cast<String>(),
+    isTrue: json['true'] as bool?,
+  );
+
+  final String kind;
+  final int index;
+  final String text;
+  final String? answer;
+  final List<String> distractors;
+  final List<String> answers;
+  final bool? isTrue;
+
+  /// Libellé court, pour la liste des éléments à corriger.
+  String get title => switch (kind) {
+    'question' => '❓ Question',
+    'statement' => '✅ Vrai ou faux',
+    'cloze' => '✏️ Texte à trous',
+    'pair' => '🔗 Association',
+    'flashcard' => '🃏 Carte mémoire',
+    _ => '❓ Question',
+  };
+}
+
 class NotionContent {
   const NotionContent({
     required this.knowledgeId,
@@ -687,6 +751,7 @@ class NotionContent {
     this.trust,
     this.doubts = const [],
     this.confirmed = false,
+    this.editable = const [],
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
@@ -697,12 +762,19 @@ class NotionContent {
     trust: json['trust'] as String?,
     doubts: (json['doubts'] as List<dynamic>? ?? const []).cast<String>(),
     confirmed: json['confirmed'] as bool? ?? false,
+    editable: [
+      for (final e in json['editable'] as List<dynamic>? ?? const [])
+        EditableElement.fromJson(e as Json),
+    ],
   );
 
   final String knowledgeId;
   final String label;
   final String statement;
   final List<ContentBlock> blocks;
+
+  /// Ce que le parent peut corriger lui-même ; vide avec un ancien serveur.
+  final List<EditableElement> editable;
 
   /// Confiance dans la notion lue (§115) : `high`, `medium` (à vérifier) ou `low` (pas proposée
   /// à l'enfant avant confirmation) ; `null` pour une leçon analysée avant.

@@ -318,6 +318,37 @@ class LudifunApi {
         return NotionContent.fromJson(r.data!);
       });
 
+  /// Le parent corrige lui-même un élément du matériel d'une notion (§5.59) ; `before` est le
+  /// texte qu'il a corrigé (le serveur refuse si la question a changé entre-temps).
+  Future<NotionContent> editNotion(
+    String childId,
+    String lessonId,
+    String knowledgeId, {
+    required String kind,
+    required int index,
+    required String before,
+    required String text,
+    String? answer,
+    List<String>? distractors,
+    List<String>? answers,
+    bool? isTrue,
+  }) => _call(() async {
+    final r = await _dio.put<Json>(
+      '/v1/children/$childId/lessons/$lessonId/notions/$knowledgeId/material',
+      data: {
+        'kind': kind,
+        'index': index,
+        'before': before,
+        'text': text,
+        'answer': ?answer,
+        'distractors': ?distractors,
+        'answers': ?answers,
+        'true': ?isTrue,
+      },
+    );
+    return NotionContent.fromJson(r.data!);
+  });
+
   /// Nouvelle version des questions d'une notion ; l'IA peut prendre une ou deux minutes.
   Future<NotionContent> reworkNotion(
     String childId,

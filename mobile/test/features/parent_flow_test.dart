@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/app.dart';
@@ -1825,6 +1825,188 @@ void main() {
     expect(server.routes, contains('POST /v1/children/c1/question-reports/q1/seen'));
     expect(find.text('✓ Vu'), findsOneWidget);
     expect(find.text('Marquer comme vu'), findsOneWidget);
+  });
+
+  testWidgets('§5.59 : le parent corrige lui-même la réponse d\'une question signalée', (
+    tester,
+  ) async {
+    const stem = 'Quel verbe va avec « Nous ___ contents. » ?';
+    var answer = 'avons';
+    List<String> wrong() =>
+        answer == 'avons' ? ['sommes', 'êtes', 'sont'] : ['avons', 'êtes', 'sont'];
+    Map<String, Object?> notion() => {
+      'knowledge_id': 'n1',
+      'label': 'Le verbe être',
+      'statement': 'Nous sommes.',
+      'blocks': [
+        {
+          'title': '❓ Questions à choix',
+          'lines': ['$stem\n✅ $answer   ✗ ${wrong().join(' · ')}'],
+        },
+      ],
+      'editable': [
+        {'kind': 'question', 'index': 0, 'text': stem, 'answer': answer, 'distractors': wrong()},
+        {'kind': 'statement', 'index': 0, 'text': 'Nous sommes contents.', 'true': true},
+      ],
+    };
+    final report = {
+      'id': 'q1',
+      'reported_at': '2026-09-23T15:42:00Z',
+      'reason': 'right_answer',
+      'reason_label': '?',
+      'seen': false,
+      'lesson_id': 'l2',
+      'lesson_title': 'Le verbe être',
+      'subject': 'french',
+      'activity_type': 'MCQ',
+      'notions': ['Le verbe être'],
+      'question': stem,
+      'given': 'sommes',
+      'expected': 'avons',
+      'outcome': 'wrong',
+      'edit': {'knowledge_id': 'n1', 'kind': 'question', 'index': 0},
+    };
+    Object? sent;
+    server
+      ..on('GET /v1/children/c1/dashboard', (_) => (200, {...dashboard, 'reports_to_see': 1}))
+      ..on(
+        'GET /v1/children/c1/question-reports',
+        (_) => (
+          200,
+          {
+            'reports': [report],
+            'next_before': null,
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/question-reports/q1/seen', (_) => (204, null))
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'grade': 'CE1',
+            'notions': [notion()],
+          },
+        ),
+      )
+      ..on('PUT /v1/children/c1/lessons/l2/notions/n1/material', (r) {
+        sent = r.data;
+        final data = r.data as Map<String, Object?>;
+        if ((data['distractors'] as List<Object?>).contains(data['answer'])) {
+          return (
+            422,
+            {
+              'error': {
+                'code': 'invalid_edit',
+                'message': 'Les quatre réponses doivent être différentes.',
+              },
+            },
+          );
+        }
+        answer = data['answer'] as String;
+        return (200, notion());
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.childReports('c1'));
+    expect(find.text('Réponse retenue : avons'), findsOneWidget);
+
+    await tap(tester, find.text('Corriger la réponse'));
+    expect(find.text('Corriger moi-même'), findsOneWidget);
+    // Refusé par le serveur : le message reste dans la fenêtre.
+    await tester.enterText(find.widgetWithText(TextField, '✅ Bonne réponse'), 'êtes');
+    await tap(tester, find.text('Enregistrer la correction'));
+    expect(find.text('Les quatre réponses doivent être différentes.'), findsOneWidget);
+    // « sommes » est la bonne : un geste l'échange avec la réponse retenue.
+    await tester.enterText(find.widgetWithText(TextField, '✅ Bonne réponse'), 'avons');
+    await tap(tester, find.byTooltip('C\'est la bonne réponse').first);
+    await tap(tester, find.text('Enregistrer la correction'));
+    expect(sent, {
+      'kind': 'question',
+      'index': 0,
+      'before': stem,
+      'text': stem,
+      'answer': 'sommes',
+      'distractors': ['avons', 'êtes', 'sont'],
+    });
+    expect(find.text('Correction enregistrée.'), findsOneWidget);
+    expect(server.routes, contains('POST /v1/children/c1/question-reports/q1/seen'));
+    expect(find.text('✓ Vu'), findsOneWidget);
+
+    // Depuis les questions de la leçon : choisir l'élément, puis le corriger.
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    await tap(tester, find.text('Le verbe être'));
+    expect(find.text('$stem\n✅ sommes   ✗ avons · êtes · sont'), findsOneWidget);
+    await tap(tester, find.text('Corriger moi-même'));
+    await tap(tester, find.text('Nous sommes contents.'));
+    await tap(tester, find.byType(Switch));
+    expect(find.text('Cette affirmation est fausse'), findsOneWidget);
+    await tap(tester, find.text('Enregistrer la correction'));
+    expect(sent, {
+      'kind': 'statement',
+      'index': 0,
+      'before': 'Nous sommes contents.',
+      'text': 'Nous sommes contents.',
+      'true': false,
+    });
+  });
+
+  testWidgets('copier le texte de la leçon et ses questions', (tester) async {
+    final copied = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (
+      call,
+    ) async {
+      if (call.method == 'Clipboard.setData') {
+        copied.add((call.arguments as Map<Object?, Object?>)['text']! as String);
+      }
+      return null;
+    });
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    server.on(
+      'GET /v1/children/c1/lessons/l2/content',
+      (_) => (
+        200,
+        {
+          'lesson_id': 'l2',
+          'grade': 'CM1',
+          'text': 'Une fraction a un numérateur et un dénominateur.',
+          'notions': [
+            {
+              'knowledge_id': 'n1',
+              'label': 'Numérateur',
+              'statement': 'Le nombre du haut.',
+              'blocks': [
+                {
+                  'title': '❓ Questions à choix',
+                  'lines': ['Dans 3/4, quel est le nombre du haut ?\n✅ 3'],
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    );
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(find.byType(SelectionArea), findsOneWidget); // tout se sélectionne au doigt
+    await tap(tester, find.text('Copier toutes les questions'));
+    expect(
+      copied.last,
+      'Numérateur\nLe nombre du haut.\n\n❓ Questions à choix\nDans 3/4, quel est le nombre du haut ?\n✅ 3',
+    );
+    expect(find.text('Questions copiées.'), findsOneWidget);
+    await tap(tester, find.text('La leçon, telle que l\'IA l\'a lue'));
+    await tap(tester, find.text('Copier le texte'));
+    expect(copied.last, 'Une fraction a un numérateur et un dénominateur.');
+    // Un ancien serveur (sans « editable ») : pas de « Corriger moi-même ».
+    await tap(tester, find.text('Numérateur'));
+    expect(find.text('Corriger moi-même'), findsNothing);
   });
 
   testWidgets('objectifs : temps par jour, matière, contrôle et son plan', (tester) async {

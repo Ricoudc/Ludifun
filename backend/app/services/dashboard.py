@@ -743,6 +743,8 @@ class ReportRow:
     notions: list[str]
     response: dict[str, Any] | None  # None : signalée avant de répondre
     score: float | None
+    # Matériel des notions de la question, pour la corriger (§5.59) : (identifiant, matériel).
+    materials: list[tuple[uuid.UUID, dict[str, Any]]] = field(default_factory=list)
 
 
 async def question_reports(
@@ -771,6 +773,12 @@ async def question_reports(
             )
         )
     }
+    materials = {
+        row.knowledge_id: row.material
+        for row in await session.scalars(
+            select(db.KnowledgeMaterial).where(db.KnowledgeMaterial.knowledge_id.in_(ids))
+        )
+    }
     rows = []
     for report, item, lesson, attempt in found:
         known = [knowledge[k] for k in item.knowledge_ids if k in knowledge]
@@ -793,6 +801,7 @@ async def question_reports(
                 notions=[label for _, label in known],
                 response=attempt.response if attempt is not None else None,
                 score=float(attempt.score) if attempt is not None else None,
+                materials=[(k, materials[k]) for k in item.knowledge_ids if k in materials],
             )
         )
     return rows

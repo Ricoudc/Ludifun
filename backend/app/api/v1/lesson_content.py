@@ -1,5 +1,6 @@
-"""Espace parent : relire les questions d'une leçon et en demander une nouvelle version à l'IA
-(étape 25). La progression de l'enfant n'est jamais touchée : seul le matériel change."""
+"""Espace parent : relire les questions d'une leçon, en demander une nouvelle version à l'IA
+(étape 25) ou les corriger soi-même (§5.59). La progression de l'enfant n'est jamais touchée :
+seul le matériel change."""
 
 import uuid
 from typing import Annotated, Literal
@@ -20,6 +21,8 @@ from app.domain.confidence import Confidence
 from app.domain.duplicates import deduplicate
 from app.domain.instructions import instruction
 from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis, Theme
+from app.domain.material_edit import Edit, EditError, Kind, editables
+from app.domain.material_edit import apply_edit as apply_material_edit
 from app.domain.material_view import material_blocks
 from app.domain.text import clean_markup
 from app.services.ai_settings import AiResolver
@@ -44,6 +47,31 @@ class BlockOut(BaseModel):
     instruction: str | None = Field(None, description="Consigne du jeu, telle que l'enfant la lit.")
 
 
+class EditableOut(BaseModel):
+    """Un élément que le parent peut corriger lui-même (§5.59)."""
+
+    kind: Kind = Field(description="question (QCM), statement (vrai ou faux), cloze, pair, flashcard.")
+    index: int
+    text: str = Field(description="Énoncé, affirmation, texte à trous, gauche de l'association, recto.")
+    answer: str | None = Field(None, description="Bonne réponse du QCM, droite de l'association, verso.")
+    distractors: list[str] = Field([], description="Les trois mauvaises réponses du QCM.")
+    answers: list[str] = Field([], description="Réponses acceptées du texte à trous.")
+    true: bool | None = Field(None, description="L'affirmation est vraie (true) ou fausse (false).")
+
+
+class EditIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Kind
+    index: int = Field(ge=0, le=200)
+    before: str = Field(max_length=2000, description="Le texte avant correction, tel qu'il a été reçu.")
+    text: str = Field(max_length=2000)
+    answer: str | None = Field(None, max_length=500)
+    distractors: list[str] = Field([], max_length=3)
+    answers: list[str] = Field([], max_length=10)
+    true: bool | None = None
+
+
 class NotionContentOut(BaseModel):
     knowledge_id: uuid.UUID
     label: str
@@ -55,6 +83,7 @@ class NotionContentOut(BaseModel):
     )
     doubts: list[str] = Field([], description="Ce qui fait douter de la notion.")
     confirmed: bool = Field(False, description="Le parent a confirmé la notion.")
+    editable: list[EditableOut] = Field([], description="Ce que le parent peut corriger lui-même.")
 
 
 class LessonContentOut(BaseModel):
@@ -76,7 +105,8 @@ def notion_out(
     item: db_models.KnowledgeItem, material: db_models.KnowledgeMaterial, grade: str
 ) -> NotionContentOut:
     # Sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage du matériel.
-    blocks = material_blocks(KnowledgeMaterial.model_validate(clean_markup(material.material)))
+    validated = KnowledgeMaterial.model_validate(clean_markup(material.material))
+    blocks = material_blocks(validated)
     confidence = Confidence(item.confidence, tuple(item.doubts)) if item.confidence is not None else None
     return NotionContentOut(
         knowledge_id=item.id,
@@ -86,6 +116,19 @@ def notion_out(
         trust=confidence.trust.value if confidence else None,
         doubts=item.doubts,
         confirmed=item.confirmed_at is not None,
+        editable=[
+            EditableOut(
+                kind=e.kind,
+                index=e.index,
+                text=e.text,
+                answer=e.answer,
+                distractors=e.distractors,
+                answers=e.answers,
+                true=e.true,
+            )
+            # Les indices sont ceux du matériel enregistré (avec ses balises éventuelles).
+            for e in editables(KnowledgeMaterial.model_validate(material.material))
+        ],
         blocks=[
             BlockOut(
                 title=b.title,
@@ -259,5 +302,50 @@ async def rework_notion(
         {"element": f"{row.key}.{r.element}", "reason": r.reason} for r in validated.rejected + kept.removed
     ]
     material_row.prompt_version = PROMPT_VERSIONS["material"]
+    await db.commit()
+    return notion_out(row, material_row, child.grade)
+
+
+@router.put("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/material")
+async def edit_material(
+    child_id: uuid.UUID,
+    lesson_id: uuid.UUID,
+    knowledge_id: uuid.UUID,
+    body: EditIn,
+    parent: CurrentParent,
+    db: DbSession,
+) -> NotionContentOut:
+    """Le parent corrige lui-même une question (§5.59) : énoncé, bonne et mauvaises réponses d'un
+    QCM, une affirmation, un texte à trous, une association, une carte mémoire. Le matériel
+    corrigé repasse par son schéma ; la progression de l'enfant n'est pas touchée."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    row = await db.scalar(
+        select(db_models.KnowledgeItem).where(
+            db_models.KnowledgeItem.id == knowledge_id, db_models.KnowledgeItem.lesson_id == lesson.id
+        )
+    )
+    material_row = (
+        await db.get(db_models.KnowledgeMaterial, knowledge_id, with_for_update=True, populate_existing=True)
+        if row
+        else None
+    )
+    if row is None or material_row is None:
+        raise ApiError(404, "notion_not_found", "Notion introuvable.")
+    edit = Edit(
+        kind=body.kind,
+        index=body.index,
+        before=body.before,
+        text=body.text,
+        answer=body.answer,
+        distractors=body.distractors,
+        answers=body.answers,
+        true=body.true,
+    )
+    try:
+        corrected = apply_material_edit(KnowledgeMaterial.model_validate(material_row.material), edit)
+    except EditError as exc:
+        raise ApiError(422, "invalid_edit", str(exc)) from exc
+    material_row.material = corrected.model_dump(mode="json")
     await db.commit()
     return notion_out(row, material_row, child.grade)

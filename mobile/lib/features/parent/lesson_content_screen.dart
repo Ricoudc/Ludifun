@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -11,6 +12,7 @@ import '../../core/session.dart';
 import '../../models/parent.dart';
 import 'lesson_image_card.dart';
 import 'lesson_resources_card.dart';
+import 'material_edit_sheet.dart';
 
 final lessonContentProvider = FutureProvider.autoDispose.family<LessonContent, (String, String)>(
   (ref, ids) => ref.watch(apiProvider).lessonContent(ids.$1, ids.$2),
@@ -24,6 +26,21 @@ const reworkReasons = {
   'wrong': 'Réponse fausse',
   'other': 'Autre',
 };
+
+/// Copie un texte dans le presse-papiers du téléphone, et le dit.
+Future<void> copyText(BuildContext context, String text, String done) async {
+  await Clipboard.setData(ClipboardData(text: text));
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(done)));
+  }
+}
+
+/// Les questions d'une notion, en texte simple (pour les copier ailleurs).
+String notionText(NotionContent notion) => [
+  notion.label,
+  notion.statement,
+  for (final block in notion.blocks) ...['', block.title, ...block.lines],
+].join('\n');
 
 /// Toutes les questions d'une leçon, avec leurs réponses : le parent vérifie qu'elles sont
 /// claires et à la classe de l'enfant, et peut en demander une nouvelle version à l'IA.
@@ -41,46 +58,70 @@ class LessonContentScreen extends ConsumerWidget {
         leading: BackButton(onPressed: () => context.go(Routes.childDashboard(childId))),
         title: Text(content.value?.title ?? 'Questions de la leçon'),
       ),
-      body: CenteredBody(
-        top: true,
-        children: switch (content) {
-          AsyncData(:final value) => [
-            Text(
-              'Voici tout ce que l\'enfant verra (classe : ${value.grade}), réponses comprises. '
-              'Si une question n\'est pas claire ou pas à son niveau, demandez une correction à '
-              'l\'IA : sa progression n\'est pas touchée.',
-              style: const TextStyle(fontSize: 15, color: Colors.black54),
-            ),
-            const SizedBox(height: 12),
-            LessonImageCard(childId: childId, lessonId: lessonId),
-            LessonResourcesCard(childId: childId, lessonId: lessonId),
-            if (value.text case final text?)
-              Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ExpansionTile(
-                  shape: const Border(),
-                  leading: const Icon(Icons.menu_book_outlined),
-                  title: const Text('La leçon, telle que l\'IA l\'a lue'),
-                  subtitle: const Text('Vérifiez qu\'il ne manque rien et que rien n\'est mal lu'),
-                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  expandedCrossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SelectableText(text, style: const TextStyle(fontSize: 15, height: 1.4)),
-                  ],
-                ),
+      // Tout se sélectionne et se copie : la leçon lue par l'IA comme ses questions.
+      body: SelectionArea(
+        child: CenteredBody(
+          top: true,
+          children: switch (content) {
+            AsyncData(:final value) => [
+              Text(
+                'Voici tout ce que l\'enfant verra (classe : ${value.grade}), réponses comprises. '
+                'Si une réponse est fausse, corrigez-la vous-même ; si une question n\'est pas '
+                'claire ou pas à son niveau, demandez une correction à l\'IA : sa progression '
+                'n\'est pas touchée. Appuyez longuement sur un texte pour le copier.',
+                style: const TextStyle(fontSize: 15, color: Colors.black54),
               ),
-            for (final notion in value.notions)
-              _NotionCard(notion, childId: childId, lessonId: lessonId),
-          ],
-          AsyncError(:final error) => [
-            ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
-            TextButton(
-              onPressed: () => ref.invalidate(lessonContentProvider((childId, lessonId))),
-              child: const Text('Réessayer'),
-            ),
-          ],
-          _ => [const Center(child: CircularProgressIndicator())],
-        },
+              if (value.notions.isNotEmpty)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () => copyText(
+                      context,
+                      value.notions.map(notionText).join('\n\n'),
+                      'Questions copiées.',
+                    ),
+                    icon: const Icon(Icons.copy_all_outlined),
+                    label: const Text('Copier toutes les questions'),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              LessonImageCard(childId: childId, lessonId: lessonId),
+              LessonResourcesCard(childId: childId, lessonId: lessonId),
+              if (value.text case final text?)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ExpansionTile(
+                    shape: const Border(),
+                    leading: const Icon(Icons.menu_book_outlined),
+                    title: const Text('La leçon, telle que l\'IA l\'a lue'),
+                    subtitle: const Text(
+                      'Vérifiez qu\'il ne manque rien et que rien n\'est mal lu',
+                    ),
+                    childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(text, style: const TextStyle(fontSize: 15, height: 1.4)),
+                      TextButton.icon(
+                        onPressed: () => copyText(context, text, 'Texte de la leçon copié.'),
+                        icon: const Icon(Icons.copy_outlined),
+                        label: const Text('Copier le texte'),
+                      ),
+                    ],
+                  ),
+                ),
+              for (final notion in value.notions)
+                _NotionCard(notion, childId: childId, lessonId: lessonId),
+            ],
+            AsyncError(:final error) => [
+              ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
+              TextButton(
+                onPressed: () => ref.invalidate(lessonContentProvider((childId, lessonId))),
+                child: const Text('Réessayer'),
+              ),
+            ],
+            _ => [const Center(child: CircularProgressIndicator())],
+          },
+        ),
       ),
     );
   }
@@ -136,6 +177,24 @@ class _NotionCard extends ConsumerWidget {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final element = notion.editable.length == 1
+        ? notion.editable.single
+        : await pickEditable(context, notion);
+    if (element == null || !context.mounted) return;
+    final saved = await editMaterial(
+      context,
+      childId: childId,
+      lessonId: lessonId,
+      knowledgeId: notion.knowledgeId,
+      element: element,
+    );
+    if (saved == null || !context.mounted) return;
+    ref.invalidate(lessonContentProvider((childId, lessonId)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Correction enregistrée.')));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context).textTheme;
@@ -172,10 +231,27 @@ class _NotionCard extends ConsumerWidget {
               ),
           ],
           const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _rework(context, ref),
-            icon: const Icon(Icons.auto_fix_high),
-            label: const Text('Demander une correction à l\'IA'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              if (notion.editable.isNotEmpty)
+                FilledButton.tonalIcon(
+                  onPressed: () => _edit(context, ref),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Corriger moi-même'),
+                ),
+              OutlinedButton.icon(
+                onPressed: () => _rework(context, ref),
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('Demander une correction à l\'IA'),
+              ),
+              TextButton.icon(
+                onPressed: () => copyText(context, notionText(notion), 'Questions copiées.'),
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('Copier'),
+              ),
+            ],
           ),
         ],
       ),

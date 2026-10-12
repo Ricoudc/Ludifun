@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 
 from app import clock
@@ -16,6 +16,7 @@ from app.api.errors import ApiError
 from app.api.v1.children import own_child
 from app.api.v1.schemas_dashboard import (
     DashboardOut,
+    EditTargetOut,
     ErrorCountOut,
     HelpRequestOut,
     HelpRequestsOut,
@@ -51,14 +52,14 @@ from app.api.v1.schemas_dashboard import (
     WeekOut,
 )
 from app.db import models as db_models
+from app.domain import material_edit, parent_assistant, reminders
 from app.domain import mistakes as mistakes_domain
-from app.domain import parent_assistant, reminders
 from app.domain.activities.registry import default_registry
 from app.domain.decisions import describe
 from app.domain.errors import ERROR_LABELS
 from app.domain.help import TITLES as HELP_TITLES
 from app.domain.help import HelpKind
-from app.domain.knowledge import SkillVerb
+from app.domain.knowledge import KnowledgeMaterial, SkillVerb
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
 from app.services import accounts, dashboard, export
@@ -268,9 +269,23 @@ async def get_question_reports(
                 given=described.given if described else None,
                 expected=described.expected if described else _display(row.activity.solution),
                 outcome=_outcome(row.score),
+                edit=_edit_target(row),
             )
         )
     return QuestionReportsOut(reports=out, next_before=rows[-1].reported_at if len(rows) == limit else None)
+
+
+def _edit_target(row: dashboard.ReportRow) -> EditTargetOut | None:
+    """La question signalée, retrouvée dans le matériel de sa notion pour que le parent la
+    corrige (§5.59) ; None pour une question calculée par le code ou un jeu à plusieurs notions."""
+    for knowledge_id, material in row.materials:
+        try:
+            found = material_edit.locate(KnowledgeMaterial.model_validate(material), row.activity)
+        except ValidationError:
+            continue
+        if found is not None:
+            return EditTargetOut(knowledge_id=knowledge_id, kind=found.kind, index=found.index)
+    return None
 
 
 def _display(solution: dict[str, object]) -> str | None:

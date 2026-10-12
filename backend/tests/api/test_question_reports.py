@@ -61,6 +61,21 @@ async def test_the_child_reports_a_question_and_the_parent_sees_it(
     assert unanswered["question"] and unanswered["expected"] and unanswered["lesson_title"] == "Les fractions"
     assert answered["outcome"] in {"wrong", "partial"} and answered["given"] and answered["expected"]
     assert not any(r["seen"] for r in reports)
+    # Une question tirée de la leçon se corrige depuis le signalement (§5.59).
+    content = (
+        await client.get(f"/v1/children/{child_id}/lessons/{lesson['id']}/content", headers=parent)
+    ).json()
+    editable = {
+        (n["knowledge_id"], e["kind"], e["index"]): e for n in content["notions"] for e in n["editable"]
+    }
+    for report in reports:
+        target = report["edit"]
+        if report["activity_type"] in {"MCQ", "TRUE_FALSE", "FILL_BLANK", "FLASHCARD"} and any(
+            e["text"] == report["question"] for e in editable.values()
+        ):
+            assert target is not None, report
+        if target is not None:
+            assert (target["knowledge_id"], target["kind"], target["index"]) in editable
     board = (await client.get(f"/v1/children/{child_id}/dashboard", headers=parent)).json()
     assert board["reports_to_see"] == 2
     # « En bref » le dit aussi, et conseille de commencer par là.

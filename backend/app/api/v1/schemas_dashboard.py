@@ -152,6 +152,14 @@ ReportReason = Literal["right_answer", "unclear", "wrong_question"]
 Outcome = Literal["right", "partial", "wrong", "unanswered"]
 
 
+class EditTargetOut(BaseModel):
+    """Où corriger la question signalée (§5.59) : la notion, et l'élément de son matériel."""
+
+    knowledge_id: uuid.UUID
+    kind: str
+    index: int
+
+
 class QuestionReportOut(BaseModel):
     """Une question signalée par l'enfant (🚩)."""
 
@@ -171,6 +179,9 @@ class QuestionReportOut(BaseModel):
     )
     expected: str | None = Field(description="La bonne réponse retenue par Ludifun.")
     outcome: Outcome
+    edit: EditTargetOut | None = Field(
+        None, description="Le parent peut corriger lui-même cette question ; absent sinon (§5.59)."
+    )
 
 
 class QuestionReportsOut(BaseModel):

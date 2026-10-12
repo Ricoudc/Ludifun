@@ -1659,6 +1659,37 @@ Tests : `tests/domain/test_lesson_first.py` (fiches « bande numérique », « c
 « synonymes », « familles de mots » de CE1).
 ---
 
+### 5.59 Le parent corrige lui-même une question ; tout se copie (octobre 2026)
+
+L'IA peut se tromper : « Quel pronom va avec "Nous ___ contents." », réponse retenue
+« avons ». Demander une nouvelle version à l'IA (étape 25) n'est pas la bonne réponse à une
+erreur aussi précise : le parent la corrige lui-même.
+
+- **Domaine** (`app/domain/material_edit.py`, pur) : `editables(material)` liste ce qui se
+  corrige — questions à choix tirées de la leçon (pas celles calculées par le code ni celles
+  d'un site de confiance), affirmations (vraies puis fausses), texte à trous, association,
+  carte mémoire. `apply_edit` applique la correction : `before` (le texte corrigé par le
+  parent) doit être encore celui enregistré (sinon « Cette question a changé entre-temps ») ;
+  QCM : une bonne réponse et trois mauvaises, toutes différentes (les erreurs typiques des
+  anciennes mauvaises réponses sont effacées si elles changent) ; texte à trous : un seul
+  « ___ » et au moins une réponse ; le tout repasse par `KnowledgeMaterial`. `locate` retrouve,
+  dans le matériel, l'élément dont vient une activité signalée (QCM, y compris inversé, vrai ou
+  faux, texte à trous, carte mémoire).
+- **API** : `GET …/lessons/{id}/content` donne pour chaque notion `editable` (nouveau champ,
+  facultatif) ; `PUT /v1/children/{c}/lessons/{l}/notions/{k}/material` (parent de l'enfant
+  seulement, 404 sinon ; 422 `invalid_edit` avec un message pour le parent) enregistre la
+  correction, sous verrou de la ligne. Un signalement (`question-reports`) porte `edit`
+  (`knowledge_id`, `kind`, `index`) quand la question se corrige ainsi. La progression de
+  l'enfant n'est pas touchée ; seules les prochaines activités changent (une séance déjà
+  téléchargée pour le mode sans connexion garde l'ancienne question).
+- **Application** : « Corriger la réponse » sur une question signalée (la fenêtre s'ouvre
+  remplie ; la correction enregistrée, le signalement est marqué vu) et « Corriger moi-même »
+  sur chaque notion des « Questions de la leçon ». Dans un QCM, ⇅ échange une mauvaise réponse
+  avec la bonne : le cas « avons / sommes » se règle d'un geste.
+- **Copier-coller** : l'écran « Questions de la leçon » et celui des questions signalées sont
+  sélectionnables au doigt (`SelectionArea`) ; boutons « Copier le texte » (la leçon lue par
+  l'IA), « Copier » (les questions d'une notion) et « Copier toutes les questions ».
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
