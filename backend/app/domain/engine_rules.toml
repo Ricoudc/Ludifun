@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.13.0"
+version = "1.14.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -106,4 +106,5 @@ after_hour = 17             # « pas encore révisé aujourd'hui » : seulement 
 [subjects]
 # Jeux jamais proposés dans une matière (1.11.0) : une leçon de maths ne fait réviser que les
 # maths, pas l'orthographe des mots (« Démêler » n'y garde que les calculs, « 7 + 8 = 15 »).
-excluded_activities = { math = ["WORD_FLASH", "SCRAMBLE", "DICTATION"] }
+# Dictée de phrases (1.14.0) : ni en maths, ni en anglais (la voix lit en français).
+excluded_activities = { math = ["WORD_FLASH", "SCRAMBLE", "DICTATION", "SENTENCE_DICTATION"], english = ["SENTENCE_DICTATION"] }

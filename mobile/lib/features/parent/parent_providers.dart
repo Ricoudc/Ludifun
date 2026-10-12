@@ -73,6 +73,7 @@ const activityLabels = {
   'WORD_FLASH': ('⚡', 'Mots éclair'),
   'SCRAMBLE': ('🔤', 'Lettres mélangées'),
   'DICTATION': ('🎧', 'Dictées'),
+  'SENTENCE_DICTATION': ('🎧', 'Dictées de phrases'),
   'UNJUMBLE': ('🧶', 'Phrases à démêler'),
   'FIND_MATCH': ('🔎', 'Trouver la correspondance'),
   'PICTURE_MATCH': ('🖼️', 'Image et mot'),

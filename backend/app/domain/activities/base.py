@@ -71,6 +71,8 @@ class ActivityCode(StrEnum):
     # Jeux de langue avec image et voix (§5.62)
     SOUNDS = "SOUNDS"  # le bon son : ou, on, an, in, oi
     ENGLISH_WORDS = "ENGLISH_WORDS"  # anglais en images
+    # Dictée de phrases (§5.64)
+    SENTENCE_DICTATION = "SENTENCE_DICTATION"  # le téléphone lit une phrase, l'enfant l'écrit
 
 
 Result = Literal["correct", "partial", "incorrect"]

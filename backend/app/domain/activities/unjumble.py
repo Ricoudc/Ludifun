@@ -149,16 +149,22 @@ def pieces(sentence: str, grade: SchoolGrade | None) -> list[str]:
     words = sentence.split()
     if _calculation(words) or sum(_number(w) for w in words) >= 2:
         return words  # « 7 + 8 = 15 », « la somme de 8 et 7 » : chaque terme compte seul
+    limit = PIECES.get(grade, DEFAULT_PIECES) if grade is not None else DEFAULT_PIECES
+    return reading_groups(words, glue=grade in YOUNG, limit=limit)
+
+
+def reading_groups(words: list[str], *, glue: bool, limit: int) -> list[str]:
+    """Les mots en groupes : les petits mots collés au mot qui les suit si `glue` (comme on lit),
+    puis les deux groupes voisins les plus courts réunis tant qu'il y en a plus que `limit`.
+    Sert aussi aux morceaux relus de la dictée de phrases."""
     groups: list[str] = []
-    glue = False
+    stick = False
     for word in words:
-        if groups and (glue or not any(c.isalnum() for c in word)):  # « ? », « : » vont avec le mot d'avant
+        if groups and (stick or not any(c.isalnum() for c in word)):  # « ? », « : » vont avec le mot d'avant
             groups[-1] += " " + word
         else:
             groups.append(word)
-        key = normalize(word)
-        glue = grade in YOUNG and (key in _GLUE or word.endswith(("'", "’")))
-    limit = PIECES.get(grade, DEFAULT_PIECES) if grade is not None else DEFAULT_PIECES
+        stick = glue and (normalize(word) in _GLUE or word.endswith(("'", "’")))
     while len(groups) > limit:  # réunir les deux voisines les plus courtes
         i = min(range(len(groups) - 1), key=lambda k: len(groups[k]) + len(groups[k + 1]))
         groups[i : i + 2] = [groups[i] + " " + groups[i + 1]]

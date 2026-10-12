@@ -21,6 +21,7 @@ from app.domain.activities.memory import Memory
 from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.ordering import Order, Timeline
 from app.domain.activities.pictures import PictureFind, PictureMatch
+from app.domain.activities.sentence_dictation import SentenceDictation
 from app.domain.activities.speed_challenge import SpeedChallenge
 from app.domain.activities.spelling import Dictation, Scramble, WordFlash
 from app.domain.activities.true_false import TrueFalse
@@ -103,6 +104,7 @@ def default_registry() -> ActivityRegistry:
             WordFlash(),
             Scramble(),
             Dictation(),
+            SentenceDictation(),
             # Jeux en plus (étape 26)
             Unjumble(),
             FindMatch(),

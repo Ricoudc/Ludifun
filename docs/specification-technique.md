@@ -1819,6 +1819,42 @@ La correction compare les étiquettes ; la phrase reformée est toujours exactem
 leçon. Une ancienne application affiche les étiquettes telles quelles (plusieurs mots par
 étiquette) : rien ne change pour elle.
 
+### 5.64 Dictée de phrases (octobre 2026, règles 1.14.0)
+
+Après la dictée d'un mot seul (§5.15, `DICTATION`), la dictée d'une phrase qui l'emploie, comme
+en classe. Jeu fabriqué par le code (`app/domain/activities/sentence_dictation.py`,
+`SENTENCE_DICTATION`, niveau 3), sans IA pendant la séance :
+
+- **La phrase** : d'abord une phrase de la leçon qui contient le mot de la liste (`statement`
+  ou affirmation vraie, §5.58, marquée `from_lesson`), sinon la phrase d'aide du matériel
+  `spelling`, « ___ » remplacé par le mot. Longueur selon la classe : 6 mots au plus au CP, 8 au
+  CE1, 10 au CE2, 12 au CM1, 14 au CM2, 15 au collège (et classe inconnue), 3 au moins. Jamais
+  de chiffres (la voix dit « trois », l'enfant écrirait « 3 »), de guillemets ni de deux-points.
+- **Lecture** : le téléphone lit la phrase, puis morceau par morceau (groupes de lecture de
+  « Démêler », `unjumble.reading_groups`, un tiers du nombre de mots au plus), puis encore en
+  entier. Boutons « Toute la phrase » et « Morceau par morceau » ; « La phrase a N mots ». Sans
+  voix française, la phrase s'affiche `show_ms` (2 s + 0,5 s par mot), comme le mot éclair.
+- **Correction** mot à mot, alignée (distance d'édition sur les mots : un mot oublié ne fait pas
+  compter faux les suivants) ; orthographe stricte (accents), sans majuscules ni ponctuation,
+  que la voix ne dit pas ; « l' hôpital » vaut « l'hôpital ». Score = mots justes / (mots de
+  la phrase + mots en trop), 0,9 au plus s'il y a une faute. **Maîtrise** : seul le mot de la
+  liste compte (la notion apprise) ; raté, l'erreur est notée comme pour la dictée du mot
+  (faute de peu = imprécision). L'enfant voit la phrase juste, puis chaque mot raté (« doctor →
+  docteur », « mot oublié → hôpital », « bien (mot en trop) »).
+- **Règles 1.14.0** : jamais en maths (comme les autres jeux d'orthographe), ni en anglais (la
+  voix lit en français) — `subjects.excluded_activities`.
+- Composeur (jeux intermédiaires), consignes par cycle, erreurs relues pour le parent (sa
+  réponse et la phrase), élève simulé ; « Dictées de phrases » dans le bilan des jeux.
+
+Contrat d'API inchangé : un type d'activité nouveau, qu'une ancienne application saute (§133).
+
+Tests : `tests/domain/test_sentence_dictation.py` (source de la phrase, longueur par classe,
+alignement, notation, maîtrise du seul mot de la liste), `test/activities/activities_test.dart`
+(ordre de lecture, repli sans voix, correction affichée).
+
+Non testé : la voix sur un vrai téléphone (débit, pauses entre les morceaux, prononciation des
+liaisons) ; vraies listes de mots analysées par une vraie IA.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

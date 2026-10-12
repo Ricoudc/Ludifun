@@ -126,6 +126,7 @@ INTERMEDIATE = frozenset(
         ActivityCode.WORD_FLASH,
         ActivityCode.SCRAMBLE,
         ActivityCode.DICTATION,
+        ActivityCode.SENTENCE_DICTATION,
         ActivityCode.UNJUMBLE,
         ActivityCode.ALIGN,
         ActivityCode.NUMBER_LINE,

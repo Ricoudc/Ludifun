@@ -51,8 +51,10 @@ class CorrectionView extends StatelessWidget {
     };
     final openQuestion = item.type == 'OPEN_QUESTION';
     final details = openQuestion ? _keyPoints() : _details();
+    // Dictée de phrases : la phrase juste, puis les mots ratés un à un.
     final showAnswer =
-        correction.result != AttemptResult.correct && (details.isEmpty || openQuestion);
+        correction.result != AttemptResult.correct &&
+        (details.isEmpty || openQuestion || item.type == 'SENTENCE_DICTATION');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -92,6 +94,16 @@ class CorrectionView extends StatelessWidget {
                   Text(
                     'Une réponse possible : ${correction.correctAnswer}',
                     style: const TextStyle(fontSize: 19),
+                  ),
+                ] else if (showAnswer &&
+                    item.type == 'SENTENCE_DICTATION' &&
+                    correction.correctAnswer != null) ...[
+                  const SizedBox(height: 12),
+                  const Text('La phrase était :', style: TextStyle(fontSize: 19)),
+                  const SizedBox(height: 4),
+                  Text(
+                    correction.correctAnswer!,
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.3),
                   ),
                 ] else if (showAnswer && correction.correctAnswer != null) ...[
                   const SizedBox(height: 12),

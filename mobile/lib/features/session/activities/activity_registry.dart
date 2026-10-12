@@ -50,6 +50,9 @@ final activityRegistry = <String, ActivityBuilder>{
   'WORD_FLASH': (payload, onSubmit) => WordFlashView(payload: payload, onSubmit: onSubmit),
   'SCRAMBLE': (payload, onSubmit) => ScrambleView(payload: payload, onSubmit: onSubmit),
   'DICTATION': (payload, onSubmit) => DictationView(payload: payload, onSubmit: onSubmit),
+  // Dictée de phrases (§5.64)
+  'SENTENCE_DICTATION': (payload, onSubmit) =>
+      SentenceDictationView(payload: payload, onSubmit: onSubmit),
   // Jeux en plus (étape 26)
   'UNJUMBLE': (payload, onSubmit) => UnjumbleView(payload: payload, onSubmit: onSubmit),
   'FIND_MATCH': (payload, onSubmit) => FindMatchView(payload: payload, onSubmit: onSubmit),
