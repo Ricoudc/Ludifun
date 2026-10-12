@@ -1,66 +1,85 @@
 # Ludifun — coach de révision
 
-L'enfant photographie sa leçon ; l'IA en extrait ce qu'il faut retenir, génère des
-exercices adaptés (QCM, vrai/faux, texte à trous, cartes mémoire, associations,
-questions ouvertes), corrige, puis adapte les révisions suivantes à ses erreurs
-(niveaux de maîtrise 0-5 + répétition espacée).
+L'enfant photographie sa leçon ; l'IA en extrait ce qu'il faut retenir, construit une
+séance de révision adaptée, analyse les erreurs et programme la prochaine révision.
 
-📄 Spécification complète : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
+📄 Cahier des charges complet (document de référence) : [`docs/cahier-des-charges-complet.md`](docs/cahier-des-charges-complet.md)
+🛠️ Spécification technique (écarts, schéma, API, contrats IA, plan) : [`docs/specification-technique.md`](docs/specification-technique.md)
+📄 Cahier des charges technique V1 (étapes 1 à 12) : [`docs/cahier-des-charges-v1.md`](docs/cahier-des-charges-v1.md)
 
 ```
-backend/   API FastAPI + moteur pédagogique + intégration Claude
-mobile/    Application Flutter (Android d'abord, iOS ensuite)
-docs/      Cahier des charges V1
+backend/            API FastAPI + PostgreSQL          → voir backend/README.md
+mobile/             Application Flutter (prototype, réécrite à l'étape 7)
+docs/               Cahier des charges, spécification technique, guides
+eval/               Évaluation sur de vraies leçons (protocole, exemples, grille)
+docker-compose.yml  PostgreSQL + API pour le développement
 ```
 
-## Backend
+## Avancement
 
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
+Étapes 1 à 12 : cahier des charges V1 §18. Étapes 13 et suivantes : spécification technique §9.
 
-# Mode hors-ligne (aucune clé nécessaire, analyse simplifiée par règles)
-uvicorn app.main:app --reload --host 0.0.0.0
-
-# Mode IA réel (Claude lit la photo et génère les exercices)
-export ANTHROPIC_API_KEY=...
-LUDIFUN_LLM_PROVIDER=anthropic uvicorn app.main:app --reload --host 0.0.0.0
-
-pytest   # tests
-```
-
-API interactive : http://localhost:8000/docs
-
-Variables d'environnement (préfixe `LUDIFUN_`, ou fichier `.env`) :
-
-| Variable | Défaut | Rôle |
+| # | Étape | État |
 |---|---|---|
-| `LUDIFUN_LLM_PROVIDER` | `fake` | `anthropic` pour utiliser Claude |
-| `LUDIFUN_LLM_MODEL` | `claude-opus-5` | Modèle Claude |
-| `LUDIFUN_DATABASE_URL` | `sqlite:///./ludifun.db` | ex. `postgresql+psycopg://user:pwd@host/ludifun` (installer `psycopg[binary]`) |
-| `LUDIFUN_QUESTIONS_PER_NOTION` | `4` | Taille de la banque de questions |
+| 1 | Socle : structure backend, PostgreSQL, migrations, intégration continue | ✅ |
+| 2 | Domaine : connaissances et activités | ✅ |
+| 3 | Domaine : séance, notation, mémorisation | ✅ |
+| 4 | Pipeline IA (+ outil `python -m app.tools.analyze`) | ✅ |
+| 5 | Mesure sur de vraies leçons | 🟡 outillage prêt et à jour des étapes 13 à 15 (compétences, aides, passages douteux, noms personnels), en attente des leçons et d'une clé API ([`eval/`](eval/README.md)) |
+| 6 | API : comptes parent, profils enfants, liaison par code / QR | ✅ |
+| 7 | API : leçons et séances, mission du jour | ✅ |
+| 8 | API : tableau de bord parent | ✅ |
+| 9 | Socle Flutter : premier lancement, espaces parent et enfant | ✅ |
+| 10 | Espace enfant : liaison (code, QR), accueil, photo, analyse, résumé | ✅ (essai sur téléphone à faire) |
+| 11 | Espace enfant : jeux, correction, reprise des erreurs, bilan | ✅ (essai sur téléphone à faire) |
+| 12 | Espace parent : compte, enfants, code et QR, tableau de bord, historique | ✅ (essai sur téléphone à faire) |
+| 13 | Compétences et niveaux de compréhension | ✅ |
+| 14 | Aide « Je n'ai pas compris », questions ouvertes, types d'erreurs | ✅ |
+| 15 | Import de texte et lecture vérifiée | ✅ |
+| 16 | Objectifs du parent : temps quotidien, plan avant un contrôle | ✅ |
+| 17 | Adaptation en temps réel et engagement | ✅ |
+| 18 | Tests avec de vraies familles (30 leçons, 5 enfants) | 🟡 outillage prêt (avis dans l'application, rapport, [protocole](docs/tests-familles.md)), en attente des familles |
+| 19 | Bêta Android (Play Store, test fermé) | 🟡 prête à déployer ([serveur](docs/deploiement.md), [Play Store](docs/play-store.md), [RGPD](docs/rgpd/registre-des-traitements.md)), en attente des comptes, fournisseurs et familles |
+| 20 | Missions et gamification : XP selon l'effort, niveau, série, badges (V2) | ✅ |
+| 21 | Activités graphiques : remettre dans l'ordre, frise, ranger dans les cases, memory (V2) | ✅ |
+| 22 | Carte et coloriage : 12 cartes et schémas libres de droits ([sources](tools/figures/README.md)) (V2) | ✅ |
+| 23 | Décisions expliquées (CDC §112-149) : règles du moteur configurables et versionnées, raison de chaque choix, réussite par niveau et autonomie, repli sur une autre IA | ✅ |
 
-## Application mobile
+Le prototype exploratoire qui a validé la faisabilité reste consultable dans l'historique
+git (commit `3362b04`).
 
-Le dossier `mobile/` contient le code Dart (`lib/`). Pour générer les projets
-natifs Android/iOS puis lancer l'app :
+### Reste à faire avant la bêta (§16)
+
+Le code est prêt (étape 19) : HTTPS et HSTS par Caddy, e-mails SMTP, confirmation de l'e-mail
+du parent, suppression des comptes inactifs, sauvegardes chiffrées, pages de confidentialité et
+de suppression du compte, bundle signé pour le Play Store. Restent des décisions et des comptes
+à créer :
+
+- choisir l'éditeur, l'hébergeur et le fournisseur d'e-mails dans l'UE ; signer les contrats de
+  sous-traitance (DPA), y compris avec Anthropic ;
+- faire relire la politique de confidentialité, le [registre](docs/rgpd/registre-des-traitements.md)
+  et l'[AIPD](docs/rgpd/aipd.md) ;
+- déployer ([`docs/deploiement.md`](docs/deploiement.md)) et publier en test fermé
+  ([`docs/play-store.md`](docs/play-store.md)) ;
+- plus tard : limites de débit dans un stockage partagé (Redis) si l'API tourne sur plusieurs
+  instances.
+
+## Démarrage rapide
+
+**Windows, sans ligne de commande** : double-cliquer sur `Ludifun.bat` : un menu pour démarrer
+(choix de l'IA, serveur, adresse à saisir sur le téléphone), mettre à jour tout seul (serveur et
+application du téléphone), sauvegarder… ; voir
+[`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).
 
 ```bash
-cd mobile
-flutter create --platforms=android,ios --org fr.ludifun .
-flutter pub get
-flutter run --dart-define=API_URL=http://10.0.2.2:8000   # émulateur Android
+docker compose up -d --build
+curl http://localhost:8000/health/ready   # {"status":"ok","schema":"0013"}
+
+docker compose exec api python -m app.tools.demo_family   # famille de démonstration (4 semaines)
+cd mobile && flutter run                   # application (émulateur Android : API sur 10.0.2.2:8000)
 ```
 
-À ajouter après `flutter create` :
-- **Android** (`android/app/src/main/AndroidManifest.xml`) : permission `CAMERA`, et
-  `android:usesCleartextTraffic="true"` sur `<application>` pour le développement en HTTP local.
-- **iOS** (`ios/Runner/Info.plist`) : `NSCameraUsageDescription` et
-  `NSPhotoLibraryUsageDescription` (« Pour photographier ta leçon »).
+Voir [`backend/README.md`](backend/README.md) et [`mobile/README.md`](mobile/README.md).
 
-## Données et vie privée
-
-Les photos ne sont jamais enregistrées : elles sont lues en mémoire puis seul le
-texte de la leçon est conservé. `DELETE /children/{id}` efface toutes les données
-d'un enfant. Voir la section 8 du cahier des charges.
+**Essayer sur un téléphone Android** (APK de test téléchargeable depuis GitHub, serveur sur votre
+ordinateur) : [`docs/tester-sur-telephone.md`](docs/tester-sur-telephone.md).

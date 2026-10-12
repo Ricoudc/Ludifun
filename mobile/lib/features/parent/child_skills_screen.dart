@@ -1,0 +1,273 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../app/level_stars.dart';
+import '../../app/router.dart';
+import '../../app/widgets.dart';
+import '../../core/api/api_exception.dart';
+import '../../models/level.dart';
+import '../../models/parent.dart';
+import '../../models/subject.dart';
+import '../../core/session.dart';
+import 'parent_home_screen.dart';
+import 'parent_providers.dart';
+
+const _levels = '''
+Chaque notion a un niveau de 0 à 5 :
+0 jamais travaillée · 1 découverte · 2 fragile · 3 en cours d'acquisition · 4 maîtrisée · 5 très bien maîtrisée (retenue dans le temps).
+
+« Maîtrisée » ne veut pas dire « réussit les QCM » : il faut aussi retrouver la réponse sans la voir, et appliquer une règle quand la leçon le permet. Sous chaque notion, une phrase dit ce qui manque encore.
+
+Une compétence est ce que la leçon demande de savoir faire ; son niveau suit celui de ses notions, la plus fragile comptant beaucoup.''';
+
+/// Compétences et notions de chaque leçon, avec leur niveau et ce qui manque encore.
+class ChildSkillsScreen extends ConsumerWidget {
+  const ChildSkillsScreen({required this.childId, super.key});
+
+  final String childId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lessons = ref.watch(childSkillsProvider(childId));
+    final name = ref.watch(childProvider(childId)).value?.displayName;
+    return Scaffold(
+      appBar: AppBar(
+        leading: BackButton(onPressed: () => context.go(Routes.childDashboard(childId))),
+        title: Text(name == null ? 'Compétences' : 'Compétences · $name'),
+        actions: [
+          IconButton(
+            tooltip: 'Comment lire les niveaux',
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(_levels, style: TextStyle(fontSize: 16, height: 1.5)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: () => ref.refresh(childSkillsProvider(childId).future),
+        child: CenteredBody(
+          top: true,
+          children: switch (lessons) {
+            AsyncData(value: []) => [
+              const Text(
+                'Les compétences apparaîtront quand une leçon aura été analysée.',
+                style: TextStyle(fontSize: 17),
+              ),
+            ],
+            AsyncData(:final value) => [for (final lesson in value) _LessonCard(lesson, childId)],
+            AsyncError(:final error) => [
+              ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
+              TextButton(
+                onPressed: () => ref.invalidate(childSkillsProvider(childId)),
+                child: const Text('Réessayer'),
+              ),
+            ],
+            _ => [const Center(child: CircularProgressIndicator())],
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _LessonCard extends ConsumerWidget {
+  const _LessonCard(this.lesson, this.childId);
+
+  final LessonProgress lesson;
+  final String childId;
+
+  /// Supprimer une leçon est réservé au parent (l'enfant ne peut pas le faire).
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final title = lesson.title ?? 'cette leçon';
+    final confirmed = await confirmDanger(
+      context,
+      title: 'Supprimer « $title » ?',
+      message:
+          'La leçon, ses jeux et les résultats obtenus dessus seront effacés. '
+          'Cette action est définitive.',
+      action: 'Supprimer',
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      await ref.read(apiProvider).deleteLesson(lesson.lessonId, childId: childId);
+    } on ApiException catch (error) {
+      if (context.mounted) showError(context, error);
+      return;
+    }
+    ref
+      ..invalidate(childSkillsProvider(childId))
+      ..invalidate(dashboardProvider(childId))
+      ..invalidate(childLessonsProvider(childId));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context).textTheme;
+    final others = lesson.notionsWithoutSkill;
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${Subjects.emoji(lesson.subject)} ${lesson.title ?? 'Leçon'}',
+                    style: theme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Supprimer la leçon',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => _delete(context, ref),
+                ),
+              ],
+            ),
+            TextButton.icon(
+              onPressed: () => context.go(Routes.lessonContent(childId, lesson.lessonId)),
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text('Voir les questions et les corriger'),
+            ),
+            for (final skill in lesson.skills)
+              _Group(
+                title: skill.label,
+                subtitle: verbLabels[skill.verb],
+                level: skill.level,
+                report: skill.report,
+                notions: lesson.notionsOf(skill),
+              ),
+            if (others.isNotEmpty)
+              _Group(title: lesson.skills.isEmpty ? 'Notions' : 'Autres notions', notions: others),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Une compétence (titre, niveau) et ses notions, dépliables.
+class _Group extends StatelessWidget {
+  const _Group({
+    required this.title,
+    required this.notions,
+    this.subtitle,
+    this.level,
+    this.report,
+  });
+
+  final String title;
+  final String? subtitle;
+  final int? level;
+  final SkillReport? report;
+  final List<NotionProgress> notions;
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    tilePadding: EdgeInsets.zero,
+    childrenPadding: const EdgeInsets.only(left: 8, bottom: 8),
+    shape: const Border(),
+    title: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+    subtitle: level == null
+        ? null
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  LevelStars(level!, size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      '${Levels.label(level!)}${subtitle == null ? '' : ' · $subtitle'}',
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+              if (report case final report?) _SkillReportBox(report),
+            ],
+          ),
+    children: [
+      for (final notion in notions)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: Text(notion.label, style: const TextStyle(fontSize: 16)),
+          subtitle: NotionFacts(notion),
+          trailing: LevelStars(notion.level, size: 14),
+        ),
+    ],
+  );
+}
+
+/// Ce qui a été observé (chiffres), séparé de l'interprétation du moteur (CDC §131).
+class NotionFacts extends StatelessWidget {
+  const NotionFacts(this.notion, {super.key});
+
+  final NotionProgress notion;
+
+  @override
+  Widget build(BuildContext context) {
+    final rates = [
+      for (final r in notion.levelRates)
+        if (r.rate != null) '${r.name} ${(r.rate! * 100).round()} %',
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (notion.facts case final facts?) Text('📊 $facts'),
+        if (rates.isNotEmpty)
+          Text(
+            'Réussite par niveau : ${rates.join(' · ')}'
+            '${notion.independence == null ? '' : ' · seul ${(notion.independence! * 100).round()} %'}',
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+        Text('💬 ${notion.explanation}', style: const TextStyle(fontStyle: FontStyle.italic)),
+      ],
+    );
+  }
+}
+
+/// Bilan de la compétence : où en est l'enfant, ce qui a été observé, et quoi faire à la maison.
+class _SkillReportBox extends StatelessWidget {
+  const _SkillReportBox(this.report);
+
+  final SkillReport report;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${report.emoji} ${report.summary}',
+          style: const TextStyle(fontSize: 15, color: Colors.black87),
+        ),
+        if (report.facts case final facts?)
+          Text('📊 $facts', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        if (report.advice case final advice?)
+          Container(
+            margin: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8E1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text('💡 À la maison : $advice', style: const TextStyle(fontSize: 14)),
+          ),
+      ],
+    ),
+  );
+}

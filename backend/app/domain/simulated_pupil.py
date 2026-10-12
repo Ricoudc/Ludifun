@@ -1,0 +1,230 @@
+"""Un « élève simulé » : répond juste aux notions qu'il connaît, faux aux autres.
+
+Sert aux tests et à la famille de démonstration (`python -m app.tools.demo_family`).
+"""
+
+import itertools
+from collections.abc import Callable
+from typing import Any
+
+from app.domain.activities.base import ActivityCode, BuiltActivity
+
+Knows = Callable[[str], bool]
+
+
+def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
+    s = activity.solution
+    single_ok = knows(activity.knowledge_ids[0])
+    match activity.type:
+        case ActivityCode.MCQ:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.TRUE_FALSE:
+            return {"value": s["value"] if single_ok else not s["value"]}
+        case ActivityCode.FILL_BLANK:
+            return {"text": s["answers"][0] if single_ok else "je ne sais pas"}
+        case ActivityCode.WORD_FLASH | ActivityCode.DICTATION:
+            return {"text": s["word"] if single_ok else s["word"][:-1]}  # une lettre oubliée
+        case ActivityCode.SCRAMBLE:
+            order = list(s["letters"])
+            return {"order": order if single_ok else order[1:] + order[:1]}
+        case ActivityCode.FLASHCARD:
+            return {"self_assessment": "knew" if single_ok else "didnt_know"}
+        case ActivityCode.UNJUMBLE:
+            order = list(s["words"])
+            return {"order": order if single_ok else order[1:] + order[:1]}
+        case ActivityCode.FIND_MATCH:
+            targets = sorted(set(s["expected"].values()))
+            return {
+                "answers": [
+                    [
+                        clue,
+                        target
+                        if knows(s["knowledge_by_clue"][clue])
+                        else targets[(targets.index(target) + 1) % len(targets)],
+                    ]
+                    for clue, target in s["expected"].items()
+                ]
+            }
+        case ActivityCode.WHEEL | ActivityCode.BOX:
+            return {
+                "answers": [
+                    {
+                        "id": question,
+                        "choice_id": answer
+                        if knows(s["knowledge_by_question"][question])
+                        else ("b" if answer == "a" else "a"),
+                    }
+                    for question, answer in s["expected"].items()
+                ]
+            }
+        case ActivityCode.PICTURE_MATCH:
+            words = sorted(set(s["expected"].values()))
+            return {
+                "pairs": [
+                    [
+                        picture,
+                        word
+                        if knows(s["knowledge_by_picture"][picture])
+                        else words[(words.index(word) + 1) % len(words)],
+                    ]
+                    for picture, word in s["expected"].items()
+                ]
+            }
+        case ActivityCode.PICTURE_FIND:
+            pictures = sorted(set(s["expected"].values()))
+            return {
+                "answers": [
+                    [
+                        clue,
+                        picture
+                        if knows(s["knowledge_by_clue"][clue])
+                        else pictures[(pictures.index(picture) + 1) % len(pictures)],
+                    ]
+                    for clue, picture in s["expected"].items()
+                ]
+            }
+        case ActivityCode.RANDOM_CARDS:
+            return {"cards": [{"id": c, "knew": knows(k)} for c, k in s["knowledge_by_card"].items()]}
+        case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choice_id" in s:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.NUMBER_LINE:
+            return {"index": s["index"] if single_ok else s["index"] + 1}
+        case ActivityCode.FRACTION_BAR:
+            count = s["count"] if single_ok else s["count"] - 1 or 2
+            return {"colored": list(range(count))}
+        case ActivityCode.COLUMN_OP:
+            return {"result": s["result"] if single_ok else str(int(s["result"]) + 1)}
+        case ActivityCode.WORD_HUNT:
+            return {"selected": s["expected"] if single_ok else s["expected"][1:]}
+        case ActivityCode.CONJUGATION | ActivityCode.PRONOUN:
+            by_text = {c["text"]: c["id"] for c in activity.payload["choices"]}
+            rows = list(s["expected"].items())
+            if not single_ok:  # deux lignes inversées
+                rows = [(rows[1][0], rows[0][1]), (rows[0][0], rows[1][1]), *rows[2:]]
+            return {"answers": [[row, by_text[form]] for row, form in rows]}
+        case ActivityCode.SYNONYMS:
+            pairs = list(s["pairs"].items())
+            if not single_ok:  # deux mots reliés à l'envers
+                pairs = [(pairs[0][0], pairs[1][1]), (pairs[1][0], pairs[0][1]), *pairs[2:]]
+            return {"pairs": [list(p) for p in pairs]}
+        case ActivityCode.HOMOPHONE | ActivityCode.WORD_FAMILY:
+            choices = {i["id"]: i["choices"] for i in activity.payload["items"]}
+            return {
+                "answers": [
+                    [sid, word if single_ok else next(c for c in choices[sid] if c != word)]
+                    for sid, word in s["expected"].items()
+                ]
+            }
+        case ActivityCode.ALIGN:
+            if "choice_id" in s:
+                return {
+                    "choice_id": s["choice_id"]
+                    if single_ok
+                    else ("non" if s["choice_id"] == "oui" else "oui")
+                }
+            return {"selected": s["expected"] if single_ok else s["expected"][1:]}  # un point oublié
+        case ActivityCode.OPEN_QUESTION:
+            return {"text": s["model_answer"] if single_ok else "je ne sais pas"}
+        case ActivityCode.MATCH:
+            known = [
+                [left, right] for left, right in s["pairs"].items() if knows(s["knowledge_by_left"][left])
+            ]
+            return {"pairs": known}
+        case ActivityCode.SPEED_CHALLENGE:
+            answers = [
+                {"id": sid, "value": value if knows(s["knowledge_by_statement"][sid]) else not value}
+                for sid, value in s["answers"].items()
+            ]
+            return {"answers": answers, "elapsed_ms": 20000}
+        case ActivityCode.RULER:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.SYMMETRY:
+            # Erreur : la figure glissée au lieu d'être retournée.
+            return {"selected": s["expected"] if single_ok else s["slid"]}
+        case ActivityCode.SYLLABLES:
+            lengths = {i["id"]: len(i["text"]) for i in activity.payload["items"]}
+            return {
+                "answers": [
+                    [wid, cuts if single_ok else _shifted(cuts, lengths[wid])]
+                    for wid, cuts in s["expected"].items()
+                ]
+            }
+        case ActivityCode.CLOCK | ActivityCode.MONEY if "choice_id" in s:
+            wrong = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else wrong}
+        case ActivityCode.MONEY:
+            return {"selected": _pay(activity.payload["items"], s["price"] if single_ok else -1)}
+        case ActivityCode.ORDER | ActivityCode.ALPHA_ORDER:
+            order = list(s["order"])
+            return {"order": order if single_ok else order[1:] + order[:1]}  # tout décalé d'un cran
+        case ActivityCode.CLASSIFY:
+            names = list(s["names"])
+            return {
+                "assignments": [
+                    [item, category if single_ok else names[(names.index(category) + 1) % len(names)]]
+                    for item, category in s["categories"].items()
+                ]
+            }
+        case ActivityCode.TIMELINE:
+            order = list(s["order"])
+            unknown = [i for i, item in enumerate(order) if not knows(s["knowledge_by_item"][item])]
+            if len(unknown) == 1:  # une seule date inconnue : échangée avec sa voisine
+                unknown.append(unknown[0] - 1 if unknown[0] else 1)
+            moved = [order[i] for i in unknown]
+            for position, item in zip(unknown, moved[1:] + moved[:1], strict=True):
+                order[position] = item
+            return {"order": order}
+        case ActivityCode.MEMORY:
+            by_knowledge: dict[str, list[str]] = {}
+            for card, knowledge in s["knowledge_by_card"].items():
+                by_knowledge.setdefault(knowledge, []).append(card)
+            cards = list(s["knowledge_by_card"])
+            moves: list[list[str]] = []
+            for knowledge, (first, second) in by_knowledge.items():
+                if not knows(knowledge):  # deux essais ratés avant de trouver
+                    other = next(c for c in cards if s["knowledge_by_card"][c] != knowledge)
+                    moves += [[first, other], [second, other]]
+                moves.append([first, second])
+            return {"moves": moves}
+        case ActivityCode.MAP:
+            zones = list(s["zones"].values())
+            return {
+                "answers": [
+                    [
+                        question,
+                        zone
+                        if knows(s["knowledge_by_item"][question])
+                        else next(z for z in zones if z != zone),
+                    ]
+                    for question, zone in s["zones"].items()
+                ]
+            }
+        case ActivityCode.COLORING:
+            palette = sorted(set(s["expected"].values()))
+            return {
+                "colors": [
+                    [zone, colour if single_ok else palette[(palette.index(colour) + 1) % len(palette)]]
+                    for zone, colour in s["expected"].items()
+                ]
+            }
+    raise ValueError(f"type d'activité inconnu : {activity.type}")
+
+
+def _shifted(cuts: list[int], length: int) -> list[int]:
+    """Syllabes mal coupées : chaque coupure d'une lettre plus loin (ou plus tôt au bout du mot)."""
+    return sorted({cut + 1 if cut + 1 < length else cut - 1 for cut in cuts} - {0})
+
+
+def _pay(items: list[dict[str, Any]], price: int) -> list[str]:
+    """Les pièces qui font exactement le prix (le prix vient d'une partie du porte-monnaie) ;
+    prix -1 : tout le porte-monnaie, trop d'argent."""
+    if price < 0:
+        return [i["id"] for i in items]
+    for size in range(1, len(items) + 1):
+        for chosen in itertools.combinations(items, size):
+            if sum(i["value"] for i in chosen) == price:
+                return [i["id"] for i in chosen]
+    return []

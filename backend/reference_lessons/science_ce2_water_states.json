@@ -1,0 +1,159 @@
+{
+  "ocr_text": "Les états de l'eau\nL'eau peut exister sous trois états : solide, liquide et gazeux.\nLa glace est de l'eau à l'état solide. La vapeur d'eau est de l'eau à l'état gazeux.\nQuand l'eau est chauffée, elle bout à 100 degrés et devient de la vapeur : c'est l'ébullition.\nQuand on refroidit l'eau, elle gèle à 0 degré et devient de la glace : c'est la solidification.\nQuand la glace se réchauffe, elle fond : c'est la fusion.",
+  "analysis": {
+    "schema_version": "2.0",
+    "is_lesson": true,
+    "lesson": {
+      "subject": "science",
+      "grade": "CE2",
+      "grade_confidence": 0.6,
+      "title": "Les états de l'eau",
+      "objective": "Connaître les trois états de l'eau et les changements d'état",
+      "summary": "L'eau peut être solide, liquide ou gazeuse. En la chauffant ou en la refroidissant, elle change d'état."
+    },
+    "knowledge": [
+      {
+        "id": "k1", "type": "classification", "label": "Les trois états de l'eau",
+        "statement": "L'eau peut exister sous trois états : solide, liquide et gazeux.",
+        "importance": 5,
+        "attributes": {"categories": [
+          {"name": "solide", "members": ["glace"]},
+          {"name": "liquide", "members": ["eau"]},
+          {"name": "gazeux", "members": ["vapeur d'eau"]}
+        ]},
+        "source_excerpt": "L'eau peut exister sous trois états : solide, liquide et gazeux",
+        "relations": []
+      },
+      {
+        "id": "k2", "type": "term", "label": "Ébullition",
+        "statement": "Quand on chauffe l'eau, elle bout et devient de la vapeur : c'est l'ébullition.",
+        "importance": 5,
+        "attributes": {"definition": "passage de l'eau liquide à la vapeur quand on la chauffe"},
+        "source_excerpt": "elle bout à 100 degrés et devient de la vapeur : c'est l'ébullition",
+        "relations": []
+      },
+      {
+        "id": "k3", "type": "term", "label": "Solidification",
+        "statement": "Quand on refroidit l'eau, elle gèle et devient de la glace : c'est la solidification.",
+        "importance": 4,
+        "attributes": {"definition": "passage de l'eau liquide à la glace quand on la refroidit"},
+        "source_excerpt": "elle gèle à 0 degré et devient de la glace : c'est la solidification",
+        "relations": [{"type": "opposite_of", "target": "k4"}]
+      },
+      {
+        "id": "k4", "type": "term", "label": "Fusion",
+        "statement": "Quand la glace se réchauffe, elle fond : c'est la fusion.",
+        "importance": 4,
+        "attributes": {"definition": "passage de la glace à l'eau liquide quand elle se réchauffe"},
+        "source_excerpt": "Quand la glace se réchauffe, elle fond : c'est la fusion",
+        "relations": [{"type": "opposite_of", "target": "k3"}]
+      },
+      {
+        "id": "k5", "type": "fact", "label": "L'eau bout à 100 degrés",
+        "statement": "L'eau bout à 100 degrés.",
+        "importance": 3,
+        "attributes": {},
+        "source_excerpt": "elle bout à 100 degrés",
+        "relations": []
+      },
+      {
+        "id": "k6", "type": "fact", "label": "L'eau gèle à 0 degré",
+        "statement": "L'eau gèle à 0 degré.",
+        "importance": 3,
+        "attributes": {},
+        "source_excerpt": "elle gèle à 0 degré",
+        "relations": []
+      }
+    ],
+    "skills": [
+      {
+        "id": "s1", "label": "Nommer les trois états de l'eau", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k1"],
+        "source_excerpt": "L'eau peut exister sous trois états : solide, liquide et gazeux."
+      },
+      {
+        "id": "s2", "label": "Nommer les changements d'état de l'eau", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k2", "k3", "k4"],
+        "source_excerpt": "Quand la glace se réchauffe, elle fond : c'est la fusion."
+      },
+      {
+        "id": "s3", "label": "Connaître les températures de changement d'état", "verb": "recall", "importance": 3,
+        "knowledge_ids": ["k5", "k6"],
+        "source_excerpt": "elle bout à 100 degrés et devient de la vapeur"
+      }
+    ],
+    "warnings": []
+  },
+  "material": {
+    "k1": {
+      "knowledge_id": "k1",
+      "questions": [
+        {"difficulty": 1, "stem": "Combien d'états l'eau peut-elle avoir ?", "answer": "3", "distractors": ["2", "4", "5"]},
+        {"difficulty": 2, "stem": "Dans quel état est la glace ?", "answer": "Solide", "distractors": ["Liquide", "Gazeux", "Invisible"]}
+      ],
+      "true_statements": ["La glace est de l'eau à l'état solide.", "La vapeur d'eau est de l'eau à l'état gazeux."],
+      "false_statements": ["La vapeur d'eau est de l'eau à l'état solide."],
+      "pair": {"left": "Glace", "right": "État solide"},
+      "explanation": "L'eau a trois états : solide (la glace), liquide et gazeux (la vapeur d'eau)."
+    },
+    "k2": {
+      "knowledge_id": "k2",
+      "questions": [
+        {"difficulty": 1, "stem": "Comment appelle-t-on le passage de l'eau liquide à la vapeur ?", "answer": "L'ébullition", "distractors": ["La fusion", "La solidification", "La condensation"]}
+      ],
+      "true_statements": ["Quand on chauffe l'eau, elle se transforme en vapeur."],
+      "false_statements": ["Quand on chauffe l'eau, elle se transforme en glace."],
+      "cloze": {"text": "Quand l'eau bout et devient de la vapeur, c'est l'___.", "answers": ["ébullition"]},
+      "pair": {"left": "Ébullition", "right": "Liquide → vapeur"},
+      "flashcard": {"front": "Ébullition", "back": "L'eau liquide devient de la vapeur"},
+      "tip": "Ébullition : ça bout, ça fait des bulles de vapeur.",
+      "explanation": "Quand on chauffe l'eau, elle bout et se transforme en vapeur : c'est l'ébullition."
+    },
+    "k3": {
+      "knowledge_id": "k3",
+      "questions": [
+        {"difficulty": 1, "stem": "Comment appelle-t-on le passage de l'eau liquide à la glace ?", "answer": "La solidification", "distractors": ["La fusion", "L'ébullition", "L'évaporation"]}
+      ],
+      "true_statements": ["Quand on refroidit l'eau, elle devient de la glace."],
+      "false_statements": ["Quand on refroidit l'eau, elle devient de la vapeur."],
+      "cloze": {"text": "Quand l'eau gèle et devient de la glace, c'est la ___.", "answers": ["solidification"]},
+      "pair": {"left": "Solidification", "right": "Liquide → glace"},
+      "flashcard": {"front": "Solidification", "back": "L'eau liquide devient de la glace"},
+      "tip": "Solidification : l'eau devient solide.",
+      "explanation": "Quand on refroidit l'eau, elle gèle et devient de la glace : c'est la solidification."
+    },
+    "k4": {
+      "knowledge_id": "k4",
+      "questions": [
+        {"difficulty": 1, "stem": "Comment appelle-t-on le passage de la glace à l'eau liquide ?", "answer": "La fusion", "distractors": ["La solidification", "L'ébullition", "La condensation"]}
+      ],
+      "true_statements": ["Quand la glace se réchauffe, elle fond."],
+      "false_statements": ["Quand la glace se réchauffe, elle devient plus dure."],
+      "cloze": {"text": "Quand la glace fond, c'est la ___.", "answers": ["fusion"]},
+      "pair": {"left": "Fusion", "right": "Glace → liquide"},
+      "flashcard": {"front": "Fusion", "back": "La glace devient de l'eau liquide"},
+      "explanation": "Quand la glace se réchauffe, elle fond et redevient liquide : c'est la fusion."
+    },
+    "k5": {
+      "knowledge_id": "k5",
+      "questions": [
+        {"difficulty": 1, "stem": "À quelle température l'eau bout-elle ?", "answer": "100 degrés", "distractors": ["50 degrés", "0 degré", "200 degrés"]}
+      ],
+      "true_statements": ["L'eau bout à 100 degrés."],
+      "false_statements": ["L'eau bout à 50 degrés."],
+      "cloze": {"text": "L'eau bout à ___ degrés.", "answers": ["100"]},
+      "tip": "100 degrés : l'eau bout.",
+      "explanation": "Quand on la chauffe, l'eau bout à 100 degrés."
+    },
+    "k6": {
+      "knowledge_id": "k6",
+      "questions": [
+        {"difficulty": 1, "stem": "À quelle température l'eau gèle-t-elle ?", "answer": "0 degré", "distractors": ["10 degrés", "100 degrés", "-50 degrés"]}
+      ],
+      "true_statements": ["L'eau gèle à 0 degré."],
+      "false_statements": ["L'eau gèle à 100 degrés."],
+      "cloze": {"text": "L'eau gèle à ___ degré.", "answers": ["0"]},
+      "explanation": "Quand on la refroidit, l'eau gèle à 0 degré et devient de la glace."
+    }
+  }
+}

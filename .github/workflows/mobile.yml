@@ -1,0 +1,90 @@
+name: Mobile
+
+on:
+  workflow_dispatch: # bouton « Run workflow » (une fois ce fichier sur la branche principale)
+  push:
+    paths: ["mobile/**", ".github/workflows/mobile.yml"]
+  pull_request:
+    paths: ["mobile/**", ".github/workflows/mobile.yml"]
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: "3.47.5"
+
+jobs:
+  checks:
+    name: Analyse, format et tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Dépendances (versions figées par pubspec.lock)
+        run: flutter pub get --enforce-lockfile
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyse
+        run: flutter analyze
+      - name: Tests
+        run: flutter test
+
+  android:
+    name: APK Android (debug)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # publier l'APK de test dans la release « apk-test »
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      # La compilation remplissait le disque de la machine de GitHub (« No space left on
+      # device ») : on retire des outils préinstallés qui ne servent pas ici.
+      - name: Place sur le disque
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/powershell /usr/share/swift
+          df -h /
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Compilation
+        # Numéro de construction croissant : l'application compare le sien à celui que propose le
+        # serveur de la maison (bandeau « Nouvelle version », spécification technique §5.50).
+        run: >-
+          flutter build apk --debug --build-number=${{ github.run_number }}
+          --dart-define=LUDIFUN_BUILD=${{ github.run_number }}
+      # APK de test à télécharger : page « Releases » du dépôt, version « apk-test »
+      # (https://github.com/Ricoudc/Ludifun/releases/tag/apk-test), remplacé à chaque envoi de
+      # code. Les « Artifacts » d'Actions ne servent plus : leur quota de stockage était plein
+      # (« Artifact storage quota has been hit ») ; une release n'y compte pas. Voir
+      # docs/tester-sur-telephone.md. L'adresse du serveur se règle dans l'application.
+      - name: APK de test téléchargeable
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOTES: "APK de test de la branche ${{ github.ref_name }}, commit ${{ github.sha }}. Remplacé à chaque envoi de code."
+        run: |
+          cp build/app/outputs/flutter-apk/app-debug.apk ludifun-test.apk
+          gh release view apk-test >/dev/null 2>&1 || gh release create apk-test --prerelease \
+            --target "${{ github.sha }}" --title "APK de test" --notes "$NOTES"
+          gh release edit apk-test --notes "$NOTES"
+          echo '{"build": ${{ github.run_number }}, "commit": "${{ github.sha }}"}' > ludifun-test.json
+          gh release upload apk-test ludifun-test.apk ludifun-test.json --clobber

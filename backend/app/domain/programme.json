@@ -1,0 +1,1697 @@
+{
+ "version": "2026.10.1",
+ "source": "Résumé par Ludifun des programmes de l'Éducation nationale (cycles 2, 3 et 4, eduscol.education.fr), à vérifier ; les intitulés d'histoire-géographie suivent ceux des programmes.",
+ "subjects": {
+  "math": [
+   {
+    "title": "Nombres et calculs",
+    "competences": [
+     {
+      "title": "Les nombres entiers",
+      "subs": [
+       {
+        "id": "MA-01",
+        "title": "Dénombrer, lire et écrire les nombres jusqu'à 100",
+        "grades": [
+         "CP"
+        ],
+        "keywords": "nombre dizaine unité compter dénombrer chiffre écrire lire cent"
+       },
+       {
+        "id": "MA-02",
+        "title": "Les nombres jusqu'à 1 000",
+        "grades": [
+         "CE1"
+        ],
+        "keywords": "nombre centaine dizaine unité mille"
+       },
+       {
+        "id": "MA-03",
+        "title": "Les nombres jusqu'à 10 000 et au-delà",
+        "grades": [
+         "CE2"
+        ],
+        "keywords": "nombre millier centaine dizaine"
+       },
+       {
+        "id": "MA-04",
+        "title": "Les grands nombres (millions, milliards)",
+        "grades": [
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "million milliard millier classe grand nombre"
+       },
+       {
+        "id": "MA-05",
+        "title": "Comparer, ranger, encadrer, placer sur une droite graduée",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "comparer ranger encadrer ordre croissant décroissant supérieur inférieur droite graduée"
+       }
+      ]
+     },
+     {
+      "title": "Les fractions et les nombres décimaux",
+      "subs": [
+       {
+        "id": "MA-06",
+        "title": "Fractions simples : un demi, un tiers, un quart",
+        "grades": [
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "moitié demi tiers quart fraction partage"
+       },
+       {
+        "id": "MA-07",
+        "title": "Fractions : numérateur, dénominateur, comparer à 1",
+        "grades": [
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "fraction numérateur dénominateur"
+       },
+       {
+        "id": "MA-08",
+        "title": "Les nombres décimaux : dixièmes, centièmes, millièmes",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "décimal virgule dixième centième millième partie entière"
+       },
+       {
+        "id": "MA-09",
+        "title": "Fractions égales, simplification, calculs sur les fractions",
+        "grades": [
+         "6e",
+         "5e",
+         "4e"
+        ],
+        "keywords": "fraction simplifier irréductible égale dénominateur commun quotient"
+       }
+      ]
+     },
+     {
+      "title": "Le calcul",
+      "subs": [
+       {
+        "id": "MA-10",
+        "title": "Additionner et soustraire",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1"
+        ],
+        "keywords": "addition soustraction somme différence ajouter enlever retenue"
+       },
+       {
+        "id": "MA-11",
+        "title": "Tables de multiplication et multiplication posée",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1"
+        ],
+        "keywords": "multiplication table produit fois multiplier double triple"
+       },
+       {
+        "id": "MA-12",
+        "title": "La division : partage, quotient et reste",
+        "grades": [
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "division quotient reste diviser partage diviseur dividende moitié"
+       },
+       {
+        "id": "MA-13",
+        "title": "Calcul mental, ordre de grandeur, arrondi",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "calcul mental ordre grandeur estimer estimation arrondi"
+       },
+       {
+        "id": "MA-14",
+        "title": "Opérations sur les nombres décimaux",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "décimal addition soustraction multiplication division virgule"
+       },
+       {
+        "id": "MA-15",
+        "title": "Multiples, diviseurs, nombres premiers",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "multiple diviseur divisible premier divisibilité critère"
+       },
+       {
+        "id": "MA-16",
+        "title": "Les nombres relatifs",
+        "grades": [
+         "5e",
+         "4e"
+        ],
+        "keywords": "relatif positif négatif opposé signe"
+       },
+       {
+        "id": "MA-17",
+        "title": "Puissances et écriture scientifique",
+        "grades": [
+         "4e",
+         "3e"
+        ],
+        "keywords": "puissance exposant carré cube notation scientifique racine"
+       }
+      ]
+     },
+     {
+      "title": "Le calcul littéral",
+      "subs": [
+       {
+        "id": "MA-18",
+        "title": "Expressions littérales : réduire, développer, factoriser",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "expression littérale lettre réduire développer factoriser distributivité"
+       },
+       {
+        "id": "MA-19",
+        "title": "Les équations",
+        "grades": [
+         "4e",
+         "3e"
+        ],
+        "keywords": "équation inconnue résoudre solution inéquation"
+       },
+       {
+        "id": "MA-20",
+        "title": "Les identités remarquables",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "identité remarquable carré différence"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Grandeurs et mesures",
+    "competences": [
+     {
+      "title": "Mesurer et calculer des grandeurs",
+      "subs": [
+       {
+        "id": "MA-21",
+        "title": "Les longueurs",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "longueur mètre centimètre millimètre kilomètre mesurer règle"
+       },
+       {
+        "id": "MA-22",
+        "title": "Les masses et les contenances",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "masse gramme kilogramme tonne contenance litre centilitre millilitre balance"
+       },
+       {
+        "id": "MA-23",
+        "title": "Les durées, l'heure et le calendrier",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "heure minute seconde durée horloge montre calendrier"
+       },
+       {
+        "id": "MA-24",
+        "title": "La monnaie : euros et centimes",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "euro centime monnaie prix rendre"
+       },
+       {
+        "id": "MA-25",
+        "title": "Le périmètre",
+        "grades": [
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "périmètre contour"
+       },
+       {
+        "id": "MA-26",
+        "title": "Les aires",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "aire surface carré"
+       },
+       {
+        "id": "MA-27",
+        "title": "Les volumes",
+        "grades": [
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "volume pavé cylindre cône contenance"
+       },
+       {
+        "id": "MA-28",
+        "title": "Les angles",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "angle degré droit aigu obtus rapporteur équerre"
+       }
+      ]
+     },
+     {
+      "title": "La proportionnalité",
+      "subs": [
+       {
+        "id": "MA-29",
+        "title": "Situations de proportionnalité, pourcentages, échelles",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e"
+        ],
+        "keywords": "proportionnalité proportionnel pourcentage échelle vitesse coefficient règle trois"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Espace et géométrie",
+    "competences": [
+     {
+      "title": "Se repérer et reconnaître les figures",
+      "subs": [
+       {
+        "id": "MA-30",
+        "title": "Se repérer et se déplacer : quadrillage, plan, codage",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "repérer gauche droite quadrillage déplacement codage case"
+       },
+       {
+        "id": "MA-31",
+        "title": "Les figures planes : carré, rectangle, triangle, cercle",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "carré rectangle triangle cercle polygone losange côté sommet rayon diamètre figure"
+       },
+       {
+        "id": "MA-32",
+        "title": "Les solides : cube, pavé, prisme, pyramide…",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "cube pavé solide face arête sommet prisme pyramide cylindre cône boule patron"
+       },
+       {
+        "id": "MA-33",
+        "title": "Droites parallèles et perpendiculaires",
+        "grades": [
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "droite parallèle perpendiculaire segment milieu"
+       },
+       {
+        "id": "MA-34",
+        "title": "La symétrie axiale",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "symétrie axe symétrique"
+       }
+      ]
+     },
+     {
+      "title": "Démontrer en géométrie",
+      "subs": [
+       {
+        "id": "MA-35",
+        "title": "Triangles, théorème de Pythagore, théorème de Thalès, trigonométrie",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "triangle théorème pythagore thalès hypoténuse cosinus sinus tangente trigonométrie"
+       },
+       {
+        "id": "MA-36",
+        "title": "Transformations : translation, rotation, homothétie",
+        "grades": [
+         "4e",
+         "3e"
+        ],
+        "keywords": "translation rotation homothétie transformation"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Données, probabilités, fonctions et algorithmes",
+    "competences": [
+     {
+      "title": "Organiser des données",
+      "subs": [
+       {
+        "id": "MA-37",
+        "title": "Tableaux, diagrammes et graphiques",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "tableau graphique diagramme données moyenne médiane statistique"
+       },
+       {
+        "id": "MA-38",
+        "title": "Les probabilités",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "probabilité hasard événement chance"
+       },
+       {
+        "id": "MA-39",
+        "title": "Les fonctions",
+        "grades": [
+         "4e",
+         "3e"
+        ],
+        "keywords": "fonction image antécédent linéaire affine"
+       },
+       {
+        "id": "MA-40",
+        "title": "Algorithmique et programmation",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "algorithme programme programmation scratch boucle instruction"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "french": [
+   {
+    "title": "Lecture et compréhension",
+    "competences": [
+     {
+      "title": "Lire",
+      "subs": [
+       {
+        "id": "FR-01",
+        "title": "Correspondance lettres-sons : déchiffrer les mots",
+        "grades": [
+         "CP",
+         "CE1"
+        ],
+        "keywords": "son lettre syllabe graphème phonème voyelle consonne déchiffrer"
+       },
+       {
+        "id": "FR-02",
+        "title": "Comprendre un texte : personnages, événements, intentions",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "texte comprendre personnage récit histoire lecture narrateur"
+       },
+       {
+        "id": "FR-03",
+        "title": "Genres littéraires : conte, fable, poésie, théâtre, roman",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "conte fable poésie poème théâtre roman vers strophe rime fantastique autobiographie"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Écriture",
+    "competences": [
+     {
+      "title": "Écrire",
+      "subs": [
+       {
+        "id": "FR-04",
+        "title": "Copier, écrire des phrases puis des textes, les améliorer",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "écrire rédiger rédaction texte copier brouillon"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Grammaire",
+    "competences": [
+     {
+      "title": "La phrase",
+      "subs": [
+       {
+        "id": "FR-05",
+        "title": "La phrase et la ponctuation, types et formes de phrases",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1"
+        ],
+        "keywords": "phrase ponctuation point majuscule interrogative exclamative déclarative impérative négative affirmative"
+       },
+       {
+        "id": "FR-06",
+        "title": "La phrase complexe : propositions",
+        "grades": [
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "proposition subordonnée relative coordonnée juxtaposée principale complexe"
+       }
+      ]
+     },
+     {
+      "title": "Les classes et les fonctions des mots",
+      "subs": [
+       {
+        "id": "FR-07",
+        "title": "Nature des mots : nom, verbe, déterminant, adjectif, pronom…",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "nom verbe déterminant adjectif pronom article adverbe préposition conjonction nature commun propre"
+       },
+       {
+        "id": "FR-08",
+        "title": "Fonctions : sujet, compléments, attribut",
+        "grades": [
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e"
+        ],
+        "keywords": "sujet complément cod coi attribut circonstanciel épithète fonction groupe"
+       }
+      ]
+     },
+     {
+      "title": "Les accords",
+      "subs": [
+       {
+        "id": "FR-09",
+        "title": "Accords dans le groupe nominal : genre et nombre",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "accord masculin féminin singulier pluriel genre nombre groupe nominal nom adjectif"
+       },
+       {
+        "id": "FR-10",
+        "title": "Accord du verbe avec son sujet",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "accord sujet verbe terminaison conjugué"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Conjugaison",
+    "competences": [
+     {
+      "title": "Les temps et les modes",
+      "subs": [
+       {
+        "id": "FR-11",
+        "title": "Le présent de l'indicatif",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1"
+        ],
+        "keywords": "présent indicatif conjuguer conjugaison verbe groupe infinitif"
+       },
+       {
+        "id": "FR-12",
+        "title": "Futur, imparfait, passé composé",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "futur imparfait passé composé auxiliaire participe"
+       },
+       {
+        "id": "FR-13",
+        "title": "Passé simple, plus-que-parfait et autres temps composés",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e"
+        ],
+        "keywords": "passé simple plus parfait antérieur temps composé"
+       },
+       {
+        "id": "FR-14",
+        "title": "Impératif, conditionnel, subjonctif",
+        "grades": [
+         "CM2",
+         "6e",
+         "5e",
+         "4e"
+        ],
+        "keywords": "impératif conditionnel subjonctif mode"
+       },
+       {
+        "id": "FR-15",
+        "title": "Voix active et voix passive",
+        "grades": [
+         "4e",
+         "3e"
+        ],
+        "keywords": "passive active voix agent"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Orthographe",
+    "competences": [
+     {
+      "title": "Écrire les mots sans erreur",
+      "subs": [
+       {
+        "id": "FR-16",
+        "title": "Orthographe des mots : mots invariables, mots à apprendre",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "mot invariable orthographe dictée écrire lettre muette"
+       },
+       {
+        "id": "FR-17",
+        "title": "Les homophones : a/à, et/est, son/sont, on/ont…",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "homophone a à et est son sont on ont ce se ces ses"
+       },
+       {
+        "id": "FR-18",
+        "title": "Accord du participe passé",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "participe passé accord avoir être"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Vocabulaire",
+    "competences": [
+     {
+      "title": "Le sens et la formation des mots",
+      "subs": [
+       {
+        "id": "FR-19",
+        "title": "Ordre alphabétique et dictionnaire",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "alphabet alphabétique dictionnaire"
+       },
+       {
+        "id": "FR-20",
+        "title": "Familles de mots, préfixes, suffixes",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "famille préfixe suffixe radical"
+       },
+       {
+        "id": "FR-21",
+        "title": "Synonymes, contraires, sens propre et sens figuré",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "synonyme contraire antonyme sens propre figuré polysémie"
+       },
+       {
+        "id": "FR-22",
+        "title": "Figures de style : comparaison, métaphore, personnification",
+        "grades": [
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "comparaison métaphore personnification figure style"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "history": [
+   {
+    "title": "Questionner le temps (cycle 2)",
+    "competences": [
+     {
+      "title": "Se repérer dans le temps",
+      "subs": [
+       {
+        "id": "HI-01",
+        "title": "Le temps court : jours, semaines, mois, saisons",
+        "grades": [
+         "CP",
+         "CE1"
+        ],
+        "keywords": "jour semaine mois saison calendrier hier demain"
+       },
+       {
+        "id": "HI-02",
+        "title": "Le temps long : frise, générations, modes de vie d'autrefois",
+        "grades": [
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "frise génération grand parent autrefois siècle évolution"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Histoire de France et du monde (cycle 3)",
+    "competences": [
+     {
+      "title": "CM1",
+      "subs": [
+       {
+        "id": "HI-03",
+        "title": "Et avant la France ? Préhistoire, Gaulois, Romains, Francs",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "préhistoire celte gaule gaulois romain vercingétorix clovis franc"
+       },
+       {
+        "id": "HI-04",
+        "title": "Le temps des rois",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "roi louis charlemagne moyen âge seigneur château chevalier françois versailles monarchie"
+       },
+       {
+        "id": "HI-05",
+        "title": "Le temps de la Révolution et de l'Empire",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "révolution 1789 bastille napoléon empire déclaration droit louis xvi"
+       }
+      ]
+     },
+     {
+      "title": "CM2",
+      "subs": [
+       {
+        "id": "HI-06",
+        "title": "Le temps de la République",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "république 1848 1870 jules ferry école laïcité vote suffrage"
+       },
+       {
+        "id": "HI-07",
+        "title": "L'âge industriel en France",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "industrie industriel usine ouvrier machine vapeur chemin fer"
+       },
+       {
+        "id": "HI-08",
+        "title": "La France, des guerres mondiales à l'Union européenne",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "guerre mondiale 1914 1918 1939 1945 verdun tranchée résistance union européenne"
+       }
+      ]
+     },
+     {
+      "title": "6e",
+      "subs": [
+       {
+        "id": "HI-09",
+        "title": "La longue histoire de l'humanité et des migrations",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "préhistoire homo sapiens néolithique paléolithique agriculture écriture migration"
+       },
+       {
+        "id": "HI-10",
+        "title": "Récits fondateurs, croyances et citoyenneté dans la Méditerranée antique",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "grec athènes dieu olympe homère mythe démocratie hébreu bible cité"
+       },
+       {
+        "id": "HI-11",
+        "title": "L'empire romain dans le monde antique",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "rome romain empire auguste christianisme jésus chrétien"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Histoire (cycle 4)",
+    "competences": [
+     {
+      "title": "5e",
+      "subs": [
+       {
+        "id": "HI-12",
+        "title": "Chrétientés et islam (VIe-XIIIe siècles)",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "islam mahomet byzance byzantin chrétienté croisade calife"
+       },
+       {
+        "id": "HI-13",
+        "title": "Société, Église et pouvoir dans l'Occident féodal",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "féodal seigneur seigneurie paysan église capétien ville"
+       },
+       {
+        "id": "HI-14",
+        "title": "Transformations de l'Europe et ouverture sur le monde (XVIe-XVIIe siècles)",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "renaissance humanisme réforme protestant découverte colomb louis xiv absolutisme"
+       }
+      ]
+     },
+     {
+      "title": "4e",
+      "subs": [
+       {
+        "id": "HI-15",
+        "title": "Le XVIIIe siècle : expansions, Lumières et révolutions",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "lumière traite esclavage révolution voltaire rousseau"
+       },
+       {
+        "id": "HI-16",
+        "title": "L'Europe et le monde au XIXe siècle",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "industrialisation colonisation colonie colonial"
+       },
+       {
+        "id": "HI-17",
+        "title": "Société, culture et politique dans la France du XIXe siècle",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "république commune 1848 1870 suffrage universel napoléon iii"
+       }
+      ]
+     },
+     {
+      "title": "3e",
+      "subs": [
+       {
+        "id": "HI-18",
+        "title": "L'Europe, théâtre des guerres totales (1914-1945)",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "guerre mondiale génocide shoah totalitarisme nazisme stalinisme vichy"
+       },
+       {
+        "id": "HI-19",
+        "title": "Le monde depuis 1945",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "guerre froide décolonisation construction européenne mur berlin"
+       },
+       {
+        "id": "HI-20",
+        "title": "Françaises et Français dans une République repensée",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "cinquième république gaulle 1958 femme droit vote"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "geography": [
+   {
+    "title": "Questionner l'espace (cycle 2)",
+    "competences": [
+     {
+      "title": "Se repérer dans l'espace",
+      "subs": [
+       {
+        "id": "GE-01",
+        "title": "Plans, cartes et paysages proches",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "plan carte paysage ville campagne mer montagne repère quartier"
+       },
+       {
+        "id": "GE-02",
+        "title": "Continents, océans et pays du monde",
+        "grades": [
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "continent océan pays globe planisphère"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Géographie (cycle 3)",
+    "competences": [
+     {
+      "title": "Repères",
+      "subs": [
+       {
+        "id": "GE-03",
+        "title": "La France : relief, fleuves, régions",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "relief fleuve région massif montagne plaine seine loire rhône garonne"
+       }
+      ]
+     },
+     {
+      "title": "CM1",
+      "subs": [
+       {
+        "id": "GE-04",
+        "title": "Découvrir les lieux où j'habite",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "commune quartier habiter lieu"
+       },
+       {
+        "id": "GE-05",
+        "title": "Se loger, travailler, se cultiver, avoir des loisirs",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "logement travail loisir culture"
+       },
+       {
+        "id": "GE-06",
+        "title": "Consommer en France",
+        "grades": [
+         "CM1"
+        ],
+        "keywords": "eau énergie alimentation consommer"
+       }
+      ]
+     },
+     {
+      "title": "CM2",
+      "subs": [
+       {
+        "id": "GE-07",
+        "title": "Se déplacer",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "transport déplacer réseau autoroute train avion"
+       },
+       {
+        "id": "GE-08",
+        "title": "Communiquer d'un bout à l'autre du monde grâce à Internet",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "internet communication numérique"
+       },
+       {
+        "id": "GE-09",
+        "title": "Mieux habiter",
+        "grades": [
+         "CM2"
+        ],
+        "keywords": "environnement développement durable recycler déchet espace vert"
+       }
+      ]
+     },
+     {
+      "title": "6e",
+      "subs": [
+       {
+        "id": "GE-10",
+        "title": "Habiter une métropole",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "métropole ville urbain"
+       },
+       {
+        "id": "GE-11",
+        "title": "Habiter un espace de faible densité",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "rural densité littoral montagne"
+       },
+       {
+        "id": "GE-12",
+        "title": "Le monde habité",
+        "grades": [
+         "6e"
+        ],
+        "keywords": "population répartition densité foyer peuplement"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Géographie (cycle 4)",
+    "competences": [
+     {
+      "title": "5e",
+      "subs": [
+       {
+        "id": "GE-13",
+        "title": "La question démographique et l'inégal développement",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "démographie population développement idh"
+       },
+       {
+        "id": "GE-14",
+        "title": "Des ressources limitées, à gérer et à renouveler",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "ressource énergie eau alimentation"
+       },
+       {
+        "id": "GE-15",
+        "title": "Prévenir les risques, s'adapter au changement global",
+        "grades": [
+         "5e"
+        ],
+        "keywords": "risque climat changement climatique catastrophe"
+       }
+      ]
+     },
+     {
+      "title": "4e",
+      "subs": [
+       {
+        "id": "GE-16",
+        "title": "L'urbanisation du monde",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "urbanisation ville mégapole métropole"
+       },
+       {
+        "id": "GE-17",
+        "title": "Les mobilités humaines transnationales",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "migration migrant tourisme mobilité"
+       },
+       {
+        "id": "GE-18",
+        "title": "Des espaces transformés par la mondialisation",
+        "grades": [
+         "4e"
+        ],
+        "keywords": "mondialisation mer océan échange port"
+       }
+      ]
+     },
+     {
+      "title": "3e",
+      "subs": [
+       {
+        "id": "GE-19",
+        "title": "Dynamiques territoriales de la France contemporaine",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "aire urbaine périurbain territoire espace productif"
+       },
+       {
+        "id": "GE-20",
+        "title": "Pourquoi et comment aménager le territoire ?",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "aménagement territoire région outre mer"
+       },
+       {
+        "id": "GE-21",
+        "title": "La France et l'Union européenne",
+        "grades": [
+         "3e"
+        ],
+        "keywords": "union européenne frontière"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "science": [
+   {
+    "title": "Questionner le monde du vivant, de la matière et des objets (cycle 2)",
+    "competences": [
+     {
+      "title": "Le vivant",
+      "subs": [
+       {
+        "id": "SC-01",
+        "title": "Les êtres vivants : naissance, croissance, alimentation",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "vivant animal végétal plante graine croissance naissance nourrir"
+       },
+       {
+        "id": "SC-02",
+        "title": "Le corps humain, l'hygiène et la santé",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "corps squelette dent hygiène santé sommeil alimentation"
+       }
+      ]
+     },
+     {
+      "title": "La matière et les objets",
+      "subs": [
+       {
+        "id": "SC-03",
+        "title": "Les états de l'eau",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "eau glace solide liquide gaz vapeur état fusion"
+       },
+       {
+        "id": "SC-04",
+        "title": "Les objets et l'électricité",
+        "grades": [
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "objet circuit électrique pile ampoule"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Sciences et technologie (cycle 3)",
+    "competences": [
+     {
+      "title": "Matière, mouvement, énergie",
+      "subs": [
+       {
+        "id": "SC-05",
+        "title": "La matière : états et mélanges",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "matière mélange état solide liquide gaz dissolution"
+       },
+       {
+        "id": "SC-06",
+        "title": "L'énergie et ses sources",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "énergie source renouvelable"
+       },
+       {
+        "id": "SC-07",
+        "title": "Le mouvement",
+        "grades": [
+         "CM2",
+         "6e"
+        ],
+        "keywords": "mouvement vitesse trajectoire"
+       }
+      ]
+     },
+     {
+      "title": "Le vivant",
+      "subs": [
+       {
+        "id": "SC-08",
+        "title": "Classer les êtres vivants, la biodiversité",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "classification espèce vertébré invertébré biodiversité"
+       },
+       {
+        "id": "SC-09",
+        "title": "Le corps humain : digestion, respiration, circulation, mouvement",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "digestion respiration circulation sang cœur poumon muscle os squelette"
+       },
+       {
+        "id": "SC-10",
+        "title": "Les êtres vivants dans leur milieu, les chaînes alimentaires",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "milieu chaîne alimentaire écosystème décomposeur"
+       }
+      ]
+     },
+     {
+      "title": "La planète Terre et les objets techniques",
+      "subs": [
+       {
+        "id": "SC-11",
+        "title": "La Terre, le Soleil, la Lune et le système solaire",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "terre soleil lune planète système solaire jour nuit saison rotation"
+       },
+       {
+        "id": "SC-12",
+        "title": "Les objets techniques",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "objet technique fonction matériau"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "title": "Sciences (cycle 4)",
+    "competences": [
+     {
+      "title": "Sciences de la vie et de la Terre",
+      "subs": [
+       {
+        "id": "SC-13",
+        "title": "La planète Terre, l'environnement et l'action humaine",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "volcan séisme plaque tectonique roche climat météo écosystème"
+       },
+       {
+        "id": "SC-14",
+        "title": "Le vivant et son évolution",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "cellule évolution reproduction génétique adn chromosome"
+       },
+       {
+        "id": "SC-15",
+        "title": "Le corps humain et la santé",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "système nerveux immunitaire microbe bactérie virus vaccin puberté nutrition"
+       }
+      ]
+     },
+     {
+      "title": "Physique-chimie",
+      "subs": [
+       {
+        "id": "SC-16",
+        "title": "Organisation et transformations de la matière",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "atome molécule réaction chimique transformation masse volumique acide"
+       },
+       {
+        "id": "SC-17",
+        "title": "Mouvement et interactions",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "force poids gravitation vitesse mouvement"
+       },
+       {
+        "id": "SC-18",
+        "title": "L'énergie et ses conversions, l'électricité",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "énergie conversion circuit tension intensité puissance électrique"
+       },
+       {
+        "id": "SC-19",
+        "title": "Des signaux : la lumière et le son",
+        "grades": [
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "lumière son signal onde"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "english": [
+   {
+    "title": "Anglais",
+    "competences": [
+     {
+      "title": "Communiquer",
+      "subs": [
+       {
+        "id": "EN-01",
+        "title": "Se présenter, saluer, parler de soi",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "hello name age introduce présenter saluer"
+       },
+       {
+        "id": "EN-02",
+        "title": "Nombres, couleurs, jours et mois",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2"
+        ],
+        "keywords": "number colour color day month week nombre couleur jour mois"
+       },
+       {
+        "id": "EN-03",
+        "title": "La famille, la maison, l'école, le corps",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "family house school body famille maison école corps"
+       },
+       {
+        "id": "EN-04",
+        "title": "Les animaux, la nourriture, les vêtements",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "animal food clothes nourriture vêtement"
+       }
+      ]
+     },
+     {
+      "title": "La langue et la culture",
+      "subs": [
+       {
+        "id": "EN-05",
+        "title": "Grammaire : être, avoir, le présent, le pluriel",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e"
+        ],
+        "keywords": "present simple be have plural pronoun présent pluriel"
+       },
+       {
+        "id": "EN-06",
+        "title": "Parler du passé et du futur",
+        "grades": [
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "past preterit future will passé futur"
+       },
+       {
+        "id": "EN-07",
+        "title": "La culture des pays anglophones",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "london england usa culture tradition anglophone"
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "civics": [
+   {
+    "title": "Enseignement moral et civique",
+    "competences": [
+     {
+      "title": "Vivre ensemble",
+      "subs": [
+       {
+        "id": "EM-01",
+        "title": "Les règles de vie et le respect des autres",
+        "grades": [
+         "CP",
+         "CE1",
+         "CE2"
+        ],
+        "keywords": "règle respect politesse classe vivre ensemble"
+       },
+       {
+        "id": "EM-02",
+        "title": "Égalité, laïcité, lutte contre les discriminations",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "laïcité égalité discrimination"
+       }
+      ]
+     },
+     {
+      "title": "La République et le citoyen",
+      "subs": [
+       {
+        "id": "EM-03",
+        "title": "Les symboles de la République",
+        "grades": [
+         "CE1",
+         "CE2",
+         "CM1",
+         "CM2",
+         "6e"
+        ],
+        "keywords": "république drapeau marianne marseillaise devise liberté égalité fraternité"
+       },
+       {
+        "id": "EM-04",
+        "title": "Droits et devoirs, la loi, le vote",
+        "grades": [
+         "CM1",
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "droit devoir citoyen loi vote élection"
+       },
+       {
+        "id": "EM-05",
+        "title": "Les institutions : commune, État, Union européenne",
+        "grades": [
+         "CM2",
+         "6e",
+         "5e",
+         "4e",
+         "3e"
+        ],
+        "keywords": "président assemblée sénat maire institution constitution"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

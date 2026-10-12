@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suivi de l'IA · Ludifun</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:1.5rem auto;max-width:72rem;padding:0 1rem;color:#1f2330;line-height:1.45}
+h1{color:#6c4cf5;margin-bottom:.2rem}h2{margin-top:1.8rem;font-size:1.15rem}
+.sub{color:#667;margin:0 0 1rem}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+td,th{border-bottom:1px solid #e3e3ee;padding:.35rem .5rem;text-align:left;vertical-align:top}
+th{background:#f4f2ff}
+.ok{color:#1e8e4e}.bad{color:#c62828}.run{color:#b26a00;font-weight:600}
+.card{background:#fff8e6;border:1px solid #f3d38b;border-radius:.6rem;padding:.6rem .9rem;margin:.4rem 0}
+.muted{color:#889}
+</style>
+</head>
+<body>
+<h1>Suivi de l'IA</h1>
+<p class="sub">Mis à jour toutes les 3 secondes · <span id="maj">…</span> · IA du serveur : <b id="ia">…</b>
+· IA des familles : <span id="familles">…</span></p>
+<p class="muted">Données techniques seulement : pas de prénom, pas de texte de leçon, pas de clé.
+Rapport à copier : <a href="/suivi/rapport.txt">/suivi/rapport.txt</a>.</p>
+
+<h2>En cours</h2>
+<div id="encours"></div>
+
+<h2>Dernières leçons</h2>
+<table><thead><tr><th>Quand</th><th>Leçon</th><th>État</th><th>Source</th><th>Temps de l'IA</th><th>Étapes de l'IA</th></tr></thead>
+<tbody id="lecons"></tbody></table>
+
+<h2>Durées par modèle (7 jours)</h2>
+<table><thead><tr><th>Modèle</th><th>Étape</th><th>Réussis</th><th>Médiane</th><th>Max</th></tr></thead>
+<tbody id="stats"></tbody></table>
+
+<h2>Dernières erreurs</h2>
+<table><thead><tr><th>Quand</th><th>Leçon</th><th>Étape</th><th>Modèle</th><th>Statut</th><th>Message</th></tr></thead>
+<tbody id="erreurs"></tbody></table>
+
+<script src="/suivi/suivi.js"></script>
+</body>
+</html>

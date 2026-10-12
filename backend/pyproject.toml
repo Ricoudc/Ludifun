@@ -1,0 +1,66 @@
+[project]
+name = "ludifun-backend"
+version = "0.1.0"
+description = "API Ludifun : photo d'une leçon → notions → séance de révision adaptée."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "anthropic>=1.8",
+    "argon2-cffi>=23.1",
+    "pyjwt>=2.9",
+    "email-validator>=2.2",
+    "python-multipart>=0.0.9",
+    "tzdata>=2024.1",
+    "httpx>=0.27", # fournisseurs d'IA compatibles OpenAI, Ollama
+    "cryptography>=43", # clés d'IA des familles, chiffrées en base
+    "pillow>=11",
+    "pypdf>=6.19.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF", "SIM"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # caractères français (’, «, ») dans les textes
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["migrations/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+# SQLAlchemy asynchrone exécute les requêtes dans des greenlets : sans ce réglage, la mesure de
+# couverture (`pytest --cov`) ne voit pas une grande partie du code des routes et des services.
+concurrency = ["greenlet", "thread"]
+source = ["app"]

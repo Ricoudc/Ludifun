@@ -1,0 +1,109 @@
+# Règles du moteur pédagogique (cahier des charges §125, §138).
+#
+# Tous les seuils de décision sont ici : on les change sans toucher au code. Toute modification
+# qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
+# les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
+
+version = "1.13.0"
+
+[session]
+block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
+strong_notions_needed = 6   # en dessous, les notions d'importance ≤ 2 sont aussi travaillées
+speed_notions = 5           # notions du défi rapide
+replay_max = 3              # activités de la reprise des erreurs
+errors_per_notion = 2       # séance « revoir mes erreurs » : activités par notion ratée
+express_below = 3           # moins de notions à travailler : révision express
+level_up_score = 50         # à partir de ce score, on vise le niveau de compréhension manquant
+deepen_score = 80           # notion maîtrisée et due : expliquer ou transférer
+missing_level_score = 70    # score retenu pour la priorité d'une notion à qui il manque un niveau
+visual_first = true         # approfondissement : ranger, remettre dans l'ordre, colorier d'abord (1.1.0)
+vary_formats = true         # à difficulté égale, les jeux les moins joués aux dernières séances d'abord (1.12.0)
+daily_game = true           # un « jeu du jour », différent chaque jour, dans chaque séance qui le permet (1.13.0)
+# Durée d'une séance (1.10.0) : une leçon courte (2 ou 3 questions) ne donne plus une séance de
+# 2 minutes. Sous `min_minutes` estimées, la séance est complétée par d'autres questions sur les
+# notions de la leçon (autre format ou autre question), sans dépasser `max_minutes`.
+min_minutes = 5
+max_minutes = 10
+
+[mastery]
+review_interval_days = { "1" = 1, "2" = 2, "3" = 4, "4" = 7, "5" = 14 }  # boîte → jours
+mastered_rate = 0.8         # réussite de la séance au-dessus de laquelle la notion est maîtrisée
+fragile_rate = 0.5          # en dessous : non maîtrisée
+known_score = 90            # au-delà (et révision non due), la notion n'est plus proposée
+important = 3               # importance à partir de laquelle une notion fixe la date de révision
+# Oubli estimé (CDC §130, 1.5.0) : sans révision, la mémoire d'une notion baisse de moitié en
+# `half_life_factor` fois l'intervalle de sa boîte (boîte 1 : 3 jours ; boîte 5 : 6 semaines).
+# Les notions les plus oubliées passent en tête des révisions.
+half_life_factor = 3.0
+fading_drop = 15            # baisse estimée à partir de laquelle le parent lit « sans doute un peu oubliée »
+
+[help]
+# Part du résultat retenue pour la maîtrise selon l'aide la plus forte demandée (0 à 5).
+result_factor = { "0" = 1.0, "1" = 1.0, "2" = 1.0, "3" = 0.75, "4" = 0.5, "5" = 0.0 }
+level_proof_max_help = 2    # au-delà, la réponse ne valide pas un niveau de compréhension
+
+[adaptation]
+remediation_after_failures = 2  # échecs sur la même notion : rappel puis activités plus faciles
+max_remediations = 2            # par séance
+failure_below = 0.5             # résultat en dessous duquel une réponse est un échec
+window = 5                      # réponses regardées pour proposer une pause
+fast_wrong = 3                  # réponses fausses et trop rapides dans la fenêtre : au hasard
+struggling = 4                  # échecs d'affilée : proposer une pause
+hint_spacing = 5                # réponses minimum entre deux propositions de pause
+random_below_ms = 1500          # réponse fausse plus rapide : probablement au hasard
+recurring_sessions = 3          # même erreur dans 3 séances : erreur récurrente
+
+[bonus]
+min_score = 0.8                 # réussite de la séance pour proposer des défis bonus
+max_time_share = 0.6            # réponses données en moins de 60 % du temps prévu
+activities = 3
+
+[rewards]
+daily_xp_cap = 150              # au-delà, l'XP du jour n'augmente plus
+
+[pictures]
+# Images des notions concrètes (étape 28, 1.2.0), pour les jeux « Image et mot » et « Quelle
+# image ? » : chaque image occupe la carte graphique une à deux minutes, puis attend le parent.
+per_lesson = 4
+
+[material]
+# Fin de l'analyse (1.3.0) : deux longs exercices (8 mots importants ou plus) qui partagent cette
+# part de leurs mots importants, et les mêmes nombres, sont le même ; le second est retiré.
+similar_ratio = 0.85
+# Exercices tirés des sites de confiance (si le parent l'a permis) : notions concernées, et
+# questions gardées au plus par notion.
+sourced_notions = 3
+sourced_per_notion = 2
+
+[homework]
+# Mode devoirs (CDC §29, §127) : jamais « énoncé → réponse ». La correction guidée (solution
+# et réponse) n'est proposée qu'après ce nombre de tentatives fausses, toutes les étapes vues (1.4.0).
+attempts_before_solution = 2
+
+[teach]
+# « Enseigne-moi » (CDC §83, 1.6.0) : l'enfant explique une notion à Ludi, l'élève joué par l'IA.
+follow_ups = 2              # questions de relance de Ludi après la première explication
+explain_ratio = 0.75        # part des points clés dits pour valider le niveau « expliquer »
+
+[difficulty]
+# Difficulté dynamique par notion (CDC §36, 1.7.0) : elle part du score estimé aujourd'hui, puis
+# suit les dernières réponses sur la notion (toutes séances confondues).
+step_up_after = 3           # réussites d'affilée sans aide au plus haut niveau proposé : on monte (2 si rapides)
+step_down_after = 2         # échecs d'affilée « ne sait pas encore » : on descend
+success = 0.8               # résultat à partir duquel une réponse est réussie
+window = 6                  # réponses regardées par notion
+
+[confidence]
+# Confiance de chaque notion extraite (CDC §115, 1.8.0) : calculée par le code (qualité de la page,
+# passage retrouvé exactement ou non, mot illisible, nombre absent de la leçon).
+high = 0.8                  # au-dessus : la notion est utilisée sans rien demander
+low = 0.5                   # en dessous : pas proposée à l'enfant avant la confirmation du parent
+
+[reminders]
+# Rappels du jour pour le parent (CDC §48, 1.9.0) : un au plus par enfant et par jour.
+after_hour = 17             # « pas encore révisé aujourd'hui » : seulement à partir de cette heure
+
+[subjects]
+# Jeux jamais proposés dans une matière (1.11.0) : une leçon de maths ne fait réviser que les
+# maths, pas l'orthographe des mots (« Démêler » n'y garde que les calculs, « 7 + 8 = 15 »).
+excluded_activities = { math = ["WORD_FLASH", "SCRAMBLE", "DICTATION"] }

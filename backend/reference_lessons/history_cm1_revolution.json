@@ -1,0 +1,202 @@
+{
+  "ocr_text": "La Révolution française\nEn 1789, la France est en crise : le roi Louis XVI manque d'argent. Il réunit les États généraux le 5 mai 1789 à Versailles. Les députés du tiers état se proclament Assemblée nationale.\nLe 14 juillet 1789, le peuple de Paris prend la Bastille, une prison qui symbolise le pouvoir absolu du roi.\nLe 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen : « Les hommes naissent et demeurent libres et égaux en droits. »\nLe tiers état regroupe tous ceux qui ne sont ni nobles ni membres du clergé.\nVocabulaire : monarchie absolue : régime où le roi détient tous les pouvoirs.",
+  "analysis": {
+    "schema_version": "2.0",
+    "is_lesson": true,
+    "lesson": {
+      "subject": "history",
+      "grade": "CM1",
+      "grade_confidence": 0.8,
+      "title": "La Révolution française",
+      "objective": "Connaître les principales notions de la Révolution française",
+      "summary": "En 1789, la France est en crise. Louis XVI réunit les États généraux, le peuple prend la Bastille et l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen."
+    },
+    "knowledge": [
+      {
+        "id": "k1", "type": "date", "label": "1789",
+        "statement": "La Révolution française commence en 1789.",
+        "importance": 5,
+        "attributes": {"value": "1789", "precision": "year", "event": "Début de la Révolution française"},
+        "source_excerpt": "En 1789, la France est en crise",
+        "relations": []
+      },
+      {
+        "id": "k2", "type": "person", "label": "Louis XVI",
+        "statement": "Louis XVI est le roi de France au moment de la Révolution.",
+        "importance": 4,
+        "attributes": {"role": "roi de France"},
+        "source_excerpt": "le roi Louis XVI manque d'argent",
+        "relations": []
+      },
+      {
+        "id": "k3", "type": "event", "label": "États généraux",
+        "statement": "Le 5 mai 1789, Louis XVI réunit les États généraux à Versailles.",
+        "importance": 4,
+        "attributes": {"date": "5 mai 1789", "place": "Versailles"},
+        "source_excerpt": "Il réunit les États généraux le 5 mai 1789 à Versailles",
+        "relations": [{"type": "happened_in", "target": "k1"}]
+      },
+      {
+        "id": "k4", "type": "event", "label": "Prise de la Bastille",
+        "statement": "Le 14 juillet 1789, le peuple de Paris prend la Bastille.",
+        "importance": 5,
+        "attributes": {"date": "14 juillet 1789", "place": "Paris"},
+        "source_excerpt": "Le 14 juillet 1789, le peuple de Paris prend la Bastille",
+        "relations": [{"type": "happened_in", "target": "k1"}]
+      },
+      {
+        "id": "k5", "type": "event", "label": "Déclaration des droits de l'homme et du citoyen",
+        "statement": "Le 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen.",
+        "importance": 5,
+        "attributes": {"date": "26 août 1789"},
+        "source_excerpt": "Le 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen",
+        "relations": [{"type": "happened_in", "target": "k1"}]
+      },
+      {
+        "id": "k6", "type": "term", "label": "Tiers état",
+        "statement": "Le tiers état regroupe tous ceux qui ne sont ni nobles ni membres du clergé.",
+        "importance": 3,
+        "attributes": {"definition": "tous ceux qui ne sont ni nobles ni membres du clergé"},
+        "source_excerpt": "Le tiers état regroupe tous ceux qui ne sont ni nobles ni membres du clergé",
+        "relations": []
+      },
+      {
+        "id": "k7", "type": "term", "label": "Monarchie absolue",
+        "statement": "Une monarchie absolue est un régime où le roi détient tous les pouvoirs.",
+        "importance": 3,
+        "attributes": {"definition": "régime où le roi détient tous les pouvoirs"},
+        "source_excerpt": "monarchie absolue : régime où le roi détient tous les pouvoirs",
+        "relations": [{"type": "opposite_of", "target": "k6"}]
+      },
+      {
+        "id": "k8", "type": "fact", "label": "Libres et égaux en droits",
+        "statement": "Selon la Déclaration de 1789, les hommes naissent et demeurent libres et égaux en droits.",
+        "importance": 2,
+        "attributes": {},
+        "source_excerpt": "Les hommes naissent et demeurent libres et égaux en droits",
+        "relations": [{"type": "part_of", "target": "k5"}]
+      }
+    ],
+    "skills": [
+      {
+        "id": "s1", "label": "Situer les grands événements et les acteurs de 1789", "verb": "recall", "importance": 5,
+        "knowledge_ids": ["k1", "k2", "k3", "k4", "k5"],
+        "source_excerpt": "Le 14 juillet 1789, le peuple de Paris prend la Bastille"
+      },
+      {
+        "id": "s2", "label": "Définir le vocabulaire de la Révolution", "verb": "recall", "importance": 3,
+        "knowledge_ids": ["k6", "k7"],
+        "source_excerpt": "Vocabulaire : monarchie absolue : régime où le roi détient tous les pouvoirs."
+      },
+      {
+        "id": "s3", "label": "Expliquer ce que proclame la Déclaration des droits de l'homme", "verb": "explain", "importance": 4,
+        "knowledge_ids": ["k5", "k8"],
+        "source_excerpt": "Les hommes naissent et demeurent libres et égaux en droits."
+      }
+    ],
+    "warnings": []
+  },
+  "material": {
+    "k1": {
+      "knowledge_id": "k1",
+      "questions": [
+        {"difficulty": 1, "stem": "En quelle année commence la Révolution française ?", "answer": "1789", "distractors": ["1492", "1914", "1848"]},
+        {"difficulty": 2, "stem": "Quel grand événement de l'histoire de France commence en 1789 ?", "answer": "La Révolution française", "distractors": ["La Première Guerre mondiale", "La guerre de Cent Ans", "La Renaissance"]}
+      ],
+      "true_statements": ["La Révolution française commence en 1789."],
+      "false_statements": ["La Révolution française commence en 1914."],
+      "cloze": {"text": "La Révolution française commence en ___.", "answers": ["1789"]},
+      "pair": {"left": "1789", "right": "Début de la Révolution française"},
+      "flashcard": {"front": "1789", "back": "Début de la Révolution française"},
+      "tip": "1789 = début de la Révolution française.",
+      "explanation": "En 1789, la France est en crise et le peuple conteste le pouvoir du roi : c'est le début de la Révolution française."
+    },
+    "k2": {
+      "knowledge_id": "k2",
+      "questions": [
+        {"difficulty": 1, "stem": "Qui est le roi de France au début de la Révolution ?", "answer": "Louis XVI", "distractors": ["Louis XIV", "Napoléon Ier", "Charlemagne"]}
+      ],
+      "true_statements": ["Louis XVI est roi de France en 1789."],
+      "false_statements": ["Louis XVI est un député du tiers état."],
+      "pair": {"left": "Louis XVI", "right": "Roi de France en 1789"},
+      "flashcard": {"front": "Louis XVI", "back": "Roi de France au moment de la Révolution"},
+      "tip": "Louis XVI : le roi qui manquait d'argent.",
+      "explanation": "Louis XVI est roi de France quand la Révolution commence. Il manque d'argent et réunit les États généraux."
+    },
+    "k3": {
+      "knowledge_id": "k3",
+      "questions": [
+        {"difficulty": 1, "stem": "Qui Louis XVI réunit-il le 5 mai 1789 ?", "answer": "Les États généraux", "distractors": ["Les généraux de l'armée", "Le peuple de Paris", "Les rois d'Europe"]},
+        {"difficulty": 2, "stem": "Où se réunissent les États généraux en 1789 ?", "answer": "À Versailles", "distractors": ["À Paris", "À Lyon", "À Marseille"]}
+      ],
+      "true_statements": ["Louis XVI réunit les États généraux en 1789."],
+      "false_statements": ["Louis XVI réunit les États généraux en 1914."],
+      "cloze": {"text": "Le 5 mai 1789, Louis XVI réunit les ___ à Versailles.", "answers": ["États généraux"]},
+      "pair": {"left": "5 mai 1789", "right": "Réunion des États généraux"},
+      "tip": "Les États généraux se réunissent à Versailles.",
+      "explanation": "Pour trouver de l'argent, Louis XVI réunit les États généraux à Versailles le 5 mai 1789.",
+      "help": {"hint": "Pense à la grande réunion demandée par le roi quand il manque d'argent."}
+    },
+    "k4": {
+      "knowledge_id": "k4",
+      "questions": [
+        {"difficulty": 1, "stem": "Que se passe-t-il à Paris le 14 juillet 1789 ?", "answer": "La prise de la Bastille", "distractors": ["Le sacre de Louis XVI", "La fin de la monarchie", "Le départ du roi pour Versailles"]},
+        {"difficulty": 2, "stem": "Quel jour le peuple de Paris prend-il la Bastille ?", "answer": "Le 14 juillet 1789", "distractors": ["Le 5 mai 1789", "Le 26 août 1789", "Le 1er janvier 1789"]}
+      ],
+      "true_statements": ["Le 14 juillet 1789, le peuple de Paris prend la Bastille."],
+      "false_statements": ["Le 14 juillet 1789, le roi fait construire la Bastille."],
+      "cloze": {"text": "Le 14 juillet 1789, le peuple de Paris prend la ___.", "answers": ["Bastille"]},
+      "pair": {"left": "14 juillet 1789", "right": "Prise de la Bastille"},
+      "tip": "Le 14 juillet, on se souvient de la prise de la Bastille.",
+      "explanation": "La Bastille est une prison qui symbolise le pouvoir absolu du roi. Le peuple de Paris la prend le 14 juillet 1789."
+    },
+    "k5": {
+      "knowledge_id": "k5",
+      "questions": [
+        {"difficulty": 1, "stem": "Quel texte l'Assemblée adopte-t-elle le 26 août 1789 ?", "answer": "La Déclaration des droits de l'homme et du citoyen", "distractors": ["La Constitution de la Ve République", "Le Code civil", "L'édit de Nantes"]},
+        {"difficulty": 2, "stem": "Quand l'Assemblée adopte-t-elle la Déclaration des droits de l'homme ?", "answer": "Le 26 août 1789", "distractors": ["Le 14 juillet 1789", "Le 5 mai 1789", "Le 4 septembre 1792"]}
+      ],
+      "true_statements": ["En 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen."],
+      "false_statements": ["La Déclaration des droits de l'homme et du citoyen est écrite par Louis XVI."],
+      "cloze": {"text": "Le 26 août 1789, l'Assemblée adopte la ___ des droits de l'homme et du citoyen.", "answers": ["Déclaration"]},
+      "pair": {"left": "26 août 1789", "right": "Déclaration des droits de l'homme"},
+      "tip": "Déclaration de 1789 : les hommes naissent libres et égaux.",
+      "explanation": "Le 26 août 1789, l'Assemblée adopte la Déclaration des droits de l'homme et du citoyen : les hommes naissent libres et égaux en droits.",
+      "open_questions": [{"level": 4, "prompt": "Explique ce que dit la Déclaration des droits de l'homme et du citoyen.", "key_points": ["les hommes naissent libres", "égaux en droits"], "model_answer": "Elle dit que les hommes naissent et demeurent libres et égaux en droits."}]
+    },
+    "k6": {
+      "knowledge_id": "k6",
+      "questions": [
+        {"difficulty": 1, "stem": "Qui fait partie du tiers état ?", "answer": "Ceux qui ne sont ni nobles ni membres du clergé", "distractors": ["Les nobles uniquement", "Les membres du clergé", "Le roi et sa famille"]}
+      ],
+      "true_statements": ["Le tiers état regroupe ceux qui ne sont ni nobles ni membres du clergé."],
+      "false_statements": ["Le tiers état regroupe les nobles et le clergé."],
+      "cloze": {"text": "Le ___ regroupe ceux qui ne sont ni nobles ni membres du clergé.", "answers": ["tiers état"]},
+      "pair": {"left": "Tiers état", "right": "Ni nobles ni membres du clergé"},
+      "flashcard": {"front": "Tiers état", "back": "Ceux qui ne sont ni nobles ni membres du clergé"},
+      "explanation": "Le tiers état, c'est la plus grande partie de la population : tous ceux qui ne sont ni nobles ni membres du clergé."
+    },
+    "k7": {
+      "knowledge_id": "k7",
+      "questions": [
+        {"difficulty": 1, "stem": "Comment appelle-t-on un régime où le roi détient tous les pouvoirs ?", "answer": "La monarchie absolue", "distractors": ["La république", "La démocratie", "L'empire"]}
+      ],
+      "true_statements": ["Dans une monarchie absolue, le roi détient tous les pouvoirs."],
+      "false_statements": ["Dans une monarchie absolue, le peuple élit le roi."],
+      "cloze": {"text": "Un régime où le roi détient tous les pouvoirs est une monarchie ___.", "answers": ["absolue"]},
+      "pair": {"left": "Monarchie absolue", "right": "Le roi détient tous les pouvoirs"},
+      "flashcard": {"front": "Monarchie absolue", "back": "Régime où le roi détient tous les pouvoirs"},
+      "explanation": "Dans une monarchie absolue, le roi décide de tout : il détient tous les pouvoirs."
+    },
+    "k8": {
+      "knowledge_id": "k8",
+      "questions": [
+        {"difficulty": 1, "stem": "Selon la Déclaration, comment naissent les hommes ?", "answer": "Libres et égaux en droits", "distractors": ["Nobles ou paysans", "Soumis au roi", "Riches ou pauvres"]}
+      ],
+      "true_statements": ["Selon la Déclaration de 1789, les hommes naissent libres et égaux en droits."],
+      "false_statements": [],
+      "cloze": {"text": "Les hommes naissent et demeurent ___ et égaux en droits.", "answers": ["libres"]},
+      "explanation": "C'est le début de la Déclaration de 1789 : les hommes naissent et demeurent libres et égaux en droits."
+    }
+  }
+}

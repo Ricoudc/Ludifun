@@ -1,0 +1,110 @@
+# Environnement de développement : PostgreSQL + API.
+#   docker compose up -d --build        → API sur http://localhost:8000 (docs : /docs)
+#   docker compose up -d db             → uniquement la base (pour lancer l'API ou les tests en local)
+# Nom fixe : le même serveur et les mêmes données, quel que soit le nom du dossier (ZIP
+# « Ludifun-claude-… », clone « Ludifun »…).
+name: ludifun
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ludifun
+      POSTGRES_PASSWORD: ludifun
+      POSTGRES_DB: ludifun
+    ports:
+      # Seulement depuis ce PC. Port réglable si 5432 est déjà pris (PostgreSQL installé…) :
+      # LUDIFUN_DB_PORT=5433 ; les scripts Windows prennent 55432.
+      - "127.0.0.1:${LUDIFUN_DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ludifun -d ludifun"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      LUDIFUN_ENVIRONMENT: dev
+      LUDIFUN_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@db:5432/ludifun
+      # Secrets propres à ce PC, tirés au hasard dans .env par Ludifun.bat (démarrer) (ailleurs :
+      # LUDIFUN_JWT_SECRET=… et LUDIFUN_SECRETS_KEY=… dans .env, 32 signes aléatoires ou plus).
+      # Sans eux, le secret public du dépôt : à éviter dès que le port 8000 est ouvert au réseau.
+      LUDIFUN_JWT_SECRET: ${LUDIFUN_JWT_SECRET:-}
+      LUDIFUN_SECRETS_KEY: ${LUDIFUN_SECRETS_KEY:-}
+      # IA du serveur : Ollama sur ce PC par défaut (gratuit, rien ne sort de la maison). Chaque
+      # famille peut en choisir une autre dans l'espace parent (« Intelligence artificielle »).
+      # Autre choix par défaut, dans un fichier .env à la racine du dépôt (Windows :
+      # Ludifun.bat, choix 4) :
+      #   LUDIFUN_AI_PROVIDER=claude      (ou openai, gemini, mistral, groq, xai, compatible, fake)
+      #   ANTHROPIC_API_KEY=sk-ant-...    (ou la clé du fournisseur choisi)
+      #   LUDIFUN_AI_DAILY_BUDGET_USD=5
+      LUDIFUN_AI_PROVIDER: ${LUDIFUN_AI_PROVIDER:-ollama}
+      # Ollama tourne sur le PC, hors du conteneur : host.docker.internal désigne le PC.
+      LUDIFUN_OLLAMA_BASE_URL: ${LUDIFUN_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      LUDIFUN_AI_MODEL: ${LUDIFUN_AI_MODEL:-}
+      # Contexte d'Ollama : 8192 suffit (une notion par appel) et tient sur une carte graphique de
+      # 8 Go avec qwen2.5vl:7b ; au-delà, le modèle déborde dans la mémoire du PC (4 fois plus lent).
+      LUDIFUN_OLLAMA_NUM_CTX: ${LUDIFUN_OLLAMA_NUM_CTX:-8192}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      # « compatible » : Azure OpenAI (l'IA de Copilot), OpenRouter, Ollama…
+      LUDIFUN_AI_BASE_URL: ${LUDIFUN_AI_BASE_URL:-}
+      LUDIFUN_AI_API_KEY: ${LUDIFUN_AI_API_KEY:-}
+      # Plafond de dépense IA par jour, en dollars : au-delà, les analyses attendent le lendemain.
+      LUDIFUN_AI_DAILY_BUDGET_USD: ${LUDIFUN_AI_DAILY_BUDGET_USD:-5}
+      # Recherche de sources (étape 24), facultative : dans .env, COMPOSE_PROFILES=recherche et
+      # LUDIFUN_WEB_SEARCH_URL=http://recherche:8080 (moteur « recherche » ci-dessous).
+      LUDIFUN_WEB_SEARCH_URL: ${LUDIFUN_WEB_SEARCH_URL:-}
+      LUDIFUN_WEB_SOURCES: ${LUDIFUN_WEB_SOURCES:-}
+      # Image des leçons (étape 27), facultative : moteur stable-diffusion.cpp (« sdcpp ») ou
+      # ComfyUI (« comfyui ») sur ce PC, installé par scripts/windows/installer-images.ps1.
+      # Exemple : LUDIFUN_IMAGE_ENGINE=sdcpp et LUDIFUN_IMAGE_URL=http://host.docker.internal:7860
+      # Ou en ligne, sans carte graphique : LUDIFUN_IMAGE_ENGINE=pollinations et
+      # LUDIFUN_IMAGE_API_KEY=sk_… (clé secrète créée sur https://enter.pollinations.ai/keys).
+      LUDIFUN_IMAGE_ENGINE: ${LUDIFUN_IMAGE_ENGINE:-none}
+      LUDIFUN_IMAGE_URL: ${LUDIFUN_IMAGE_URL:-}
+      LUDIFUN_IMAGE_MODEL: ${LUDIFUN_IMAGE_MODEL:-}
+      LUDIFUN_IMAGE_API_KEY: ${LUDIFUN_IMAGE_API_KEY:-}
+      # Application du téléphone (APK de test) rangée par la mise à jour Windows dans telephone/,
+      # proposée au téléphone par le serveur (« Nouvelle version de Ludifun »).
+      LUDIFUN_PHONE_APP_DIR: /app/telephone
+    volumes:
+      - images:/app/data/images  # images des leçons : jamais les photos, qui ne sont pas gardées
+      - ./telephone:/app/telephone:ro
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # déjà défini sous Windows et macOS ; utile sous Linux
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Moteur de recherche SearXNG (étape 24), lancé seulement avec le profil « recherche ».
+  # Pour l'ouvrir dans le navigateur du PC : http://localhost:8888
+  recherche:
+    image: searxng/searxng:latest
+    profiles: ["recherche"]
+    environment:
+      SEARXNG_SECRET: ${LUDIFUN_SEARXNG_SECRET:-ludifun-recherche-locale}  # cookies du moteur seulement
+    volumes:
+      - ./backend/docker/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    ports:
+      - "127.0.0.1:8888:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  images:

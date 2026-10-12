@@ -1,0 +1,5 @@
+# Scripts Windows : fins de ligne Windows, quel que soit le système qui clone le dépôt.
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# Scripts shell exécutés dans les conteneurs Linux : fins de ligne Unix, même clonés sous Windows.
+*.sh text eol=lf

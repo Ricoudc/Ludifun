@@ -1,0 +1,334 @@
+{
+ "ocr_text": "Les voyelles et les consonnes\nL'alphabet a 26 lettres.\nLes voyelles sont a, e, i, o, u et y.\nLes autres lettres sont des consonnes, comme b, d, l, m, p et r.\nUne syllabe se forme souvent avec une consonne et une voyelle : ma, li, pu.\nLe mot moto a deux syllabes : mo et to.",
+ "analysis": {
+  "schema_version": "2.0",
+  "is_lesson": true,
+  "lesson": {
+   "subject": "french",
+   "grade": "CP",
+   "grade_confidence": 0.8,
+   "title": "Les voyelles et les consonnes",
+   "objective": "Reconnaître les voyelles et les consonnes, et découper un mot en syllabes",
+   "summary": "Les lettres de l'alphabet sont des voyelles ou des consonnes. Une consonne et une voyelle forment une syllabe."
+  },
+  "knowledge": [
+   {
+    "id": "k1",
+    "type": "fact",
+    "label": "L'alphabet",
+    "statement": "L'alphabet a 26 lettres.",
+    "importance": 4,
+    "attributes": {},
+    "source_excerpt": "L'alphabet a 26 lettres",
+    "relations": []
+   },
+   {
+    "id": "k2",
+    "type": "classification",
+    "label": "Voyelles et consonnes",
+    "statement": "Chaque lettre est une voyelle ou une consonne.",
+    "importance": 5,
+    "attributes": {
+     "categories": [
+      {
+       "name": "voyelles",
+       "members": [
+        "a",
+        "e",
+        "i",
+        "o",
+        "u"
+       ]
+      },
+      {
+       "name": "consonnes",
+       "members": [
+        "b",
+        "d",
+        "l",
+        "m",
+        "p"
+       ]
+      }
+     ]
+    },
+    "source_excerpt": "Les autres lettres sont des consonnes, comme b, d, l, m, p et r",
+    "relations": []
+   },
+   {
+    "id": "k3",
+    "type": "term",
+    "label": "Voyelle",
+    "statement": "Les voyelles sont a, e, i, o, u et y.",
+    "importance": 5,
+    "attributes": {
+     "definition": "une des six lettres a, e, i, o, u et y"
+    },
+    "source_excerpt": "Les voyelles sont a, e, i, o, u et y",
+    "relations": []
+   },
+   {
+    "id": "k4",
+    "type": "term",
+    "label": "Syllabe",
+    "statement": "Une syllabe se forme souvent avec une consonne et une voyelle.",
+    "importance": 4,
+    "attributes": {
+     "definition": "un morceau de mot que l'on prononce d'un seul coup, souvent une consonne et une voyelle"
+    },
+    "source_excerpt": "Une syllabe se forme souvent avec une consonne et une voyelle",
+    "relations": []
+   },
+   {
+    "id": "k5",
+    "type": "fact",
+    "label": "Les syllabes de moto",
+    "statement": "Le mot moto a deux syllabes : mo et to.",
+    "importance": 3,
+    "attributes": {},
+    "source_excerpt": "Le mot moto a deux syllabes : mo et to",
+    "relations": [
+     {
+      "type": "example_of",
+      "target": "k4"
+     }
+    ]
+   }
+  ],
+  "skills": [
+   {
+    "id": "s1",
+    "label": "Reconnaître une voyelle et une consonne",
+    "verb": "recognize",
+    "importance": 5,
+    "knowledge_ids": [
+     "k2",
+     "k3"
+    ],
+    "source_excerpt": "Les voyelles sont a, e, i, o, u et y"
+   },
+   {
+    "id": "s2",
+    "label": "Découper un mot en syllabes",
+    "verb": "apply",
+    "importance": 4,
+    "knowledge_ids": [
+     "k4",
+     "k5"
+    ],
+    "source_excerpt": "Le mot moto a deux syllabes : mo et to"
+   }
+  ],
+  "warnings": []
+ },
+ "material": {
+  "k1": {
+   "knowledge_id": "k1",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Combien de lettres a l'alphabet ?",
+     "answer": "26",
+     "distractors": [
+      "20",
+      "24",
+      "30"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Combien de lettres faut-il pour écrire tout l'alphabet ?",
+     "answer": "26",
+     "distractors": [
+      "10",
+      "25",
+      "52"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'alphabet a 26 lettres."
+   ],
+   "false_statements": [
+    "L'alphabet a 10 lettres."
+   ],
+   "pair": {
+    "left": "L'alphabet",
+    "right": "26 lettres"
+   },
+   "flashcard": {
+    "front": "Combien de lettres dans l'alphabet ?",
+    "back": "26 lettres"
+   },
+   "cloze": {
+    "text": "L'alphabet a ___ lettres.",
+    "answers": [
+     "26",
+     "vingt-six"
+    ]
+   },
+   "explanation": "L'alphabet a 26 lettres, de a à z."
+  },
+  "k2": {
+   "knowledge_id": "k2",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "La lettre b est :",
+     "answer": "une consonne",
+     "distractors": [
+      "une voyelle",
+      "un chiffre",
+      "une syllabe"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Quelle lettre est une consonne ?",
+     "answer": "m",
+     "distractors": [
+      "a",
+      "o",
+      "u"
+     ]
+    }
+   ],
+   "true_statements": [
+    "La lettre d est une consonne.",
+    "La lettre e est une voyelle."
+   ],
+   "false_statements": [
+    "La lettre p est une voyelle."
+   ],
+   "pair": {
+    "left": "b, d, l, m, p",
+    "right": "des consonnes"
+   },
+   "explanation": "Les voyelles sont a, e, i, o, u et y ; les autres lettres sont des consonnes.",
+   "flashcard": {
+    "front": "b, d, l, m, p : voyelles ou consonnes ?",
+    "back": "Des consonnes"
+   }
+  },
+  "k3": {
+   "knowledge_id": "k3",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quelle lettre est une voyelle ?",
+     "answer": "i",
+     "distractors": [
+      "b",
+      "m",
+      "p"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Combien y a-t-il de voyelles ?",
+     "answer": "6",
+     "distractors": [
+      "4",
+      "5",
+      "26"
+     ]
+    }
+   ],
+   "true_statements": [
+    "La lettre u est une voyelle."
+   ],
+   "false_statements": [
+    "La lettre l est une voyelle."
+   ],
+   "pair": {
+    "left": "a, e, i, o, u, y",
+    "right": "les voyelles"
+   },
+   "flashcard": {
+    "front": "Cite les voyelles.",
+    "back": "a, e, i, o, u et y"
+   },
+   "explanation": "Il y a six voyelles : a, e, i, o, u et y."
+  },
+  "k4": {
+   "knowledge_id": "k4",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Avec quoi forme-t-on souvent une syllabe ?",
+     "answer": "Une consonne et une voyelle",
+     "distractors": [
+      "Deux chiffres",
+      "Trois mots",
+      "Une phrase"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Quel morceau de mot est une syllabe ?",
+     "answer": "ma",
+     "distractors": [
+      "m",
+      "a",
+      "moto"
+     ]
+    }
+   ],
+   "true_statements": [
+    "« li » est une syllabe."
+   ],
+   "false_statements": [
+    "Une syllabe est toujours un mot entier."
+   ],
+   "pair": {
+    "left": "ma, li, pu",
+    "right": "des syllabes"
+   },
+   "flashcard": {
+    "front": "Qu'est-ce qu'une syllabe ?",
+    "back": "Un morceau de mot, souvent une consonne et une voyelle"
+   },
+   "explanation": "Une syllabe se prononce d'un seul coup, comme ma, li ou pu."
+  },
+  "k5": {
+   "knowledge_id": "k5",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Combien de syllabes a le mot moto ?",
+     "answer": "2",
+     "distractors": [
+      "1",
+      "3",
+      "4"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Quelles sont les syllabes du mot moto ?",
+     "answer": "mo et to",
+     "distractors": [
+      "m et oto",
+      "mot et o",
+      "moto et o"
+     ]
+    }
+   ],
+   "true_statements": [
+    "Le mot moto a deux syllabes."
+   ],
+   "false_statements": [
+    "Le mot moto a trois syllabes."
+   ],
+   "pair": {
+    "left": "moto",
+    "right": "mo-to"
+   },
+   "explanation": "On entend deux morceaux dans moto : mo et to.",
+   "flashcard": {
+    "front": "Les syllabes de moto",
+    "back": "mo et to"
+   }
+  }
+ }
+}

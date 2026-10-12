@@ -1,0 +1,852 @@
+"""Tables de la V1 (cahier des charges §12).
+
+Toute modification ici doit s'accompagner d'une migration Alembic :
+    uv run alembic revision --autogenerate -m "..."
+Le test `test_models_match_migrations` échoue si les deux divergent.
+"""
+
+import uuid
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import (
+    ARRAY,
+    REAL,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    Numeric,
+    SmallInteger,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+LESSON_STATUSES = ("uploaded", "reading", "needs_review", "analyzing", "generating", "ready", "failed")
+LESSON_SOURCES = ("photo", "text")
+REVIEW_STATUSES = ("pending", "confirmed", "corrected", "unknown")
+FAILURE_REASONS = ("unreadable", "not_a_lesson", "too_long", "ai_error")
+PAGE_QUALITIES = ("good", "partial", "unreadable")
+SESSION_KINDS = ("first", "review", "errors")
+SESSION_STATUSES = ("active", "completed", "abandoned")
+SESSION_BLOCKS = ("warmup", "core", "match", "speed", "replay", "remediation", "bonus")
+ERROR_TYPES = (
+    "knowledge",
+    "calculation",
+    "method",
+    "reading",
+    "confusion",
+    "forgotten",
+    "imprecision",
+    "random",
+    "statement",
+)
+SKILL_VERBS = ("recognize", "recall", "apply", "explain", "transfer")
+AI_STAGES = (
+    "ocr", "analysis", "material", "evaluation", "sources", "illustration", "practice", "homework",
+    "teach",
+)  # fmt: skip
+AI_RUN_STATUSES = ("ok", "invalid_output", "refused", "error")
+AI_PROVIDERS = ("ollama", "claude", "openai", "gemini", "mistral", "groq", "xai", "compatible", "fake")
+BADGE_CODES = (  # app.domain.rewards.BadgeCode
+    "first_session",
+    "sessions_10",
+    "sessions_50",
+    "streak_3",
+    "streak_7",
+    "comeback",
+    "persevering",
+    "help_used",
+    "errors_reviewed",
+    "explainer",
+    "notion_mastered",
+    "lesson_mastered",
+    "bonus",
+)
+
+
+def _in(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(v) for v in values)})"
+
+
+def _uuid_pk() -> Mapped[uuid.UUID]:
+    return mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+
+def _created_at() -> Mapped[datetime]:
+    return mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+def _fk(target: str, ondelete: str = "CASCADE", nullable: bool = False) -> Mapped[Any]:
+    return mapped_column(Uuid, ForeignKey(target, ondelete=ondelete), nullable=nullable)
+
+
+# --------------------------------------------------------------------------- #
+# Comptes : parent → famille → enfants → appareils (cahier des charges §12)
+# --------------------------------------------------------------------------- #
+
+FAMILY_ROLES = ("owner", "member")
+
+
+class Parent(Base):
+    __tablename__ = "parents"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)  # en minuscules
+    first_name: Mapped[str | None] = mapped_column(Text)  # facultatif, pour les messages (A2)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)  # argon2id
+    privacy_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Conservation (§16.2) : e-mail de prévenance envoyé avant la suppression d'un compte inactif.
+    inactivity_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Family(Base):
+    """Un parent en V1 ; un second parent pourra rejoindre la famille en V5."""
+
+    __tablename__ = "families"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    created_at: Mapped[datetime] = _created_at()
+    # Recherche de sources sur des sites éducatifs (étape 24), au choix du parent ; désactivée.
+    web_sources: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+
+class FamilyAiSettings(Base):
+    """L'IA active de la famille (espace parent) ; sans ligne, le réglage du serveur."""
+
+    __tablename__ = "family_ai_settings"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Repli (§147) : si l'IA active ne répond pas, essayer les autres IA réglées par la famille.
+    fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+
+    __table_args__ = (CheckConstraint(_in("provider", AI_PROVIDERS), name="provider"),)
+
+
+class FamilyAiProvider(Base):
+    """Réglage d'une IA pour la famille : chaque IA garde sa clé, son modèle et son adresse, pour
+    passer de l'une à l'autre sans tout ressaisir."""
+
+    __tablename__ = "family_ai_providers"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    provider: Mapped[str] = mapped_column(Text, primary_key=True)
+    model: Mapped[str | None] = mapped_column(Text)
+    base_url: Mapped[str | None] = mapped_column(Text)
+    # Clé d'API chiffrée (Fernet) ; jamais renvoyée à l'application, seulement ses 4 derniers signes.
+    api_key_encrypted: Mapped[bytes | None] = mapped_column(LargeBinary)
+    key_hint: Mapped[str | None] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("provider", AI_PROVIDERS), name="provider"),)
+
+
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("families.id", ondelete="CASCADE"), primary_key=True
+    )
+    parent_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("parents.id", ondelete="CASCADE"), primary_key=True
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("role", FAMILY_ROLES), name="role"), Index(None, "parent_id"))
+
+
+class Child(Base):
+    __tablename__ = "children"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    family_id: Mapped[uuid.UUID] = _fk("families.id")
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)  # prénom ou pseudo
+    grade: Mapped[str] = mapped_column(Text, nullable=False)
+    avatar: Mapped[str | None] = mapped_column(Text)
+    parental_consent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+    # Objectifs du parent (étape 16) : minutes de révision par jour, matière à privilégier.
+    daily_minutes: Mapped[int | None] = mapped_column(SmallInteger)
+    priority_subject: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        Index(None, "family_id"),
+        CheckConstraint("daily_minutes IN (5, 10, 15, 20, 30)", name="daily_minutes"),
+    )
+
+
+class Exam(Base):
+    """Contrôle à venir, saisi par le parent : le plan de révision est recalculé chaque jour."""
+
+    __tablename__ = "exams"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    exam_date: Mapped[date] = mapped_column(Date, nullable=False)
+    lesson_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (Index(None, "child_id", "exam_date"),)
+
+
+class Device(Base):
+    """Appareil de l'enfant, lié par code ou QR code."""
+
+    __tablename__ = "devices"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    # SHA-256 du jeton d'appareil : le jeton en clair n'est jamais stocké.
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    name: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "child_id"),)
+
+
+class LinkCode(Base):
+    """Code à 6 chiffres et jeton de QR code, valables 10 minutes, à usage unique."""
+
+    __tablename__ = "link_codes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    code_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    qr_token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "code_hash"), Index(None, "child_id"))
+
+
+class RefreshToken(Base):
+    """Jeton de renouvellement du parent ; rotation à chaque usage (§16.1)."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    replaced_by: Mapped[uuid.UUID | None] = _fk("refresh_tokens.id", ondelete="SET NULL", nullable=True)
+
+    __table_args__ = (Index(None, "parent_id"),)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "parent_id"),)
+
+
+class EmailVerificationToken(Base):
+    """Lien « Confirmer mon adresse » envoyé au parent (étape 19)."""
+
+    __tablename__ = "email_verification_tokens"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID] = _fk("parents.id")
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "parent_id"),)
+
+
+class Lesson(Base):
+    __tablename__ = "lessons"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    subject: Mapped[str | None] = mapped_column(Text)
+    grade: Mapped[str | None] = mapped_column(Text)
+    grade_confidence: Mapped[float | None] = mapped_column(REAL)
+    title: Mapped[str | None] = mapped_column(Text)
+    objective: Mapped[str | None] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    page_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default="photo")  # photo ou texte collé
+    analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    prompt_versions: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(_in("status", LESSON_STATUSES), name="status"),
+        CheckConstraint(_in("failure_reason", FAILURE_REASONS), name="failure_reason"),
+        CheckConstraint(_in("source", LESSON_SOURCES), name="source"),
+        CheckConstraint("page_count BETWEEN 1 AND 6", name="page_count"),
+        Index("ix_lessons_child_recent", "child_id", text("created_at DESC")),
+    )
+
+
+IMAGE_STATUSES = (  # domain.illustration
+    "generating",
+    "to_review",
+    "approved",
+    "rejected",
+    "failed",
+    "not_needed",
+)
+
+
+class LessonImage(Base):
+    """Image d'une leçon (étape 27) ou d'une de ses notions (étape 28), générée sur le PC puis
+    validée par le parent avant que l'enfant la voie. Une seule pour la leçon (`knowledge_id`
+    vide) et une par notion : la refaire remplace la précédente. Le fichier est dans
+    `LUDIFUN_MEDIA_DIR` ; ce n'est jamais une photo d'enfant ni de cahier."""
+
+    __tablename__ = "lesson_images"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False
+    )
+    knowledge_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    file_name: Mapped[str | None] = mapped_column(Text)
+    media_type: Mapped[str | None] = mapped_column(Text)
+    alt: Mapped[str | None] = mapped_column(Text)  # description pour le parent
+    prompt: Mapped[str | None] = mapped_column(Text)  # prompt envoyé au moteur (anglais)
+    remark: Mapped[str | None] = mapped_column(Text)  # remarque du parent pour la refaire
+    engine: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(Text)
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+    # Raison d'un échec, ou pourquoi une image n'aiderait pas (« pas utile ») : pour le parent,
+    # jamais écrite dans les journaux.
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(_in("status", IMAGE_STATUSES), name="status"),
+        Index(
+            "uq_lesson_images_cover", "lesson_id", unique=True, postgresql_where=text("knowledge_id IS NULL")
+        ),
+        Index(
+            "uq_lesson_images_knowledge",
+            "knowledge_id",
+            unique=True,
+            postgresql_where=text("knowledge_id IS NOT NULL"),
+        ),
+    )
+
+
+RESOURCE_PROVIDERS = (  # domain.resources.Provider
+    "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas", "calculatice", "sesamath",
+    "logicieleducatif", "boutdegomme", "mathador", "khanacademy", "lamap", "citesciences",
+    "viepublique", "geoconfluences", "annabac", "louvre", "bnf", "ina", "cnes", "meteofrance",
+    "versailles",
+)  # fmt: skip
+RESOURCE_KINDS = (  # domain.resources.ResourceKind
+    "exercise", "quiz", "video", "article", "lesson", "game",
+)  # fmt: skip
+
+
+class LessonResource(Base):
+    """Ressource d'un site éducatif de confiance proposée avec la leçon (étape 30) : un exercice
+    MathALÉA, un quiz Vikidia, une vidéo Lumni. Rien n'est copié : l'application l'ouvre dans sa
+    visionneuse, limitée au site. Le parent peut la masquer ; le score d'un exercice noté est
+    gardé (pour lui, jamais pour la maîtrise)."""
+
+    __tablename__ = "lesson_resources"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False
+    )
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    best_correct: Mapped[int | None] = mapped_column(Integer)
+    best_total: Mapped[int | None] = mapped_column(Integer)
+    last_done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (
+        CheckConstraint(_in("provider", RESOURCE_PROVIDERS), name="provider"),
+        CheckConstraint(_in("kind", RESOURCE_KINDS), name="kind"),
+        UniqueConstraint("lesson_id", "url"),
+    )
+
+
+class LessonPage(Base):
+    """Texte OCR d'une page. L'image elle-même n'est jamais stockée."""
+
+    __tablename__ = "lesson_pages"
+
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), primary_key=True
+    )
+    page_index: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    ocr_text: Mapped[str] = mapped_column(Text, nullable=False)
+    quality: Mapped[str] = mapped_column(Text, nullable=False)
+
+    __table_args__ = (CheckConstraint(_in("quality", PAGE_QUALITIES), name="quality"),)
+
+
+class LessonReviewItem(Base):
+    """Passage mal lu sur la photo, à vérifier par l'enfant avant l'analyse (étape 15)."""
+
+    __tablename__ = "lesson_review_items"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    page_index: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    read_text: Mapped[str] = mapped_column(Text, nullable=False)  # ce que l'OCR croit avoir lu
+    context: Mapped[str] = mapped_column(Text, nullable=False)  # les mots autour, pour le retrouver
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    answer: Mapped[str | None] = mapped_column(Text)  # la correction de l'enfant
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "position"),
+        CheckConstraint(_in("status", REVIEW_STATUSES), name="status"),
+    )
+
+
+class KnowledgeItem(Base):
+    __tablename__ = "knowledge_items"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    key: Mapped[str] = mapped_column(Text, nullable=False)  # "k1"
+    type: Mapped[str] = mapped_column(Text, nullable=False)
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    importance: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    relations: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    source_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Niveaux de compréhension à valider pour « maîtrisée » (1 reconnaître … 5 transférer),
+    # fixés à l'analyse d'après le matériel disponible (spécification technique §5.1).
+    required_levels: Mapped[list[int]] = mapped_column(
+        ARRAY(SmallInteger), nullable=False, server_default="{1}"
+    )
+    # Explication tirée de sources externes (étape 24b), pour « Je n'ai pas compris » quand la
+    # leçon ne donne pas d'exemple : {"text", "sources": [{"site", "url", "title"}], "quotes"}.
+    external_help: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Confiance dans la notion extraite (§115), calculée à l'analyse ; NULL : analysée avant.
+    confidence: Mapped[float | None] = mapped_column(REAL)
+    doubts: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # par le parent
+    # Thème choisi par l'IA dans une liste fermée (§5.47) ; NULL : aucun ou analysée avant.
+    theme: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "key"),
+        CheckConstraint("importance BETWEEN 1 AND 5", name="importance"),
+        CheckConstraint("confidence BETWEEN 0 AND 1", name="confidence"),
+    )
+
+
+class Skill(Base):
+    """Compétence visée par une leçon (« Comparer deux fractions »), reliée à ses notions."""
+
+    __tablename__ = "skills"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    key: Mapped[str] = mapped_column(Text, nullable=False)  # "s1"
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    verb: Mapped[str] = mapped_column(Text, nullable=False)
+    importance: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    source_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("lesson_id", "key"),
+        CheckConstraint(_in("verb", SKILL_VERBS), name="verb"),
+        CheckConstraint("importance BETWEEN 1 AND 5", name="importance"),
+    )
+
+
+class SkillKnowledge(Base):
+    __tablename__ = "skill_knowledge"
+
+    skill_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    __table_args__ = (Index(None, "knowledge_id"),)
+
+
+class KnowledgeMaterial(Base):
+    __tablename__ = "knowledge_material"
+
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    material: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    rejected: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class RevisionSession(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    lesson_id: Mapped[uuid.UUID] = _fk("lessons.id")
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    parent_session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    objective: Mapped[str] = mapped_column(Text, nullable=False)
+    estimated_duration_s: Mapped[int] = mapped_column(Integer, nullable=False)
+    seed: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    score_on_10: Mapped[Decimal | None] = mapped_column(Numeric(3, 1))
+    started_at: Mapped[datetime] = _created_at()
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Étape 17 : réponses données quand la dernière pause a été proposée ; défis bonus ajoutés.
+    hint_at_answer: Mapped[int | None] = mapped_column(SmallInteger)
+    extended: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Étape 20 : XP gagnée à la clôture (effort, progrès ; jamais la note).
+    xp_earned: Mapped[int | None] = mapped_column(SmallInteger)
+    # Version des règles du moteur (engine_rules.toml) et décisions prises pendant la séance (§126, §138).
+    engine_version: Mapped[str | None] = mapped_column(Text)
+    decisions: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+
+    __table_args__ = (
+        CheckConstraint(_in("kind", SESSION_KINDS), name="kind"),
+        CheckConstraint(_in("status", SESSION_STATUSES), name="status"),
+        Index("ix_sessions_child_recent", "child_id", text("started_at DESC")),
+        Index(None, "lesson_id"),
+    )
+
+
+class SessionItem(Base):
+    __tablename__ = "session_items"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_id: Mapped[uuid.UUID] = _fk("sessions.id")
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    block: Mapped[str] = mapped_column(Text, nullable=False)
+    activity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    difficulty: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # 1 reconnaître, 2 se rappeler, 3 appliquer, 4 expliquer, 5 transférer.
+    cognitive_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="1")
+    # Aide la plus forte demandée (« Je n'ai pas compris ») avant la réponse : 0 à 5.
+    help_level: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    intro: Mapped[str | None] = mapped_column(Text)  # « Rappel » affiché avant l'activité (remédiation)
+    # Pourquoi cette activité : règle du moteur et faits (CDC §126) ; null avant l'étape 23.
+    reason: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    knowledge_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(Uuid), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # envoyé au téléphone
+    solution: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)  # jamais avant la réponse
+
+    __table_args__ = (
+        UniqueConstraint("session_id", "position"),
+        CheckConstraint(_in("block", SESSION_BLOCKS), name="block"),
+        CheckConstraint("difficulty BETWEEN 1 AND 3", name="difficulty"),
+        CheckConstraint("cognitive_level BETWEEN 1 AND 5", name="cognitive_level"),
+        CheckConstraint("help_level BETWEEN 0 AND 5", name="help_level"),
+    )
+
+
+class Attempt(Base):
+    __tablename__ = "attempts"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("session_items.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    response: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    score: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (CheckConstraint("score BETWEEN 0 AND 1", name="score"),)
+
+
+HELP_KINDS = ("hint", "reminder", "example", "steps", "answer", "sourced")  # domain.help.HelpKind
+
+
+class HelpRequest(Base):
+    """Un appui sur « Je n'ai pas compris » (ou « Encore de l'aide ») : quand, et l'aide montrée.
+    Le parent voit quand l'enfant a demandé de l'aide, sur quelle question, et la suite."""
+
+    __tablename__ = "help_requests"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("session_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    level: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint("level BETWEEN 1 AND 5", name="level"),
+        CheckConstraint(_in("kind", HELP_KINDS), name="kind"),
+    )
+
+
+# « Ma réponse était juste », « Je ne comprends pas la question », « Il y a une erreur ».
+REPORT_REASONS = ("right_answer", "unclear", "wrong_question")
+
+
+class QuestionReport(Base):
+    """Une question que l'enfant a signalée (🚩) : le parent la voit, la corrige s'il le faut
+    (écran des questions de la leçon) et la marque comme vue. Rien d'écrit par l'enfant : une
+    raison choisie dans une liste. Ne change jamais la progression."""
+
+    __tablename__ = "question_reports"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_item_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("session_items.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    reported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (CheckConstraint(_in("reason", REPORT_REASONS), name="reason"),)
+
+
+class AttemptEvidence(Base):
+    """Une ligne par notion couverte par une tentative (§9.3)."""
+
+    __tablename__ = "attempt_evidence"
+
+    attempt_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("attempts.id", ondelete="CASCADE"), primary_key=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    result: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
+    weight: Mapped[Decimal] = mapped_column(Numeric(3, 2), nullable=False)
+    error_type: Mapped[str | None] = mapped_column(Text)  # notion ratée : pourquoi (§5.5)
+
+    __table_args__ = (
+        CheckConstraint("result BETWEEN 0 AND 1", name="result"),
+        CheckConstraint("weight > 0 AND weight <= 1", name="weight"),
+        CheckConstraint(_in("error_type", ERROR_TYPES), name="error_type"),
+    )
+
+
+class KnowledgeMastery(Base):
+    __tablename__ = "knowledge_mastery"
+
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), primary_key=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    score: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    box: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    next_review_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_practiced_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    sessions_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    levels: Mapped[list[int]] = mapped_column(  # niveaux de compréhension validés
+        ARRAY(SmallInteger), nullable=False, server_default="{}"
+    )
+
+    __table_args__ = (
+        CheckConstraint("score BETWEEN 0 AND 100", name="score"),
+        CheckConstraint("box BETWEEN 1 AND 5", name="box"),
+        Index("ix_knowledge_mastery_due", "child_id", "next_review_at"),
+    )
+
+
+class Achievement(Base):
+    """Badge gagné par un enfant (étape 20) : une seule fois chacun, jamais retiré."""
+
+    __tablename__ = "achievements"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = _fk("children.id")
+    code: Mapped[str] = mapped_column(Text, nullable=False)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("child_id", "code"),
+        CheckConstraint(_in("code", BADGE_CODES), name="code"),
+    )
+
+
+class Feedback(Base):
+    """Avis d'un parent ou d'un enfant (tests en famille, étape 18). Supprimé avec son auteur."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    parent_id: Mapped[uuid.UUID | None] = _fk("parents.id", nullable=True)
+    child_id: Mapped[uuid.UUID | None] = _fk("children.id", nullable=True)
+    author: Mapped[str] = mapped_column(Text, nullable=False)  # parent ou child
+    rating: Mapped[int | None] = mapped_column(SmallInteger)  # 1 à 5
+    message: Mapped[str | None] = mapped_column(Text)
+    screen: Mapped[str | None] = mapped_column(Text)  # d'où vient l'avis (bilan, réglages…)
+    session_id: Mapped[uuid.UUID | None] = _fk("sessions.id", ondelete="SET NULL", nullable=True)
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (
+        CheckConstraint(_in("author", ("parent", "child")), name="author"),
+        CheckConstraint("rating BETWEEN 1 AND 5", name="rating"),
+        CheckConstraint("rating IS NOT NULL OR message IS NOT NULL", name="content"),
+        CheckConstraint("(author = 'parent') = (parent_id IS NOT NULL)", name="parent_author"),
+        CheckConstraint("author = 'parent' OR child_id IS NOT NULL", name="child_author"),
+        Index(None, "created_at"),
+    )
+
+
+class AiRun(Base):
+    """Coût, latence et qualité de chaque appel IA. Aucun contenu de leçon ici."""
+
+    __tablename__ = "ai_runs"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID | None] = _fk("lessons.id", ondelete="SET NULL", nullable=True)
+    stage: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    prompt_version: Mapped[str] = mapped_column(Text, nullable=False)
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    warnings: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    created_at: Mapped[datetime] = _created_at()
+
+    __table_args__ = (
+        CheckConstraint(_in("stage", AI_STAGES), name="stage"),
+        CheckConstraint(_in("status", AI_RUN_STATUSES), name="status"),
+        Index(None, "lesson_id"),
+    )
+
+
+class LibraryPage(Base):
+    """Bibliothèque sur le PC (étape 24d) : pages de sites éducatifs autorisés déjà lues, pour
+    chercher des sources sans Internet. Contenu public ; aucune donnée d'enfant."""
+
+    __tablename__ = "library_pages"
+
+    url: Mapped[str] = mapped_column(Text, primary_key=True)
+    site: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (Index(None, "site"),)
+
+
+HOMEWORK_STATUSES = ("preparing", "ready", "solved", "guided", "failed")
+
+
+class Homework(Base):
+    """Mode devoirs (§29, §127) : un exercice de l'enfant, guidé pas à pas. La photo n'est pas
+    gardée ; l'énoncé lu, le plan proposé par l'IA et contrôlé (avec la réponse, jamais envoyée à
+    l'enfant avant la correction guidée), les étapes montrées et les tentatives."""
+
+    __tablename__ = "homework"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(Text, nullable=False)  # photo ou texte
+    statement: Mapped[str | None] = mapped_column(Text)
+    plan: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    steps_shown: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    attempts: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint(_in("status", HOMEWORK_STATUSES), name="status"),
+        CheckConstraint("source IN ('photo', 'text')", name="source"),
+    )
+
+
+TEACH_STATUSES = ("open", "finished")
+
+
+class TeachSession(Base):
+    """« Enseigne-moi » (§83) : l'enfant explique une notion de sa leçon à Ludi, l'élève joué par
+    l'IA. Les points clés attendus, chaque tour (question de Ludi, explication de l'enfant,
+    points reconnus), puis le bilan et la raison de la décision (niveau « expliquer »)."""
+
+    __tablename__ = "teach_sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    child_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("children.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("knowledge_items.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    key_points: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    turns: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    question: Mapped[str | None] = mapped_column(Text)  # la question de Ludi qui attend une réponse
+    covered: Mapped[int | None] = mapped_column(SmallInteger)
+    validated: Mapped[bool | None] = mapped_column(Boolean)
+    decision: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    engine_version: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (CheckConstraint(_in("status", TEACH_STATUSES), name="status"),)

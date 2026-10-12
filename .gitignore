@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 .pytest_cache/
 *.db
+*.sqlite3
 .env
 
 # Flutter
@@ -16,3 +17,29 @@ mobile/.flutter-plugins-dependencies
 .idea/
 .vscode/
 .DS_Store
+.mypy_cache/
+.ruff_cache/
+
+# Évaluation : les photos réelles et les résultats restent hors du dépôt (données d’enfants)
+eval/lessons/
+eval/results/
+
+# Déploiement : secrets et sauvegardes locales
+deploy/.env
+deploy/backups/
+
+# Démarrage Windows : famille de démonstration déjà proposée
+.ludifun-demo
+.ludifun-recherche
+tools/figures/sources/
+tools/figures/preview/
+rapport-ludifun.txt
+surveillance-ludifun.txt
+
+# Images des leçons générées sur le PC (jamais dans le dépôt)
+backend/data/
+
+# Mises à jour Windows : version installée, fichiers installés, application du téléphone
+.ludifun-version
+.ludifun-fichiers
+telephone/
