@@ -53,6 +53,7 @@ VOCABULARY_CODES = {
     ActivityCode.SYNONYMS,
     ActivityCode.WORD_FAMILY,
 }  # vraies leçons de CE1 : bon pronom, synonymes, familles de mots
+LANGUAGE_CODES = {ActivityCode.SOUNDS, ActivityCode.ENGLISH_WORDS}  # image et voix (§5.62)
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -70,6 +71,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | EVERYDAY_CODES
         | MEASURE_CODES
         | VOCABULARY_CODES
+        | LANGUAGE_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

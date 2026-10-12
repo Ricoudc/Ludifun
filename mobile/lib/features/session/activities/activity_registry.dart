@@ -16,6 +16,7 @@ import 'mcq_view.dart';
 import 'memory_view.dart';
 import 'open_question_view.dart';
 import 'order_view.dart';
+import 'picture_choice_view.dart';
 import 'picture_views.dart';
 import 'speed_challenge_view.dart';
 import 'spelling_views.dart';
@@ -78,6 +79,9 @@ final activityRegistry = <String, ActivityBuilder>{
   'PRONOUN': (payload, onSubmit) => ConjugationView(payload: payload, onSubmit: onSubmit),
   'SYNONYMS': (payload, onSubmit) => MatchView(payload: payload, onSubmit: onSubmit),
   'WORD_FAMILY': (payload, onSubmit) => HomophoneView(payload: payload, onSubmit: onSubmit),
+  // Image et voix (§5.62) : le bon son (CP-CE1) et l'anglais en images.
+  'SOUNDS': (payload, onSubmit) => PictureChoiceView(payload: payload, onSubmit: onSubmit),
+  'ENGLISH_WORDS': (payload, onSubmit) => PictureChoiceView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.

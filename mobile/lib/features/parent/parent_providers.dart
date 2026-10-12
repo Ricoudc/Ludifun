@@ -96,6 +96,8 @@ const activityLabels = {
   'PRONOUN': ('🙋', 'Trouver le bon pronom'),
   'SYNONYMS': ('🔗', 'Synonymes'),
   'WORD_FAMILY': ('🌳', 'Familles de mots'),
+  'SOUNDS': ('👂', 'Le bon son'),
+  'ENGLISH_WORDS': ('🇬🇧', 'Anglais en images'),
 };
 
 /// Avatars proposés à la création d'un profil.

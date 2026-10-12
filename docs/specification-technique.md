@@ -1766,6 +1766,38 @@ Non testé ici : le rendu des nouvelles consignes par un vrai moteur (Stable Dif
 Pollinations) ; les figures du code, elles, sont vérifiées par les tests (côtés égaux, angles
 droits, rayon et diamètre recalculés) et ont été regardées en image.
 
+### 5.62 Le bon son et l'anglais en images : une image et la voix (octobre 2026)
+
+Deux jeux fabriqués par le code (`app/domain/activities/language_games.py`), sur un même écran
+de l'application (`PictureChoiceView`) : une carte à la fois — une image (émoji), un mot à
+compléter, « 🔊 » qui dit le mot dans la bonne langue — et de gros boutons de réponse. Réponse
+`{"answers": [[carte, choix], …]}`, comme les homophones ; une ancienne application saute ces
+jeux (type inconnu).
+
+- **Le bon son** (`SOUNDS`), leçons de français du CP au CE2 qui nomment un son (« le son
+  [ou] », « les sons an et en », « j'entends on ») : ou, on, an, in, oi. « 🐺 l__p » : l'enfant
+  touche 🔊, entend « loup », choisit les lettres qui manquent. Niveau 1 : deux sons (ceux de la
+  leçon, ou un son proche : ou/on, on/an, in/an, oi/ou) ; 2 : trois sons ; 3 : comment s'écrit le
+  son (an, en, am, em ; on, om ; in, ain, im, ein), une moitié d'écritures rares. Aux niveaux 1 et
+  2, seulement l'écriture la plus simple. Banque `app/domain/phonics.py`, écrite à la main et
+  vérifiée mot par mot : une mauvaise réponse ne forme jamais un autre vrai mot (« mouche » est
+  écarté : « m__che » donnerait « manche »). Erreur notée comme une confusion.
+- **Anglais en images** (`ENGLISH_WORDS`), leçons d'anglais : couleurs, nombres, jours, mois,
+  animaux, nourriture, corps, école, météo, vêtements (thème nommé par la leçon, en anglais ou en
+  français, ou deux mots de la banque écrits par elle). Niveau 1 : l'image, choisir le mot
+  anglais (les choix lus en anglais, dans l'ordre des boutons) ; 2 : le téléphone dit le mot
+  anglais tout seul, toucher l'image (ou le mot français pour les jours et les mois) ; 3 :
+  traduire le mot français. Les mots que la leçon écrit passent d'abord (§5.58). Banque
+  `app/domain/english.py`.
+- **Voix** : `Speaker.speak(texte, language:)` choisit la voix du téléphone (« fr-FR »,
+  « en-GB », sinon « en-US ») ; sans voix dans cette langue, « demande à un adulte » et le jeu
+  continue.
+- Composeur : jeux faciles, intermédiaires et visuels ; consignes par cycle ; erreurs relues
+  pour le parent (« 🐺 l__p → on », attendu « loup ») ; élève simulé.
+
+Non testé : les voix sur un vrai téléphone (présence d'une voix anglaise, prononciation des mots
+isolés) et l'affichage des émojis, que le moteur de test ne dessine pas.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

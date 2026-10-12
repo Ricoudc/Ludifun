@@ -18,10 +18,12 @@ class FakeSpeaker implements Speaker {
 
   final bool voice;
   final said = <String>[];
+  final languages = <String>[];
 
   @override
-  Future<bool> speak(String text) async {
+  Future<bool> speak(String text, {String language = 'fr-FR'}) async {
     said.add(text);
+    languages.add(language);
     return voice;
   }
 
@@ -382,6 +384,134 @@ void main() {
         'answers': [
           ['p3', 'c2'],
           ['p5', 'c1'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('§5.62 le bon son : image, mot à compléter, 🔊 en français, une carte à la fois', (
+    tester,
+  ) async {
+    final speaker = FakeSpeaker();
+    ListenButton.speakerFactory = () => speaker;
+    addTearDown(() => ListenButton.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'SOUNDS', {
+      'prompt': 'Écoute le mot. Choisis le son qui manque.',
+      'items': [
+        {
+          'id': 'm1',
+          'picture': '🐺',
+          'text': 'l__p',
+          'say': 'loup',
+          'lang': 'fr-FR',
+          'choices': ['on', 'ou'],
+        },
+        {
+          'id': 'm2',
+          'picture': '🦁',
+          'text': 'li__',
+          'say': 'lion',
+          'lang': 'fr-FR',
+          'choices': ['ou', 'on'],
+        },
+      ],
+    });
+    expect(find.text('🐺'), findsOneWidget);
+    expect(find.text('l__p'), findsOneWidget);
+    expect(find.text('Carte 1 sur 2'), findsOneWidget);
+    expect(speaker.said, isEmpty); // une carte à compléter ne parle pas toute seule
+    await tester.tap(find.text('Écouter'));
+    await tester.pumpAndSettle();
+    expect(speaker.said, ['loup']);
+    expect(speaker.languages, ['fr-FR']);
+    await tester.tap(find.text('ou'));
+    await tester.pumpAndSettle();
+    expect(find.text('🦁'), findsOneWidget);
+    expect(sent, isEmpty);
+    await tester.tap(find.text('on'));
+    await tester.pumpAndSettle();
+    expect(sent, [
+      {
+        'answers': [
+          ['m1', 'ou'],
+          ['m2', 'on'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('§5.62 anglais en images : la carte d\'écoute parle en anglais, toucher l\'image', (
+    tester,
+  ) async {
+    final speaker = FakeSpeaker();
+    ListenButton.speakerFactory = () => speaker;
+    addTearDown(() => ListenButton.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'ENGLISH_WORDS', {
+      'prompt': 'Écoute le mot anglais. Touche la bonne image.',
+      'items': [
+        {
+          'id': 'e1',
+          'text': '🔊 ?',
+          'say': 'red',
+          'lang': 'en-GB',
+          'choices': ['🟦', '🟥', '🟩'],
+        },
+        {
+          'id': 'e2',
+          'text': '🔊 ?',
+          'say': 'Monday',
+          'lang': 'en-GB',
+          'choices': ['lundi', 'mardi', 'jeudi'],
+        },
+      ],
+    });
+    await tester.pumpAndSettle();
+    expect(speaker.said, ['red']); // dit tout seul en s'affichant
+    expect(speaker.languages, ['en-GB']);
+    expect(find.text('👂 Écoute bien…'), findsOneWidget);
+    expect(find.text('🔊 ?'), findsNothing);
+    await tester.tap(find.text('🟥'));
+    await tester.pumpAndSettle();
+    expect(speaker.said, ['red', 'Monday']); // la carte suivante aussi
+    await tester.tap(find.text('Réécouter'));
+    await tester.pumpAndSettle();
+    expect(speaker.said.last, 'Monday');
+    await tester.tap(find.text('lundi'));
+    await tester.pumpAndSettle();
+    expect(sent, [
+      {
+        'answers': [
+          ['e1', '🟥'],
+          ['e2', 'lundi'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('§5.62 sans voix anglaise : un adulte est appelé, le jeu continue', (tester) async {
+    ListenButton.speakerFactory = () => FakeSpeaker(voice: false);
+    addTearDown(() => ListenButton.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'ENGLISH_WORDS', {
+      'prompt': 'Regarde l\'image. Choisis le mot anglais.',
+      'items': [
+        {
+          'id': 'e1',
+          'picture': '🐶',
+          'text': '',
+          'say': 'cat, dog, bird',
+          'lang': 'en-GB',
+          'choices': ['cat', 'dog', 'bird'],
+        },
+      ],
+    });
+    await tester.tap(find.text('Écouter'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('demande à un adulte'), findsOneWidget);
+    await tester.tap(find.text('dog'));
+    expect(sent, [
+      {
+        'answers': [
+          ['e1', 'dog'],
         ],
       },
     ]);

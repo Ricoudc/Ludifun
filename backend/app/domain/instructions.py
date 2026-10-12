@@ -180,6 +180,16 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Trouve le mot qui a la même partie commune et la même idée.",
         "Choisis le mot de la même famille : même radical, même idée.",
     ),
+    ActivityCode.SOUNDS: (
+        "Touche 🔊 pour écouter le mot. Choisis le son qui manque.",
+        "Écoute le mot avec 🔊, puis choisis les lettres qui manquent.",
+        "Écoute le mot, puis choisis la graphie du son qui manque.",
+    ),
+    ActivityCode.ENGLISH_WORDS: (
+        "Regarde ou écoute avec 🔊. Touche la bonne réponse.",
+        "Regarde l'image ou écoute le mot avec 🔊, puis choisis la bonne réponse.",
+        "Associe chaque image, mot entendu ou mot français à sa réponse.",
+    ),
     ActivityCode.HOMOPHONE: (
         "Lis la phrase. Touche le bon mot.",
         "Lis chaque phrase et choisis le mot qui convient.",

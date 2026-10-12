@@ -109,7 +109,12 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             if not single_ok:  # deux mots reliés à l'envers
                 pairs = [(pairs[0][0], pairs[1][1]), (pairs[1][0], pairs[0][1]), *pairs[2:]]
             return {"pairs": [list(p) for p in pairs]}
-        case ActivityCode.HOMOPHONE | ActivityCode.WORD_FAMILY:
+        case (
+            ActivityCode.HOMOPHONE
+            | ActivityCode.WORD_FAMILY
+            | ActivityCode.SOUNDS
+            | ActivityCode.ENGLISH_WORDS
+        ):
             choices = {i["id"]: i["choices"] for i in activity.payload["items"]}
             return {
                 "answers": [
