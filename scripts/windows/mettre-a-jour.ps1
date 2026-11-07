@@ -94,8 +94,7 @@ function Recuperer-Apk($jeton) {
 $jeton = $false
 if (Installe-Avec-Git) {
     Etape 'Téléchargement des nouveautés (git)…'
-    & git -C $Racine pull
-    if ($LASTEXITCODE -ne 0) { Echec 'git pull n''a pas fonctionné (voir les messages au-dessus).' }
+    Mettre-A-Jour-Par-Git
     try { $jeton = Acces-GitHub $false } catch { $jeton = $false }
 } else {
     Etape 'Recherche de la dernière version sur GitHub…'
