@@ -1951,6 +1951,36 @@ Tests : `tests/ai/test_openai_compatible.py` (délais lus dans l'en-tête et le 
 puis réussite, quota du jour sans attente, refus sans fin limités à trois nouveaux essais).
 Non testé : le vrai Groq.
 
+### 5.68 Listes de mots : l'enfant apprend à les écrire (novembre 2026, règles 1.15.0)
+
+Demande de la famille : « quand j'envoie une liste de mots, l'idée c'est que l'élève sache les
+écrire ». Deux failles : les jeux d'écriture dépendaient du mot que l'IA devait recopier
+(matériel `spelling`), qu'un petit modèle oublie parfois ; et les autres jeux (vrai ou faux,
+définitions à relier, « démêler ») restaient proposés pour ces mots.
+
+- **Le code reconnaît une liste de mots** (`app/domain/word_list.py`, pur) : leçon de français
+  (ou matière « autre ») ; notions de type terme, de 1 à 3 mots sans chiffre, écrites telles
+  quelles dans le texte de la leçon ; la leçon parle d'écrire ces mots (une compétence de la
+  notion : « écrire », « orthographier », « dictée » ; ou le titre et l'objectif : « dictée »,
+  « liste de mots », « mots de la semaine », « mots invariables », « orthographe ») ; au moins 3.
+- **Le mot oublié est repris de la leçon** (`with_spelling`), après le premier passage de l'IA et
+  dans « refaire » : il passe par les mêmes contrôles que celui de l'IA (`validate_material`),
+  ce que l'IA a donné est gardé. Un mot qui ne manquait que de cela ne coûte pas de relance à
+  l'IA (quota des offres gratuites, §5.67).
+- **Seulement des jeux d'écriture** (règle `spelling.writing_games`, `accepts`) : mot éclair,
+  lettres mélangées, dictée du mot, dictée de phrase, QCM (« Quelle est la bonne orthographe ? »)
+  et texte à trous. Dans les matières de `spelling.writing_subjects` (français, autre) ;
+  ailleurs (vocabulaire de maths ou d'histoire), le sens compte aussi : pas de restriction.
+- **Échauffement** : « lettres mélangées » devient un jeu facile, pour commencer une liste de
+  mots en douceur.
+- **Raison de chaque choix** (§126) : « Mot à savoir écrire : seulement des jeux où l'on écrit
+  le mot. »
+
+Tests : `tests/domain/test_word_list.py` (liste reconnue par la compétence ou par le titre ; pas
+de liste sans mention de l'écriture, en histoire, ou à deux mots ; mot repris sans perdre le
+matériel de l'IA ; jeux d'écriture seulement ; de bout en bout, une IA qui oublie les mots donne
+une séance de jeux d'écriture avec une seule demande de matériel).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

@@ -49,6 +49,8 @@ def describe(decision: Reason | None) -> str | None:
     text = _sentence(decision.get("rule"), f)
     if text is not None and f.get("visual_first"):
         text += " Jeu visuel proposé avant un quiz."
+    if text is not None and f.get("writing_only"):
+        text += " Mot à savoir écrire : seulement des jeux où l'on écrit le mot."
     if text is not None and f.get("daily_game"):
         text += f" C'est aussi le jeu du jour ({f.get('name')})."
     return text

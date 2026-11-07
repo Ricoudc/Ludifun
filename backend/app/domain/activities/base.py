@@ -144,8 +144,12 @@ class ActivityType(ABC):
 
     def accepts(self, unit: KnowledgeUnit) -> bool:
         """La notion est d'un type compatible (§7.2), sa matière admet ce jeu (une leçon de maths :
-        pas de jeu d'orthographe) et elle a le matériel nécessaire."""
+        pas de jeu d'orthographe), c'est un jeu d'écriture si la notion est un mot à savoir écrire,
+        et elle a le matériel nécessaire."""
         excluded = EXCLUDED_BY_SUBJECT.get(unit.subject.value, frozenset()) if unit.subject else frozenset()
+        # Un mot à savoir écrire : seulement des jeux d'écriture (règles 1.15.0).
+        if writing_only(unit) and self.code not in WRITING_GAMES:
+            return False
         return unit.type in self.knowledge_types and self.code not in excluded and self._has_material(unit)
 
     def can_build(self, units: list[KnowledgeUnit], difficulty: int) -> bool:
@@ -190,3 +194,15 @@ class ActivityType(ABC):
 
 ALL_TYPES = frozenset(KnowledgeType)
 EXCLUDED_BY_SUBJECT = RULES.subjects.excluded_activities
+WRITING_GAMES = RULES.spelling.writing_games
+WRITING_SUBJECTS = RULES.spelling.writing_subjects
+
+
+def writing_only(unit: KnowledgeUnit) -> bool:
+    """La notion est un mot à savoir écrire, dans une matière où seuls les jeux d'écriture
+    comptent (règles 1.15.0)."""
+    return (
+        bool(WRITING_GAMES)
+        and unit.material.spelling is not None
+        and (unit.subject is None or unit.subject.value in WRITING_SUBJECTS)
+    )

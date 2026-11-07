@@ -22,8 +22,10 @@ def test_no_spelling_game_in_a_math_lesson(registry: ActivityRegistry) -> None:
 
 def test_a_math_lesson_unjumbles_calculations_only(registry: ActivityRegistry) -> None:
     unit = spelling_unit("numérateur", "Le ___ est le nombre du haut.")
+    # Une notion qui n'est pas un mot à savoir écrire (sinon, en français, seulement des jeux
+    # d'écriture : règles 1.15.0).
     material = unit.material.model_copy(
-        update={"true_statements": ["Le numérateur est le nombre du haut", "3 × 4 = 12"]}
+        update={"true_statements": ["Le numérateur est le nombre du haut", "3 × 4 = 12"], "spelling": None}
     )
     french = unit.model_copy(update={"material": material})
     math = french.model_copy(update={"subject": Subject.MATH})
