@@ -46,6 +46,7 @@ from app.domain.validation import (
     validate_analysis,
     validate_material,
 )
+from app.domain.word_list import with_spelling, words_to_write
 
 logger = logging.getLogger("ludifun.lessons")
 # Journal du serveur (Ludifun.bat, choix 9) : où en est l'IA, et combien de temps chaque étape.
@@ -287,6 +288,12 @@ class LessonPipeline:
         validated: dict[str, MaterialValidation] = {}
         for found in await asyncio.gather(*(self._material(result, analysis, text, b) for b in batches)):
             validated |= found
+        # Liste de mots à savoir écrire (§5.68) : le mot que l'IA a oublié est repris de la leçon,
+        # pour que les jeux d'écriture soient toujours là (et sans relancer l'IA pour lui).
+        words = words_to_write(analysis, text)
+        for item in items:
+            if item.id in words:
+                validated[item.id] = with_spelling(item, validated.get(item.id), text)
 
         # Relance ciblée (§5.3) : notions importantes sans assez de matériel utilisable, et
         # notions dont des éléments ont été refusés (fréquent avec un petit modèle local). L'IA
@@ -418,6 +425,8 @@ class LessonPipeline:
         matériel est validé comme à l'analyse ; sans jeu constructible, rien n'est proposé."""
         result = PipelineResult(failure_reason=None)
         validated = (await self._material(result, analysis, text, [item], remark=remark)).get(item.id)
+        if validated is not None and item.id in words_to_write(analysis, text):
+            validated = with_spelling(item, validated, text)
         if validated is None or not self._options(item, {item.id: validated}):
             return None, result
         return validated, result

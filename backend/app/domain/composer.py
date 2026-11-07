@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from app.domain.activities.base import ActivityCode, BuiltActivity, CannotBuild
+from app.domain.activities.base import ActivityCode, BuiltActivity, CannotBuild, writing_only
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.decisions import Reason, Rule, reason
 from app.domain.difficulty import Difficulty, RecentAnswer, by_score, notion_difficulty
@@ -82,6 +82,7 @@ EASY = frozenset(
     {
         ActivityCode.MCQ,
         ActivityCode.TRUE_FALSE,
+        ActivityCode.SCRAMBLE,  # mots à savoir écrire : l'échauffement (règles 1.15.0)
         ActivityCode.ALIGN,
         ActivityCode.NUMBER_LINE,
         ActivityCode.FRACTION_BAR,
@@ -340,14 +341,18 @@ class SessionComposer:
                 i,
                 block,
                 a,
-                reason(
-                    Rule.EXTRA_PRACTICE,
-                    minutes=MIN_SECONDS // 60,
-                    difficulty=a.difficulty,
-                    repeat=fingerprint(a) in repeated,
-                )
-                if tail < i <= tail + len(extra)
-                else _visual(a, self._reason(a, block, first, by_id, masteries, now)),
+                _writing(
+                    reason(
+                        Rule.EXTRA_PRACTICE,
+                        minutes=MIN_SECONDS // 60,
+                        difficulty=a.difficulty,
+                        repeat=fingerprint(a) in repeated,
+                    )
+                    if tail < i <= tail + len(extra)
+                    else _visual(a, self._reason(a, block, first, by_id, masteries, now)),
+                    a,
+                    by_id,
+                ),
             )
             for i, (block, a) in enumerate(zip(blocks, items, strict=True), 1)
         ]
@@ -368,7 +373,9 @@ class SessionComposer:
                     "facts": {**item.reason["facts"], "daily_game": True, "name": DAILY_GAMES[code]},
                 }
             )
-            planned[index] = PlannedItem(item.position, item.block, item.activity, why)
+            planned[index] = PlannedItem(
+                item.position, item.block, item.activity, _writing(why, item.activity, by_id)
+            )
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
         return SessionPlan(kind, planned, self.estimate_duration_s(items, with_replay=True), express)
 
@@ -927,6 +934,14 @@ def _visual(activity: BuiltActivity, why: Reason) -> Reason:
     """Un jeu visuel choisi avant les autres formats le dit (règle `visual_first`, étape 25)."""
     if VISUAL_FIRST and activity.type in VISUAL:
         why["facts"]["visual_first"] = True
+    return why
+
+
+def _writing(why: Reason, activity: BuiltActivity, by_id: Mapping[str, KnowledgeUnit]) -> Reason:
+    """Un mot à savoir écrire n'a que des jeux d'écriture : la raison le dit (règles 1.15.0)."""
+    units = [by_id[k] for k in activity.knowledge_ids if k in by_id]
+    if units and all(writing_only(u) for u in units):
+        why["facts"]["writing_only"] = True
     return why
 
 

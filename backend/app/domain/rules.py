@@ -118,6 +118,12 @@ class SubjectRules(_Section):
     excluded_activities: dict[str, frozenset[str]] = Field(default_factory=dict)
 
 
+class SpellingRules(_Section):
+    # 1.15.0 : jeux permis pour un mot à savoir écrire (codes d'activité) ; vide : tous.
+    writing_games: frozenset[str] = Field(default_factory=frozenset)
+    writing_subjects: frozenset[str] = Field(default_factory=frozenset)  # matière inconnue : comprise
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -134,6 +140,7 @@ class EngineRules(_Section):
     confidence: ConfidenceRules
     reminders: ReminderRules
     subjects: SubjectRules = Field(default_factory=SubjectRules)
+    spelling: SpellingRules = Field(default_factory=SpellingRules)
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

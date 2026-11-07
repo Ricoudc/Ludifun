@@ -1722,6 +1722,11 @@ depuis l'environnement de développement (réseau fermé) ; les filtres (`linked
 ceux, génériques, des autres sites (page sur le sujet de la leçon, pas d'accueil, de recherche
 ni de PDF).
 
+**Correction (novembre 2026)** : la réponse envoyée au téléphone (`LessonResourceOut.provider`)
+gardait la liste des 7 premiers sites ; une ressource d'un site choisi par la famille (Khan
+Academy) rendait la leçon impossible à ouvrir (erreur 500). Le champ reprend maintenant les
+sites du domaine (`Provider`) ; test : toute ressource d'un site connu laisse la leçon s'ouvrir.
+
 ### 5.61 Des images pour apprendre : figures exactes et schémas dessinés par le code (octobre 2026, illustration v3)
 
 Remarque de la famille : « quand je demande un carré, il me sort une image illustrée ». Un
@@ -1931,6 +1936,55 @@ Tests : `tests/ai/test_imagegen.py` (requête, jeton hors de l'adresse, limites 
 gratuite épuisée, offre payante, jeton refusé, réponse sans image ou non PNG/JPEG, réseau absent,
 choix par la fabrique). Non testé : le vrai service (pas de compte ni d'accès réseau à
 api.cloudflare.com dans l'environnement de développement), le menu Windows.
+
+### 5.67 Limite par minute des IA en ligne (novembre 2026)
+
+Premier essai de la famille avec Groq (offre gratuite) : la lecture de la photo passe, puis
+l'identification des notions est refusée, « 429 : Rate limit reached … on input tokens per
+minute (ITPM) ». Les offres gratuites limitent les jetons envoyés **par minute** ; la photo
+(beaucoup de jetons d'image) avait vidé la minute, et Ludifun abandonnait la leçon.
+
+- `OpenAICompatibleProvider` (Groq, Gemini, Mistral, ChatGPT, Grok, services compatibles) : un
+  refus 429 qui annonce un court délai (en-tête `retry-after`, ou « try again in 7.5s »,
+  « 1m26s », « 360ms » dans le message) est réessayé après ce délai plus une demi-seconde, trois
+  fois au plus. Un délai de plus de 65 s (quota du jour épuisé) ou aucun délai annoncé : erreur
+  immédiate, comme avant (« L'IA en ligne limite le nombre de demandes… »).
+- Lire les photos avec Tesseract (§5.65) évite aussi d'envoyer l'image à l'IA : bien moins de
+  jetons par leçon.
+
+Tests : `tests/ai/test_openai_compatible.py` (délais lus dans l'en-tête et le message, attente
+puis réussite, quota du jour sans attente, refus sans fin limités à trois nouveaux essais).
+Non testé : le vrai Groq.
+
+### 5.68 Listes de mots : l'enfant apprend à les écrire (novembre 2026, règles 1.15.0)
+
+Demande de la famille : « quand j'envoie une liste de mots, l'idée c'est que l'élève sache les
+écrire ». Deux failles : les jeux d'écriture dépendaient du mot que l'IA devait recopier
+(matériel `spelling`), qu'un petit modèle oublie parfois ; et les autres jeux (vrai ou faux,
+définitions à relier, « démêler ») restaient proposés pour ces mots.
+
+- **Le code reconnaît une liste de mots** (`app/domain/word_list.py`, pur) : leçon de français
+  (ou matière « autre ») ; notions de type terme, de 1 à 3 mots sans chiffre, écrites telles
+  quelles dans le texte de la leçon ; la leçon parle d'écrire ces mots (une compétence de la
+  notion : « écrire », « orthographier », « dictée » ; ou le titre et l'objectif : « dictée »,
+  « liste de mots », « mots de la semaine », « mots invariables », « orthographe ») ; au moins 3.
+- **Le mot oublié est repris de la leçon** (`with_spelling`), après le premier passage de l'IA et
+  dans « refaire » : il passe par les mêmes contrôles que celui de l'IA (`validate_material`),
+  ce que l'IA a donné est gardé. Un mot qui ne manquait que de cela ne coûte pas de relance à
+  l'IA (quota des offres gratuites, §5.67).
+- **Seulement des jeux d'écriture** (règle `spelling.writing_games`, `accepts`) : mot éclair,
+  lettres mélangées, dictée du mot, dictée de phrase, QCM (« Quelle est la bonne orthographe ? »)
+  et texte à trous. Dans les matières de `spelling.writing_subjects` (français, autre) ;
+  ailleurs (vocabulaire de maths ou d'histoire), le sens compte aussi : pas de restriction.
+- **Échauffement** : « lettres mélangées » devient un jeu facile, pour commencer une liste de
+  mots en douceur.
+- **Raison de chaque choix** (§126) : « Mot à savoir écrire : seulement des jeux où l'on écrit
+  le mot. »
+
+Tests : `tests/domain/test_word_list.py` (liste reconnue par la compétence ou par le titre ; pas
+de liste sans mention de l'écriture, en histoire, ou à deux mots ; mot repris sans perdre le
+matériel de l'IA ; jeux d'écriture seulement ; de bout en bout, une IA qui oublie les mots donne
+une séance de jeux d'écriture avec une seule demande de matériel).
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

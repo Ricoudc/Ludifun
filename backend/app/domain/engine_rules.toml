@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.14.0"
+version = "1.15.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -108,3 +108,11 @@ after_hour = 17             # « pas encore révisé aujourd'hui » : seulement 
 # maths, pas l'orthographe des mots (« Démêler » n'y garde que les calculs, « 7 + 8 = 15 »).
 # Dictée de phrases (1.14.0) : ni en maths, ni en anglais (la voix lit en français).
 excluded_activities = { math = ["WORD_FLASH", "SCRAMBLE", "DICTATION", "SENTENCE_DICTATION"], english = ["SENTENCE_DICTATION"] }
+
+[spelling]
+# Mots à savoir écrire (1.15.0) : dans ces matières, une notion qui est un mot d'une liste
+# (matériel « spelling ») ne se travaille qu'avec des jeux où l'enfant écrit le mot ou choisit sa
+# bonne orthographe. Ailleurs (vocabulaire de maths, d'histoire), le sens compte aussi : pas de
+# restriction. Liste de jeux vide : pas de restriction.
+writing_games = ["WORD_FLASH", "SCRAMBLE", "DICTATION", "SENTENCE_DICTATION", "MCQ", "FILL_BLANK"]
+writing_subjects = ["french", "other"]
