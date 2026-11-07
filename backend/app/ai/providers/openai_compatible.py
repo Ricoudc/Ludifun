@@ -5,8 +5,13 @@ Sortie structurée : le schéma JSON attendu est demandé (`response_format` de 
 `json_schema`) et rappelé dans les consignes ; si le service refuse ce format, un seul nouvel
 essai en simple objet JSON. La réponse est toujours validée par le schéma Pydantic : une sortie
 hors schéma est une erreur, comme avec Claude.
+
+Limite par minute (offres gratuites, par exemple Groq) : un refus 429 qui annonce un court délai
+(en-tête `retry-after`, ou « try again in 7.5s » dans le message) est réessayé après ce délai, trois
+fois au plus. Un délai long (quota du jour épuisé) reste une erreur, sans attendre.
 """
 
+import asyncio
 import base64
 import json
 import re
@@ -20,6 +25,28 @@ from pydantic import BaseModel, ValidationError
 from app.ai.ports import AIError, AIInvalidOutput, AIRefused, LLMResult, PageImage, Prompt, Stage, Usage
 
 TIMEOUT_S = 180.0
+MAX_RATE_RETRIES = 3  # nouveaux essais après un refus « trop de demandes par minute »
+MAX_RATE_WAIT_S = 65.0  # au-delà (quota du jour), on n'attend pas
+_TRY_AGAIN = re.compile(r"try again in (?:(\d+)m)?(\d+(?:\.\d+)?)(ms|s)\b", re.IGNORECASE)
+_sleep = asyncio.sleep  # remplacé dans les tests
+
+
+def rate_limit_wait(response: httpx.Response) -> float | None:
+    """Secondes à attendre avant de réessayer un refus 429 ; None : pas de délai annoncé."""
+    header = response.headers.get("retry-after", "").strip()
+    try:
+        if header:
+            return max(0.0, float(header))
+    except ValueError:
+        pass
+    found = _TRY_AGAIN.search(response.text)
+    if found is None:
+        return None
+    minutes, amount, unit = found.groups()
+    seconds = float(amount) / (1000 if unit.lower() == "ms" else 1)
+    return seconds + 60 * int(minutes or 0)
+
+
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 
 
@@ -81,14 +108,21 @@ class OpenAICompatibleProvider:
         ]
 
     async def _post(self, body: dict[str, Any]) -> dict[str, Any]:
-        try:
-            response = await self._client.post(
-                f"{self.base_url}/chat/completions", json=body, headers=self._headers
-            )
-        except httpx.TimeoutException as exc:
-            raise AIError(f"{self.name} n'a pas répondu à temps ({type(exc).__name__})") from exc
-        except httpx.HTTPError as exc:
-            raise AIError(f"connexion impossible à {self.name} : {type(exc).__name__}") from exc
+        for attempt in range(MAX_RATE_RETRIES + 1):
+            try:
+                response = await self._client.post(
+                    f"{self.base_url}/chat/completions", json=body, headers=self._headers
+                )
+            except httpx.TimeoutException as exc:
+                raise AIError(f"{self.name} n'a pas répondu à temps ({type(exc).__name__})") from exc
+            except httpx.HTTPError as exc:
+                raise AIError(f"connexion impossible à {self.name} : {type(exc).__name__}") from exc
+            if response.status_code != 429 or attempt == MAX_RATE_RETRIES:
+                break
+            wait = rate_limit_wait(response)
+            if wait is None or wait > MAX_RATE_WAIT_S:
+                break  # quota du jour, ou pas de délai annoncé : inutile d'attendre
+            await _sleep(wait + 0.5)
         if response.status_code >= 400:
             detail = response.text[:300]
             asked_schema = body.get("response_format", {}).get("type") == "json_schema"

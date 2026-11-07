@@ -13,7 +13,7 @@ from app.ai.factory import AiConfigError, build_llm, stage_models
 from app.ai.ports import AIError, AIInvalidOutput, AIRefused, PageImage, Prompt, Stage
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
-from app.ai.providers.openai_compatible import OpenAICompatibleProvider
+from app.ai.providers.openai_compatible import MAX_RATE_RETRIES, OpenAICompatibleProvider, rate_limit_wait
 from app.config import Settings
 
 PROMPT = Prompt("analysis", "v9", "Analyse la leçon.")
@@ -166,3 +166,67 @@ def test_claude_and_fake_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
     assert isinstance(build_llm(Settings()), ClaudeProvider)
     assert isinstance(build_llm(Settings(ai_provider="fake")), FakeProvider)
+
+
+@pytest.mark.parametrize(
+    ("headers", "message", "seconds"),
+    [
+        ({"retry-after": "7"}, "", 7.0),
+        (
+            {},
+            "Rate limit reached for model `qwen` on tokens per minute (TPM). Please try again in 2.15s.",
+            2.15,
+        ),
+        ({}, "Please try again in 1m26.4s.", 86.4),
+        ({}, "Please try again in 360ms.", 0.36),
+        ({}, "quota", None),
+    ],
+)
+def test_rate_limit_wait(headers: dict[str, str], message: str, seconds: float | None) -> None:
+    response = httpx.Response(429, headers=headers, json={"error": {"message": message}})
+    assert (
+        rate_limit_wait(response) == pytest.approx(seconds) if seconds else rate_limit_wait(response) is None
+    )
+
+
+def limited(message: str) -> httpx.Response:
+    return httpx.Response(
+        429, json={"error": {"message": message, "type": "tokens", "code": "rate_limit_exceeded"}}
+    )
+
+
+async def test_per_minute_limit_waits_then_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Groq gratuit : « trop de jetons par minute » → on attend le délai annoncé, puis on réessaie."""
+    waits: list[float] = []
+
+    async def no_wait(seconds: float) -> None:
+        waits.append(seconds)
+
+    monkeypatch.setattr("app.ai.providers.openai_compatible._sleep", no_wait)
+    llm, sent = provider(
+        lambda body, n: (
+            limited("Please try again in 7.5s.")
+            if n < 3
+            else httpx.Response(200, json=reply('{"title": "Les fractions", "count": 2}'))
+        )
+    )
+    result = await llm.structured(prompt=PROMPT, input="texte", schema=Answer)
+    assert result.output.title == "Les fractions" and len(sent) == 3
+    assert waits == [8.0, 8.0]  # le délai annoncé, et une demi-seconde de marge
+
+
+async def test_daily_limit_and_endless_refusals_do_not_wait_forever(monkeypatch: pytest.MonkeyPatch) -> None:
+    waits: list[float] = []
+
+    async def no_wait(seconds: float) -> None:
+        waits.append(seconds)
+
+    monkeypatch.setattr("app.ai.providers.openai_compatible._sleep", no_wait)
+    daily, sent = provider(lambda body, n: limited("tokens per day (TPD). Please try again in 7m12s."))
+    with pytest.raises(AIError, match="429"):
+        await daily.structured(prompt=PROMPT, input="texte", schema=Answer)
+    assert len(sent) == 1 and waits == []  # quota du jour : pas d'attente
+    stuck, sent = provider(lambda body, n: limited("Please try again in 1s."))
+    with pytest.raises(AIError, match="429"):
+        await stuck.structured(prompt=PROMPT, input="texte", schema=Answer)
+    assert len(sent) == MAX_RATE_RETRIES + 1 and len(waits) == MAX_RATE_RETRIES

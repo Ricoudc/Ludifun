@@ -1932,6 +1932,25 @@ gratuite épuisée, offre payante, jeton refusé, réponse sans image ou non PNG
 choix par la fabrique). Non testé : le vrai service (pas de compte ni d'accès réseau à
 api.cloudflare.com dans l'environnement de développement), le menu Windows.
 
+### 5.67 Limite par minute des IA en ligne (novembre 2026)
+
+Premier essai de la famille avec Groq (offre gratuite) : la lecture de la photo passe, puis
+l'identification des notions est refusée, « 429 : Rate limit reached … on input tokens per
+minute (ITPM) ». Les offres gratuites limitent les jetons envoyés **par minute** ; la photo
+(beaucoup de jetons d'image) avait vidé la minute, et Ludifun abandonnait la leçon.
+
+- `OpenAICompatibleProvider` (Groq, Gemini, Mistral, ChatGPT, Grok, services compatibles) : un
+  refus 429 qui annonce un court délai (en-tête `retry-after`, ou « try again in 7.5s »,
+  « 1m26s », « 360ms » dans le message) est réessayé après ce délai plus une demi-seconde, trois
+  fois au plus. Un délai de plus de 65 s (quota du jour épuisé) ou aucun délai annoncé : erreur
+  immédiate, comme avant (« L'IA en ligne limite le nombre de demandes… »).
+- Lire les photos avec Tesseract (§5.65) évite aussi d'envoyer l'image à l'IA : bien moins de
+  jetons par leçon.
+
+Tests : `tests/ai/test_openai_compatible.py` (délais lus dans l'en-tête et le message, attente
+puis réussite, quota du jour sans attente, refus sans fin limités à trois nouveaux essais).
+Non testé : le vrai Groq.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
