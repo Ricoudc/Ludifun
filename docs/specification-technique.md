@@ -1885,6 +1885,11 @@ code et la relecture par l'enfant restent les mêmes.
   trentaine de Mo). Intégration continue : les mêmes paquets, pour que le test sur une vraie
   photo de fiche tourne.
 
+**Combinaison choisie par la famille** : Tesseract lit la photo sur le PC
+(`LUDIFUN_OCR_ENGINE=tesseract`), puis Groq (`LUDIFUN_AI_PROVIDER=groq`, `GROQ_API_KEY`, ou
+« Groq » dans l'espace parent) analyse la leçon et crée les questions et les jeux. Seule la
+transcription part chez Groq, jamais la photo ; le modèle n'a pas besoin de lire les images.
+
 Ce que Tesseract ne voit pas : les schémas, bandes numériques, cases à colorier et fractions
 écrites en hauteur ; une flèche « → » peut devenir « > ». Une fiche imprimée avec un schéma est
 « bien lue » pour le texte, et le schéma est perdu : pour ces fiches, `vision` reste meilleur.

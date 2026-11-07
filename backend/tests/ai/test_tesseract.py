@@ -240,3 +240,12 @@ async def test_a_text_model_is_enough_when_tesseract_reads() -> None:
     assert tesseract.ok and "Tesseract" in tesseract.message
     mixed = await check(choice, Settings(ocr_engine="auto"), client())
     assert mixed.ok and "Tesseract seul" in mixed.message
+
+
+def test_tesseract_reads_then_groq_analyses_and_creates(monkeypatch: pytest.MonkeyPatch) -> None:
+    """La combinaison voulue par la famille : Tesseract lit la photo sur le PC, Groq analyse la
+    leçon et crée les questions ; seule la transcription part chez Groq, jamais la photo."""
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_essai")
+    ocr, llm = build_providers(Settings(ai_provider="groq", ocr_engine="tesseract"))
+    assert isinstance(ocr, TesseractOcr)  # aucune image n'est donnée à l'IA
+    assert llm.name == "groq" and llm.model_for("analysis") and llm.model_for("material")
