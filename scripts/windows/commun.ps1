@@ -363,7 +363,8 @@ function Regler-Pollinations($valeurs) {
     Write-Host 'Pollinations dessine en ligne : seule une description écrite par Ludifun part (le sujet de la'
     Write-Host 'notion, jamais de photo ni de prénom). Crée une clé secrète (elle commence par sk_) sur :'
     Write-Host '  https://enter.pollinations.ai/keys'
-    $actuelle = $valeurs['LUDIFUN_IMAGE_API_KEY']
+    # Une clé déjà enregistrée n'est proposée que si elle était pour Pollinations (pas un jeton Cloudflare).
+    $actuelle = if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -eq 'pollinations') { $valeurs['LUDIFUN_IMAGE_API_KEY'] } else { '' }
     if ($actuelle) {
         $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
         $garder = Read-Host "Une clé Pollinations est déjà enregistrée (…$fin). La garder ? (O/N)"
