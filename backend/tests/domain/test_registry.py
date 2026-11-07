@@ -26,6 +26,7 @@ SPELLING_CODES = {
     ActivityCode.WORD_FLASH,
     ActivityCode.SCRAMBLE,
     ActivityCode.DICTATION,
+    ActivityCode.SENTENCE_DICTATION,  # §5.64
 }  # listes de mots à écrire
 EXTRA_CODES = {
     ActivityCode.UNJUMBLE,

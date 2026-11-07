@@ -16,9 +16,8 @@ from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.factory import AiChoice, AiConfigError, build_providers
+from app.ai.factory import AiChoice, AiConfigError, build_providers, ocr_for
 from app.ai.fallback import FallbackLLM
-from app.ai.ocr.vision_llm import VisionLLMOcr
 from app.ai.ports import LLMProvider, OcrProvider
 from app.config import DEV_JWT_SECRET, AiProviderName, Settings
 from app.db.models import Child, FamilyAiProvider, FamilyAiSettings, FamilyMember
@@ -219,4 +218,4 @@ class AiResolver:
         if len(chain) == 1:
             return primary
         llm = FallbackLLM(chain)
-        return VisionLLMOcr(llm), llm
+        return ocr_for(self.settings, llm), llm

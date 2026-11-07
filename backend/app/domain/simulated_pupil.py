@@ -4,6 +4,7 @@ Sert aux tests et à la famille de démonstration (`python -m app.tools.demo_fam
 """
 
 import itertools
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -25,6 +26,9 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
             return {"text": s["answers"][0] if single_ok else "je ne sais pas"}
         case ActivityCode.WORD_FLASH | ActivityCode.DICTATION:
             return {"text": s["word"] if single_ok else s["word"][:-1]}  # une lettre oubliée
+        case ActivityCode.SENTENCE_DICTATION:  # le mot de la liste, une lettre oubliée
+            wrong = re.sub(re.escape(s["word"]), s["word"][:-1], s["sentence"], count=1, flags=re.IGNORECASE)
+            return {"text": s["sentence"] if single_ok else wrong}
         case ActivityCode.SCRAMBLE:
             order = list(s["letters"])
             return {"order": order if single_ok else order[1:] + order[:1]}

@@ -113,6 +113,9 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
         case ActivityCode.DICTATION:
             question = f"Dictée : écrire « {payload.get('word', '?')} » entendu à voix haute"
             given = str(response.get("text", "")).strip() or "(rien écrit)"
+        case ActivityCode.SENTENCE_DICTATION:
+            question = "Dictée de phrase : écrire la phrase entendue à voix haute"
+            given = str(response.get("text", "")).strip() or "(rien écrit)"
         case ActivityCode.SCRAMBLE:
             letters = _texts(payload.get("letters"))
             question = "Lettres mélangées : " + " ".join(letters.values())
@@ -254,6 +257,8 @@ def question_of(activity: BuiltActivity) -> str:
             return f"Mot éclair : écrire « {payload.get('word', '?')} » de mémoire"
         case ActivityCode.DICTATION:
             return "Dictée : écrire le mot entendu à voix haute"
+        case ActivityCode.SENTENCE_DICTATION:
+            return "Dictée de phrase : écrire la phrase entendue à voix haute"
         case ActivityCode.SCRAMBLE:
             return "Lettres mélangées : " + " ".join(_texts(payload.get("letters")).values())
         case ActivityCode.FLASHCARD:

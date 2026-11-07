@@ -188,7 +188,11 @@ function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
     try {
         $infos = Invoke-RestMethod -Uri "$base/api/show" -Method Post -ContentType 'application/json' -Body (@{ model = $entree.name } | ConvertTo-Json) -TimeoutSec 10
         if ($infos.capabilities -and ($infos.capabilities -notcontains 'vision')) {
-            $conseils += "« $modele » ne sait pas lire les images : les photos de leçons échoueront. Conseillé : qwen2.5vl:7b."
+            switch ($valeurs['LUDIFUN_OCR_ENGINE']) {
+                'tesseract' { }  # les photos sont lues par Tesseract : un modèle de texte suffit
+                'auto' { $conseils += "« $modele » ne sait pas lire les images : les pages que Tesseract lit mal (écriture à la main) ne seront pas relues." }
+                default { $conseils += "« $modele » ne sait pas lire les images : les photos de leçons échoueront. Conseillé : qwen2.5vl:7b, ou la lecture par Tesseract ($(Choix 4))." }
+            }
         }
     } catch { }
     if (-not $valeurs['LUDIFUN_OLLAMA_NUM_CTX']) {
@@ -317,18 +321,50 @@ function Choisir-IA-Texte {
     }
 }
 
-# Choix de l'IA en deux temps : celle qui lit les photos (OCR) et crée les jeux, puis celle qui
-# dessine les images des leçons (facultatif : sur ce PC, ou en ligne avec Pollinations).
+# Choix de l'IA en trois temps : celle qui crée les jeux, qui lit le texte des photos (l'IA ou
+# Tesseract, §5.65), puis qui dessine les images des leçons (facultatif : sur ce PC, ou en ligne
+# avec Pollinations ou Cloudflare).
 function Choisir-IA {
     Choisir-IA-Texte
+    Choisir-Lecture
     Choisir-Images
+}
+
+$NomsLecture = @{
+    'vision' = 'par l''IA seule'; 'tesseract' = 'par Tesseract seul'
+    'auto' = 'par Tesseract, puis l''IA pour les pages mal lues'
+}
+
+function Choisir-Lecture {
+    $valeurs = Lire-Env
+    $actuel = $valeurs['LUDIFUN_OCR_ENGINE']
+    if (-not $actuel) { $actuel = 'vision' }
+    Write-Host ''
+    Write-Host 'Qui lit le texte des photos de leçons ?'
+    Write-Host '  1. Tesseract d''abord, puis l''IA pour les pages mal lues (conseillé : rapide, sans carte graphique)'
+    Write-Host '  2. Tesseract seul (la photo ne quitte jamais le PC, un modèle de texte suffit ; écriture à la main mal lue)'
+    Write-Host '  3. L''IA seule (le modèle doit savoir lire les images ; lent sans carte graphique)'
+    $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsLecture[$actuel]))").Trim()
+    switch ($num) {
+        '1' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'auto' }
+        '2' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'tesseract' }
+        '3' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'vision' }
+        default { return }
+    }
+    Ecrire-Env $valeurs
+    Ok "Lecture des photos : $($NomsLecture[$valeurs['LUDIFUN_OCR_ENGINE']])"
+    if ($valeurs['LUDIFUN_OCR_ENGINE'] -eq 'tesseract' -and $valeurs['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
+        Write-Host 'Avec Ollama, un modèle de texte suffit alors (par exemple mistral:7b) : plus léger qu''un modèle qui lit les images.'
+    }
+    Write-Host "Pour comparer sur tes vraies leçons : $(Choix 12), puis change ce choix et recommence."
 }
 
 function Regler-Pollinations($valeurs) {
     Write-Host 'Pollinations dessine en ligne : seule une description écrite par Ludifun part (le sujet de la'
     Write-Host 'notion, jamais de photo ni de prénom). Crée une clé secrète (elle commence par sk_) sur :'
     Write-Host '  https://enter.pollinations.ai/keys'
-    $actuelle = $valeurs['LUDIFUN_IMAGE_API_KEY']
+    # Une clé déjà enregistrée n'est proposée que si elle était pour Pollinations (pas un jeton Cloudflare).
+    $actuelle = if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -eq 'pollinations') { $valeurs['LUDIFUN_IMAGE_API_KEY'] } else { '' }
     if ($actuelle) {
         $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
         $garder = Read-Host "Une clé Pollinations est déjà enregistrée (…$fin). La garder ? (O/N)"
@@ -347,9 +383,44 @@ function Regler-Pollinations($valeurs) {
     $valeurs.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
 }
 
+function Regler-Cloudflare($valeurs) {
+    Write-Host 'Cloudflare Workers AI dessine en ligne, gratuitement jusqu''à environ 170 images par jour (au-delà,'
+    Write-Host 'il refuse jusqu''au lendemain, sans rien facturer). Seule une description écrite par Ludifun part'
+    Write-Host '(le sujet de la notion, jamais de photo ni de prénom). Une fois, sur un compte Cloudflare gratuit :'
+    Write-Host '  1. https://dash.cloudflare.com, page « Workers AI », bouton « Use REST API » ;'
+    Write-Host '  2. « Create a Workers AI API Token », puis « Create API Token » et « Copy API Token » ;'
+    Write-Host '  3. sur la même page, copie aussi « Account ID ».'
+    $compte = $valeurs['LUDIFUN_IMAGE_ACCOUNT_ID']
+    if ($compte) {
+        $garder = Read-Host "Compte Cloudflare déjà enregistré ($compte). Le garder ? (O/N)"
+        if ($garder -match '^[nN]') { $compte = '' }
+    }
+    while (-not $compte) {
+        $compte = (Read-Host 'Colle l''Account ID (clic droit pour coller)').Trim()
+        if ($compte -and $compte -notmatch '^[0-9a-fA-F]{32}$') {
+            $sur = Read-Host 'D''habitude, c''est 32 chiffres et lettres de a à f. Le garder quand même ? (O/N)'
+            if ($sur -notmatch '^[oOyY]') { $compte = '' }
+        }
+    }
+    # Un jeton déjà enregistré n'est proposé que s'il était pour Cloudflare (pas une clé Pollinations).
+    $actuel = if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -eq 'cloudflare') { $valeurs['LUDIFUN_IMAGE_API_KEY'] } else { '' }
+    if ($actuel) {
+        $fin = $actuel.Substring([Math]::Max(0, $actuel.Length - 4))
+        $garder = Read-Host "Un jeton Cloudflare est déjà enregistré (…$fin). Le garder ? (O/N)"
+        if ($garder -match '^[nN]') { $actuel = '' }
+    }
+    $jeton = $actuel
+    while (-not $jeton) { $jeton = (Read-Host 'Colle le jeton (API Token)').Trim() }
+    $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'cloudflare'
+    $valeurs['LUDIFUN_IMAGE_ACCOUNT_ID'] = $compte
+    $valeurs['LUDIFUN_IMAGE_API_KEY'] = $jeton
+    $valeurs.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
+    $valeurs.Remove('LUDIFUN_IMAGE_MODEL')  # modèle d'un autre moteur
+}
+
 $NomsImages = @{
     'none' = 'pas d''images'; 'sdcpp' = 'sur ce PC'; 'comfyui' = 'ComfyUI sur ce PC'
-    'pollinations' = 'en ligne avec Pollinations'
+    'pollinations' = 'en ligne avec Pollinations'; 'cloudflare' = 'en ligne avec Cloudflare (gratuit)'
 }
 
 function Choisir-Images {
@@ -361,6 +432,7 @@ function Choisir-Images {
     Write-Host '  0. Pas d''images'
     Write-Host "  1. Sur ce PC (gratuit, tout reste à la maison ; s'installe une fois avec $(Choix 8))"
     Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
+    Write-Host '  3. En ligne avec Cloudflare (sans carte graphique ; gratuit, environ 170 images par jour)'
     $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsImages[$actuel]))").Trim()
     switch ($num) {
         '0' { $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'none' }
@@ -373,6 +445,7 @@ function Choisir-Images {
             $valeurs['LUDIFUN_IMAGE_URL'] = "http://host.docker.internal:$PortImages"
         }
         '2' { Regler-Pollinations $valeurs }
+        '3' { Regler-Cloudflare $valeurs }
         default { return }
     }
     Ecrire-Env $valeurs

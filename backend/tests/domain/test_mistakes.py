@@ -32,7 +32,12 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
                         continue
     # Listes de mots à savoir écrire (aucune leçon de référence n'en a).
     unit = spelling_unit("chevaux")
-    for code in (ActivityCode.WORD_FLASH, ActivityCode.SCRAMBLE, ActivityCode.DICTATION):
+    for code in (
+        ActivityCode.WORD_FLASH,
+        ActivityCode.SCRAMBLE,
+        ActivityCode.DICTATION,
+        ActivityCode.SENTENCE_DICTATION,
+    ):
         game = registry.get(code)
         built.append(game.build([unit], min(game.difficulties), random.Random(3)))
     # Points alignés : une notion de maths sur l'alignement (aucune leçon de référence n'en a).

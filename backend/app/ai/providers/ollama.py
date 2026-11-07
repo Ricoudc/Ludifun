@@ -113,6 +113,21 @@ async def unload_models(base_url: str, client: httpx.AsyncClient | None = None) 
     return unloaded
 
 
+async def reads_images(base_url: str, model: str, client: httpx.AsyncClient | None = None) -> bool:
+    """Le modèle sait lire les images (capacité « vision » d'Ollama) ; dans le doute, oui."""
+    own = client is None
+    http = client or httpx.AsyncClient(timeout=30)
+    try:
+        shown = await http.post(f"{base_url.rstrip('/')}/api/show", json={"model": model})
+        capabilities = shown.json().get("capabilities") if shown.status_code == 200 else None
+    except (httpx.HTTPError, ValueError, AttributeError):
+        return True
+    finally:
+        if own:
+            await http.aclose()
+    return not (isinstance(capabilities, list) and "vision" not in capabilities)
+
+
 class _Crashed(Exception):
     def __init__(self, error: AIError) -> None:
         self.error = error

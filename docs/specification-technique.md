@@ -702,7 +702,8 @@ résultat par `/history` et `/view`, carte vidée par `POST /free`), `pollinatio
 ligne, sans carte graphique : `GET https://gen.pollinations.ai/image/{prompt}`, clé secrète `sk_…`
 dans l'en-tête `Authorization`, modèle par défaut `black-forest-labs/flux.1-schnell`, filtres
 `safe=privacy,sexual,violence` ; pas de prompt négatif sur cette route ; Ollama n'est pas
-déchargé ; seul le prompt construit par le code part chez Pollinations), `fake` (tests). Modèle
+déchargé ; seul le prompt construit par le code part chez Pollinations), `cloudflare` (en ligne,
+gratuit chaque jour, §5.66), `fake` (tests). Modèle
 par défaut des moteurs du PC : SDXL-Lightning 4 étapes (Euler, `sgm_uniform`, CFG 1). Réglages :
 `LUDIFUN_IMAGE_ENGINE` (`none` par défaut), `LUDIFUN_IMAGE_URL`, `LUDIFUN_IMAGE_MODEL`,
 `LUDIFUN_IMAGE_API_KEY` (Pollinations ; sans clé, pas d'images).
@@ -1818,6 +1819,118 @@ Remarque de la famille : remettre la phrase dans l'ordre est un peu compliqué a
 La correction compare les étiquettes ; la phrase reformée est toujours exactement celle de la
 leçon. Une ancienne application affiche les étiquettes telles quelles (plusieurs mots par
 étiquette) : rien ne change pour elle.
+
+### 5.64 Dictée de phrases (octobre 2026, règles 1.14.0)
+
+Après la dictée d'un mot seul (§5.15, `DICTATION`), la dictée d'une phrase qui l'emploie, comme
+en classe. Jeu fabriqué par le code (`app/domain/activities/sentence_dictation.py`,
+`SENTENCE_DICTATION`, niveau 3), sans IA pendant la séance :
+
+- **La phrase** : d'abord une phrase de la leçon qui contient le mot de la liste (`statement`
+  ou affirmation vraie, §5.58, marquée `from_lesson`), sinon la phrase d'aide du matériel
+  `spelling`, « ___ » remplacé par le mot. Longueur selon la classe : 6 mots au plus au CP, 8 au
+  CE1, 10 au CE2, 12 au CM1, 14 au CM2, 15 au collège (et classe inconnue), 3 au moins. Jamais
+  de chiffres (la voix dit « trois », l'enfant écrirait « 3 »), de guillemets ni de deux-points.
+- **Lecture** : le téléphone lit la phrase, puis morceau par morceau (groupes de lecture de
+  « Démêler », `unjumble.reading_groups`, un tiers du nombre de mots au plus), puis encore en
+  entier. Boutons « Toute la phrase » et « Morceau par morceau » ; « La phrase a N mots ». Sans
+  voix française, la phrase s'affiche `show_ms` (2 s + 0,5 s par mot), comme le mot éclair.
+- **Correction** mot à mot, alignée (distance d'édition sur les mots : un mot oublié ne fait pas
+  compter faux les suivants) ; orthographe stricte (accents), sans majuscules ni ponctuation,
+  que la voix ne dit pas ; « l' hôpital » vaut « l'hôpital ». Score = mots justes / (mots de
+  la phrase + mots en trop), 0,9 au plus s'il y a une faute. **Maîtrise** : seul le mot de la
+  liste compte (la notion apprise) ; raté, l'erreur est notée comme pour la dictée du mot
+  (faute de peu = imprécision). L'enfant voit la phrase juste, puis chaque mot raté (« doctor →
+  docteur », « mot oublié → hôpital », « bien (mot en trop) »).
+- **Règles 1.14.0** : jamais en maths (comme les autres jeux d'orthographe), ni en anglais (la
+  voix lit en français) — `subjects.excluded_activities`.
+- Composeur (jeux intermédiaires), consignes par cycle, erreurs relues pour le parent (sa
+  réponse et la phrase), élève simulé ; « Dictées de phrases » dans le bilan des jeux.
+
+Contrat d'API inchangé : un type d'activité nouveau, qu'une ancienne application saute (§133).
+
+Tests : `tests/domain/test_sentence_dictation.py` (source de la phrase, longueur par classe,
+alignement, notation, maîtrise du seul mot de la liste), `test/activities/activities_test.dart`
+(ordre de lecture, repli sans voix, correction affichée).
+
+Non testé : la voix sur un vrai téléphone (débit, pauses entre les morceaux, prononciation des
+liaisons) ; vraies listes de mots analysées par une vraie IA.
+
+### 5.65 Lecture des photos par Tesseract (novembre 2026)
+
+Demande de la famille : lire les photos sans modèle de vision, avec un OCR local (Tesseract) et
+un modèle de texte d'Ollama (Mistral, Llama…) pour le reste. La lecture des photos était déjà une
+pièce à part (`OcrProvider`) : seul le lecteur change, l'analyse, le matériel, les contrôles du
+code et la relecture par l'enfant restent les mêmes.
+
+- **Lecteur `tesseract`** (`app/ai/ocr/tesseract.py`) : le programme `tesseract` (français et
+  anglais, `LUDIFUN_TESSERACT_LANGUAGES=fra+eng`), lancé sans fichier (la photo passe par son
+  entrée standard, jamais écrite sur le disque). Photo remise droite (EXIF), en gris,
+  contrastée, agrandie à 1 800 points au moins. Environ 0,25 s par page, sans carte graphique.
+- **Le code décide** (pas d'IA) : la confiance de chaque mot donne la qualité de la page
+  (moyenne pondérée par la longueur des mots : bonne à 80 et plus, partielle à 55 et plus,
+  illisible en dessous ou sous 3 mots) et les passages douteux (mots de 3 lettres et plus sous
+  60, les 5 moins sûrs, avec 4 mots de chaque côté) montrés à l'enfant (« Peux-tu vérifier ? »,
+  §6.3). Version de la lecture enregistrée : `tesseract.v1`. Coût : zéro.
+- **Mode `auto`** (`AutoOcr`) : Tesseract d'abord ; les pages qu'il lit mal (écriture à la main,
+  photo floue) sont relues par le modèle de vision de l'IA de la famille, les autres ne lui sont
+  jamais envoyées. La relecture n'est gardée que si elle est au moins aussi bonne. Avec Ollama,
+  la capacité « vision » du modèle est vérifiée d'abord (`/api/show`) : un modèle de texte ne
+  « lit » jamais une photo. IA en panne : la lecture de Tesseract est gardée ; Tesseract
+  absent : le modèle de vision lit tout.
+- **Réglage** `LUDIFUN_OCR_ENGINE` : `vision` (par défaut, rien ne change), `tesseract` ou
+  `auto` (conseillé). Windows : `Ludifun.bat`, choix 4, question « Qui lit le texte des photos ? ».
+  Avec `tesseract`, la vérification de l'IA (espace parent) accepte un modèle Ollama sans
+  « vision » ; avec `auto`, elle l'accepte en prévenant que l'écriture à la main sera mal lue.
+- **Image Docker** : paquets `tesseract-ocr`, `tesseract-ocr-fra`, `tesseract-ocr-eng` (une
+  trentaine de Mo). Intégration continue : les mêmes paquets, pour que le test sur une vraie
+  photo de fiche tourne.
+
+**Combinaison choisie par la famille** : Tesseract lit la photo sur le PC
+(`LUDIFUN_OCR_ENGINE=tesseract`), puis Groq (`LUDIFUN_AI_PROVIDER=groq`, `GROQ_API_KEY`, ou
+« Groq » dans l'espace parent) analyse la leçon et crée les questions et les jeux. Seule la
+transcription part chez Groq, jamais la photo ; le modèle n'a pas besoin de lire les images.
+
+Ce que Tesseract ne voit pas : les schémas, bandes numériques, cases à colorier et fractions
+écrites en hauteur ; une flèche « → » peut devenir « > ». Une fiche imprimée avec un schéma est
+« bien lue » pour le texte, et le schéma est perdu : pour ces fiches, `vision` reste meilleur.
+Mesure sur les vraies leçons de la famille : `Ludifun.bat`, choix 12, une fois par réglage.
+
+Contrat d'API et base inchangés. Tests : `tests/ai/test_tesseract.py` (sortie TSV, qualité et
+passages douteux, préparation en mémoire, programme absent, fiche imprimée photographiée lue par
+le vrai Tesseract, mode `auto`, capacité « vision » d'Ollama, choix du lecteur, vérification).
+
+Non testé : écriture à la main et vraies photos de cahier (aucune dans le dépôt), Ollama réel,
+menu Windows (pas de PowerShell dans l'environnement de développement).
+
+### 5.66 Images en ligne gratuites : Cloudflare Workers AI (novembre 2026)
+
+Demande de la famille : des illustrations gratuites et presque illimitées. Pollinations n'a plus
+de part gratuite renouvelée (fin juillet 2026) ; Perchance protège son générateur contre les
+programmes (vérification Cloudflare) ; Microsoft Copilot n'a pas d'API d'images. Cloudflare
+Workers AI donne 10 000 « neurones » par jour à tout compte gratuit (remis à zéro à minuit UTC).
+
+- **Moteur `cloudflare`** (`app/ai/imagegen/cloudflare.py`) :
+  `POST https://api.cloudflare.com/client/v4/accounts/{compte}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
+  corps `{prompt, steps}` (2 048 signes et 8 étapes au plus ; 4 par défaut), jeton dans l'en-tête
+  `Authorization`, image en base64 dans `result.image`, vérifiée par ses premiers octets.
+  FLUX.1 schnell ne prend ni graine, ni taille, ni prompt négatif.
+- **Coût** : tarifs officiels, 4,8 neurones par tuile de 512 × 512 et 9,6 par étape, soit environ
+  58 neurones pour une image de 1024 × 1024 en 4 étapes, à peu près **170 images par jour**. Au-delà,
+  le compte gratuit est refusé jusqu'au lendemain (code 3036, « part gratuite du jour épuisée »)
+  et rien n'est facturé ; un modèle réservé à l'offre payante est refusé (code 5035).
+- **Réglages** : `LUDIFUN_IMAGE_ENGINE=cloudflare`, `LUDIFUN_IMAGE_ACCOUNT_ID` (identifiant du
+  compte), `LUDIFUN_IMAGE_API_KEY` (jeton « Workers AI », droits Read et Edit) ; sans l'un des
+  deux, pas d'images. Windows : `Ludifun.bat`, choix 8 (option 3) ou choix 4.
+- Ce qui part chez Cloudflare : le prompt construit par le code, comme pour Pollinations ; jamais
+  de photo, de prénom ni de texte de leçon. Pas de filtre de contenu demandé au service : les
+  contrôles du code et la validation par le parent restent les garde-fous. Messages d'erreur
+  sans le corps de la réponse (il peut reprendre le prompt).
+
+Tests : `tests/ai/test_imagegen.py` (requête, jeton hors de l'adresse, limites du modèle, part
+gratuite épuisée, offre payante, jeton refusé, réponse sans image ou non PNG/JPEG, réseau absent,
+choix par la fabrique). Non testé : le vrai service (pas de compte ni d'accès réseau à
+api.cloudflare.com dans l'environnement de développement), le menu Windows.
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

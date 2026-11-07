@@ -1,3 +1,6 @@
+from app.ai.imagegen.cloudflare import DEFAULT_MODEL as CLOUDFLARE_MODEL
+from app.ai.imagegen.cloudflare import DEFAULT_URL as CLOUDFLARE_URL
+from app.ai.imagegen.cloudflare import CloudflareEngine
 from app.ai.imagegen.comfyui import ComfyUiEngine
 from app.ai.imagegen.fake import FakeImageEngine
 from app.ai.imagegen.pollinations import DEFAULT_MODEL as POLLINATIONS_MODEL
@@ -22,6 +25,15 @@ def image_engine_for(settings: Settings) -> ImageEngine | None:
                 settings.image_api_key.get_secret_value(),
                 settings.image_model or POLLINATIONS_MODEL,
                 settings.image_url or POLLINATIONS_URL,
+            )
+        case "cloudflare" if (
+            settings.image_api_key and settings.image_api_key.get_secret_value() and settings.image_account_id
+        ):
+            return CloudflareEngine(
+                settings.image_api_key.get_secret_value(),
+                settings.image_account_id,
+                settings.image_model or CLOUDFLARE_MODEL,
+                settings.image_url or CLOUDFLARE_URL,
             )
         case "fake":
             return FakeImageEngine()

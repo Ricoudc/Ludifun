@@ -1051,6 +1051,54 @@ void main() {
     expect(find.textContaining('ne sait pas lire à voix haute'), findsOneWidget);
   });
 
+  testWidgets('dictée de phrase : lue en entier, par morceaux, puis en entier', (tester) async {
+    final speaker = FakeSpeaker();
+    DictationView.speakerFactory = () => speaker;
+    addTearDown(() => DictationView.speakerFactory = PhoneSpeaker.new);
+    const sentence = 'Le docteur travaille à l\'hôpital.';
+    await show(tester, 'SENTENCE_DICTATION', {
+      'prompt': 'Écoute la phrase, puis écris-la.',
+      'sentence': sentence,
+      'chunks': ['Le docteur', 'travaille', 'à l\'hôpital.'],
+      'word_count': 6,
+      'show_ms': 5000,
+    });
+    await tester.pump();
+    expect(speaker.said, [sentence, 'Le docteur', 'travaille', 'à l\'hôpital.', sentence]);
+    expect(find.text(sentence), findsNothing);
+    expect(find.text('La phrase a 6 mots.'), findsOneWidget);
+    await tester.tap(find.text('Morceau par morceau'));
+    await tester.pump();
+    expect(speaker.said, hasLength(8));
+    await tester.tap(find.text('Toute la phrase'));
+    await tester.pump();
+    expect(speaker.said.last, sentence);
+    await tester.enterText(find.byType(TextField), ' Le docteur travaille à l\'hôpital. ');
+    await tester.pump();
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'text': 'Le docteur travaille à l\'hôpital.'},
+    ]);
+  });
+
+  testWidgets('dictée de phrase sans voix française : la phrase s\'affiche un moment', (
+    tester,
+  ) async {
+    DictationView.speakerFactory = () => FakeSpeaker(voice: false);
+    addTearDown(() => DictationView.speakerFactory = PhoneSpeaker.new);
+    await show(tester, 'SENTENCE_DICTATION', {
+      'sentence': 'Les chevaux galopent.',
+      'chunks': ['Les chevaux', 'galopent.'],
+      'show_ms': 3500,
+    });
+    await tester.pump();
+    expect(find.text('Les chevaux galopent.'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 3500));
+    await tester.pump();
+    expect(find.text('Les chevaux galopent.'), findsNothing);
+    expect(find.textContaining('ne sait pas lire à voix haute'), findsOneWidget);
+  });
+
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
     await show(tester, 'FLASHCARD', {'front': '1789', 'back': 'Début de la Révolution'});
     expect(find.text('Je savais 👍'), findsNothing);
@@ -1191,5 +1239,41 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('La bonne réponse est'), findsNothing);
+  });
+
+  testWidgets('correction de la dictée de phrase : la phrase, puis les mots ratés', (tester) async {
+    const item = SessionItem(
+      id: 'i1',
+      position: 0,
+      block: Block.core,
+      type: 'SENTENCE_DICTATION',
+      difficulty: 3,
+      payload: {'sentence': 'Le docteur travaille à l\'hôpital.'},
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: CorrectionView(
+              item: item,
+              correction: const Correction(
+                result: AttemptResult.partial,
+                score: 0.8,
+                correctAnswer: 'Le docteur travaille à l\'hôpital.',
+                details: [
+                  {'text': 'doctor', 'expected': 'docteur', 'correct': false},
+                  {'text': 'bien (mot en trop)', 'correct': false},
+                ],
+              ),
+              onContinue: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('La phrase était :'), findsOneWidget);
+    expect(find.text('Le docteur travaille à l\'hôpital.'), findsOneWidget);
+    expect(find.text('doctor → docteur'), findsOneWidget);
+    expect(find.text('bien (mot en trop)'), findsOneWidget);
   });
 }

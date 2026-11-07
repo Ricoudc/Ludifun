@@ -1,4 +1,5 @@
-"""Moteurs d'images (étape 27) : stable-diffusion.cpp, ComfyUI, Pollinations, factice ; verrou de la carte."""
+"""Moteurs d'images (étape 27) : stable-diffusion.cpp, ComfyUI, Pollinations, Cloudflare, factice ;
+verrou de la carte."""
 
 import asyncio
 import base64
@@ -11,6 +12,7 @@ import pytest
 from PIL import Image
 from pydantic import SecretStr
 
+from app.ai.imagegen.cloudflare import CloudflareEngine
 from app.ai.imagegen.comfyui import ComfyUiEngine
 from app.ai.imagegen.factory import image_engine_for
 from app.ai.imagegen.fake import FakeImageEngine
@@ -194,3 +196,80 @@ async def test_pollinations_offline() -> None:
 
     with pytest.raises(ImageEngineError, match="Internet"):
         await PollinationsEngine("sk_x", "m", client=client(handler)).generate(REQUEST)
+
+
+def jpeg() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), (200, 100, 30)).save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def test_cloudflare_needs_token_and_account() -> None:
+    token = SecretStr("cf_token")
+    assert image_engine_for(Settings(image_engine="cloudflare")) is None
+    assert image_engine_for(Settings(image_engine="cloudflare", image_api_key=token)) is None
+    assert image_engine_for(Settings(image_engine="cloudflare", image_account_id="abc123")) is None
+    online = image_engine_for(
+        Settings(image_engine="cloudflare", image_api_key=token, image_account_id="abc123")
+    )
+    assert isinstance(online, CloudflareEngine)
+    assert online.model == "@cf/black-forest-labs/flux-1-schnell" and online.account_id == "abc123"
+    assert online.base_url is None  # en ligne : Ollama n'est pas déchargé
+
+
+async def test_cloudflare_run() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        image = base64.b64encode(jpeg()).decode()
+        return httpx.Response(200, json={"result": {"image": image}, "success": True, "errors": []})
+
+    engine = CloudflareEngine("cf_secret", "abc123", client=client(handler))
+    image = await engine.generate(ImageRequest("A dog " * 500, "text", 1024, 1024, seed=42, steps=20))
+    await engine.release()
+    assert image.data == jpeg() and image.media_type == "image/jpeg" and image.engine == "cloudflare"
+    (request,) = seen
+    assert request.method == "POST" and request.url.host == "api.cloudflare.com"
+    assert request.url.path == "/client/v4/accounts/abc123/ai/run/@cf/black-forest-labs/flux-1-schnell"
+    assert request.headers["authorization"] == "Bearer cf_secret"
+    assert "cf_secret" not in str(request.url)  # le jeton ne passe jamais dans l'adresse
+    body = json.loads(request.content)
+    assert set(body) == {"prompt", "steps"}  # ni graine, ni taille, ni prompt négatif
+    assert len(body["prompt"]) == 2048 and body["steps"] == 8  # limites du modèle
+
+
+def cloudflare_error(status: int, code: int | None = None) -> httpx.Response:
+    errors = [] if code is None else [{"code": code, "message": "A dog in a meadow"}]
+    return httpx.Response(status, json={"result": None, "success": False, "errors": errors})
+
+
+@pytest.mark.parametrize(
+    ("response", "message"),
+    [
+        (cloudflare_error(429, 3036), "part gratuite du jour épuisée"),
+        (cloudflare_error(403, 5035), "pas dans l'offre gratuite"),
+        (cloudflare_error(401, 10000), "jeton ou compte refusé"),
+        (cloudflare_error(429, 3040), "trop de demandes"),
+        (cloudflare_error(500, 3007), r"erreur 500 \(code 3007\)$"),  # le message n'est pas recopié
+        (httpx.Response(502, text="<html>A dog in a meadow</html>"), "erreur 502$"),
+        (httpx.Response(200, json={"result": {}, "success": True}), "sans image"),
+        (httpx.Response(200, text="pas du json"), "illisible"),
+        (
+            httpx.Response(200, json={"result": {"image": base64.b64encode(b"<svg></svg>").decode()}}),
+            "PNG",
+        ),
+    ],
+)
+async def test_cloudflare_errors(response: httpx.Response, message: str) -> None:
+    engine = CloudflareEngine("cf_x", "abc", client=client(lambda request: response))
+    with pytest.raises(ImageEngineError, match=message):
+        await engine.generate(REQUEST)
+
+
+async def test_cloudflare_offline() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("pas de réseau", request=request)
+
+    with pytest.raises(ImageEngineError, match="Internet"):
+        await CloudflareEngine("cf_x", "abc", client=client(handler)).generate(REQUEST)

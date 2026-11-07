@@ -1,7 +1,7 @@
 """Vérifier une IA avant de s'en servir (espace parent) :
 
 1. le service répond, la clé est acceptée, et quels modèles il propose (liste des modèles) ;
-2. Ollama : le modèle est installé et sait lire les images ;
+2. Ollama : le modèle est installé et sait lire les images (sauf photos lues par Tesseract, §5.65) ;
 3. une toute petite demande réelle (« réponds {"ok": true} ») : le modèle répond, au format
    attendu. Quelques dizaines de jetons ; gratuit avec Ollama.
 """
@@ -121,6 +121,18 @@ async def _check(choice: AiChoice, settings: Settings, http: httpx.AsyncClient) 
         shown = await http.post(f"{base}/api/show", json={"model": wanted})
         capabilities = shown.json().get("capabilities") if shown.status_code == 200 else None
         if isinstance(capabilities, list) and "vision" not in capabilities:
+            # Les photos lues par Tesseract (§5.65) : un modèle de texte suffit.
+            if settings.ocr_engine == "tesseract":
+                return CheckResult(
+                    True, f"Ollama répond, « {wanted} » est installé (photos lues par Tesseract).", models
+                )
+            if settings.ocr_engine == "auto":
+                return CheckResult(
+                    True,
+                    f"Ollama répond, « {wanted} » est installé. Il ne lit pas les images : les photos "
+                    "sont lues par Tesseract seul (écriture à la main mal lue).",
+                    models,
+                )
             return CheckResult(
                 False,
                 f"« {wanted} » est installé mais ne sait pas lire les images : choisissez un modèle "

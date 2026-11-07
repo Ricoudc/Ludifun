@@ -21,6 +21,7 @@ PRICES_PER_MTOK = {
     "grok-4": (3.0, 15.0),
     "fake": (0.0, 0.0),
     "ollama/": (0.0, 0.0),  # IA locale : gratuite
+    "tesseract/": (0.0, 0.0),  # lecture des photos sur le serveur : gratuite
 }
 
 # Modèle inconnu : on compte au prix le plus élevé, pour ne jamais sous-estimer la dépense.

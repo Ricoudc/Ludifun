@@ -95,6 +95,11 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
         "Écoute le mot (touche le haut-parleur pour le réentendre), puis écris-le.",
         "Écris le mot dicté ; tu peux le réécouter autant que nécessaire.",
     ),
+    ActivityCode.SENTENCE_DICTATION: (
+        "Écoute bien la phrase. Écris-la.",
+        "Écoute la phrase, puis écris-la. Tu peux la réécouter morceau par morceau.",
+        "Écris la phrase dictée, ponctuation comprise ; réécoute-la si besoin.",
+    ),
     ActivityCode.SCRAMBLE: (
         "Touche les lettres dans l'ordre. Tu écris le mot.",
         "Touche les lettres dans le bon ordre pour écrire le mot.",
