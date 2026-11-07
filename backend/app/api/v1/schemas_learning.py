@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validato
 
 from app.api.v1.schemas_rewards import RewardsOut
 from app.domain.knowledge import Grade, SkillVerb
+from app.domain.resources import Provider, ResourceKind
 
 StepState = Literal["pending", "running", "done"]
 
@@ -125,10 +126,10 @@ class LessonResourceOut(BaseModel):
     qui ne quitte pas le site (`provider`)."""
 
     id: uuid.UUID
-    provider: Literal[
-        "mathalea", "vikidia", "lumni", "fondamentaux", "maitrelucas", "calculatice", "sesamath"
-    ]
-    kind: Literal["exercise", "quiz", "video", "article", "lesson", "game"]
+    # Tous les sites de confiance du domaine (§5.60) : une liste recopiée ici avait oublié ceux
+    # choisis par la famille, et une seule ressource de Khan Academy empêchait d'ouvrir la leçon.
+    provider: Provider
+    kind: ResourceKind
     title: str
     url: str
     licence: str

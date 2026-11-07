@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
 from app.config import Settings
 from app.db.models import KnowledgeMaterial, LessonResource
+from app.domain.resources import ALLOWED_HOSTS, Provider
 from app.services import external_resources, sourced_help, sourced_practice
 from app.services.web_sources import WebSources
 from tests.api.helpers import auth, family_with_device, upload_lesson
@@ -252,3 +253,30 @@ async def test_les_fondamentaux_and_maitre_lucas_are_offered_as_links(
     }
     licences = {r["provider"]: r["licence"] for r in lesson["resources"]}
     assert "rien n'est copié" in licences["maitrelucas"] and "Canopé" in licences["fondamentaux"]
+
+
+async def test_a_resource_from_any_trusted_site_never_breaks_the_lesson(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """Famille, novembre 2026 : une ressource Khan Academy (site choisi par la famille, §5.60)
+    rendait la leçon impossible à ouvrir (« Petit souci de notre côté »), la réponse au téléphone
+    n'acceptant que les 7 premiers sites. Chaque site connu du domaine doit passer."""
+    family = await family_with_device(client)
+    lesson = await upload_lesson(client, family["device"])
+    for position, provider in enumerate(Provider):
+        db.add(
+            LessonResource(
+                lesson_id=uuid.UUID(lesson["id"]),
+                provider=provider.value,
+                kind="lesson",
+                title=f"Les fractions ({provider.value})",
+                url=f"https://{ALLOWED_HOSTS[provider][0]}/fractions-{position}",
+                position=position,
+            )
+        )
+    await db.commit()
+    r = await client.get(f"/v1/lessons/{lesson['id']}", headers=auth(family["device"]))
+    assert r.status_code == 200, r.text
+    assert {res["provider"] for res in r.json()["resources"]} == {p.value for p in Provider}
+    parent = await client.get(resources_url(family, lesson), headers=auth(family["parent"]))
+    assert parent.status_code == 200, parent.text

@@ -1722,6 +1722,11 @@ depuis l'environnement de développement (réseau fermé) ; les filtres (`linked
 ceux, génériques, des autres sites (page sur le sujet de la leçon, pas d'accueil, de recherche
 ni de PDF).
 
+**Correction (novembre 2026)** : la réponse envoyée au téléphone (`LessonResourceOut.provider`)
+gardait la liste des 7 premiers sites ; une ressource d'un site choisi par la famille (Khan
+Academy) rendait la leçon impossible à ouvrir (erreur 500). Le champ reprend maintenant les
+sites du domaine (`Provider`) ; test : toute ressource d'un site connu laisse la leçon s'ouvrir.
+
 ### 5.61 Des images pour apprendre : figures exactes et schémas dessinés par le code (octobre 2026, illustration v3)
 
 Remarque de la famille : « quand je demande un carré, il me sort une image illustrée ». Un
