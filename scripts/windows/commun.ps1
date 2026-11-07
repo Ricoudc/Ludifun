@@ -188,7 +188,11 @@ function Conseils-Ollama([string]$modele, [string]$url, $valeurs) {
     try {
         $infos = Invoke-RestMethod -Uri "$base/api/show" -Method Post -ContentType 'application/json' -Body (@{ model = $entree.name } | ConvertTo-Json) -TimeoutSec 10
         if ($infos.capabilities -and ($infos.capabilities -notcontains 'vision')) {
-            $conseils += "« $modele » ne sait pas lire les images : les photos de leçons échoueront. Conseillé : qwen2.5vl:7b."
+            switch ($valeurs['LUDIFUN_OCR_ENGINE']) {
+                'tesseract' { }  # les photos sont lues par Tesseract : un modèle de texte suffit
+                'auto' { $conseils += "« $modele » ne sait pas lire les images : les pages que Tesseract lit mal (écriture à la main) ne seront pas relues." }
+                default { $conseils += "« $modele » ne sait pas lire les images : les photos de leçons échoueront. Conseillé : qwen2.5vl:7b, ou la lecture par Tesseract ($(Choix 4))." }
+            }
         }
     } catch { }
     if (-not $valeurs['LUDIFUN_OLLAMA_NUM_CTX']) {
@@ -317,11 +321,41 @@ function Choisir-IA-Texte {
     }
 }
 
-# Choix de l'IA en deux temps : celle qui lit les photos (OCR) et crée les jeux, puis celle qui
-# dessine les images des leçons (facultatif : sur ce PC, ou en ligne avec Pollinations).
+# Choix de l'IA en trois temps : celle qui crée les jeux, qui lit le texte des photos (l'IA ou
+# Tesseract, §5.65), puis qui dessine les images des leçons (facultatif : sur ce PC, ou en ligne).
 function Choisir-IA {
     Choisir-IA-Texte
+    Choisir-Lecture
     Choisir-Images
+}
+
+$NomsLecture = @{
+    'vision' = 'par l''IA seule'; 'tesseract' = 'par Tesseract seul'
+    'auto' = 'par Tesseract, puis l''IA pour les pages mal lues'
+}
+
+function Choisir-Lecture {
+    $valeurs = Lire-Env
+    $actuel = $valeurs['LUDIFUN_OCR_ENGINE']
+    if (-not $actuel) { $actuel = 'vision' }
+    Write-Host ''
+    Write-Host 'Qui lit le texte des photos de leçons ?'
+    Write-Host '  1. Tesseract d''abord, puis l''IA pour les pages mal lues (conseillé : rapide, sans carte graphique)'
+    Write-Host '  2. Tesseract seul (la photo ne quitte jamais le PC, un modèle de texte suffit ; écriture à la main mal lue)'
+    Write-Host '  3. L''IA seule (le modèle doit savoir lire les images ; lent sans carte graphique)'
+    $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsLecture[$actuel]))").Trim()
+    switch ($num) {
+        '1' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'auto' }
+        '2' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'tesseract' }
+        '3' { $valeurs['LUDIFUN_OCR_ENGINE'] = 'vision' }
+        default { return }
+    }
+    Ecrire-Env $valeurs
+    Ok "Lecture des photos : $($NomsLecture[$valeurs['LUDIFUN_OCR_ENGINE']])"
+    if ($valeurs['LUDIFUN_OCR_ENGINE'] -eq 'tesseract' -and $valeurs['LUDIFUN_AI_PROVIDER'] -eq 'ollama') {
+        Write-Host 'Avec Ollama, un modèle de texte suffit alors (par exemple mistral:7b) : plus léger qu''un modèle qui lit les images.'
+    }
+    Write-Host "Pour comparer sur tes vraies leçons : $(Choix 12), puis change ce choix et recommence."
 }
 
 function Regler-Pollinations($valeurs) {

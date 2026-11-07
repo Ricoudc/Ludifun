@@ -9,9 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 RUN pip install --no-cache-dir "uv>=0.8,<0.9"
 
-# Police des figures dessinées par le code (§5.61) : accents, « ² », « ° ».
+# Police des figures dessinées par le code (§5.61) : accents, « ² », « ° ». Tesseract, français
+# et anglais : lecture des photos sur le serveur (§5.65, LUDIFUN_OCR_ENGINE).
 RUN apt-get update \
     && apt-get install -y --no-install-recommends fonts-dejavu-core \
+        tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

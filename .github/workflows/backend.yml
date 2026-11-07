@@ -35,6 +35,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+      - name: Tesseract (lecture des photos sur le serveur, §5.65)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng fonts-dejavu-core
       - name: Dépendances (versions figées par uv.lock)
         run: uv sync --frozen
       - name: Ruff (lint)

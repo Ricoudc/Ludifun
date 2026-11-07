@@ -20,12 +20,14 @@ from dataclasses import dataclass
 
 import anthropic
 
+from app.ai.fallback import FallbackLLM
+from app.ai.ocr.tesseract import AutoOcr, TesseractOcr
 from app.ai.ocr.vision_llm import VisionLLMOcr
 from app.ai.ports import LLMProvider, OcrProvider, Stage
 from app.ai.presets import PRESETS
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
-from app.ai.providers.ollama import OllamaProvider
+from app.ai.providers.ollama import OllamaProvider, reads_images
 from app.ai.providers.openai_compatible import OpenAICompatibleProvider
 from app.config import AiProviderName, Settings
 
@@ -149,7 +151,23 @@ def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider
     return OpenAICompatibleProvider(provider, base_url, key, models)
 
 
+def ocr_for(settings: Settings, llm: LLMProvider) -> OcrProvider:
+    """Lecteur des photos (`LUDIFUN_OCR_ENGINE`, §5.65) : le modèle multimodal de l'IA (§5.1),
+    Tesseract sur le serveur, ou Tesseract puis le modèle multimodal pour les pages mal lues."""
+    vision = VisionLLMOcr(llm)
+    if settings.ocr_engine == "vision":
+        return vision
+    tesseract = TesseractOcr(settings.tesseract_cmd, settings.tesseract_languages)
+    if settings.ocr_engine == "tesseract":
+        return tesseract
+    first = llm.chain[0] if isinstance(llm, FallbackLLM) else llm
+    if isinstance(first, OllamaProvider):  # un modèle de texte seul ne doit pas « lire » une photo
+        base_url, model = first.base_url, first.model_for("ocr")
+        return AutoOcr(tesseract, vision, lambda: reads_images(base_url, model))
+    return AutoOcr(tesseract, vision)
+
+
 def build_providers(settings: Settings, choice: AiChoice | None = None) -> tuple[OcrProvider, LLMProvider]:
-    """Fournisseurs configurés : la lecture des photos utilise le même modèle multimodal (§5.1)."""
+    """Fournisseurs configurés : l'IA, et le lecteur des photos qui va avec."""
     llm = build_llm(settings, choice)
-    return VisionLLMOcr(llm), llm
+    return ocr_for(settings, llm), llm

@@ -49,6 +49,11 @@ services:
       # Contexte d'Ollama : 8192 suffit (une notion par appel) et tient sur une carte graphique de
       # 8 Go avec qwen2.5vl:7b ; au-delà, le modèle déborde dans la mémoire du PC (4 fois plus lent).
       LUDIFUN_OLLAMA_NUM_CTX: ${LUDIFUN_OLLAMA_NUM_CTX:-8192}
+      # Lecture des photos (§5.65) : « vision » (le modèle de l'IA lit la photo), « tesseract »
+      # (Tesseract sur le serveur, la photo ne quitte pas le PC, un modèle de texte suffit) ou
+      # « auto » (Tesseract d'abord, le modèle de vision pour les pages mal lues). Windows :
+      # Ludifun.bat, choix 4.
+      LUDIFUN_OCR_ENGINE: ${LUDIFUN_OCR_ENGINE:-vision}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

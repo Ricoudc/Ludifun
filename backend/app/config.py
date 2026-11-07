@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # Fournisseur « compatible » (Azure OpenAI, OpenRouter, Ollama…) : adresse et clé de l'API.
     ai_base_url: str | None = None
     ai_api_key: SecretStr | None = None
+    # Lecture des photos (§5.65) : par le modèle de vision de l'IA (« vision »), par Tesseract sur
+    # le serveur (« tesseract » : la photo ne quitte pas le PC, un modèle de texte suffit), ou
+    # Tesseract d'abord et le modèle de vision pour les pages mal lues (« auto », conseillé).
+    ocr_engine: Literal["vision", "tesseract", "auto"] = "vision"
+    tesseract_cmd: str = "tesseract"
+    tesseract_languages: str = "fra+eng"
     # Ollama : IA locale, gratuite. Dans Docker, http://host.docker.internal:11434 (docker-compose).
     ollama_base_url: str = "http://localhost:11434"
     ollama_num_ctx: int = 8192  # contexte : consignes, leçon, schéma et une notion doivent y tenir

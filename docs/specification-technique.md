@@ -1855,6 +1855,48 @@ alignement, notation, maîtrise du seul mot de la liste), `test/activities/activ
 Non testé : la voix sur un vrai téléphone (débit, pauses entre les morceaux, prononciation des
 liaisons) ; vraies listes de mots analysées par une vraie IA.
 
+### 5.65 Lecture des photos par Tesseract (novembre 2026)
+
+Demande de la famille : lire les photos sans modèle de vision, avec un OCR local (Tesseract) et
+un modèle de texte d'Ollama (Mistral, Llama…) pour le reste. La lecture des photos était déjà une
+pièce à part (`OcrProvider`) : seul le lecteur change, l'analyse, le matériel, les contrôles du
+code et la relecture par l'enfant restent les mêmes.
+
+- **Lecteur `tesseract`** (`app/ai/ocr/tesseract.py`) : le programme `tesseract` (français et
+  anglais, `LUDIFUN_TESSERACT_LANGUAGES=fra+eng`), lancé sans fichier (la photo passe par son
+  entrée standard, jamais écrite sur le disque). Photo remise droite (EXIF), en gris,
+  contrastée, agrandie à 1 800 points au moins. Environ 0,25 s par page, sans carte graphique.
+- **Le code décide** (pas d'IA) : la confiance de chaque mot donne la qualité de la page
+  (moyenne pondérée par la longueur des mots : bonne à 80 et plus, partielle à 55 et plus,
+  illisible en dessous ou sous 3 mots) et les passages douteux (mots de 3 lettres et plus sous
+  60, les 5 moins sûrs, avec 4 mots de chaque côté) montrés à l'enfant (« Peux-tu vérifier ? »,
+  §6.3). Version de la lecture enregistrée : `tesseract.v1`. Coût : zéro.
+- **Mode `auto`** (`AutoOcr`) : Tesseract d'abord ; les pages qu'il lit mal (écriture à la main,
+  photo floue) sont relues par le modèle de vision de l'IA de la famille, les autres ne lui sont
+  jamais envoyées. La relecture n'est gardée que si elle est au moins aussi bonne. Avec Ollama,
+  la capacité « vision » du modèle est vérifiée d'abord (`/api/show`) : un modèle de texte ne
+  « lit » jamais une photo. IA en panne : la lecture de Tesseract est gardée ; Tesseract
+  absent : le modèle de vision lit tout.
+- **Réglage** `LUDIFUN_OCR_ENGINE` : `vision` (par défaut, rien ne change), `tesseract` ou
+  `auto` (conseillé). Windows : `Ludifun.bat`, choix 4, question « Qui lit le texte des photos ? ».
+  Avec `tesseract`, la vérification de l'IA (espace parent) accepte un modèle Ollama sans
+  « vision » ; avec `auto`, elle l'accepte en prévenant que l'écriture à la main sera mal lue.
+- **Image Docker** : paquets `tesseract-ocr`, `tesseract-ocr-fra`, `tesseract-ocr-eng` (une
+  trentaine de Mo). Intégration continue : les mêmes paquets, pour que le test sur une vraie
+  photo de fiche tourne.
+
+Ce que Tesseract ne voit pas : les schémas, bandes numériques, cases à colorier et fractions
+écrites en hauteur ; une flèche « → » peut devenir « > ». Une fiche imprimée avec un schéma est
+« bien lue » pour le texte, et le schéma est perdu : pour ces fiches, `vision` reste meilleur.
+Mesure sur les vraies leçons de la famille : `Ludifun.bat`, choix 12, une fois par réglage.
+
+Contrat d'API et base inchangés. Tests : `tests/ai/test_tesseract.py` (sortie TSV, qualité et
+passages douteux, préparation en mémoire, programme absent, fiche imprimée photographiée lue par
+le vrai Tesseract, mode `auto`, capacité « vision » d'Ollama, choix du lecteur, vérification).
+
+Non testé : écriture à la main et vraies photos de cahier (aucune dans le dépôt), Ollama réel,
+menu Windows (pas de PowerShell dans l'environnement de développement).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
