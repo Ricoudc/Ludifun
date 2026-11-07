@@ -512,6 +512,24 @@ void main() {
     });
   }
 
+  testWidgets(
+    'réponse illisible du serveur : un message et « Réessayer », jamais un chargement sans fin',
+    (tester) async {
+      server.on(
+        'GET /v1/sessions/s1',
+        (_) => (200, {'id': 's1', 'status': 'active', 'items': 'pas une liste'}),
+      );
+      await open(tester, 's1');
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.textContaining('La séance n\'a pas pu s\'ouvrir'), findsOneWidget);
+      expect(find.text('Réessayer'), findsOneWidget);
+      // Le serveur répond de nouveau correctement : « Réessayer » ouvre la séance.
+      FakeSessionBackend(server, 's1', [mcq('i1')]);
+      await tapAndSettle(tester, 'Réessayer');
+      expect(find.text('Question 1 / 1'), findsOneWidget);
+    },
+  );
+
   testWidgets('séance déjà terminée', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1')]).completed = 1;
     await open(tester, 's1');

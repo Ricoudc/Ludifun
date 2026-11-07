@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_exception.dart';
@@ -184,6 +185,8 @@ class SessionController extends Notifier<SessionState> {
     } on ApiException catch (error) {
       if (isOfflineError(error) && await _loadOffline()) return;
       _fail(error);
+    } on Object catch (error) {
+      _unexpected(error);
     }
   }
 
@@ -321,6 +324,8 @@ class SessionController extends Notifier<SessionState> {
       }
     } on ApiException catch (error) {
       _fail(error);
+    } on Object catch (error) {
+      _unexpected(error);
     }
   }
 
@@ -378,4 +383,16 @@ class SessionController extends Notifier<SessionState> {
 
   void _fail(ApiException error) =>
       state = state.copyWith(phase: Phase.error, error: error.message);
+
+  /// Erreur imprévue (réponse du serveur illisible par cette version…) : jamais un chargement
+  /// sans fin. Le type de l'erreur, sans donnée, aide l'adulte à la signaler.
+  void _unexpected(Object error) {
+    debugPrint('Séance $sessionId : erreur imprévue ${error.runtimeType} : $error');
+    state = state.copyWith(
+      phase: Phase.error,
+      error:
+          'La séance n\'a pas pu s\'ouvrir. Réessaie ; si ça recommence, préviens un adulte '
+          '(détail : ${error.runtimeType}).',
+    );
+  }
 }
