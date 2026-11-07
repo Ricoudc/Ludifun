@@ -1,6 +1,7 @@
 ﻿# Choisit le moteur d'images de Ludifun (étape 27) : sur ce PC, stable-diffusion.cpp (Vulkan :
 # marche avec les cartes AMD, NVIDIA et Intel, sans kit à installer) et le modèle SDXL-Lightning ;
-# ou en ligne, Pollinations (sans carte graphique, avec une clé). Les images attendent la
+# ou en ligne, Pollinations (avec une clé) ou Cloudflare (gratuit chaque jour), sans carte
+# graphique. Les images attendent la
 # validation du parent avant d'être montrées.
 . (Join-Path $PSScriptRoot 'commun.ps1')
 
@@ -10,6 +11,7 @@ Write-Host ''
 Write-Host 'Où dessiner les images ?'
 Write-Host '  1. Sur ce PC (gratuit, tout reste à la maison ; carte graphique conseillée, 8 Go de disque)'
 Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
+Write-Host '  3. En ligne avec Cloudflare (sans carte graphique ; gratuit, environ 170 images par jour)'
 Write-Host '  0. Pas d''images'
 $ou = (Read-Host 'Tape le numéro puis Entrée (Entrée seule = 1)').Trim()
 if ($ou -eq '0') {
@@ -20,12 +22,13 @@ if ($ou -eq '0') {
     Attendre-Fermeture
     exit 0
 }
-if ($ou -eq '2') {
+if ($ou -eq '2' -or $ou -eq '3') {
     Write-Host ''
     $reglages = Lire-Env
-    Regler-Pollinations $reglages
+    if ($ou -eq '2') { Regler-Pollinations $reglages; $service = 'Pollinations' }
+    else { Regler-Cloudflare $reglages; $service = 'Cloudflare' }
     Ecrire-Env $reglages
-    Ok 'Ludifun réglé pour dessiner les images avec Pollinations'
+    Ok "Ludifun réglé pour dessiner les images avec $service"
     if (Docker-Pret) {
         Etape 'Redémarrage du serveur avec ce réglage…'
         Arreter-Anciennes-Copies

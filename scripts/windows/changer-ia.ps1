@@ -1,5 +1,5 @@
 ﻿# Change l'IA utilisée (celle qui lit les photos et crée les jeux, puis celle qui dessine les
-# images : sur ce PC ou en ligne avec Pollinations) puis redémarre le serveur.
+# images : sur ce PC ou en ligne avec Pollinations ou Cloudflare) puis redémarre le serveur.
 . (Join-Path $PSScriptRoot 'commun.ps1')
 
 Titre 'Choix de l''IA de Ludifun'

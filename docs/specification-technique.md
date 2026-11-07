@@ -702,7 +702,8 @@ résultat par `/history` et `/view`, carte vidée par `POST /free`), `pollinatio
 ligne, sans carte graphique : `GET https://gen.pollinations.ai/image/{prompt}`, clé secrète `sk_…`
 dans l'en-tête `Authorization`, modèle par défaut `black-forest-labs/flux.1-schnell`, filtres
 `safe=privacy,sexual,violence` ; pas de prompt négatif sur cette route ; Ollama n'est pas
-déchargé ; seul le prompt construit par le code part chez Pollinations), `fake` (tests). Modèle
+déchargé ; seul le prompt construit par le code part chez Pollinations), `cloudflare` (en ligne,
+gratuit chaque jour, §5.66), `fake` (tests). Modèle
 par défaut des moteurs du PC : SDXL-Lightning 4 étapes (Euler, `sgm_uniform`, CFG 1). Réglages :
 `LUDIFUN_IMAGE_ENGINE` (`none` par défaut), `LUDIFUN_IMAGE_URL`, `LUDIFUN_IMAGE_MODEL`,
 `LUDIFUN_IMAGE_API_KEY` (Pollinations ; sans clé, pas d'images).
@@ -1901,6 +1902,35 @@ le vrai Tesseract, mode `auto`, capacité « vision » d'Ollama, choix du lecteu
 
 Non testé : écriture à la main et vraies photos de cahier (aucune dans le dépôt), Ollama réel,
 menu Windows (pas de PowerShell dans l'environnement de développement).
+
+### 5.66 Images en ligne gratuites : Cloudflare Workers AI (novembre 2026)
+
+Demande de la famille : des illustrations gratuites et presque illimitées. Pollinations n'a plus
+de part gratuite renouvelée (fin juillet 2026) ; Perchance protège son générateur contre les
+programmes (vérification Cloudflare) ; Microsoft Copilot n'a pas d'API d'images. Cloudflare
+Workers AI donne 10 000 « neurones » par jour à tout compte gratuit (remis à zéro à minuit UTC).
+
+- **Moteur `cloudflare`** (`app/ai/imagegen/cloudflare.py`) :
+  `POST https://api.cloudflare.com/client/v4/accounts/{compte}/ai/run/@cf/black-forest-labs/flux-1-schnell`,
+  corps `{prompt, steps}` (2 048 signes et 8 étapes au plus ; 4 par défaut), jeton dans l'en-tête
+  `Authorization`, image en base64 dans `result.image`, vérifiée par ses premiers octets.
+  FLUX.1 schnell ne prend ni graine, ni taille, ni prompt négatif.
+- **Coût** : tarifs officiels, 4,8 neurones par tuile de 512 × 512 et 9,6 par étape, soit environ
+  58 neurones pour une image de 1024 × 1024 en 4 étapes, à peu près **170 images par jour**. Au-delà,
+  le compte gratuit est refusé jusqu'au lendemain (code 3036, « part gratuite du jour épuisée »)
+  et rien n'est facturé ; un modèle réservé à l'offre payante est refusé (code 5035).
+- **Réglages** : `LUDIFUN_IMAGE_ENGINE=cloudflare`, `LUDIFUN_IMAGE_ACCOUNT_ID` (identifiant du
+  compte), `LUDIFUN_IMAGE_API_KEY` (jeton « Workers AI », droits Read et Edit) ; sans l'un des
+  deux, pas d'images. Windows : `Ludifun.bat`, choix 8 (option 3) ou choix 4.
+- Ce qui part chez Cloudflare : le prompt construit par le code, comme pour Pollinations ; jamais
+  de photo, de prénom ni de texte de leçon. Pas de filtre de contenu demandé au service : les
+  contrôles du code et la validation par le parent restent les garde-fous. Messages d'erreur
+  sans le corps de la réponse (il peut reprendre le prompt).
+
+Tests : `tests/ai/test_imagegen.py` (requête, jeton hors de l'adresse, limites du modèle, part
+gratuite épuisée, offre payante, jeton refusé, réponse sans image ou non PNG/JPEG, réseau absent,
+choix par la fabrique). Non testé : le vrai service (pas de compte ni d'accès réseau à
+api.cloudflare.com dans l'environnement de développement), le menu Windows.
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

@@ -322,7 +322,8 @@ function Choisir-IA-Texte {
 }
 
 # Choix de l'IA en trois temps : celle qui crée les jeux, qui lit le texte des photos (l'IA ou
-# Tesseract, §5.65), puis qui dessine les images des leçons (facultatif : sur ce PC, ou en ligne).
+# Tesseract, §5.65), puis qui dessine les images des leçons (facultatif : sur ce PC, ou en ligne
+# avec Pollinations ou Cloudflare).
 function Choisir-IA {
     Choisir-IA-Texte
     Choisir-Lecture
@@ -381,9 +382,44 @@ function Regler-Pollinations($valeurs) {
     $valeurs.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
 }
 
+function Regler-Cloudflare($valeurs) {
+    Write-Host 'Cloudflare Workers AI dessine en ligne, gratuitement jusqu''à environ 170 images par jour (au-delà,'
+    Write-Host 'il refuse jusqu''au lendemain, sans rien facturer). Seule une description écrite par Ludifun part'
+    Write-Host '(le sujet de la notion, jamais de photo ni de prénom). Une fois, sur un compte Cloudflare gratuit :'
+    Write-Host '  1. https://dash.cloudflare.com, page « Workers AI », bouton « Use REST API » ;'
+    Write-Host '  2. « Create a Workers AI API Token », puis « Create API Token » et « Copy API Token » ;'
+    Write-Host '  3. sur la même page, copie aussi « Account ID ».'
+    $compte = $valeurs['LUDIFUN_IMAGE_ACCOUNT_ID']
+    if ($compte) {
+        $garder = Read-Host "Compte Cloudflare déjà enregistré ($compte). Le garder ? (O/N)"
+        if ($garder -match '^[nN]') { $compte = '' }
+    }
+    while (-not $compte) {
+        $compte = (Read-Host 'Colle l''Account ID (clic droit pour coller)').Trim()
+        if ($compte -and $compte -notmatch '^[0-9a-fA-F]{32}$') {
+            $sur = Read-Host 'D''habitude, c''est 32 chiffres et lettres de a à f. Le garder quand même ? (O/N)'
+            if ($sur -notmatch '^[oOyY]') { $compte = '' }
+        }
+    }
+    # Un jeton déjà enregistré n'est proposé que s'il était pour Cloudflare (pas une clé Pollinations).
+    $actuel = if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -eq 'cloudflare') { $valeurs['LUDIFUN_IMAGE_API_KEY'] } else { '' }
+    if ($actuel) {
+        $fin = $actuel.Substring([Math]::Max(0, $actuel.Length - 4))
+        $garder = Read-Host "Un jeton Cloudflare est déjà enregistré (…$fin). Le garder ? (O/N)"
+        if ($garder -match '^[nN]') { $actuel = '' }
+    }
+    $jeton = $actuel
+    while (-not $jeton) { $jeton = (Read-Host 'Colle le jeton (API Token)').Trim() }
+    $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'cloudflare'
+    $valeurs['LUDIFUN_IMAGE_ACCOUNT_ID'] = $compte
+    $valeurs['LUDIFUN_IMAGE_API_KEY'] = $jeton
+    $valeurs.Remove('LUDIFUN_IMAGE_URL')  # adresse du moteur sur ce PC, s'il y en avait un
+    $valeurs.Remove('LUDIFUN_IMAGE_MODEL')  # modèle d'un autre moteur
+}
+
 $NomsImages = @{
     'none' = 'pas d''images'; 'sdcpp' = 'sur ce PC'; 'comfyui' = 'ComfyUI sur ce PC'
-    'pollinations' = 'en ligne avec Pollinations'
+    'pollinations' = 'en ligne avec Pollinations'; 'cloudflare' = 'en ligne avec Cloudflare (gratuit)'
 }
 
 function Choisir-Images {
@@ -395,6 +431,7 @@ function Choisir-Images {
     Write-Host '  0. Pas d''images'
     Write-Host "  1. Sur ce PC (gratuit, tout reste à la maison ; s'installe une fois avec $(Choix 8))"
     Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
+    Write-Host '  3. En ligne avec Cloudflare (sans carte graphique ; gratuit, environ 170 images par jour)'
     $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsImages[$actuel]))").Trim()
     switch ($num) {
         '0' { $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'none' }
@@ -407,6 +444,7 @@ function Choisir-Images {
             $valeurs['LUDIFUN_IMAGE_URL'] = "http://host.docker.internal:$PortImages"
         }
         '2' { Regler-Pollinations $valeurs }
+        '3' { Regler-Cloudflare $valeurs }
         default { return }
     }
     Ecrire-Env $valeurs
