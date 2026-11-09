@@ -100,6 +100,9 @@ async def test_public_pages(app: FastAPI, client: AsyncClient) -> None:
     assert policy.status_code == 200 and "Ludifun SAS, Lyon" in policy.text
     assert "vie-privee@ludifun.fr" in policy.text and "{{" not in policy.text
     assert "[À COMPLÉTER : hébergeur]" in policy.text  # encore à renseigner
+    # Ce que fait vraiment l'application (§5.82) : IA au choix, images, voix restée sur le téléphone.
+    assert "IA choisie par vous" in policy.text and "Ollama" in policy.text
+    assert "ni envoyée ni enregistrée" in policy.text and "jamais le prénom" in policy.text
     deletion = await client.get("/suppression-compte")
     assert deletion.status_code == 200 and "Supprimer mon compte" in deletion.text
     assert Settings().missing_legal_details() == [

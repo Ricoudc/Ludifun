@@ -112,7 +112,9 @@ jour, missions du jour.
 À faire :
 - ⬜ Essais sur de vrais téléphones Android, puis avec cinq familles (`tests-familles.md`).
 - ⬜ Vérifier sauvegarde et restauration en conditions réelles.
-- ⬜ Finaliser les documents RGPD et valider l'analyse d'impact (aujourd'hui des brouillons).
+- 🟡 Finaliser les documents RGPD et valider l'analyse d'impact : brouillons remis à jour d'après le
+  code (IA au choix, images, voix, §5.82) ; restent les DPA, la liste des fournisseurs proposés et la
+  validation par un juriste ou un DPO.
 - ⬜ Contrats avec les fournisseurs d'IA, supervision et gestion des incidents.
 - ⬜ Bêta fermée sur Google Play (`play-store.md`).
 

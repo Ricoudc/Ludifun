@@ -2290,6 +2290,26 @@ dossiers. Mode d'emploi : `eval/README.md`, §5.
 Tests : `tests/tools/test_compare.py` (sens des mesures, justesse avant vitesse, égalité, retour
 en arrière, évaluation réelle avec `--prompt analysis=v7` puis comparaison).
 
+### 5.82 Documents RGPD remis à jour d'après le code (novembre 2026)
+
+Feuille de route, point 6. Le registre des traitements, l'AIPD et la politique de confidentialité
+(`/confidentialite`) ne parlaient que d'Anthropic. Ils décrivent maintenant ce que fait le code :
+
+- l'IA choisie par la famille (Claude par défaut ; OpenAI, Google, Mistral, Groq, xAI, Azure ou
+  autre service compatible avec sa clé ; Ollama et Tesseract sur place, rien ne sort), et le relais
+  par ses autres IA si le parent l'a permis (§147) ;
+- ce qui part chez elle : photos et texte des leçons, réponses rédigées, explications
+  d'« Enseigne-moi », énoncés du mode devoirs, notion et type d'erreur d'un exercice neuf (§5.74) ;
+  jamais le prénom (vérifié : il n'est utilisé que par l'assistant parent, écrit par le code) ;
+- le service d'images éventuel (Pollinations, Cloudflare) : une description en anglais contrôlée
+  par le code, ni prénom ni texte de leçon ;
+- la voix (§5.78) : reconnue sur le téléphone, ni envoyée ni enregistrée.
+
+Restent des brouillons : le responsable du traitement, les sous-traitants, les DPA et la liste
+définitive des fournisseurs d'IA proposés sont « À COMPLÉTER », et l'ensemble doit être validé
+(conseil juridique ou DPO) avant la bêta. Test : `tests/api/test_email_verification.py`
+(`test_public_pages`).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
