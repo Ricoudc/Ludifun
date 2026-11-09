@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.16.0"
+version = "1.17.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -117,3 +117,8 @@ excluded_activities = { math = ["WORD_FLASH", "SCRAMBLE", "DICTATION", "SENTENCE
 # restriction. Liste de jeux vide : pas de restriction.
 writing_games = ["WORD_FLASH", "SCRAMBLE", "DICTATION", "SENTENCE_DICTATION", "MCQ", "FILL_BLANK"]
 writing_subjects = ["french", "other"]
+
+[profile]
+# Profil par notion pour le parent (1.17.0, §5.73) : la décision qui découle des réponses.
+independence_below = 0.5    # moins de la moitié des réussites sans aide : « exercices en plus »
+slow_seconds = 30           # temps de réponse habituel au-delà : signalé au parent

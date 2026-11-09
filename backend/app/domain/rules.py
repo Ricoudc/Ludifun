@@ -125,6 +125,12 @@ class SpellingRules(_Section):
     writing_subjects: frozenset[str] = Field(default_factory=frozenset)  # matière inconnue : comprise
 
 
+class ProfileRules(_Section):
+    # 1.17.0 : décision montrée au parent pour chaque notion (§5.73).
+    independence_below: float = Field(0.5, ge=0, le=1)  # réussites surtout avec aide : exercices en plus
+    slow_seconds: int = Field(30, ge=1)  # réponse typique plus lente : signalée
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -142,6 +148,7 @@ class EngineRules(_Section):
     reminders: ReminderRules
     subjects: SubjectRules = Field(default_factory=SubjectRules)
     spelling: SpellingRules = Field(default_factory=SpellingRules)
+    profile: ProfileRules = Field(default_factory=ProfileRules)
 
 
 def load_rules(path: Path | None = None) -> EngineRules:

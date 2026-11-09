@@ -103,6 +103,14 @@ async def test_parent_sees_facts_levels_and_independence(
     assert known["independence"] == 1.0 and "réussie" in known["facts"]
     assert known["explanation"]  # l'interprétation reste à part
 
+    # Profil par notion (§5.73) : tentatives, temps, dernière réponse, et la décision qui en découle.
+    assert failed["attempts"] >= 2 and failed["median_seconds"] is not None
+    assert failed["last_practiced_at"] is not None and failed["time"].startswith("Temps de réponse")
+    assert failed["advice"]["kind"] == "basics" and failed["advice"]["label"] == "Reprendre les bases"
+    assert known["advice"]["kind"] in ("practice", "spaced") and known["advice"]["why"]
+    never = [n for n in notions.values() if not n["attempts"]]
+    assert all(n["advice"] is None for n in never)
+
 
 async def test_why_this_notion(client: AsyncClient) -> None:
     """§116 : chaque notion montre la phrase de la leçon d'où elle vient, et sa page."""

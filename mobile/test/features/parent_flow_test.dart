@@ -1009,6 +1009,15 @@ void main() {
                     {'level': 3, 'name': 'appliquer', 'rate': null},
                   ],
                   'independence': 0.75,
+                  'attempts': 6,
+                  'median_seconds': 12,
+                  'time': 'Temps de réponse habituel : 12 s.',
+                  'last_practiced_at': '2026-11-08T17:00:00Z',
+                  'advice': {
+                    'kind': 'practice',
+                    'label': 'Exercices en plus',
+                    'why': 'Il reste à savoir « appliquer » : les séances proposent ce type d\'exercice.',
+                  },
                 },
               ],
             },
@@ -1051,6 +1060,15 @@ void main() {
     );
     expect(
       find.text('💬 Connaît la règle, doit encore s\'entraîner à l\'appliquer.'),
+      findsOneWidget,
+    );
+    // §5.73 : profil (tentatives, temps, dernière fois) et la décision qui en découle.
+    expect(
+      find.textContaining('⏱️ 6 réponses · Temps de réponse habituel : 12 s · dernière fois le'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('✏️ Exercices en plus : Il reste à savoir « appliquer »'),
       findsOneWidget,
     );
     expect(find.text('Fraction'), findsNothing); // dans « Autres notions », encore fermé

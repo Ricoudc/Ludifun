@@ -78,9 +78,9 @@ Fait :
 - ✅ Catégories d'erreurs (§5.34), remédiation après deux échecs, reprise des erreurs.
 
 À faire :
-- ⬜ Profil par notion visible : réussite, temps de réponse, tentatives, type d'erreur, sans aide,
+- ✅ Profil par notion visible : réussite, temps de réponse, tentatives, type d'erreur, sans aide,
   transfert, dernière révision ; et la décision qui en découle (« révision espacée », « exercices
-  en plus », « reprendre les bases »).
+  en plus », « reprendre les bases »), §5.73.
 - ✅ Revenir sur une connaissance préalable quand une notion échoue (§5.72).
 - ⬜ Exercice neuf généré sur une erreur qui revient (§118).
 
