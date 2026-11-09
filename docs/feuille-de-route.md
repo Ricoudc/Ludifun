@@ -120,4 +120,4 @@ jour, missions du jour.
 
 - ✅ Prompts versionnés, version enregistrée avec chaque analyse ; règles du moteur versionnées.
 - ⬜ Comparer deux versions de prompt ou de modèle sur le même corpus, et revenir à la meilleure.
-- ⬜ Coût par leçon et qualité des exercices dans la page de suivi.
+- ✅ Coût par leçon et qualité des exercices dans la page de suivi (§5.80).
