@@ -476,7 +476,11 @@ async def rework_notion(
         raise ApiError(404, "notion_not_found", "Notion introuvable.")
     # Les questions tirées des sites de confiance (étape 29) restent ; rien de ce que l'enfant
     # voit déjà dans les autres notions de la leçon.
-    sourced = [q for q in KnowledgeMaterial.model_validate(material_row.material).questions if q.source]
+    sourced = [
+        q
+        for q in KnowledgeMaterial.model_validate(material_row.material).questions
+        if q.source or q.target_error  # exercices sur une erreur qui revient (§5.74) : gardés aussi
+    ]
     new = validated.material.model_copy(update={"questions": [*validated.material.questions, *sourced]})
     others = [(u.id, u.material) for u in (await load_units(db, lesson)).units if u.id != row.key]
     kept = deduplicate(

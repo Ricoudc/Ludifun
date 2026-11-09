@@ -30,6 +30,8 @@ from app.ai.schemas import (
     PracticeQuestion,
     SourcedAnswerOutput,
     SourceQuote,
+    TargetedOutput,
+    TargetedQuestion,
     TeachOutput,
 )
 from app.domain.activities.open_question import point_found
@@ -153,6 +155,33 @@ def practice_output(input: str) -> PracticeOutput:
                 difficulty=1,
                 source=int(match.group(1)),
                 quote=quote,
+            )
+        ]
+    )
+
+
+_NOTION = re.compile(r"<notion>\n(.*?)\n</notion>", re.DOTALL)
+
+
+def targeted_output(input: str) -> TargetedOutput:
+    """Question factice sur la notion : son plus long mot est à retrouver dans sa phrase (la réponse
+    vient donc de la leçon) ; le premier distracteur est le piège."""
+    match = _NOTION.search(input)
+    if match is None:
+        return TargetedOutput(questions=[])
+    statement = match.group(1).split(" : ", 1)[-1].strip()
+    answer = max(re.findall(r"[A-Za-zÀ-ÖØ-öø-ÿ]{6,}", statement), key=len, default="")
+    if not answer:
+        return TargetedOutput(questions=[])
+    return TargetedOutput(
+        questions=[
+            TargetedQuestion(
+                stem="Quel mot complète : « " + statement.replace(answer, "___", 1) + " » ?",
+                answer=answer,
+                distractors=["fromages", "montagnes", "voitures"],
+                trap="fromages",
+                why="« fromages » n'a rien à voir avec la leçon : relis la phrase à retenir.",
+                difficulty=1,
             )
         ]
     )
@@ -335,6 +364,8 @@ class FakeProvider:
             return teach_output(input)
         if stage == "practice":
             return practice_output(input)
+        if stage == "targeted":
+            return targeted_output(input)
         script = next((s for s in self.library if s.ocr_text.strip() in input), None)
         if stage == "analysis":
             if script is None:  # texte inconnu : comme un vrai modèle, « ce n'est pas une leçon »

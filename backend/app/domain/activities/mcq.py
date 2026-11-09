@@ -14,9 +14,11 @@ from app.domain.activities.base import (
 )
 from app.domain.errors import ErrorType
 from app.domain.knowledge import KnowledgeUnit
+from app.domain.rules import RULES
 
 CHOICE_IDS = ("a", "b", "c", "d")
 OWN_SHARE = 0.5  # part des QCM tirés des questions de la leçon quand le calcul en a créé d'autres
+TARGETED_SHARE = RULES.targeted.share  # part des QCM tirés des exercices sur une erreur qui revient
 
 
 class McqResponse(ResponseModel):
@@ -47,6 +49,10 @@ class Mcq(ActivityType):
         if own and len(own) < len(questions) and rng.random() >= OWN_SHARE:
             own = [q for q in questions if q.generated]
         question = rng.choice(own or questions)
+        # Exercice neuf sur une erreur qui revient (§5.74) : proposé en priorité.
+        targeted = [q for q in questions if q.target_error]
+        if targeted and question not in targeted and rng.random() < TARGETED_SHARE:
+            question = rng.choice(targeted)
         # La leçon prime (§5.58) : le composeur préfère, tant qu'elles sont nouvelles, les
         # questions de la leçon à celles créées par le calcul.
         texts = [question.answer, *question.distractors]
@@ -69,6 +75,11 @@ class Mcq(ActivityType):
         }
         if any(q.generated for q in questions) and any(not q.generated for q in questions):
             solution["from_lesson"] = not question.generated
+        if question.target_why:
+            rule = solution.get("explanation")
+            solution["explanation"] = f"Attention au piège : {question.target_why}" + (
+                f" {rule}" if rule else ""
+            )
         if question.source is not None:
             # Question d'un site de confiance (§117) : l'enfant sait d'où elle vient, et la
             # correction cite la phrase qui prouve la réponse.

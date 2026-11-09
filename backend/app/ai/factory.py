@@ -42,6 +42,7 @@ STAGES: tuple[Stage, ...] = (
     "practice",
     "homework",
     "teach",
+    "targeted",
 )
 
 
@@ -73,6 +74,7 @@ def stage_models(settings: Settings, model: str | None = None) -> dict[Stage, st
         "practice": settings.ai_material_model,  # des questions, comme le matériel
         "homework": settings.ai_analysis_model,  # comprendre un énoncé et guider : le modèle principal
         "teach": settings.ai_evaluation_model,  # l'enfant attend la réponse de Ludi : le modèle rapide
+        "targeted": settings.ai_material_model,  # des questions, comme le matériel
     }
     models: dict[Stage, str] = {}
     for stage in STAGES:
@@ -140,6 +142,7 @@ def build_llm(settings: Settings, choice: AiChoice | None = None) -> LLMProvider
                 "practice": settings.ai_material_effort,
                 "homework": settings.ai_analysis_effort,
                 "teach": settings.ai_evaluation_effort,
+                "targeted": settings.ai_material_effort,
             },
             client=client,
         )

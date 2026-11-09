@@ -36,6 +36,7 @@ def _same(main: str, fast: str) -> dict[Stage, str]:
         "practice": main,
         "homework": main,
         "teach": fast,
+        "targeted": main,
     }
 
 

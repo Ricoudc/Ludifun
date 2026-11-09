@@ -2116,6 +2116,38 @@ ligne « ⏱️ 6 réponses · Temps de réponse habituel : 12 s · dernière fo
 Tests : `tests/domain/test_notion_profile.py`, `tests/api/test_decisions.py`
 (`test_parent_sees_facts_levels_and_independence`), `parent_flow_test` (écran Compétences).
 
+### 5.74 Exercice neuf sur une erreur qui revient (novembre 2026, règles 1.18.0, migration 0032)
+
+Feuille de route, point 3 ; CDC §118. Le matériel est produit une fois, à l'analyse ; quand la
+même erreur revient sur une notion (même type dans 3 séances sur 60 jours,
+`errors.recurring_errors`), un exercice neuf la vise.
+
+- **Quand** : à la fin d'une séance (`POST /v1/sessions/{id}/complete`), en tâche de fond après
+  la réponse, avec l'IA de la famille. Rien si le plafond IA du jour est atteint ou si l'IA de la
+  famille n'est pas prête : le bilan n'en dépend jamais.
+- **Quoi** : `services/targeted_practice.prepare` recalcule les erreurs récurrentes de l'enfant
+  sur les notions de la leçon ; au plus `targeted.notions` = 1 notion par séance, une seule fois
+  par notion et par type d'erreur. Prompt `targeted.v1` (étape `targeted`) : la notion (entre
+  balises, §142), ses questions déjà posées, l'erreur visée ; 1 ou 2 questions à choix dont un
+  distracteur est le piège où mène l'erreur, et une phrase pour l'enfant (`why`).
+- **Le code décide** (`app/domain/targeted_practice.py`) : contrôles des questions de la leçon,
+  bonne réponse **prouvée** (présente dans la notion telle que la leçon l'enseigne, ou un calcul
+  unique de l'énoncé que le code refait lui-même), rien d'inadapté à un enfant, pas de doublon ;
+  au plus `targeted.per_error` = 2 questions gardées. Le piège porte le type d'erreur
+  (`misconceptions`), la question `target_error` et `target_why` (JSONB du matériel, champs
+  nouveaux facultatifs). Chaque appel est tracé dans `ai_runs` ; un échec n'ajoute rien.
+- **Moteur** : le QCM de la notion tire ces questions en priorité (`targeted.share` = 0,5) ; la
+  correction commence par « Attention au piège : … ».
+- **Parent** : bloc « 🎯 Exercices sur une erreur qui revient » dans la relecture de la leçon,
+  avec l'erreur visée et le piège ; ces questions se corrigent comme les autres et restent quand
+  le parent demande une nouvelle version des questions.
+- **Migration 0032** : `ai_runs.stage` accepte `targeted` ; retour arrière : ces traces seules
+  sont effacées.
+
+Tests : `tests/domain/test_targeted_practice.py`, `tests/api/test_targeted_practice.py`
+(erreur récurrente → exercice, pas deux fois, vu par le parent ; IA en panne → rien ne change),
+`tests/db/test_schema.py` (`test_migration_0032_targeted_stage`).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
@@ -2311,7 +2343,7 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 | 115 | Niveau de confiance et confirmation | ✅ | Lecture de la photo : passages douteux → « Peux-tu vérifier ? » (étape 15) ; confiance du niveau scolaire ; confiance de chaque notion extraite, calculée par le code, avec confirmation du parent (§5.38) ; correction d'une réponse rédigée : confiance de l'IA, sous 0,4 corrigée par mots clés. |
 | 116 | Chaque connaissance reliée à sa source | ✅ | `source_excerpt` obligatoire, vérifié dans le texte lu ; la page est retrouvée et affichée : « Pourquoi cette notion ? C'est écrit dans ta leçon, page 2 : « … » » (étape 23). |
 | 117 | Sources de vérité distinguées | ✅ | La leçon est la source des notions ; un apport externe (étape 24) est marqué `SOURCE_EXTERNAL_KNOWLEDGE`, avec ses sources et des citations vérifiées, jamais présenté comme venant de la leçon. Référentiel des programmes (§105, §5.28) : résumé versionné, distinct de la leçon, qui range ses notions sans les modifier. Reste : faire relire le résumé par un enseignant. |
-| 118 | Génération à partir d'une spécification (objectif, difficulté…) | 🟡 | Choix différent : l'IA produit une fois, à l'analyse, un matériel validé par notion (questions de 3 difficultés, vrai/faux, textes à trous, paires, aides, questions ouvertes par niveau) ; le moteur construit ensuite chaque activité selon l'objectif et la difficulté. Avantage : aucune séance ne dépend de l'IA. Limite : pas de nouvelle génération ciblée pendant la vie de la leçon. |
+| 118 | Génération à partir d'une spécification (objectif, difficulté…) | ✅ | L'IA produit une fois, à l'analyse, un matériel validé par notion ; le moteur construit chaque activité selon l'objectif et la difficulté (aucune séance ne dépend de l'IA). Depuis §5.74 : génération ciblée en arrière-plan, un exercice neuf sur une erreur qui revient, contrôlé par le code avant d'être proposé. |
 | 119 | Validation structurelle puis pédagogique, régénération, secours | ✅ | Schéma JSON, puis contrôles (§6.4) : réponse dans la leçon, distracteurs plausibles et distincts, pas de double réponse, citation exacte… ; une relance avec les motifs de refus ; les éléments refusés sont écartés, la notion garde les activités qui restent. |
 | 120, 147 | Activités de secours ; repli en cas de panne | ✅ | Les séances n'appellent jamais l'IA. Correction des questions rédigées : repli par mots-clés. Claude : modèle de repli (A9). Étape 23 : si l'IA de la famille ne répond pas (injoignable, trop lente, quota, clé refusée), ses autres IA enregistrées prennent le relais — seulement si le parent l'a permis (les photos partent là où il l'a choisi) ; le repli est noté dans `ai_runs` et visible dans « Voir ce qui se passe ». |
 | 121 | LLM seulement où il sert | ✅ | Voir 112.1 ; la lecture de la photo passe par un modèle de vision (pas d'OCR dédié pour l'instant). |
@@ -2342,6 +2374,5 @@ Versions suivantes (CDC §99-§104), dans l'ordre du CDC §110 :
 2. **Machine à états explicite** (§124) : diagnostic, transfert et consolidation comme états avec
    leurs transitions (aujourd'hui : blocs de séance et insertions).
 3. **Sources typées** (§117) et **filtre de contenu dédié** (§141).
-4. **Génération ciblée** (§118) : un exercice neuf sur une erreur récurrente, en plus du matériel
-   produit à l'analyse.
+4. ~~**Génération ciblée** (§118)~~ : fait (§5.74).
 5. **Mode devoirs** (§127) : V3.

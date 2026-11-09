@@ -5,6 +5,7 @@ pourra voir, avec leurs réponses, pour vérifier qu'elles sont claires et à so
 from dataclasses import dataclass
 
 from app.domain.activities.base import ActivityCode
+from app.domain.errors import ERROR_LABELS, ErrorType
 from app.domain.knowledge import KnowledgeMaterial
 
 
@@ -13,6 +14,13 @@ class Block:
     title: str  # le jeu (« Questions à choix », « Vrai ou faux »…)
     lines: list[str]  # une ligne par question, réponse comprise
     game: ActivityCode | None = None  # le jeu qui s'en sert : sa consigne est montrée au parent
+
+
+def _error_label(code: str) -> str:
+    try:
+        return ERROR_LABELS[ErrorType(code)]
+    except ValueError:
+        return code
 
 
 def _with_passage(passage: str | None, line: str) -> str:
@@ -32,7 +40,19 @@ def material_blocks(material: KnowledgeMaterial) -> list[Block]:
         [
             _with_passage(q.passage, f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}")
             for q in sorted(material.questions, key=lambda q: q.difficulty)
-            if q.source is None
+            if q.source is None and not q.target_error
+        ],
+        ActivityCode.MCQ,
+    )
+    # §5.74 : exercices neufs sur une erreur qui revient, avec l'erreur visée et le piège.
+    add(
+        "🎯 Exercices sur une erreur qui revient",
+        [
+            f"{q.stem}\n✅ {q.answer}   ✗ {' · '.join(q.distractors)}\n"
+            f"Erreur visée : {_error_label(q.target_error).lower()}"
+            + (f". Piège : {q.target_why}" if q.target_why else "")
+            for q in material.questions
+            if q.target_error and q.source is None
         ],
         ActivityCode.MCQ,
     )

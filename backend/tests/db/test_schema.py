@@ -749,3 +749,27 @@ async def test_migration_0031_parent_review(engine: AsyncEngine, db: AsyncSessio
         count = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
         assert count is not None and count > 0
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0032_targeted_stage(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Exercice neuf sur une erreur qui revient (§5.74) : le suivi accepte l'étape `targeted` ;
+    retour arrière : ces traces techniques seules sont effacées, la leçon reste."""
+    ids = await create_full_lesson(db)
+    db.add(
+        AiRun(
+            lesson_id=ids["lesson"],
+            stage="targeted",
+            provider="fake",
+            model="fake",
+            prompt_version="v1",
+            latency_ms=10,
+            status="ok",
+        )
+    )
+    await db.commit()
+    await run_alembic("downgrade", "0031")
+    async with engine.connect() as conn:
+        stages = (await conn.execute(text("SELECT stage FROM ai_runs"))).scalars().all()
+        lessons = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
+    assert "targeted" not in stages and "analysis" in stages and lessons
+    await run_alembic("upgrade", "head")

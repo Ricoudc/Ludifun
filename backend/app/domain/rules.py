@@ -131,6 +131,13 @@ class ProfileRules(_Section):
     slow_seconds: int = Field(30, ge=1)  # réponse typique plus lente : signalée
 
 
+class TargetedRules(_Section):
+    # 1.18.0 : exercice neuf sur une erreur qui revient (§5.74).
+    notions: int = Field(1, ge=0, le=5)  # notions ciblées au plus par séance terminée
+    per_error: int = Field(2, ge=1, le=5)  # questions gardées au plus par notion et par erreur
+    share: float = Field(0.5, ge=0, le=1)  # part des QCM de la notion tirés de ces questions
+
+
 class EngineRules(_Section):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     session: SessionRules
@@ -149,6 +156,7 @@ class EngineRules(_Section):
     subjects: SubjectRules = Field(default_factory=SubjectRules)
     spelling: SpellingRules = Field(default_factory=SpellingRules)
     profile: ProfileRules = Field(default_factory=ProfileRules)
+    targeted: TargetedRules = Field(default_factory=TargetedRules)
 
 
 def load_rules(path: Path | None = None) -> EngineRules:
