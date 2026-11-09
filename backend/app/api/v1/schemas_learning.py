@@ -68,6 +68,10 @@ class LessonSummaryOut(BaseModel):
     )
     due: bool = False
     mastered: bool = False
+    awaiting_parent: bool = Field(
+        False,
+        description="Prête, mais le parent ne l'a pas encore relue et validée (§5.69) : l'enfant attend.",
+    )
 
 
 class ReviewItemOut(BaseModel):

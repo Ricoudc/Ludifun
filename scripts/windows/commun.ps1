@@ -726,6 +726,9 @@ function Restaurer-Base([string]$chemin) {
 # Windows (DPAPI) et rangée avec les réglages, hors du dossier de Ludifun : jamais dans le dépôt,
 # jamais envoyée ailleurs qu'à GitHub.
 $DepotGitHub = if ($env:LUDIFUN_DEPOT) { $env:LUDIFUN_DEPOT } else { 'Ricoudc/Ludifun' }
+# Branche publiée, nommée ici : la « branche par défaut » de GitHub a longtemps été une ancienne
+# branche de développement, et la mise à jour n'apportait plus rien (novembre 2026).
+$BrancheGitHub = if ($env:LUDIFUN_BRANCHE) { $env:LUDIFUN_BRANCHE } else { 'main' }
 $ApiGitHub = if ($env:LUDIFUN_API_GITHUB) { $env:LUDIFUN_API_GITHUB } else { 'https://api.github.com' }  # autre adresse : tests
 $FichierJeton = Join-Path $env:LOCALAPPDATA 'Ludifun\jeton-github.txt'
 $MarqueVersion = Join-Path $Racine '.ludifun-version'
@@ -833,6 +836,21 @@ function Acces-GitHub([bool]$demander = $true) {
     if ($nouveau) { return $nouveau } else { return $false }
 }
 
+# Dossier installé avec git : la branche publiée, même s'il en suivait une autre (une ancienne
+# branche de développement ne reçoit plus rien) ; jamais de fusion, seulement une avance rapide.
+function Mettre-A-Jour-Par-Git {
+    & git -C $Racine fetch origin $BrancheGitHub
+    if ($LASTEXITCODE -ne 0) { Echec 'git fetch n''a pas fonctionné (voir les messages au-dessus).' }
+    $branche = (& git -C $Racine branch --show-current 2>$null)
+    if ($branche -ne $BrancheGitHub) {
+        Write-Host "Ce dossier suivait la branche « $branche » : passage sur « $BrancheGitHub », la version publiée."
+        & git -C $Racine checkout $BrancheGitHub
+        if ($LASTEXITCODE -ne 0) { Echec "Passage sur « $BrancheGitHub » impossible (fichiers modifiés à la main ? voir au-dessus)." }
+    }
+    & git -C $Racine pull --ff-only origin $BrancheGitHub
+    if ($LASTEXITCODE -ne 0) { Echec 'git pull n''a pas fonctionné (voir les messages au-dessus).' }
+}
+
 function Version-Installee {
     if (Installe-Avec-Git) { return (& git -C $Racine rev-parse HEAD 2>$null) }
     if (Test-Path $MarqueVersion) { return (Get-Content $MarqueVersion -Raw).Trim() }
@@ -841,7 +859,7 @@ function Version-Installee {
 
 # Dernière version publiée (branche principale) : son identifiant et sa date.
 function Derniere-Version($jeton, [int]$delai = 0) {
-    $commits = Api-GitHub '/commits?per_page=1' $jeton $delai
+    $commits = Api-GitHub "/commits?sha=$BrancheGitHub&per_page=1" $jeton $delai
     if (-not $commits) { return $null }
     $dernier = @($commits)[0]
     return [pscustomobject]@{ Sha = $dernier.sha; Date = $dernier.commit.committer.date }

@@ -24,6 +24,7 @@ from app.api.v1.lessons import lesson_of_child
 from app.api.v1.schemas_learning import LessonIllustrationOut, LessonResourceOut
 from app.db.models import LessonImage
 from app.domain.text import display_text
+from app.services.lesson_review import AWAITING_MESSAGE, awaiting_parent
 from app.services.lesson_store import load_masteries, load_units, notion_levels
 
 router = APIRouter(tags=["enfant"])
@@ -74,6 +75,8 @@ async def lesson_sheet(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession)
     lesson = await lesson_of_child(db, child, lesson_id)
     if lesson.status != "ready":
         raise ApiError(409, "lesson_not_ready", "Cette leçon n'est pas encore prête.")
+    if await awaiting_parent(db, lesson):
+        raise ApiError(409, "lesson_awaiting_parent", AWAITING_MESSAGE)
     units = await load_units(db, lesson)
     levels = notion_levels(units, await load_masteries(db, child.id, units), clock.now())
     notions = []

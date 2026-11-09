@@ -189,6 +189,10 @@ class ChildDashboardScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 20),
       ],
+      if (board.weekPlan.isNotEmpty) ...[
+        WeekPlanCard(board.weekPlan, name: name),
+        const SizedBox(height: 20),
+      ],
       Text('Cette semaine', style: theme.titleLarge),
       const SizedBox(height: 12),
       Row(
@@ -414,6 +418,67 @@ class _Row extends StatelessWidget {
         if (value != null)
           Text(value!, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       ],
+    ),
+  );
+}
+
+/// « Que travailler avec mon enfant cette semaine ? » (§5.71) : trois gestes concrets.
+class WeekPlanCard extends StatelessWidget {
+  const WeekPlanCard(this.actions, {required this.name, super.key});
+
+  final List<WeekAction> actions;
+  final String name;
+
+  static String icon(String kind) => switch (kind) {
+    'review' => '🔒',
+    'exam' => '📝',
+    'explain' => '🗣️',
+    'error' => '🔁',
+    'routine' => '⏰',
+    'due' => '📅',
+    _ => '📸',
+  };
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Cette semaine avec $name', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          for (final action in actions)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(icon(action.kind), style: const TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          action.title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(action.detail, style: const TextStyle(fontSize: 15, height: 1.3)),
+                        const SizedBox(height: 2),
+                        Text(
+                          action.why,
+                          style: const TextStyle(fontSize: 13, color: Colors.black54),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     ),
   );
 }

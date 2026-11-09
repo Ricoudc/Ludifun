@@ -25,8 +25,10 @@ from app.domain.material_edit import Edit, EditError, Kind, editables
 from app.domain.material_edit import apply_edit as apply_material_edit
 from app.domain.material_view import material_blocks
 from app.domain.text import clean_markup
+from app.services import ai_settings
 from app.services.ai_settings import AiResolver
 from app.services.lesson_pipeline import LessonPipeline
+from app.services.lesson_review import awaiting_parent, family_reviews
 from app.services.lesson_store import load_units
 
 router = APIRouter(tags=["espace parent"])
@@ -84,6 +86,7 @@ class NotionContentOut(BaseModel):
     doubts: list[str] = Field([], description="Ce qui fait douter de la notion.")
     confirmed: bool = Field(False, description="Le parent a confirmé la notion.")
     editable: list[EditableOut] = Field([], description="Ce que le parent peut corriger lui-même.")
+    removed: bool = Field(False, description="Retirée par le parent : plus proposée à l'enfant (§5.69).")
 
 
 class LessonContentOut(BaseModel):
@@ -92,6 +95,28 @@ class LessonContentOut(BaseModel):
     grade: str = Field(description="Classe de l'enfant.")
     text: str | None = Field(None, description="Texte de la leçon tel que l'IA l'a lu.")
     notions: list[NotionContentOut]
+    # Relecture par le parent (§5.69) : champs nouveaux, facultatifs pour une ancienne application.
+    objective: str | None = None
+    summary: str | None = None
+    approved: bool = Field(True, description="Le parent a validé la leçon.")
+    awaiting_parent: bool = Field(False, description="L'enfant attend que le parent la valide.")
+
+
+class LessonInfoIn(BaseModel):
+    """Le parent corrige le titre, l'objectif ou le résumé de la leçon (§5.69)."""
+
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=120)
+    objective: str = Field(min_length=1, max_length=400)
+    summary: str = Field(min_length=1, max_length=2000)
+
+
+class NotionTextIn(BaseModel):
+    """Le parent corrige le nom d'une notion ou sa phrase « à retenir » (§5.69)."""
+
+    model_config = ConfigDict(extra="forbid")
+    label: str = Field(min_length=1, max_length=120)
+    statement: str = Field(min_length=1, max_length=600)
 
 
 class ReworkIn(BaseModel):
@@ -116,6 +141,7 @@ def notion_out(
         trust=confidence.trust.value if confidence else None,
         doubts=item.doubts,
         confirmed=item.confirmed_at is not None,
+        removed=item.removed_at is not None,
         editable=[
             EditableOut(
                 kind=e.kind,
@@ -167,6 +193,11 @@ async def get_content(
     """Toutes les questions de la leçon, notion par notion, avec leurs réponses."""
     child = await own_child(db, parent, child_id)
     lesson = await _lesson(db, child, lesson_id)
+    return await content_out(db, child, lesson)
+
+
+async def content_out(db: DbSession, child: db_models.Child, lesson: db_models.Lesson) -> LessonContentOut:
+    """Toute la leçon pour le parent, notions retirées comprises (pour les remettre)."""
     rows = await db.execute(
         select(db_models.KnowledgeItem, db_models.KnowledgeMaterial)
         .join(
@@ -182,7 +213,163 @@ async def get_content(
         grade=child.grade,
         text=await lesson_text(db, lesson) or None,
         notions=[notion_out(item, material, child.grade) for item, material in rows.all()],
+        objective=lesson.objective,
+        summary=lesson.summary,
+        approved=lesson.parent_approved_at is not None,
+        awaiting_parent=await awaiting_parent(db, lesson),
     )
+
+
+# --------------------------------------------------------------------------- #
+# Relecture par le parent avant l'enfant (§5.69)
+# --------------------------------------------------------------------------- #
+
+
+class ReviewSettingIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool
+
+
+class ReviewSettingOut(BaseModel):
+    enabled: bool = Field(description="« Je relis chaque leçon avant mon enfant » (coché par défaut).")
+
+
+async def _family_of(db: DbSession, parent: CurrentParent) -> uuid.UUID:
+    family_id = await ai_settings.family_of_parent(db, parent.parent_id)
+    if family_id is None:
+        raise ApiError(404, "family_not_found", "Famille introuvable.")
+    return family_id
+
+
+@router.get("/parent/review-lessons")
+async def get_review_setting(parent: CurrentParent, db: DbSession) -> ReviewSettingOut:
+    return ReviewSettingOut(enabled=await family_reviews(db, await _family_of(db, parent)))
+
+
+@router.put("/parent/review-lessons")
+async def set_review_setting(body: ReviewSettingIn, parent: CurrentParent, db: DbSession) -> ReviewSettingOut:
+    """Décocher ouvre aussitôt les leçons en attente ; cocher ne referme pas celles déjà ouvertes
+    (validées avant), seulement les leçons pas encore validées."""
+    family = await db.get(db_models.Family, await _family_of(db, parent))
+    assert family is not None
+    family.review_lessons = body.enabled
+    await db.commit()
+    return ReviewSettingOut(enabled=body.enabled)
+
+
+@router.post("/children/{child_id}/lessons/{lesson_id}/approve")
+async def approve_lesson(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> LessonContentOut:
+    """« Valider la leçon » : l'enfant peut l'ouvrir et la réviser."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    if not any(n.removed_at is None for n in await _notions(db, lesson)):
+        raise ApiError(409, "no_notion_left", "Toutes les notions sont retirées : remettez-en au moins une.")
+    lesson.parent_approved_at = lesson.parent_approved_at or clock.now()
+    await db.commit()
+    return await content_out(db, child, lesson)
+
+
+@router.put("/children/{child_id}/lessons/{lesson_id}/info")
+async def edit_lesson_info(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, body: LessonInfoIn, parent: CurrentParent, db: DbSession
+) -> LessonContentOut:
+    """Le parent corrige le titre, l'objectif et le résumé que l'enfant lira."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    lesson.title, lesson.objective, lesson.summary = (
+        body.title.strip(),
+        body.objective.strip(),
+        body.summary.strip(),
+    )
+    await db.commit()
+    return await content_out(db, child, lesson)
+
+
+async def _notions(db: DbSession, lesson: db_models.Lesson) -> list[db_models.KnowledgeItem]:
+    return list(
+        await db.scalars(
+            select(db_models.KnowledgeItem).where(db_models.KnowledgeItem.lesson_id == lesson.id)
+        )
+    )
+
+
+async def _notion(
+    db: DbSession, lesson: db_models.Lesson, knowledge_id: uuid.UUID
+) -> tuple[db_models.KnowledgeItem, db_models.KnowledgeMaterial]:
+    row = await db.scalar(
+        select(db_models.KnowledgeItem).where(
+            db_models.KnowledgeItem.id == knowledge_id, db_models.KnowledgeItem.lesson_id == lesson.id
+        )
+    )
+    material = (
+        await db.get(db_models.KnowledgeMaterial, knowledge_id, with_for_update=True, populate_existing=True)
+        if row
+        else None
+    )
+    if row is None or material is None:
+        raise ApiError(404, "notion_not_found", "Notion introuvable.")
+    return row, material
+
+
+@router.put("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/text")
+async def edit_notion_text(
+    child_id: uuid.UUID,
+    lesson_id: uuid.UUID,
+    knowledge_id: uuid.UUID,
+    body: NotionTextIn,
+    parent: CurrentParent,
+    db: DbSession,
+) -> NotionContentOut:
+    """Le parent corrige le nom de la notion ou sa phrase « à retenir ». Pour un mot à savoir
+    écrire (§5.68), corriger le nom corrige le mot que l'enfant apprend à écrire."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    row, material_row = await _notion(db, lesson, knowledge_id)
+    label, statement = body.label.strip(), body.statement.strip()
+    material = KnowledgeMaterial.model_validate(material_row.material)
+    if material.spelling is not None and label != row.label:
+        material = material.model_copy(
+            update={"spelling": material.spelling.model_copy(update={"word": label})}
+        )
+        material_row.material = KnowledgeMaterial.model_validate(material.model_dump()).model_dump(
+            mode="json"
+        )
+    row.label, row.statement = label, statement
+    await db.commit()
+    return notion_out(row, material_row, child.grade)
+
+
+@router.post("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/remove")
+async def remove_notion(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, knowledge_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> NotionContentOut:
+    """Le parent retire une notion fausse ou inventée : plus jamais proposée à l'enfant. La
+    progression déjà enregistrée n'est pas effacée ; « Remettre » la rend de nouveau."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    row, material_row = await _notion(db, lesson, knowledge_id)
+    others = [n for n in await _notions(db, lesson) if n.id != row.id and n.removed_at is None]
+    if not others:
+        raise ApiError(
+            409, "last_notion", "C'est la dernière notion de la leçon : elle ne peut pas être retirée."
+        )
+    row.removed_at = row.removed_at or clock.now()
+    await db.commit()
+    return notion_out(row, material_row, child.grade)
+
+
+@router.post("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/restore")
+async def restore_notion(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, knowledge_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> NotionContentOut:
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    row, material_row = await _notion(db, lesson, knowledge_id)
+    row.removed_at = None
+    await db.commit()
+    return notion_out(row, material_row, child.grade)
 
 
 @router.post("/children/{child_id}/lessons/{lesson_id}/notions/{knowledge_id}/confirm")

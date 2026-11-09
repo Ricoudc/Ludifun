@@ -50,7 +50,7 @@ class _Lessons extends ConsumerWidget {
     return switch (lessons) {
       AsyncData(:final value) => _bySubject(context, [
         for (final l in value)
-          if (l.status == LessonStatus.ready) l,
+          if (l.status == LessonStatus.ready && !l.awaitingParent) l,
       ]),
       AsyncError(:final error) => CenteredBody(
         children: [

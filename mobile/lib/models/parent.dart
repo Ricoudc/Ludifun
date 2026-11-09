@@ -140,6 +140,9 @@ class RecurringError {
   final int sessions;
 }
 
+/// Une action pour le parent cette semaine : quoi, comment, et pourquoi.
+typedef WeekAction = ({String kind, String title, String detail, String why});
+
 class Dashboard {
   const Dashboard({
     this.errorTypes = const [],
@@ -149,6 +152,7 @@ class Dashboard {
     this.helpThisWeek = 0,
     this.reportsToSee = 0,
     this.summary = const [],
+    this.weekPlan = const [],
     required this.activities,
     required this.subjects,
     required this.toStrengthen,
@@ -163,6 +167,15 @@ class Dashboard {
     helpThisWeek: json['help_this_week'] as int? ?? 0,
     reportsToSee: json['reports_to_see'] as int? ?? 0,
     summary: [for (final line in json['summary'] as List<dynamic>? ?? const []) line as String],
+    weekPlan: [
+      for (final a in (json['week_plan'] as List<dynamic>? ?? const []).cast<Json>())
+        (
+          kind: a['kind'] as String,
+          title: a['title'] as String,
+          detail: a['detail'] as String,
+          why: a['why'] as String,
+        ),
+    ],
     activities: (json['activities_this_week'] as Json).cast<String, int>(),
     subjects: [for (final s in json['subjects'] as List<dynamic>) SubjectStats.fromJson(s as Json)],
     toStrengthen: [
@@ -198,6 +211,10 @@ class Dashboard {
 
   /// « En bref » : les 7 derniers jours en quelques phrases, la dernière est un conseil.
   final List<String> summary;
+
+  /// « Cette semaine » (§5.71) : trois actions concrètes pour le parent ; vide avec un ancien
+  /// serveur.
+  final List<WeekAction> weekPlan;
   final Map<String, int> activities;
   final List<SubjectStats> subjects;
   final List<WeakNotion> toStrengthen;
@@ -752,6 +769,7 @@ class NotionContent {
     this.doubts = const [],
     this.confirmed = false,
     this.editable = const [],
+    this.removed = false,
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
@@ -766,6 +784,7 @@ class NotionContent {
       for (final e in json['editable'] as List<dynamic>? ?? const [])
         EditableElement.fromJson(e as Json),
     ],
+    removed: json['removed'] as bool? ?? false,
   );
 
   final String knowledgeId;
@@ -783,20 +802,44 @@ class NotionContent {
   final bool confirmed;
 
   bool get toCheck => !confirmed && (trust == 'medium' || trust == 'low');
+
+  /// Retirée par le parent (§5.69) : plus proposée à l'enfant.
+  final bool removed;
 }
 
 class LessonContent {
-  const LessonContent({required this.grade, required this.notions, this.title, this.text});
+  const LessonContent({
+    required this.grade,
+    required this.notions,
+    this.title,
+    this.text,
+    this.objective,
+    this.summary,
+    this.approved = true,
+    this.awaitingParent = false,
+  });
 
   factory LessonContent.fromJson(Json json) => LessonContent(
     title: json['title'] as String?,
     grade: json['grade'] as String,
     text: json['text'] as String?,
     notions: [for (final n in json['notions'] as List<dynamic>) NotionContent.fromJson(n as Json)],
+    objective: json['objective'] as String?,
+    summary: json['summary'] as String?,
+    approved: json['approved'] as bool? ?? true,
+    awaitingParent: json['awaiting_parent'] as bool? ?? false,
   );
 
   final String? title;
   final String grade;
+
+  /// Ce que l'enfant lit sur l'écran de la leçon ; le parent peut les corriger (§5.69).
+  final String? objective;
+  final String? summary;
+
+  /// Validée par le parent ; `awaitingParent` : l'enfant attend cette validation.
+  final bool approved;
+  final bool awaitingParent;
 
   /// Texte de la leçon tel que l'IA l'a lu.
   final String? text;

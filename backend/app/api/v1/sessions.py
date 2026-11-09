@@ -40,6 +40,7 @@ from app.domain.scoring import KnowledgeStatus
 from app.domain.text import display_text
 from app.services import ai_budget, goals, learning, rewards
 from app.services.answer_evaluation import AnswerEvaluator
+from app.services.lesson_review import AWAITING_MESSAGE, awaiting_parent
 
 router = APIRouter(tags=["séances"])
 
@@ -138,6 +139,8 @@ async def start_session(
     """Écran 4 : séance adaptée à la maîtrise de l'enfant (ou reprise de la séance en cours), à la
     durée choisie par le parent et, pendant un plan avant un contrôle, à l'étape du jour."""
     lesson = await lesson_of_child(db, child, lesson_id)
+    if await awaiting_parent(db, lesson):
+        raise ApiError(409, "lesson_awaiting_parent", AWAITING_MESSAGE)
     now = clock.now()
     options = await goals.session_options(db, child, lesson.id, now, ZoneInfo(settings.family_timezone))
     try:

@@ -1986,6 +1986,81 @@ de liste sans mention de l'écriture, en histoire, ou à deux mots ; mot repris 
 matériel de l'IA ; jeux d'écriture seulement ; de bout en bout, une IA qui oublie les mots donne
 une séance de jeux d'écriture avec une seule demande de matériel).
 
+### 5.69 Le parent relit la leçon avant l'enfant (novembre 2026, schéma 0031)
+
+Demande de la famille : « que l'adulte puisse voir la leçon entière et modifier les consignes et
+les erreurs avant que l'enfant ait accès à la leçon, car l'IA fait des erreurs ».
+
+- **Réglage de la famille** « Je relis chaque leçon avant mon enfant » (`families.review_lessons`,
+  **coché par défaut** ; « Objectifs et contrôles »). `GET/PUT /v1/parent/review-lessons`.
+- **Verrou** (`app/services/lesson_review.py`) : une leçon prête sans `parent_approved_at`, dans
+  une famille qui relit, attend le parent. Lu au moment de l'accès : décocher ouvre aussitôt les
+  leçons en attente. L'enfant voit la leçon dans sa liste (« 🔒 Un adulte la relit »,
+  `awaiting_parent`, champ nouveau et facultatif) ; `GET /v1/lessons/{id}` ne donne alors rien de
+  la leçon (ni notions, ni compétences, ni ressources) ; séance, fiche (« Mon cahier »),
+  « Enseigne-moi » : 409 `lesson_awaiting_parent` (« Un adulte relit ta leçon… ») ; pas de
+  mission du jour sur elle. Une ancienne application reçoit ce message au lancement de la séance.
+- **Le parent** (« Questions de la leçon ») voit toute la leçon, réponses comprises, et :
+  - corrige le **titre, l'objectif et le résumé** (`PUT …/lessons/{l}/info`) ;
+  - corrige le **nom et la phrase « à retenir »** d'une notion (`PUT …/notions/{k}/text`) ; pour un
+    mot de liste (§5.68), corriger le nom corrige le mot que les jeux font écrire ;
+  - corrige les **questions et réponses** comme avant (§5.59), ou les fait refaire par l'IA ;
+  - **retire une notion** fausse ou inventée (`POST …/notions/{k}/remove`, `restore` pour la
+    remettre ; `knowledge_items.removed_at`) : plus jamais proposée à l'enfant (`load_units`),
+    sa progression gardée ; jamais la dernière (409 `last_notion`) ;
+  - **valide** la leçon (`POST …/lessons/{l}/approve`, 409 `no_notion_left` si tout est retiré).
+- **Migration 0031** : les leçons existantes sont reprises comme validées (l'enfant les garde) ;
+  retour arrière : les colonnes disparaissent, une notion retirée redevient proposée.
+- **Tests** : la famille de test décoche la case (`tests/api/helpers.register`), sauf dans
+  `tests/api/test_parent_review.py` (verrou côté enfant, corrections, retrait, validation, case
+  décochée, mot de liste corrigé) ; les 8 routes dans `test_separation.py` ; `demo_family`
+  valide ses leçons comme un parent ; application : `parent_flow_test` (relire, corriger le
+  résumé, retirer, valider ; la case) et `child_flow_test` (leçon fermée).
+
+### 5.70 Adresses d'IA des familles : rien derrière le serveur (novembre 2026)
+
+Revue extérieure du dépôt (`feuille-de-route.md`, point 0) : une adresse d'IA libre (Ollama,
+« autre service ») est appelée par le serveur lui-même ; elle ne doit pas lui faire interroger ce
+qui est derrière lui (SSRF). `app/ai/url_safety.py`, appliqué à l'enregistrement et au test
+(`_choice`, 422 `ai_url_refused` avec la raison pour le parent) :
+
+- **toujours refusées** : services internes (`db`, `recherche`, `api`…), métadonnées des
+  hébergeurs (169.254.0.0/16, fe80::/10, `metadata…`), identifiants dans l'adresse, 0.0.0.0,
+  adresses de diffusion ou réservées ;
+- **en production** (adresses libres permises par `LUDIFUN_ALLOW_CUSTOM_AI_URL`), aussi la machine
+  et le réseau local, sauf l'Ollama réglé par le serveur ; sur le PC de la famille, Ollama sur ce
+  PC ou sur un autre ordinateur de la maison reste possible.
+
+Limites : un nom de domaine n'est pas résolu (un nom qui pointerait vers une adresse interne
+passerait) ; une adresse enregistrée avant ce contrôle n'est pas revérifiée à l'usage.
+Aussi : `backend/.coverage` (mesure de couverture) retiré du dépôt et ignoré.
+
+Tests : `tests/ai/test_url_safety.py`, `tests/api/test_ai_settings.py`.
+
+### 5.71 « Que travailler avec mon enfant cette semaine ? » (novembre 2026)
+
+Feuille de route, point 4 : trois actions concrètes pour le parent, sans lui demander d'être
+enseignant. Domaine pur `app/domain/weekly_plan.py` (des conseils au parent, aucune décision
+pour l'enfant) ; faits dans `services/dashboard.week_plan_of` ; `DashboardOut.week_plan` (champ
+nouveau, facultatif, liste vide par défaut). Chaque action : `kind` (icône), `title` (quoi),
+`detail` (le geste, en quelques minutes), `why` (le fait qui l'a fait choisir). Ordre :
+
+1. une leçon attend la relecture du parent (§5.69) ;
+2. un contrôle dans les 7 jours (« jeudi », « demain ») : une courte séance par jour, la veille
+   lui faire expliquer la leçon ;
+3. la notion la plus fragile (pas une notion retirée) : la faire expliquer avec ses mots, la
+   phrase à retenir sous les yeux ;
+4. l'erreur qui revient : un geste par type d'erreur (relire l'énoncé, poser le calcul, dire la
+   méthode, comparer les deux notions…) ;
+5. moins de 3 jours de révision sur 7 : un moment fixe, au temps choisi par le parent ;
+6. les révisions dues, sinon ajouter la leçon de la semaine.
+
+Au plus trois. Phrases neutres (le prénom ne dit pas si l'enfant est une fille ou un garçon).
+Application : carte « Cette semaine avec Emma » sous « En bref ».
+
+Tests : `tests/domain/test_weekly_plan.py`, `tests/api/test_parent_review.py` (la leçon à relire
+vient en premier, puis disparaît), `parent_flow_test` (la carte).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

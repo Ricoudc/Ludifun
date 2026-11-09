@@ -15,6 +15,44 @@ import 'parent_providers.dart';
 
 const dailyMinutesChoices = [5, 10, 15, 20, 30];
 
+final reviewLessonsProvider = FutureProvider.autoDispose<bool>(
+  (ref) => ref.watch(apiProvider).reviewLessons(),
+);
+
+/// « Je relis chaque leçon avant mon enfant » (§5.69), coché par défaut : une leçon prête attend
+/// que le parent la valide. Réglage de la famille (tous les enfants).
+class ReviewLessonsSwitch extends ConsumerWidget {
+  const ReviewLessonsSwitch({super.key});
+
+  Future<void> _set(BuildContext context, WidgetRef ref, bool enabled) async {
+    try {
+      await ref.read(apiProvider).setReviewLessons(enabled: enabled);
+      ref.invalidate(reviewLessonsProvider);
+    } on ApiException catch (error) {
+      if (context.mounted) showSnack(context, error.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(reviewLessonsProvider).value;
+    if (enabled == null) return const SizedBox.shrink(); // serveur plus ancien : pas de case
+    return Card(
+      child: SwitchListTile(
+        value: enabled,
+        onChanged: (value) => _set(context, ref, value),
+        title: const Text('Je relis chaque leçon avant mon enfant'),
+        subtitle: Text(
+          enabled
+              ? 'L\'IA peut se tromper : chaque nouvelle leçon attend que vous la validiez '
+                    '(Questions de la leçon → « Valider la leçon »).'
+              : 'Les nouvelles leçons sont ouvertes à l\'enfant dès qu\'elles sont prêtes.',
+        ),
+      ),
+    );
+  }
+}
+
 /// Objectifs du parent (étape 16) : temps de révision par jour, matière à privilégier, et
 /// contrôles à venir avec leur plan de révision, recalculé chaque jour.
 class GoalsScreen extends ConsumerWidget {
@@ -65,6 +103,8 @@ class GoalsScreen extends ConsumerWidget {
           if (child == null)
             const Center(child: CircularProgressIndicator())
           else ...[
+            const ReviewLessonsSwitch(),
+            const SizedBox(height: 16),
             Text('Temps de révision par jour', style: theme.titleLarge),
             const SizedBox(height: 4),
             const Text(

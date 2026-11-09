@@ -33,7 +33,10 @@ from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
 from app.domain.skill_report import SkillNotion, SkillReport, skill_report
 from app.domain.state import NotionState, Observation, notion_state
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
+from app.domain.weekly_plan import WeakNotion as PlanNotion
+from app.domain.weekly_plan import WeekAction, WeekFacts, week_actions
 from app.domain.weekly_summary import RecentFacts, weekly_summary
+from app.services.lesson_review import family_reviews
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, to_mastery
 
 ERROR_TYPES_WINDOW = timedelta(days=30)
@@ -135,6 +138,7 @@ class Dashboard:
     help_this_week: int = 0  # questions où l'enfant a demandé de l'aide cette semaine
     reports_to_see: int = 0  # questions signalées par l'enfant, pas encore vues par le parent
     summary: list[str] = field(default_factory=list)  # « En bref » : les 7 derniers jours
+    week_plan: list[WeekAction] = field(default_factory=list)  # « Cette semaine » (§5.71)
 
 
 def trend_of(weeks: list[WeekStats]) -> Trend | None:
@@ -192,7 +196,7 @@ async def build_dashboard(
     for mastery, item, lesson in rows:
         by_subject[lesson.subject or Subject.OTHER].append((mastery.score, item.importance))
         level = notion_level(to_mastery(mastery), item.required_levels, now)
-        if level.level <= MasteryLevel.LEARNING:
+        if level.level <= MasteryLevel.LEARNING and item.removed_at is None:  # retirée : §5.69
             weak.append(
                 (
                     (level.level, mastery.score, -item.importance, mastery.next_review_at),
@@ -254,7 +258,18 @@ async def build_dashboard(
             reviews_due=due_now,
         )
     )
+    week_plan = await week_plan_of(
+        session,
+        child_id,
+        now,
+        tz,
+        strengthen=strengthen,
+        recurring=(recurring[0].error_type, recurring[0].label) if recurring else None,
+        days_active=facts.days_active,
+        reviews_due=due_now,
+    )
     return Dashboard(
+        week_plan=week_plan,
         summary=summary,
         help_this_week=help_this_week or 0,
         reports_to_see=to_see,
@@ -272,6 +287,64 @@ async def build_dashboard(
 
 
 RECENT = timedelta(days=7)
+
+
+async def week_plan_of(
+    session: AsyncSession,
+    child_id: uuid.UUID,
+    now: datetime,
+    tz: ZoneInfo,
+    *,
+    strengthen: list[WeakNotion],
+    recurring: tuple[ErrorType, str] | None,
+    days_active: int,
+    reviews_due: int,
+) -> list[WeekAction]:
+    """« Que travailler avec mon enfant cette semaine ? » : les faits, puis le domaine choisit."""
+    child = await session.get(db.Child, child_id)
+    if child is None:
+        return []
+    today = now.astimezone(tz).date()
+    ready = list(
+        await session.scalars(
+            select(db.Lesson)
+            .where(db.Lesson.child_id == child_id, db.Lesson.status == "ready")
+            .order_by(db.Lesson.created_at)
+        )
+    )
+    reviews = await family_reviews(session, child.family_id)
+    awaiting = [lesson.title or "Leçon" for lesson in ready if reviews and lesson.parent_approved_at is None]
+    exams = [
+        (exam.title, exam.exam_date)
+        for exam in await session.scalars(
+            select(db.Exam).where(
+                db.Exam.child_id == child_id,
+                db.Exam.exam_date >= today,
+                db.Exam.exam_date <= today + RECENT,
+            )
+        )
+    ]
+    weak = None
+    if strengthen:
+        first = strengthen[0]
+        statement = await session.scalar(
+            select(db.KnowledgeItem.statement).where(db.KnowledgeItem.id == first.knowledge_id)
+        )
+        weak = PlanNotion(first.label, statement or first.label, first.lesson_title)
+    return week_actions(
+        WeekFacts(
+            child=child.display_name,
+            today=today,
+            awaiting_lessons=awaiting,
+            exams=exams,
+            weak=weak,
+            recurring=recurring,
+            days_active=days_active,
+            reviews_due=reviews_due,
+            daily_minutes=child.daily_minutes,
+            lessons=len(ready),
+        )
+    )
 
 
 async def recent_facts(

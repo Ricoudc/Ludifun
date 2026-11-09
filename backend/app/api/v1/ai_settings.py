@@ -2,6 +2,7 @@
 
 import uuid
 from typing import Annotated
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
@@ -12,6 +13,7 @@ from app.ai.check import check, probe_llm
 from app.ai.factory import AiChoice, AiConfigError
 from app.ai.ports import AIError
 from app.ai.presets import PRESETS
+from app.ai.url_safety import refused_ai_url
 from app.api.deps import AppSettings, CurrentParent, DbSession, get_ai_resolver, rate_limit
 from app.api.errors import ApiError
 from app.config import AiProviderName, Settings
@@ -177,6 +179,12 @@ async def settings_out(
     )
 
 
+def _refused_url(url: str, settings: Settings) -> str | None:
+    """Adresse d'IA libre qui ferait parler le serveur à ce qui est derrière lui (§5.70)."""
+    allowed = frozenset(host.lower() for host in (urlsplit(settings.ollama_base_url).hostname,) if host)
+    return refused_ai_url(url, strict=settings.environment == "prod", allowed=allowed)
+
+
 async def _choice(
     db: DbSession, family_id: uuid.UUID, body: AiSettingsIn, settings: Settings
 ) -> tuple[AiChoice, bool]:
@@ -190,6 +198,8 @@ async def _choice(
         raise ApiError(422, "base_url_required", "Indiquez l'adresse de l'API (souvent terminée par /v1).")
     if body.provider not in CUSTOM_URL:
         base_url = None
+    if base_url and (problem := _refused_url(base_url, settings)):
+        raise ApiError(422, "ai_url_refused", problem)
     row = (await ai_settings.load_providers(db, family_id)).get(body.provider)
     keep = body.api_key is None and row is not None
     key = body.api_key or None

@@ -49,6 +49,7 @@ from app.api.v1.schemas_dashboard import (
     SubCompetenceOut,
     SubjectOut,
     WeakNotionOut,
+    WeekActionOut,
     WeekOut,
 )
 from app.db import models as db_models
@@ -100,6 +101,9 @@ async def get_dashboard(
         help_this_week=board.help_this_week,
         reports_to_see=board.reports_to_see,
         summary=board.summary,
+        week_plan=[
+            WeekActionOut(kind=a.kind, title=a.title, detail=a.detail, why=a.why) for a in board.week_plan
+        ],
         activities_this_week=board.activities,
         subjects=[
             SubjectOut(subject=s.subject, mastery=s.mastery, color=s.color, notions=s.notions)
