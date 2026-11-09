@@ -59,6 +59,7 @@ class HelpRules(_Section):
 class AdaptationRules(_Section):
     remediation_after_failures: int = Field(ge=1)
     max_remediations: int = Field(ge=0)
+    prerequisite_below: int = Field(ge=0, le=100)
     failure_below: float = Field(ge=0, le=1)
     window: int = Field(ge=1)
     fast_wrong: int = Field(ge=1)

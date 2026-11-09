@@ -134,3 +134,42 @@ async def test_no_bonus_for_a_slow_or_struggling_child(
         await answer(client, db, token, session["id"], item, lambda _: True, 120_000)
     replay = (await client.post(f"/v1/sessions/{session['id']}/replay", headers=auth(token))).json()
     assert replay["bonus_offer"] is False
+
+
+async def test_remediation_goes_back_to_a_prerequisite_first(
+    client: AsyncClient,
+    db: AsyncSession,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    """§5.72 : la notion ratée est un exemple d'une notion pas encore sue : celle-ci d'abord."""
+    family = await family_with_device(client)
+    token = family["device"]
+    lesson = await upload_lesson(client, token)
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    rows = {
+        row.key: row
+        for row in await db.scalars(select(KnowledgeItem).where(KnowledgeItem.key.in_(["k1", "k3"])))
+    }
+    rows["k3"].relations = [*rows["k3"].relations, {"type": "example_of", "target": "k1"}]
+    await db.commit()
+    knows: Knows = lambda key: key != "k3"  # noqa: E731
+    queue, remediations = list(session["items"]), []
+    while queue:
+        item = queue.pop(0)
+        feedback = await answer(client, db, token, session["id"], item, knows, 9000)
+        if feedback["inserted_items"]:
+            remediations = feedback["inserted_items"]
+        queue = feedback["inserted_items"] + queue
+
+    assert len(remediations) == 3 and {r["block"] for r in remediations} == {"remediation"}
+    first, second, third = remediations
+    assert first["knowledge_ids"] == [str(rows["k1"].id)]
+    assert first["intro"].startswith("📖 On revient d'abord sur")
+    assert second["knowledge_ids"] == third["knowledge_ids"] == [str(rows["k3"].id)]
+    assert second["intro"].startswith("📖 Rappel : ") and third["intro"] is None
+    url = f"/v1/children/{family['child']['id']}/sessions/{session['id']}"
+    detail = (await client.get(url, headers=auth(family["parent"]))).json()
+    reasons = [a["reason"] for a in detail["activities"] if a["block"] == "remediation"]
+    assert reasons[0].startswith("Échecs répétés sur « États généraux » : on revient d'abord sur « 1789 »")
+    assert reasons[1].startswith("2 échecs sur cette notion")
+    assert [d["rule"] for d in detail["decisions"]].count("prerequisite") == 1
