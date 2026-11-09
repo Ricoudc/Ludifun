@@ -29,6 +29,7 @@ from app.api.v1.schemas_learning import (
     AttemptIn,
     AttemptOut,
     AttemptSummary,
+    CoachOut,
     EngagementHintOut,
     HelpOut,
     KnowledgeResultOut,
@@ -42,11 +43,13 @@ from app.api.v1.schemas_learning import (
 )
 from app.db.models import Attempt, Child, QuestionReport, RevisionSession, SessionItem
 from app.domain import instructions
-from app.domain.activities.base import ActivityCode, InvalidResponse
+from app.domain.activities.base import ActivityCode, Grade, InvalidResponse
 from app.domain.activities.registry import default_registry
+from app.domain.coach import coach_line
 from app.domain.composer import Block, NothingToReview
 from app.domain.decisions import Rule
 from app.domain.engagement import HINT_MESSAGES
+from app.domain.errors import with_speed
 from app.domain.scoring import KnowledgeStatus
 from app.domain.text import display_text
 from app.services import ai_budget, goals, learning, rewards, targeted_practice
@@ -243,6 +246,7 @@ async def submit_attempt(
             engagement_hint=hint,
         )
     return AttemptOut(
+        coach=await _coach(db, revision, item, grade, body.duration_ms, child.grade),
         item_id=item.id,
         result=grade.result,
         score=grade.score,
@@ -253,6 +257,35 @@ async def submit_attempt(
         inserted_items=[item_out(i, grade=child.grade) for i in adaptation.inserted],
         engagement_hint=hint,
     )
+
+
+async def _coach(
+    db: DbSession,
+    revision: RevisionSession,
+    item: SessionItem,
+    grade: Grade,
+    duration_ms: int | None,
+    child_grade: str,
+) -> CoachOut | None:
+    """Ludi (§5.76) : la série de bonnes réponses de la séance, l'erreur faite, l'aide demandée."""
+    answers = sorted((await learning.attempts_by_item(db, revision)).values(), key=lambda a: a.created_at)
+    streak = 0
+    for attempt in reversed(answers):
+        if float(attempt.score) < 1:
+            break
+        streak += 1
+    error = next(iter(grade.errors.values()), None)
+    if error is not None and item.help_level == 0:
+        error = with_speed(error, duration_ms)
+    line = coach_line(
+        grade.result,
+        grade=child_grade,
+        error=error,
+        streak=streak,
+        helped=item.help_level > 0,
+        position=item.position,
+    )
+    return CoachOut(mood=line.mood.value, message=line.message) if line else None
 
 
 @router.post("/sessions/{session_id}/items/{item_id}/help")

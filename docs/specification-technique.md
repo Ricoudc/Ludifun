@@ -2168,6 +2168,27 @@ qu'au toucher d'une barre : il est maintenant écrit sous chaque semaine du grap
 Tests : `tests/domain/test_subject_trend.py`, `tests/api/test_dashboard.py`
 (`test_the_subject_that_slips_is_in_the_week_plan`), `parent_flow_test` (§5.71).
 
+### 5.76 Ludi accompagne la séance : un mot après chaque réponse (novembre 2026)
+
+Feuille de route, point 5. Ludi, l'élève d'« Enseigne-moi » (§83), devient le compagnon de la
+séance. Après chaque réponse, `AttemptOut.coach` (champ nouveau, facultatif) : `mood` (`proud`,
+`happy`, `close`, `thinking`) et `message`. Domaine pur `app/domain/coach.py`, **jamais l'IA** :
+
+- juste : un encouragement ; une série de 3, 5 ou 10 bonnes réponses de la séance est saluée ;
+  réussi après une aide : « Tu as compris grâce à l'aide : bravo. La prochaine fois, essaie sans. » ;
+- à moitié : « Tu y es presque ! », et ce qui manque (calcul, orthographe) ;
+- faux : le geste qui répond au type d'erreur (§5.34, avec la vitesse de réponse) : « Tu y es
+  presque ! Refais le calcul étape par étape. », « Relis la question : que te demande-t-on
+  exactement ? », « Attention : tu as pris une notion voisine. Regarde la différence. » ;
+- trois tranches d'âge (CP-CE1, CE2-CM2, collège) ; jamais de reproche ni de comparaison
+  (testé sur toutes les combinaisons) ; la même réponse donne la même phrase (pas de hasard).
+
+Application : une bulle « 🧑‍🎓 » sous la correction, lue aussi par les lecteurs d'écran ; sans le
+champ (serveur ancien), rien ne change.
+
+Tests : `tests/domain/test_coach.py`, `tests/api/test_adaptation.py`
+(`test_ludi_says_a_word_after_each_answer`), `session_flow_test` (§5.76).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

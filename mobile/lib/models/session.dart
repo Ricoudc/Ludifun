@@ -153,9 +153,17 @@ class Correction {
     this.details = const [],
     this.insertedItems = const [],
     this.pauseMessage,
+    this.coach,
   });
 
   factory Correction.fromJson(Json json) => Correction(
+    coach: switch (json['coach']) {
+      {'mood': final String mood, 'message': final String message} => (
+        mood: mood,
+        message: message,
+      ),
+      _ => null,
+    },
     insertedItems: [
       for (final i in json['inserted_items'] as List<dynamic>? ?? const [])
         SessionItem.fromJson(i as Json),
@@ -183,6 +191,9 @@ class Correction {
 
   /// Proposition de pause (réponses au hasard, ou trop d'échecs d'affilée).
   final String? pauseMessage;
+
+  /// Le mot de Ludi après la réponse (§5.76) ; absent avec un serveur plus ancien.
+  final ({String mood, String message})? coach;
 }
 
 enum KnowledgeStatus { mastered, toReview, notMastered }

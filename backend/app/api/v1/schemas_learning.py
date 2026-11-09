@@ -244,6 +244,13 @@ class EngagementHintOut(BaseModel):
     message: str
 
 
+class CoachOut(BaseModel):
+    """Le mot de Ludi après la réponse (§5.76), écrit par le code à l'âge de l'enfant."""
+
+    mood: Literal["proud", "happy", "close", "thinking"]
+    message: str
+
+
 class AttemptOut(BaseModel):
     """Écran 6 : correction immédiate."""
 
@@ -258,6 +265,7 @@ class AttemptOut(BaseModel):
         [], description="Remédiation : activités à jouer juste après celle-ci (déjà en place dans la séance)."
     )
     engagement_hint: EngagementHintOut | None = Field(None, description="Proposition de pause.")
+    coach: CoachOut | None = Field(None, description="Ludi, le compagnon de séance (§5.76), facultatif.")
 
 
 class HelpOut(BaseModel):

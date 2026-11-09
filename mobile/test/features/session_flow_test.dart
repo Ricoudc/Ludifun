@@ -449,6 +449,39 @@ void main() {
     expect(find.textContaining('Rappel'), findsNothing);
   });
 
+  testWidgets(
+    '§5.76 : Ludi dit un mot après la réponse ; sans lui (serveur ancien), rien ne change',
+    (tester) async {
+      FakeSessionBackend(server, 's1', [mcq('i1'), mcq('i2')]);
+      final original = server.handlers['POST /v1/sessions/s1/attempts']!;
+      var first = true;
+      server.on('POST /v1/sessions/s1/attempts', (r) async {
+        final (status, body) = await original(r);
+        final withCoach = first;
+        first = false;
+        return (
+          status,
+          {
+            ...body! as Map<String, Object?>,
+            if (withCoach)
+              'coach': {
+                'mood': 'thinking',
+                'message': 'Tu y es presque ! Refais le calcul étape par étape.',
+              },
+          },
+        );
+      });
+      await open(tester, 's1');
+      await tapAndSettle(tester, '1492');
+      expect(find.text('🤔 Tu y es presque ! Refais le calcul étape par étape.'), findsOneWidget);
+      expect(find.text('🧑‍🎓'), findsOneWidget);
+      await shot(tester, 's08b_ludi');
+      await tapAndSettle(tester, 'Continuer');
+      await tapAndSettle(tester, '1492');
+      expect(find.text('🧑‍🎓'), findsNothing);
+    },
+  );
+
   testWidgets('réponses au hasard : une pause est proposée', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1'), mcq('i2')]);
     final original = server.handlers['POST /v1/sessions/s1/attempts']!;
