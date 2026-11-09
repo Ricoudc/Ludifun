@@ -315,6 +315,10 @@ class MaterialQuestion(_Model):
     source: QuestionSource | None = None
     # Question créée par le calcul pour une notion de maths (jamais enregistrée : recalculée).
     generated: bool = False
+    # Exercice neuf sur une erreur qui revient (§5.74) : le type d'erreur visé, et pourquoi le
+    # piège est faux (dit à l'enfant après sa réponse). Absents : question ordinaire.
+    target_error: str | None = None
+    target_why: str | None = Field(default=None, max_length=300)
 
     def misconception_of(self, distractor: str) -> str | None:
         index = self.distractors.index(distractor)

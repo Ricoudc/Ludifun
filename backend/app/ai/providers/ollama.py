@@ -57,6 +57,7 @@ MAX_OUTPUT: dict[Stage, int] = {
     "practice": 1500,  # quelques questions et leurs citations
     "homework": 1500,  # les étapes d'un exercice et sa correction
     "teach": 500,  # une réaction et une question d'élève
+    "targeted": 1000,  # deux questions sur une erreur
 }
 # Étapes dont les consignes décrivent déjà chaque champ : le schéma n'est pas recopié en texte
 # (Ollama l'impose de toute façon avec `format`). Pour le matériel, il occupait à lui seul environ

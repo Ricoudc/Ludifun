@@ -16,7 +16,7 @@ Légende : ✅ fait · 🟡 en partie · ⬜ à faire. Les références « § »
 | 0 | Petites corrections : artefact de test versionné, adresses d'IA internes | Haute | ✅ |
 | 1 | Fiabilité pédagogique sur de vraies leçons | Très haute | 🟡 |
 | 2 | Performances de l'IA (Ollama sur une carte de 8 Go) | Très haute | 🟡 |
-| 3 | Moteur adaptatif : comprendre pourquoi l'enfant se trompe | Très haute | 🟡 |
+| 3 | Moteur adaptatif : comprendre pourquoi l'enfant se trompe | Très haute | ✅ |
 | 4 | Tableau de bord parental : « Que travailler cette semaine ? » | Haute | ✅ en partie |
 | 5 | Expérience de l'enfant : professeur virtuel, oral | Haute | 🟡 |
 | 6 | Distribution : téléphones réels, familles, RGPD, Google Play | Haute | 🟡 |
@@ -82,7 +82,7 @@ Fait :
   transfert, dernière révision ; et la décision qui en découle (« révision espacée », « exercices
   en plus », « reprendre les bases »), §5.73.
 - ✅ Revenir sur une connaissance préalable quand une notion échoue (§5.72).
-- ⬜ Exercice neuf généré sur une erreur qui revient (§118).
+- ✅ Exercice neuf généré sur une erreur qui revient (§118, §5.74).
 
 ## 4. Tableau de bord parental
 

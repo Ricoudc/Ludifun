@@ -309,6 +309,23 @@ class PracticeOutput(BaseModel):
     questions: list[PracticeQuestion] = Field(description="1 à 3 questions ; vide si rien ne s'y prête.")
 
 
+class TargetedQuestion(BaseModel):
+    """§5.74 : une question à choix qui vise une erreur que l'enfant refait."""
+
+    stem: str = Field(description="La question, compréhensible seule, sans la leçon sous les yeux.")
+    answer: str = Field(description="La bonne réponse, courte, telle que la leçon l'enseigne.")
+    distractors: list[str] = Field(description="Trois mauvaises réponses de même nature que la réponse.")
+    trap: str = Field(description="Celui des trois distracteurs où mène l'erreur, recopié tel quel.")
+    why: str = Field(description="En une phrase pour l'enfant : pourquoi ce piège est faux.")
+    difficulty: int = Field(1, description="1 : reconnaître ; 2 : réfléchir un peu.")
+
+
+class TargetedOutput(BaseModel):
+    """§5.74 : 1 ou 2 questions neuves sur une notion, qui visent l'erreur indiquée."""
+
+    questions: list[TargetedQuestion] = Field(description="1 ou 2 questions ; vide si rien ne s'y prête.")
+
+
 class PictureProposal(BaseModel):
     """Étape 28 : l'image d'une notion concrète, pour les jeux « apprendre par l'image »."""
 

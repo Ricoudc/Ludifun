@@ -1,16 +1,27 @@
 """Séances de révision (écrans 4 à 7)."""
 
 import uuid
-from typing import Any
+from datetime import datetime
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from app import clock
-from app.api.deps import AiProviders, AppSettings, ChildAi, ChildInScope, DbSession, Registry
+from app.ai.factory import AiConfigError
+from app.api.deps import (
+    AiProviders,
+    AppSettings,
+    ChildAi,
+    ChildInScope,
+    DbSession,
+    Registry,
+    get_ai_resolver,
+    get_database,
+)
 from app.api.errors import ApiError
 from app.api.v1.lessons import lesson_of_child
 from app.api.v1.rewards import rewards_out
@@ -38,7 +49,8 @@ from app.domain.decisions import Rule
 from app.domain.engagement import HINT_MESSAGES
 from app.domain.scoring import KnowledgeStatus
 from app.domain.text import display_text
-from app.services import ai_budget, goals, learning, rewards
+from app.services import ai_budget, goals, learning, rewards, targeted_practice
+from app.services.ai_settings import AiResolver
 from app.services.answer_evaluation import AnswerEvaluator
 from app.services.lesson_review import AWAITING_MESSAGE, awaiting_parent
 
@@ -328,7 +340,13 @@ async def extend(session_id: uuid.UUID, child: ChildInScope, db: DbSession, regi
 
 @router.post("/sessions/{session_id}/complete")
 async def complete(
-    session_id: uuid.UUID, child: ChildInScope, db: DbSession, settings: AppSettings
+    session_id: uuid.UUID,
+    child: ChildInScope,
+    db: DbSession,
+    settings: AppSettings,
+    request: Request,
+    background: BackgroundTasks,
+    resolver: Annotated[AiResolver, Depends(get_ai_resolver)],
 ) -> ReportOut:
     """Écran 7 : bilan, nouvelles maîtrises, prochaine révision, et ce que l'effort a rapporté."""
     revision = await session_of_child(db, child, session_id, lock=True)
@@ -339,6 +357,7 @@ async def complete(
         raise SESSION_CLOSED from exc
     award = await rewards.award(db, revision, done, now, ZoneInfo(settings.family_timezone))
     await db.commit()
+    await _targeted_later(db, settings, request, background, resolver, child, revision.lesson_id, now)
     outcome, lesson = done.outcome, done.lesson
     labels = {u.id: u.item.label for u in lesson.units}
     return ReportOut(
@@ -362,6 +381,29 @@ async def complete(
         lesson_mastered=outcome.lesson_mastered,
         can_review_errors=outcome.can_review_errors,
         rewards=rewards_out(award, now),
+    )
+
+
+async def _targeted_later(
+    db: DbSession,
+    settings: AppSettings,
+    request: Request,
+    background: BackgroundTasks,
+    resolver: AiResolver,
+    child: Child,
+    lesson_id: uuid.UUID,
+    now: datetime,
+) -> None:
+    """Exercice neuf sur une erreur qui revient (§5.74), préparé après la réponse. Sans IA prête
+    ou plafond du jour atteint : rien, le bilan n'en dépend jamais."""
+    if await ai_budget.seconds_until_budget(db, settings.ai_daily_budget_usd, now) is not None:
+        return
+    try:
+        _, llm = await resolver.for_child(db, child)
+    except AiConfigError:
+        return
+    background.add_task(
+        targeted_practice.prepare_quietly, get_database(request), llm, child.id, lesson_id, now
     )
 
 
