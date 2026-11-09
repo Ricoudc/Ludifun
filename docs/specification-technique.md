@@ -2090,6 +2090,32 @@ préalable fragile : la remédiation d'avant, inchangée. Contrat d'API inchang�
 Tests : `tests/domain/test_prerequisites.py`, `tests/api/test_adaptation.py`
 (`test_remediation_goes_back_to_a_prerequisite_first`).
 
+### 5.73 Profil par notion et la décision qui en découle (novembre 2026, règles 1.17.0)
+
+Feuille de route, point 3. L'écran « Compétences » montrait déjà, pour chaque notion, la
+réussite par niveau de compréhension (dont « transférer »), l'autonomie (réussites sans aide) et
+l'erreur la plus fréquente (§5.13, `app/domain/state.py`). S'y ajoutent :
+
+- `attempts` (réponses en tout), `median_seconds` (temps de réponse habituel sur les 8
+  dernières, d'après `attempts.duration_ms`), `time` (la phrase ; « C'est long » au-delà de
+  `profile.slow_seconds` = 30), `last_practiced_at` ;
+- `advice` : ce que les séances font de la notion, avec le fait qui le justifie. Domaine pur
+  `app/domain/notion_profile.py` (`notion_advice`) :
+  - **Reprendre les bases** : découverte ou fragile (score sous 50) ; activités faciles d'abord ;
+  - **Exercices en plus** : en cours d'acquisition, ou moins de la moitié des réussites sans aide
+    (`profile.independence_below` = 0,5) ; le niveau de compréhension qui manque est nommé ;
+  - **Révision espacée** : maîtrisée ; date de la prochaine révision (ou « dès la prochaine
+    séance » si elle est due).
+  - Rien pour une notion jamais travaillée.
+
+Ce n'est pas une nouvelle décision du moteur : c'est, dit au parent, ce que le moteur fait déjà.
+Champs nouveaux, facultatifs, de `NotionProgressOut` (contrat compatible). Application : une
+ligne « ⏱️ 6 réponses · Temps de réponse habituel : 12 s · dernière fois le 08/11 » et un encadré
+« ✏️ Exercices en plus : … » sous chaque notion dépliée.
+
+Tests : `tests/domain/test_notion_profile.py`, `tests/api/test_decisions.py`
+(`test_parent_sees_facts_levels_and_independence`), `parent_flow_test` (écran Compétences).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

@@ -231,6 +231,12 @@ class LevelRateOut(BaseModel):
     rate: float | None = Field(description="Réussite aux 10 dernières réponses de ce niveau ; null : jamais.")
 
 
+class NotionAdviceOut(BaseModel):
+    kind: Literal["basics", "practice", "spaced"]
+    label: str = Field(description="« Reprendre les bases », « Exercices en plus », « Révision espacée ».")
+    why: str = Field(description="Le fait qui la justifie, et ce que font les séances (§5.73).")
+
+
 class NotionProgressOut(BaseModel):
     id: uuid.UUID
     label: str
@@ -240,6 +246,14 @@ class NotionProgressOut(BaseModel):
     facts: str | None = Field(None, description="Fait observé, chiffré (« Sur les 8 dernières activités… »).")
     level_rates: list[LevelRateOut] = Field([], description="Réussite par niveau de compréhension (§114).")
     independence: float | None = Field(None, description="Part des réussites obtenues sans aide (§129).")
+    # Profil par notion (§5.73) : champs nouveaux, facultatifs.
+    attempts: int = Field(0, description="Réponses portant sur la notion, en tout.")
+    median_seconds: int | None = Field(None, description="Temps de réponse habituel (8 dernières).")
+    time: str | None = Field(None, description="Le temps de réponse, en une phrase pour le parent.")
+    last_practiced_at: datetime | None = Field(None, description="Dernière réponse sur la notion.")
+    advice: NotionAdviceOut | None = Field(
+        None, description="Décision qui découle du profil ; null : jamais travaillée."
+    )
 
 
 class SkillReportOut(BaseModel):

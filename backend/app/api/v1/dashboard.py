@@ -28,6 +28,7 @@ from app.api.v1.schemas_dashboard import (
     LevelRateOut,
     MistakeOut,
     MistakesOut,
+    NotionAdviceOut,
     NotionProgressOut,
     NotionResultOut,
     Outcome,
@@ -61,6 +62,7 @@ from app.domain.errors import ERROR_LABELS
 from app.domain.help import TITLES as HELP_TITLES
 from app.domain.help import HelpKind
 from app.domain.knowledge import KnowledgeMaterial, SkillVerb
+from app.domain.notion_profile import NotionAdvice, notion_advice, time_sentence
 from app.domain.state import facts_sentence
 from app.domain.understanding import LEVEL_LABELS, LEVEL_NAMES, CognitiveLevel, MasteryLevel, level_color
 from app.services import accounts, dashboard, export
@@ -406,11 +408,18 @@ async def get_programme(child_id: uuid.UUID, parent: CurrentParent, db: DbSessio
     )
 
 
+def _advice_out(advice: NotionAdvice | None) -> NotionAdviceOut | None:
+    if advice is None:
+        return None
+    return NotionAdviceOut(kind=advice.kind.value, label=advice.label, why=advice.why)
+
+
 @router.get("/children/{child_id}/skills")
 async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) -> SkillsOut:
     """Compétences et notions de chaque leçon, avec leur niveau de 0 à 5 et ce qui manque encore."""
     child = await own_child(db, parent, child_id)
-    lessons = await dashboard.lessons_progress(db, child.id, limit=20, now=clock.now())
+    now = clock.now()
+    lessons = await dashboard.lessons_progress(db, child.id, limit=20, now=now)
     return SkillsOut(
         lessons=[
             LessonProgressOut(
@@ -451,6 +460,11 @@ async def get_skills(child_id: uuid.UUID, parent: CurrentParent, db: DbSession) 
                             for level, rate in notion.state.level_rates.items()
                         ],
                         independence=notion.state.independence,
+                        attempts=notion.state.attempts,
+                        median_seconds=notion.state.median_seconds,
+                        time=time_sentence(notion.state),
+                        last_practiced_at=notion.state.last_at,
+                        advice=_advice_out(notion_advice(notion.level, notion.state, notion.mastery, now)),
                     )
                     for notion in lesson.notions
                 ],

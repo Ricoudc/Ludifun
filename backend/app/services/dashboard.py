@@ -29,7 +29,7 @@ from app.db import models as db
 from app.domain.activities.base import ActivityCode, BuiltActivity
 from app.domain.errors import ERROR_LABELS, ErrorOccurrence, ErrorType, recurring_errors
 from app.domain.knowledge import SkillVerb, Subject
-from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE
+from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE, Mastery
 from app.domain.skill_report import SkillNotion, SkillReport, skill_report
 from app.domain.state import NotionState, Observation, notion_state
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
@@ -446,6 +446,7 @@ class NotionProgress:
     importance: int
     level: NotionLevel
     state: NotionState = field(default_factory=lambda: notion_state([]))
+    mastery: Mastery | None = None
 
 
 @dataclass(frozen=True)
@@ -487,7 +488,8 @@ async def lessons_progress(
     result = []
     for lesson in lessons:
         units = await load_units(session, lesson)
-        levels = notion_levels(units, await load_masteries(session, child_id, units), now)
+        masteries = await load_masteries(session, child_id, units)
+        levels = notion_levels(units, masteries, now)
         notions = [
             NotionProgress(
                 units.key_to_id[u.id],
@@ -495,6 +497,7 @@ async def lessons_progress(
                 u.item.importance,
                 levels[units.key_to_id[u.id]],
                 notion_state(observations.get(units.key_to_id[u.id], [])),
+                masteries.get(u.id),
             )
             for u in units.units
         ]
@@ -539,6 +542,7 @@ async def notion_observations(
             db.Attempt.score,
             db.SessionItem.help_level,
             db.AttemptEvidence.error_type,
+            db.Attempt.duration_ms,
         )
         .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
@@ -546,9 +550,9 @@ async def notion_observations(
         .where(db.RevisionSession.child_id == child_id, db.RevisionSession.lesson_id.in_(lesson_ids))
     )
     by_notion: dict[uuid.UUID, list[Observation]] = defaultdict(list)
-    for knowledge_id, at, level, result, score, help_level, error_type in rows:
+    for knowledge_id, at, level, result, score, help_level, error_type, duration_ms in rows:
         by_notion[knowledge_id].append(
-            Observation(at, level, float(result), float(score), help_level, error_type)
+            Observation(at, level, float(result), float(score), help_level, error_type, duration_ms)
         )
     return by_notion
 

@@ -233,10 +233,37 @@ class NotionFacts extends StatelessWidget {
             '${notion.independence == null ? '' : ' · seul ${(notion.independence! * 100).round()} %'}',
             style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
+        if (_profile(notion) case final profile?)
+          Text(profile, style: const TextStyle(fontSize: 12, color: Colors.black54)),
         Text('💬 ${notion.explanation}', style: const TextStyle(fontStyle: FontStyle.italic)),
+        if (notion.advice case final advice?)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${advice.emoji} ${advice.label} : ${advice.why}',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
       ],
     );
   }
+}
+
+/// Tentatives, temps de réponse et dernière révision, en une ligne.
+String? _profile(NotionProgress notion) {
+  if (notion.attempts == 0) return null;
+  final parts = [
+    '${notion.attempts} réponse${notion.attempts > 1 ? 's' : ''}',
+    if (notion.time case final time?) time.replaceAll(RegExp(r'\.$'), ''),
+    if (notion.lastPracticedAt case final at?)
+      'dernière fois le ${at.day.toString().padLeft(2, '0')}/${at.month.toString().padLeft(2, '0')}',
+  ];
+  return '⏱️ ${parts.join(' · ')}';
 }
 
 /// Bilan de la compétence : où en est l'enfant, ce qui a été observé, et quoi faire à la maison.

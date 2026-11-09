@@ -32,6 +32,7 @@ class Observation:
     score: float  # résultat brut de la réponse (0 à 1)
     help_level: int  # aide la plus forte demandée avant la réponse (0 : seul)
     error_type: str | None = None
+    duration_ms: int | None = None  # temps de réponse ; None : pas mesuré
 
 
 @dataclass(frozen=True)
@@ -43,6 +44,9 @@ class NotionState:
     partial: int  # à moitié, sans aide
     failed: int
     main_error: tuple[str, int] | None  # erreur la plus fréquente récemment (libellé, nombre)
+    attempts: int = 0  # toutes les réponses portant sur la notion
+    median_seconds: int | None = None  # temps de réponse habituel, sur les RECENT dernières
+    last_at: datetime | None = None  # dernière réponse
 
     @property
     def recent(self) -> int:
@@ -78,7 +82,20 @@ def notion_state(observations: Sequence[Observation]) -> NotionState:
     if errors:
         code, count = errors.most_common(1)[0]
         main_error = (_error_label(code), count)
-    return NotionState(rates, independence, alone, helped, partial, failed, main_error)
+    durations = sorted(o.duration_ms for o in recent if o.duration_ms)
+    median = round(durations[len(durations) // 2] / 1000) if durations else None
+    return NotionState(
+        rates,
+        independence,
+        alone,
+        helped,
+        partial,
+        failed,
+        main_error,
+        attempts=len(ordered),
+        median_seconds=median,
+        last_at=ordered[-1].at if ordered else None,
+    )
 
 
 def facts_sentence(state: NotionState) -> str | None:

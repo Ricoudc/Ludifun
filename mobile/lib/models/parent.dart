@@ -286,6 +286,22 @@ class HistoryPage {
   final String? nextBefore;
 }
 
+/// Ce que les séances font de la notion, et pourquoi (§5.73).
+class NotionAdvice {
+  const NotionAdvice({required this.kind, required this.label, required this.why});
+
+  /// `basics`, `practice` ou `spaced`.
+  final String kind;
+  final String label;
+  final String why;
+
+  String get emoji => switch (kind) {
+    'basics' => '🧱',
+    'practice' => '✏️',
+    _ => '📅',
+  };
+}
+
 /// Une notion et son niveau, dans l'écran « Compétences ».
 class NotionProgress {
   const NotionProgress({
@@ -297,6 +313,10 @@ class NotionProgress {
     this.facts,
     this.levelRates = const [],
     this.independence,
+    this.attempts = 0,
+    this.time,
+    this.lastPracticedAt,
+    this.advice,
   });
 
   factory NotionProgress.fromJson(Json json) => NotionProgress(
@@ -311,12 +331,38 @@ class NotionProgress {
         (name: (r as Json)['name'] as String, rate: (r['rate'] as num?)?.toDouble()),
     ],
     independence: (json['independence'] as num?)?.toDouble(),
+    attempts: json['attempts'] as int? ?? 0,
+    time: json['time'] as String?,
+    lastPracticedAt: switch (json['last_practiced_at']) {
+      final String at => DateTime.tryParse(at)?.toLocal(),
+      _ => null,
+    },
+    advice: switch (json['advice']) {
+      final Json a => NotionAdvice(
+        kind: a['kind'] as String,
+        label: a['label'] as String,
+        why: a['why'] as String,
+      ),
+      _ => null,
+    },
   );
 
   final String id;
   final String label;
   final int importance;
   final int level;
+
+  /// Réponses portant sur la notion, en tout (§5.73).
+  final int attempts;
+
+  /// Temps de réponse habituel, en une phrase.
+  final String? time;
+
+  /// Dernière réponse sur la notion.
+  final DateTime? lastPracticedAt;
+
+  /// Décision qui découle du profil : reprendre les bases, exercices en plus, révision espacée.
+  final NotionAdvice? advice;
 
   /// Interprétation du moteur (d'après le score et les niveaux validés).
   final String explanation;
