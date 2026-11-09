@@ -1745,6 +1745,12 @@ void main() {
               'detail': 'Au dîner, demandez à Emma de vous l\'expliquer avec ses mots.',
               'why': 'Notion la plus fragile.',
             },
+            {
+              'kind': 'subject',
+              'title': 'Reprendre les maths avec Emma',
+              'detail': 'Choisissez ensemble une leçon de cette matière.',
+              'why': 'Note moyenne en baisse : 7,5 → 5 / 10 sur les 4 dernières semaines.',
+            },
           ],
         },
       ),
@@ -1755,7 +1761,13 @@ void main() {
     expect(find.text('Relire et valider « Les centaines »'), findsOneWidget);
     expect(find.text('Notion la plus fragile.'), findsOneWidget);
     expect(find.text('🗣️'), findsOneWidget);
+    // §5.75 : la matière qui décroche, et le temps passé chaque semaine sous le graphique.
+    expect(find.text('Reprendre les maths avec Emma'), findsOneWidget);
+    expect(find.text('📉'), findsOneWidget);
     await shot(tester, 'p03b_cette_semaine');
+    await tester.scrollUntilVisible(find.text('37 min'), 200);
+    expect(find.text('37 min'), findsOneWidget);
+    expect(find.text('8 min'), findsOneWidget);
   });
 
   testWidgets('sans « En bref » (serveur plus ancien) : le tableau de bord reste le même', (

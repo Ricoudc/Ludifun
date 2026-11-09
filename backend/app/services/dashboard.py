@@ -32,6 +32,7 @@ from app.domain.knowledge import SkillVerb, Subject
 from app.domain.mastery import FRAGILE_RATE, MASTERED_RATE, Mastery
 from app.domain.skill_report import SkillNotion, SkillReport, skill_report
 from app.domain.state import NotionState, Observation, notion_state
+from app.domain.subject_trend import HALF, SessionScore, slipping_subject
 from app.domain.understanding import MasteryLevel, NotionLevel, notion_level
 from app.domain.weekly_plan import WeakNotion as PlanNotion
 from app.domain.weekly_plan import WeekAction, WeekFacts, week_actions
@@ -331,8 +332,23 @@ async def week_plan_of(
             select(db.KnowledgeItem.statement).where(db.KnowledgeItem.id == first.knowledge_id)
         )
         weak = PlanNotion(first.label, statement or first.label, first.lesson_title)
+    since = local_midnight(week_start(now, tz) - timedelta(weeks=2 * HALF - 1), tz)
+    scores = [
+        SessionScore(subject or Subject.OTHER, week_start(completed_at, tz), float(score))
+        for completed_at, score, subject in await session.execute(
+            select(db.RevisionSession.completed_at, db.RevisionSession.score_on_10, db.Lesson.subject)
+            .join(db.Lesson, db.Lesson.id == db.RevisionSession.lesson_id)
+            .where(
+                db.RevisionSession.child_id == child_id,
+                db.RevisionSession.status == "completed",
+                db.RevisionSession.score_on_10.is_not(None),
+                db.RevisionSession.completed_at >= since,
+            )
+        )
+    ]
     return week_actions(
         WeekFacts(
+            slipping=slipping_subject(scores, week_start(now, tz)),
             child=child.display_name,
             today=today,
             awaiting_lessons=awaiting,

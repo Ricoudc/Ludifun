@@ -2,7 +2,7 @@
 plusieurs semaines (deux matières, une semaine creuse, une séance à minuit passé)."""
 
 from collections import Counter
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -232,3 +232,25 @@ async def test_dashboard_is_parent_only(client: AsyncClient) -> None:
         f"/v1/children/{child_id}/dashboard", params={"weeks": 13}, headers=auth(family["parent"])
     )
     assert too_many.status_code == 422
+
+
+async def test_the_subject_that_slips_is_in_the_week_plan(
+    client: AsyncClient,
+    db: AsyncSession,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    """§5.75 : deux bonnes semaines, puis deux mauvaises en histoire : « Reprendre l'histoire »."""
+    family = await family_with_device(client)
+    parent, token, child_id = family["parent"], family["device"], family["child"]["id"]
+    now[0] = paris(2026, 10, 19, 17, 0)
+    lesson = await upload_lesson(client, token)
+    for week, good in enumerate((True, True, False, False)):
+        for day in (0, 2):
+            now[0] = paris(2026, 10, 19, 17, 0) + timedelta(days=7 * week + day)
+            # Bonnes semaines : tout sauf les États généraux (la leçon reste à réviser).
+            knows: Knows = (lambda key: key != "k3") if good else (lambda _: False)
+            await revise(client, db, token, lesson["id"], knows)
+    board = (await client.get(f"/v1/children/{child_id}/dashboard", headers=auth(parent))).json()
+    plan = board["week_plan"]
+    assert plan[0]["kind"] == "subject" and plan[0]["title"].startswith("Reprendre l'histoire")
+    assert "Note moyenne en baisse" in plan[0]["why"]

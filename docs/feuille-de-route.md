@@ -17,7 +17,7 @@ Légende : ✅ fait · 🟡 en partie · ⬜ à faire. Les références « § »
 | 1 | Fiabilité pédagogique sur de vraies leçons | Très haute | 🟡 |
 | 2 | Performances de l'IA (Ollama sur une carte de 8 Go) | Très haute | 🟡 |
 | 3 | Moteur adaptatif : comprendre pourquoi l'enfant se trompe | Très haute | ✅ |
-| 4 | Tableau de bord parental : « Que travailler cette semaine ? » | Haute | ✅ en partie |
+| 4 | Tableau de bord parental : « Que travailler cette semaine ? » | Haute | ✅ |
 | 5 | Expérience de l'enfant : professeur virtuel, oral | Haute | 🟡 |
 | 6 | Distribution : téléphones réels, familles, RGPD, Google Play | Haute | 🟡 |
 
@@ -92,8 +92,8 @@ assistant parent.
 À faire :
 - ✅ **« Que travailler avec mon enfant cette semaine ? »** : trois actions concrètes, tirées des
   données, sans demander au parent d'être enseignant (§5.71).
-- ⬜ Y ajouter la matière qui décroche (moyenne en baisse sur plusieurs semaines).
-- ⬜ Temps passé à apprendre, par semaine.
+- ✅ Y ajouter la matière qui décroche (moyenne en baisse sur plusieurs semaines), §5.75.
+- ✅ Temps passé à apprendre, par semaine (écrit sous le graphique « Progrès », §5.75).
 
 ## 5. Expérience de l'enfant
 
