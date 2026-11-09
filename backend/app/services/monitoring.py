@@ -14,11 +14,24 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AiRun, FamilyAiSettings, Lesson
+from app.ai.pricing import run_cost
+from app.db.models import (
+    AiRun,
+    FamilyAiSettings,
+    KnowledgeItem,
+    KnowledgeMaterial,
+    Lesson,
+    QuestionReport,
+    RevisionSession,
+    SessionItem,
+)
 from app.services.lesson_pipeline import STAGE_LABELS
 from app.services.lesson_processing import IN_PROGRESS
 from app.services.live_calls import LiveCall, LiveCalls
 
+# Étapes qui produisent des exercices : leurs avertissements « élément : raison » sont des
+# éléments écartés par les contrôles du code (§5.80).
+EXERCISE_STAGES = frozenset({"material", "practice", "targeted"})
 RECENT_LESSONS = 15
 RECENT_ERRORS = 15
 STATS_DAYS = 7
@@ -47,6 +60,45 @@ def short(lesson_id: uuid.UUID | None) -> str:
 def clean_message(text: str) -> str:
     text = _INPUT.sub("input_value=…", text)
     return text if len(text) <= MESSAGE_MAX else text[: MESSAGE_MAX - 1] + "…"
+
+
+def _cost(runs: list[AiRun]) -> float | None:
+    """Coût en dollars (prix publics, `app.ai.pricing`) ; None si un modèle est inconnu."""
+    costs = [run_cost(r.model, r.input_tokens, r.output_tokens) for r in runs]
+    return None if any(c is None for c in costs) else round(sum(c or 0 for c in costs), 4)
+
+
+def _rejected(runs: list[AiRun]) -> int:
+    return sum(
+        1
+        for r in runs
+        if r.stage in EXERCISE_STAGES
+        for w in r.warnings
+        if " : " in str(w) and not str(w).startswith("taux de rejet")
+    )
+
+
+async def _quality(db: AsyncSession, lesson_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
+    """Par leçon : notions gardées, questions à choix, questions signalées par l'enfant (§5.80)."""
+    found: dict[uuid.UUID, dict[str, int]] = {
+        i: {"notions": 0, "questions": 0, "reports": 0} for i in lesson_ids
+    }
+    for lesson_id, material in await db.execute(
+        select(KnowledgeItem.lesson_id, KnowledgeMaterial.material)
+        .join(KnowledgeMaterial, KnowledgeMaterial.knowledge_id == KnowledgeItem.id)
+        .where(KnowledgeItem.lesson_id.in_(lesson_ids), KnowledgeItem.removed_at.is_(None))
+    ):
+        found[lesson_id]["notions"] += 1
+        found[lesson_id]["questions"] += len(material.get("questions", []))
+    for lesson_id, count in await db.execute(
+        select(RevisionSession.lesson_id, func.count(QuestionReport.id))
+        .join(SessionItem, SessionItem.id == QuestionReport.session_item_id)
+        .join(RevisionSession, RevisionSession.id == SessionItem.session_id)
+        .where(RevisionSession.lesson_id.in_(lesson_ids))
+        .group_by(RevisionSession.lesson_id)
+    ):
+        found[lesson_id]["reports"] = count
+    return found
 
 
 def _seconds(delta: timedelta) -> int:
@@ -79,6 +131,9 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
     for run in week:
         grouped[(run.model, run.stage)].append(run)
 
+    quality = await _quality(db, [lesson.id for lesson in recent])
+    analysed = {r.lesson_id for r in week if r.lesson_id is not None}
+    week_cost = _cost(list(week))
     errors = (
         await db.scalars(
             select(AiRun).where(AiRun.status != "ok").order_by(AiRun.created_at.desc()).limit(RECENT_ERRORS)
@@ -121,6 +176,12 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 "pages": lesson.page_count,
                 "subject": lesson.subject,
                 "ai_s": round(sum(r.latency_ms for r in runs_by_lesson.get(lesson.id, [])) / 1000),
+                # Coût et qualité des exercices (§5.80) : des chiffres, jamais le texte.
+                "cost_usd": _cost(runs_by_lesson.get(lesson.id, [])),
+                "exercises": {
+                    **quality[lesson.id],
+                    "rejected": _rejected(runs_by_lesson.get(lesson.id, [])),
+                },
                 "steps": [
                     {
                         "stage": STAGE_LABELS.get(run.stage, run.stage),  # type: ignore[call-overload]
@@ -144,9 +205,17 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 "ok": sum(1 for r in group if r.status == "ok"),
                 "median_s": round(statistics.median(r.latency_ms for r in group) / 1000),
                 "max_s": round(max(r.latency_ms for r in group) / 1000),
+                "cost_usd": _cost(group),
             }
             for (model, stage), group in sorted(grouped.items())
         ],
+        "cost": {
+            "week_usd": week_cost,
+            "lessons": len(analysed),
+            "per_lesson_usd": (
+                round(week_cost / len(analysed), 4) if week_cost is not None and analysed else None
+            ),
+        },
         "errors": [
             {
                 "at": run.created_at.isoformat(timespec="seconds"),
@@ -159,6 +228,10 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
             for run in errors
         ],
     }
+
+
+def _dollars(value: float | None) -> str:
+    return "?" if value is None else f"{value:.4f} $"
 
 
 def as_text(data: dict[str, Any]) -> str:
@@ -187,7 +260,12 @@ def as_text(data: dict[str, Any]) -> str:
         lines.append(
             f"- {lesson['created_at']} · {lesson['lesson']} · {lesson['status']}{failure} · "
             f"{lesson['source']}, {lesson['pages']} page(s) · {lesson['subject'] or '?'} · "
-            f"IA {lesson['ai_s']} s"
+            f"IA {lesson['ai_s']} s · coût {_dollars(lesson['cost_usd'])}"
+        )
+        q = lesson["exercises"]
+        lines.append(
+            f"    exercices : {q['notions']} notion(s), {q['questions']} question(s), "
+            f"{q['rejected']} écarté(s) par les contrôles, {q['reports']} signalée(s)"
         )
         for s in lesson["steps"]:
             lines.append(
@@ -198,9 +276,14 @@ def as_text(data: dict[str, Any]) -> str:
     lines += ["", f"== Durées par modèle ({STATS_DAYS} derniers jours) =="]
     lines += [
         f"- {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "
-        f"médiane {s['median_s']} s, max {s['max_s']} s"
+        f"médiane {s['median_s']} s, max {s['max_s']} s, coût {_dollars(s['cost_usd'])}"
         for s in data["stats"]
     ] or ["aucun appel"]
+    cost = data["cost"]
+    lines.append(
+        f"Coût sur {STATS_DAYS} jours : {_dollars(cost['week_usd'])} pour {cost['lessons']} leçon(s), "
+        f"soit {_dollars(cost['per_lesson_usd'])} par leçon"
+    )
     lines += ["", "== Dernières erreurs de l'IA =="]
     lines += [
         f"- {e['at']} · {e['lesson']} · {e['stage']} ({e['model']}) · {e['status']} : {e['message']}"

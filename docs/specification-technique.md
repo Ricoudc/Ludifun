@@ -2252,6 +2252,25 @@ Ce n'est pas un jugement de qualité : les invariants pédagogiques (pas deux fo
 part de « se rappeler », difficulté selon le score…) restent dans leurs propres tests ; celui-ci
 dit seulement ce qui a changé, pour qu'aucun changement de séance ne passe inaperçu.
 
+### 5.80 Coût par leçon et qualité des exercices dans le suivi (novembre 2026)
+
+Feuille de route, suivi technique. La page `/suivi` (et le rapport texte, `Ludifun.bat` choix 10)
+montre, pour chacune des 15 dernières leçons :
+
+- **le coût** de ses appels à l'IA, d'après les prix publics de `app/ai/pricing.py` (ceux du
+  plafond journalier) ; IA locale (Ollama, Tesseract) : 0 ; « ? » si un modèle n'a pas de prix
+  connu (le coût n'est jamais deviné) ;
+- **la qualité des exercices** : notions gardées (hors notions retirées par le parent),
+  questions à choix, éléments écartés par les contrôles du code (avertissements « élément :
+  raison » des étapes matériel, sites de confiance, exercice sur une erreur), questions signalées
+  🚩 par l'enfant. En rouge : une question signalée, ou plus d'éléments écartés que de questions.
+
+Et, sur 7 jours : le coût par modèle et par étape, le coût total et le coût moyen par leçon
+analysée. Toujours des chiffres seulement : ni prénom, ni titre, ni texte de leçon.
+
+Tests : `tests/api/test_monitoring.py` (page, données, rapport ; prix publics, modèle inconnu,
+éléments écartés comptés).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

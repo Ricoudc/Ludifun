@@ -1,6 +1,19 @@
 // Page /suivi : relit /suivi/donnees toutes les 3 secondes. Textes insérés avec textContent.
 "use strict";
 
+// Coût en dollars d'après les prix publics (« ? » : modèle dont le prix est inconnu).
+function dollars(v) {
+  return v === null || v === undefined ? "?" : v.toFixed(4) + " $";
+}
+
+// Qualité des exercices d'une leçon (§5.80) : des chiffres, jamais le texte.
+function exercices(q) {
+  if (!q) return "";
+  const cls = q.reports > 0 || q.rejected > q.questions ? "bad" : "";
+  return el("span", q.notions + " notion(s), " + q.questions + " question(s), " + q.rejected +
+    " écarté(s), " + q.reports + " signalée(s)", cls);
+}
+
 function duree(s) {
   if (s === null || s === undefined) return "en cours";
   if (s < 60) return s + " s";
@@ -71,11 +84,18 @@ function afficher(d) {
         s.status === "ok" ? "" : "bad"));
       for (const note of s.notes || []) etapes.appendChild(el("div", "· " + note, "muted"));
     }
-    return ligne([quand(l.created_at), l.lesson, etat, l.source + ", " + l.pages + " p.", duree(l.ai_s), etapes]);
-  }), "Aucune leçon.", 6);
+    return ligne([quand(l.created_at), l.lesson, etat, l.source + ", " + l.pages + " p.", duree(l.ai_s),
+      dollars(l.cost_usd), exercices(l.exercises), etapes]);
+  }), "Aucune leçon.", 8);
+
+  if (d.cost) {
+    document.getElementById("cout").textContent = "Coût sur 7 jours : " + dollars(d.cost.week_usd) + " pour " +
+      d.cost.lessons + " leçon(s), soit " + dollars(d.cost.per_lesson_usd) + " par leçon.";
+  }
 
   remplir("stats", d.stats.map((s) =>
-    ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.max_s)])), "Aucun appel.", 5);
+    ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.max_s), dollars(s.cost_usd)])),
+    "Aucun appel.", 6);
 
   remplir("erreurs", d.errors.map((e) =>
     ligne([quand(e.at), e.lesson, e.stage, e.model, el("span", e.status, "bad"), e.message])), "Aucune erreur.", 6);
