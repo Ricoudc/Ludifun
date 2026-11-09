@@ -129,6 +129,10 @@ class CorrectionView extends StatelessWidget {
             ),
           ),
         ),
+        if (correction.coach case final coach?) ...[
+          const SizedBox(height: 12),
+          LudiBubble(mood: coach.mood, message: coach.message),
+        ],
         // Carte et coloriage : les bonnes zones sur le dessin (vert trouvé, orange manqué, rouge touché
         // à tort ; coloriage : les couleurs attendues).
         if (item.payload['figure'] case {'id': final String figureId}) ...[
@@ -268,4 +272,46 @@ class CorrectionView extends StatelessWidget {
       _ => text,
     };
   }
+}
+
+/// Ludi, le compagnon de séance (§5.76) : un mot après chaque réponse, écrit par le serveur à
+/// l'âge de l'enfant.
+class LudiBubble extends StatelessWidget {
+  const LudiBubble({required this.mood, required this.message, super.key});
+
+  final String mood;
+  final String message;
+
+  static String face(String mood) => switch (mood) {
+    'proud' => '🥳',
+    'happy' => '😊',
+    'close' => '🤏',
+    _ => '🤔',
+  };
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Ludi : $message',
+    excludeSemantics: true,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('🧑‍🎓', style: TextStyle(fontSize: 34)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: LudiColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              '${face(mood)} $message',
+              style: const TextStyle(fontSize: 18, height: 1.3),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

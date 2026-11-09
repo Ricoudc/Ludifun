@@ -173,3 +173,22 @@ async def test_remediation_goes_back_to_a_prerequisite_first(
     assert reasons[0].startswith("Échecs répétés sur « États généraux » : on revient d'abord sur « 1789 »")
     assert reasons[1].startswith("2 échecs sur cette notion")
     assert [d["rule"] for d in detail["decisions"]].count("prerequisite") == 1
+
+
+async def test_ludi_says_a_word_after_each_answer(
+    client: AsyncClient,
+    db: AsyncSession,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    """§5.76 : un mot après chaque réponse ; la série de 3 est saluée ; une erreur dit quoi regarder."""
+    token, _, session = await start(client)
+    single = [i for i in session["items"] if i["type"] not in ("MATCH", "SPEED_CHALLENGE")]
+    coaches = [
+        (await answer(client, db, token, session["id"], item, lambda _: True, 9000))["coach"]
+        for item in single[:3]
+    ]
+    assert all(c is not None and c["message"] for c in coaches)
+    assert coaches[0]["mood"] == "happy"
+    assert coaches[2] == {"mood": "proud", "message": "3 bonnes réponses de suite, impressionnant !"}  # CM1
+    wrong = (await answer(client, db, token, session["id"], single[3], lambda _: False, 9000))["coach"]
+    assert wrong["mood"] == "thinking" and "nul" not in wrong["message"]

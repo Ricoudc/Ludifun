@@ -101,8 +101,8 @@ Fait : « Enseigne-moi », aides progressives, voix (dictées, sons, anglais), j
 jour, missions du jour.
 
 À faire :
-- ⬜ Un personnage qui accompagne la séance et explique l'erreur à l'âge de l'enfant
-  (« Tu y es presque ! Regarde la deuxième étape. »).
+- ✅ Un personnage qui accompagne la séance et explique l'erreur à l'âge de l'enfant
+  (« Tu y es presque ! Regarde la deuxième étape. ») : Ludi, §5.76.
 - ⬜ Réponses à voix haute (reconnaissance vocale), pour les plus jeunes.
 - ⬜ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage.
 
