@@ -2208,7 +2208,12 @@ complétée jusqu'à sa durée minimale. La raison le dit : « Pour apprendre et
 ici, on retrouve la réponse sans la voir. » Une leçon qui n'a aucun format « se rappeler » garde
 sa séance telle quelle.
 
-Tests : `tests/domain/test_recall_guard.py` (toutes les leçons de référence, plusieurs graines).
+Correction au passage : deux notions d'une même séance ne reçoivent plus la même question (deux
+événements de 1789 avaient la même « droite graduée ») ; le composeur prend une autre question,
+sinon un autre format de la notion (`SessionComposer._sequence`).
+
+Tests : `tests/domain/test_recall_guard.py` (toutes les leçons de référence, plusieurs graines ;
+aucune question posée deux fois dans une séance).
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

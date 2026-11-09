@@ -834,14 +834,35 @@ class SessionComposer:
         if chain is None:
             chain = [(u, *options[u.id][0]) for u in playable]
 
-        activities = []
-        for unit, code, difficulty in chain:
+        activities: list[BuiltActivity] = []
+        asked = {fingerprint(a) for a in previous}
+        for index, (unit, code, difficulty) in enumerate(chain):
+            activity = self._fresh(code, unit, difficulty, rng, asked)
+            if fingerprint(activity) in asked:
+                # Deux notions de la séance donneraient la même question (deux événements de 1789
+                # sur la droite graduée) : un autre format de la notion, s'il en reste un qui ne
+                # suit ni ne précède le même format.
+                before = activities[-1].type if activities else last
+                after = chain[index + 1][1] if index + 1 < len(chain) else None
+                for other, level in options[unit.id]:
+                    if other in (code, before, after) or other in used.get(unit.id, set()):
+                        continue
+                    candidate = self._fresh(other, unit, level, rng, asked)
+                    if fingerprint(candidate) not in asked:
+                        code, activity = other, candidate
+                        break
             used.setdefault(unit.id, set()).add(code)
-            activities.append(self._fresh(code, unit, difficulty, rng))
+            asked.add(fingerprint(activity))
+            activities.append(activity)
         return activities
 
     def _fresh(
-        self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int, rng: random.Random
+        self,
+        code: ActivityCode,
+        unit: KnowledgeUnit,
+        difficulty: int,
+        rng: random.Random,
+        asked: frozenset[str] | set[str] = frozenset(),
     ) -> BuiltActivity:
         """L'activité, avec une question pas encore posée aux séances précédentes si la notion en
         a une (autre question du QCM, autre affirmation, autre ordre…). La leçon prime (§5.58) :
@@ -851,7 +872,9 @@ class SessionComposer:
         first = activity_type.build([unit], difficulty, rng)
 
         def fresh(activity: BuiltActivity) -> bool:
-            return not self.recent or fingerprint(activity) not in self.recent
+            # Pas posée aux séances précédentes, ni déjà dans cette séance (`asked`).
+            seen = fingerprint(activity)
+            return seen not in asked and (not self.recent or seen not in self.recent)
 
         if fresh(first) and first.solution.get("from_lesson") is not False:
             return first

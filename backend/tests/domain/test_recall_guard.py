@@ -56,3 +56,13 @@ def test_the_guard_replaces_recognition_in_the_core(
     ]
     # Sur la Révolution (beaucoup de QCM et de vrai/faux), le garde-fou sert au moins une fois.
     assert guarded and all(cognitive_level(i.activity.type, i.activity.difficulty) >= 2 for i in guarded)
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_two_notions_never_get_the_same_question(
+    lesson: ReferenceLesson, registry: ActivityRegistry, seed: int
+) -> None:
+    """Deux événements de 1789 ne reçoivent plus la même « droite graduée » dans une séance."""
+    plan = SessionComposer(registry).compose(list(lesson.units.values()), {}, NOW, seed=seed)
+    asked = [fingerprint(i.activity) for i in plan.items if not i.reason["facts"].get("repeat")]
+    assert len(asked) == len(set(asked)), lesson.name
