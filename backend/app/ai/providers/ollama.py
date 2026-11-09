@@ -21,7 +21,17 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from app.ai.images import shrink
-from app.ai.ports import AIContextFull, AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.ports import (
+    AIContextFull,
+    AIError,
+    AIInvalidOutput,
+    LLMResult,
+    PageImage,
+    Prompt,
+    Stage,
+    Usage,
+    schema_error,
+)
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
 from app.ai.schemas import OcrPage, OcrResult
 
@@ -215,7 +225,7 @@ class OllamaProvider:
         try:
             output = schema.model_validate(parse_json(content))
         except (ValidationError, json.JSONDecodeError) as exc:
-            raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
+            raise schema_error(exc) from exc
         return LLMResult(
             output,
             Usage(

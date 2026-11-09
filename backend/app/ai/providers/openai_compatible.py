@@ -22,13 +22,44 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from app.ai.ports import AIError, AIInvalidOutput, AIRefused, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.ports import (
+    AIError,
+    AIInvalidOutput,
+    AIRefused,
+    LLMResult,
+    PageImage,
+    Prompt,
+    Stage,
+    Usage,
+    schema_error,
+)
 
 TIMEOUT_S = 180.0
 MAX_RATE_RETRIES = 3  # nouveaux essais après un refus « trop de demandes par minute »
 MAX_RATE_WAIT_S = 65.0  # au-delà (quota du jour), on n'attend pas
 _TRY_AGAIN = re.compile(r"try again in (?:(\d+)m)?(\d+(?:\.\d+)?)(ms|s)\b", re.IGNORECASE)
 _sleep = asyncio.sleep  # remplacé dans les tests
+
+
+def error_detail(response: httpx.Response) -> str:
+    """Le message d'erreur du service, sans ce qu'il recopie de la leçon.
+
+    Certains services joignent à l'erreur le texte que le modèle venait d'écrire
+    (`failed_generation` chez Groq) : il vient de la leçon de l'enfant, et ce détail part dans
+    les journaux et la page de suivi (données techniques seulement). On ne garde que le message
+    et le code ; une réponse qui n'est pas du JSON (page d'erreur d'un serveur) est gardée telle quelle.
+    """
+    try:
+        data = response.json()
+    except ValueError:
+        return response.text[:300]
+    error = data.get("error") if isinstance(data, dict) else None
+    if isinstance(error, dict):
+        parts = [str(error[k]) for k in ("code", "type", "message") if isinstance(error.get(k), str | int)]
+        return " : ".join(parts)[:300] or "erreur sans message"
+    if isinstance(error, str):
+        return error[:300]
+    return "erreur sans message"
 
 
 def rate_limit_wait(response: httpx.Response) -> float | None:
@@ -124,7 +155,7 @@ class OpenAICompatibleProvider:
                 break  # quota du jour, ou pas de délai annoncé : inutile d'attendre
             await _sleep(wait + 0.5)
         if response.status_code >= 400:
-            detail = response.text[:300]
+            detail = error_detail(response)
             asked_schema = body.get("response_format", {}).get("type") == "json_schema"
             about_format = re.search(r"response_format|json_schema|schema", detail, re.IGNORECASE)
             if response.status_code == 400 and asked_schema and about_format:
@@ -167,7 +198,7 @@ class OpenAICompatibleProvider:
         try:
             output = schema.model_validate(parse_json(content))
         except (ValidationError, json.JSONDecodeError) as exc:
-            raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
+            raise schema_error(exc) from exc
         usage = data.get("usage") or {}
         return LLMResult(
             output,

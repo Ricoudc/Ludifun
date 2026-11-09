@@ -39,6 +39,23 @@ def strip_markup(text: str) -> str:
     return _LINE_SPACES.sub(" ", text)
 
 
+# Balises qui encadrent les données dans les demandes à l'IA (§142-143).
+_PROMPT_TAGS = (
+    "lecon|notions?|remarque_parent|deja_posees|erreur|points_cles|reponse_eleve|explication_eleve|"
+    "enonce|question|source|deja_dessinees|cible"
+)
+_PROMPT_TAG = re.compile(rf"<(?=\s*/?\s*(?:{_PROMPT_TAGS})\b)", re.IGNORECASE)
+
+
+def neutralize_prompt_tags(text: str) -> str:
+    """Le texte d'une leçon ne peut ni fermer ni rouvrir la balise qui l'encadre (§142-143).
+
+    Seul le chevron d'une de nos balises devient « ‹ » : « 2 < 3 » et « 3<sup>e</sup> » restent
+    tels quels, pour que les extraits cités par l'IA se retrouvent encore dans la leçon.
+    """
+    return _PROMPT_TAG.sub("‹", text) if "<" in text else text
+
+
 def clean_markup(value: Any) -> Any:
     """`strip_markup` sur toutes les chaînes d'une structure JSON (dictionnaires, listes)."""
     if isinstance(value, str):
