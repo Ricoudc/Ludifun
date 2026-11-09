@@ -2,15 +2,16 @@
 essayés contre un faux serveur HTTP : aucune clé ni appel réel."""
 
 import json
+import re
 from collections.abc import Callable
 from typing import Any
 
 import httpx
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.ai.factory import AiConfigError, build_llm, stage_models
-from app.ai.ports import AIError, AIInvalidOutput, AIRefused, PageImage, Prompt, Stage
+from app.ai.ports import AIError, AIInvalidOutput, AIRefused, PageImage, Prompt, Stage, schema_error
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
 from app.ai.providers.openai_compatible import MAX_RATE_RETRIES, OpenAICompatibleProvider, rate_limit_wait
@@ -230,3 +231,57 @@ async def test_daily_limit_and_endless_refusals_do_not_wait_forever(monkeypatch:
     with pytest.raises(AIError, match="429"):
         await stuck.structured(prompt=PROMPT, input="texte", schema=Answer)
     assert len(sent) == MAX_RATE_RETRIES + 1 and len(waits) == MAX_RATE_RETRIES
+
+
+async def test_an_error_never_carries_what_the_model_wrote() -> None:
+    """Le service joint parfois sa génération ratée (texte tiré de la leçon) : elle ne sort pas."""
+    refused = httpx.Response(
+        400,
+        json={
+            "error": {
+                "message": "Failed to generate JSON. See 'failed_generation' for more details.",
+                "type": "invalid_request_error",
+                "code": "json_validate_failed",
+                "failed_generation": '{"title": "Louis XVI convoque les États généraux',
+            }
+        },
+    )
+    llm, _ = provider(lambda body, n: refused)
+    with pytest.raises(AIError) as caught:
+        await llm.structured(prompt=PROMPT, input="texte", schema=Answer)
+    message = str(caught.value)
+    assert "400" in message and "json_validate_failed" in message and "Failed to generate JSON" in message
+    assert "Louis" not in message and "États" not in message
+    # Une page d'erreur (pas du JSON) ou une erreur sans message restent lisibles.
+    for response, expected in (
+        (httpx.Response(502, text="<html>Bad Gateway</html>"), "Bad Gateway"),
+        (httpx.Response(500, json={"error": "panne"}), "panne"),
+        (httpx.Response(500, json={"detail": {"lesson": "Louis XVI"}}), "erreur sans message"),
+    ):
+
+        def reply_with(body: dict[str, Any], n: int, response: httpx.Response = response) -> httpx.Response:
+            return response
+
+        llm, _ = provider(reply_with)
+        with pytest.raises(AIError, match=expected) as caught:
+            await llm.structured(prompt=PROMPT, input="texte", schema=Answer)
+        assert "Louis" not in str(caught.value)
+
+
+def test_an_out_of_schema_answer_is_described_without_its_text() -> None:
+    """Le message d'une sortie hors schéma dit où et pourquoi, jamais ce que le modèle a écrit."""
+
+    class Fiche(BaseModel):
+        titre: str
+        notes: dict[str, int]
+
+    try:
+        Fiche.model_validate({"titre": {"texte": "Louis XVI"}, "notes": {"États généraux": "beaucoup"}})
+    except ValidationError as exc:
+        message = str(schema_error(exc))
+    assert message.startswith("réponse hors schéma : 2 erreur(s)")
+    assert "titre : string_type" in message and "notes.… : int_parsing" in message
+    assert not {"Louis", "États", "beaucoup", "input_value"} & set(re.findall(r"\w+", message))
+    assert str(schema_error(json.JSONDecodeError("Louis XVI", "Louis XVI", 0))) == (
+        "réponse hors schéma : JSON illisible"
+    )

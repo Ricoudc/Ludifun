@@ -37,6 +37,7 @@ from app.domain.activities.registry import ActivityRegistry
 from app.domain.duplicates import deduplicate
 from app.domain.knowledge import KnowledgeItem, KnowledgeUnit, LessonAnalysis
 from app.domain.ocr_review import Uncertain, select_uncertain
+from app.domain.text import neutralize_prompt_tags
 from app.domain.understanding import required_levels
 from app.domain.validation import (
     AnalysisError,
@@ -511,6 +512,7 @@ class LessonPipeline:
 def _analysis_input(text: str, pupil_grade: str | None) -> str:
     """La leçon, précédée de la classe de l'enfant (réglée par le parent) : ce qu'il doit
     retenir est écrit pour cette classe, quel que soit le niveau que la leçon semble viser."""
+    text = neutralize_prompt_tags(text)
     if not pupil_grade:
         return f"<lecon>\n{text}\n</lecon>"
     return (
@@ -574,7 +576,7 @@ def _material_input(
     parts = [
         f"Matière : {lesson.subject} · niveau : {grade} · leçon : {lesson.title}",
         f"Écriture : {instructions.writing_rules(grade)}",
-        f"<lecon>\n{text}\n</lecon>",
+        f"<lecon>\n{neutralize_prompt_tags(text)}\n</lecon>",
         f"<notions>\n{json.dumps({'notions': notions}, ensure_ascii=False, indent=1)}\n</notions>",
     ]
     if remark:

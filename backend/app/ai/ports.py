@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 Stage = Literal[
     "ocr",
@@ -98,6 +98,25 @@ class AIInvalidOutput(AIError):
     """La réponse ne respecte pas le schéma attendu (ou est tronquée)."""
 
     status = "invalid_output"
+
+
+def _location(loc: tuple[int | str, ...]) -> str:
+    """Noms de champs et rangs seulement : une clé écrite par le modèle n'est pas recopiée."""
+    parts = [str(p) if isinstance(p, int) or (p.isascii() and p.isidentifier()) else "…" for p in loc]
+    return ".".join(parts) or "réponse"
+
+
+def schema_error(exc: Exception) -> AIInvalidOutput:
+    """Sortie hors schéma : où et pourquoi, sans ce que le modèle a écrit.
+
+    Le message d'une `ValidationError` recopie la valeur refusée (« input_value=… »), donc un
+    morceau de la leçon de l'enfant ; il finirait dans le journal et dans `ai_runs.warnings`.
+    """
+    if isinstance(exc, ValidationError):
+        errors = exc.errors(include_input=False, include_url=False, include_context=False)
+        details = " ; ".join(f"{_location(e['loc'])} : {e['type']}" for e in errors[:5])
+        return AIInvalidOutput(f"réponse hors schéma : {len(errors)} erreur(s) ({details})")
+    return AIInvalidOutput("réponse hors schéma : JSON illisible")
 
 
 class AIContextFull(AIInvalidOutput):

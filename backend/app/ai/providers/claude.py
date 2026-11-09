@@ -10,7 +10,17 @@ import anthropic
 from anthropic.types.beta import BetaContentBlockParam, BetaMessage
 from pydantic import BaseModel, ValidationError
 
-from app.ai.ports import AIError, AIInvalidOutput, AIRefused, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.ports import (
+    AIError,
+    AIInvalidOutput,
+    AIRefused,
+    LLMResult,
+    PageImage,
+    Prompt,
+    Stage,
+    Usage,
+    schema_error,
+)
 from app.ai.providers.openai_compatible import parse_json, schema_instructions
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
@@ -100,7 +110,7 @@ class ClaudeProvider:
                     schema.model_validate(parse_json(text)) if response.stop_reason == "end_turn" else None
                 )
         except (ValidationError, json.JSONDecodeError) as exc:
-            raise AIInvalidOutput(f"réponse hors schéma : {exc}") from exc
+            raise schema_error(exc) from exc
         except anthropic.APIStatusError as exc:
             raise AIError(f"API {exc.status_code} : {exc.message}") from exc
         except anthropic.APIConnectionError as exc:

@@ -106,7 +106,7 @@ def illustration_input(
     if target:
         parts.append(f"<cible>{target}</cible>")
     if remark:
-        parts.append(f"<remarque_parent>\n{remark}\n</remarque_parent>")
+        parts.append(f"<remarque_parent>\n{safe(remark)}\n</remarque_parent>")
     return "\n\n".join(parts)
 
 
