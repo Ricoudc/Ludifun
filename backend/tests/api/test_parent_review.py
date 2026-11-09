@@ -142,3 +142,19 @@ async def test_correcting_a_word_to_write_corrects_the_spelling_games(
     assert r.status_code == 200, r.text
     await db.refresh(row)
     assert row.material["spelling"]["word"] == "hôpital"
+
+
+async def test_this_week_the_parent_is_asked_to_review_the_lesson(client: AsyncClient) -> None:
+    """« Cette semaine » (§5.71) : la leçon qui attend vient en premier, puis disparaît une fois
+    validée."""
+    family = await family_with_device(client, review_lessons=True)
+    parent = auth(family["parent"])
+    lesson = await upload_lesson(client, family["device"])
+    board = (await client.get(f"/v1/children/{family['child']['id']}/dashboard", headers=parent)).json()
+    first = board["week_plan"][0]
+    assert first["kind"] == "review" and lesson["title"] in first["title"]
+    assert "Emma" in first["detail"] and first["why"]
+    assert len(board["week_plan"]) <= 3
+    await client.post(content_url(family, lesson, "approve"), headers=parent)
+    board = (await client.get(f"/v1/children/{family['child']['id']}/dashboard", headers=parent)).json()
+    assert "review" not in [a["kind"] for a in board["week_plan"]]

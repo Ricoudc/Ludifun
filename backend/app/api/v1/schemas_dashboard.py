@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.domain.knowledge import SkillVerb
+from app.domain.weekly_plan import ActionKind
 
 
 class WeekOut(BaseModel):
@@ -54,6 +55,15 @@ class RecurringErrorOut(BaseModel):
     last_at: datetime
 
 
+class WeekActionOut(BaseModel):
+    """Une action pour le parent cette semaine (§5.71)."""
+
+    kind: ActionKind
+    title: str
+    detail: str = Field(description="Le geste précis, en quelques minutes.")
+    why: str = Field(description="Le fait qui l'a fait choisir.")
+
+
 class DashboardOut(BaseModel):
     """Écran P3."""
 
@@ -65,6 +75,9 @@ class DashboardOut(BaseModel):
     reports_to_see: int = Field(0, description="Questions signalées par l'enfant (🚩), pas encore vues.")
     summary: list[str] = Field(
         [], description="« En bref » : les 7 derniers jours en quelques phrases, la dernière est un conseil."
+    )
+    week_plan: list[WeekActionOut] = Field(
+        [], description="« Cette semaine » : 3 actions concrètes pour le parent (§5.71), facultatif."
     )
     activities_this_week: dict[str, int]
     subjects: list[SubjectOut]

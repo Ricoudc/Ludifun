@@ -2037,6 +2037,30 @@ Aussi : `backend/.coverage` (mesure de couverture) retiré du dépôt et ignoré
 
 Tests : `tests/ai/test_url_safety.py`, `tests/api/test_ai_settings.py`.
 
+### 5.71 « Que travailler avec mon enfant cette semaine ? » (novembre 2026)
+
+Feuille de route, point 4 : trois actions concrètes pour le parent, sans lui demander d'être
+enseignant. Domaine pur `app/domain/weekly_plan.py` (des conseils au parent, aucune décision
+pour l'enfant) ; faits dans `services/dashboard.week_plan_of` ; `DashboardOut.week_plan` (champ
+nouveau, facultatif, liste vide par défaut). Chaque action : `kind` (icône), `title` (quoi),
+`detail` (le geste, en quelques minutes), `why` (le fait qui l'a fait choisir). Ordre :
+
+1. une leçon attend la relecture du parent (§5.69) ;
+2. un contrôle dans les 7 jours (« jeudi », « demain ») : une courte séance par jour, la veille
+   lui faire expliquer la leçon ;
+3. la notion la plus fragile (pas une notion retirée) : la faire expliquer avec ses mots, la
+   phrase à retenir sous les yeux ;
+4. l'erreur qui revient : un geste par type d'erreur (relire l'énoncé, poser le calcul, dire la
+   méthode, comparer les deux notions…) ;
+5. moins de 3 jours de révision sur 7 : un moment fixe, au temps choisi par le parent ;
+6. les révisions dues, sinon ajouter la leçon de la semaine.
+
+Au plus trois. Phrases neutres (le prénom ne dit pas si l'enfant est une fille ou un garçon).
+Application : carte « Cette semaine avec Emma » sous « En bref ».
+
+Tests : `tests/domain/test_weekly_plan.py`, `tests/api/test_parent_review.py` (la leçon à relire
+vient en premier, puis disparaît), `parent_flow_test` (la carte).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

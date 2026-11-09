@@ -1705,6 +1705,41 @@ void main() {
     await shot(tester, 'p03_en_bref');
   });
 
+  testWidgets('§5.71 : « Cette semaine avec Emma », trois gestes concrets pour le parent', (
+    tester,
+  ) async {
+    server.on(
+      'GET /v1/children/c1/dashboard',
+      (_) => (
+        200,
+        {
+          ...dashboard,
+          'week_plan': [
+            {
+              'kind': 'review',
+              'title': 'Relire et valider « Les centaines »',
+              'detail': 'Emma ne peut pas la réviser avant.',
+              'why': 'Leçon prête qui attend votre relecture.',
+            },
+            {
+              'kind': 'explain',
+              'title': 'Faire expliquer « Le numérateur »',
+              'detail': 'Au dîner, demandez à Emma de vous l\'expliquer avec ses mots.',
+              'why': 'Notion la plus fragile.',
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    await tap(tester, find.text('Emma · CM1'));
+    expect(find.text('Cette semaine avec Emma'), findsOneWidget);
+    expect(find.text('Relire et valider « Les centaines »'), findsOneWidget);
+    expect(find.text('Notion la plus fragile.'), findsOneWidget);
+    expect(find.text('🗣️'), findsOneWidget);
+    await shot(tester, 'p03b_cette_semaine');
+  });
+
   testWidgets('sans « En bref » (serveur plus ancien) : le tableau de bord reste le même', (
     tester,
   ) async {
