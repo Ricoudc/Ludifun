@@ -18,6 +18,11 @@ Flux de données :
    effacées dès la lecture ;
 4. API → fournisseur d'e-mails (UE) : adresse du parent et message de service.
 
+Réponse dite à voix haute (§5.78) : la voix de l'enfant est reconnue **sur le téléphone**
+(reconnaissance hors ligne imposée) et n'est ni envoyée au serveur ni enregistrée ; seul le texte
+reconnu, que l'enfant peut corriger, part comme une réponse écrite. Sans reconnaissance hors
+ligne en français, le micro n'est pas proposé.
+
 ## 2. Nécessité et proportionnalité
 
 | Principe | Mise en œuvre |
@@ -40,6 +45,7 @@ Flux de données :
 | Contenu faux ou inadapté produit par l'IA | erreur du modèle | modérée | limitée | validations (citations obligatoires, règles), évaluation humaine (étape 18), avis des parents | limité |
 | Perte de données | panne du serveur | modérée | limitée | sauvegardes chiffrées quotidiennes, restauration testée | limité |
 | Conservation excessive | compte abandonné | modérée | importante | suppression automatique après 12 mois et prévenance | négligeable |
+| Voix de l'enfant envoyée à un service en ligne | reconnaissance vocale du téléphone | importante | négligeable | reconnaissance sur l'appareil imposée (`onDevice`), sinon pas de micro ; rien n'est enregistré ; micro seulement au toucher de « Dire ma réponse » | négligeable, **à vérifier sur de vrais téléphones** |
 | Pression sur l'enfant | suivi trop détaillé par le parent | modérée | limitée | pas de classement ni de comparaison ; messages bienveillants ; pas de notifications insistantes | limité |
 
 ## 4. Plan d'action avant la bêta

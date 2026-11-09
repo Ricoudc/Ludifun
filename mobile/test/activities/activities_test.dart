@@ -7,11 +7,31 @@ import 'package:ludifun/app/theme.dart';
 import 'package:ludifun/features/session/activities/activity_registry.dart';
 import 'package:ludifun/features/session/activities/alignment_view.dart';
 import 'package:ludifun/features/session/activities/math_games_views.dart';
+import 'package:ludifun/core/listening.dart';
 import 'package:ludifun/core/speech.dart';
 import 'package:ludifun/features/session/activities/common.dart';
 import 'package:ludifun/features/session/activities/dictation_view.dart';
 import 'package:ludifun/features/session/correction_view.dart';
 import 'package:ludifun/models/session.dart';
+
+class FakeVoice implements VoiceInput {
+  FakeVoice({this.ok = true, this.words = ''});
+
+  final bool ok;
+  final String words;
+
+  @override
+  Future<bool> available() async => ok;
+
+  @override
+  Future<String> listen(void Function(String words) onWords) async {
+    if (words.isNotEmpty) onWords(words);
+    return words;
+  }
+
+  @override
+  Future<void> stop() async {}
+}
 
 class FakeSpeaker implements Speaker {
   FakeSpeaker({this.voice = true});
@@ -949,6 +969,41 @@ void main() {
     expect(sent, [
       {'text': '1789'},
     ]);
+  });
+
+  testWidgets('§5.78 : 🎤 la réponse dite à voix haute remplit la case, corrigeable', (
+    tester,
+  ) async {
+    SpeakAnswerButton.voiceFactory = () => FakeVoice(words: '1789');
+    addTearDown(() => SpeakAnswerButton.voiceFactory = PhoneVoiceInput.new);
+    await show(tester, 'FILL_BLANK', {'text': 'La Révolution commence en ___.'});
+    await tester.pump();
+    await tester.tap(find.text('Dire ma réponse'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, '1789'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {'text': '1789'},
+    ]);
+  });
+
+  testWidgets('§5.78 : rien entendu, on le dit ; sans écoute hors ligne, pas de micro', (
+    tester,
+  ) async {
+    SpeakAnswerButton.voiceFactory = () => FakeVoice();
+    addTearDown(() => SpeakAnswerButton.voiceFactory = PhoneVoiceInput.new);
+    await show(tester, 'OPEN_QUESTION', {
+      'prompt': 'Pourquoi le roi réunit-il les États généraux ?',
+    });
+    await tester.pump();
+    await tester.tap(find.text('Dire ma réponse'));
+    await tester.pumpAndSettle();
+    expect(find.text('Je n\'ai pas bien entendu : réessaie ou écris ta réponse.'), findsOneWidget);
+
+    SpeakAnswerButton.voiceFactory = () => FakeVoice(ok: false);
+    await show(tester, 'FILL_BLANK', {'text': 'La Révolution commence en ___.'});
+    await tester.pump();
+    expect(find.text('Dire ma réponse'), findsNothing);
   });
 
   testWidgets('mot éclair : le mot se cache, puis on l\'écrit de mémoire', (tester) async {

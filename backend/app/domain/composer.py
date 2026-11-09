@@ -47,6 +47,7 @@ VARY_FORMATS = RULES.session.vary_formats
 MIN_SECONDS = RULES.session.min_minutes * 60
 MAX_SECONDS = RULES.session.max_minutes * 60
 DAILY_GAME = RULES.session.daily_game
+MIN_RECALL_SHARE = RULES.session.min_recall_share
 # Jeu du jour (1.13.0) : les jeux qui peuvent l'être, dans l'ordre de la rotation, et leur nom.
 # Chaque jour, le suivant parmi ceux que la leçon permet ; le même pour toutes les séances du jour.
 DAILY_GAMES: dict[ActivityCode, str] = {
@@ -232,6 +233,7 @@ class SessionComposer:
         self.played: Counter[ActivityCode] = Counter()  # formats joués aux dernières séances
         self.history: Mapping[str, Sequence[RecentAnswer]] = {}
         self.adjusted: dict[str, Difficulty] = {}
+        self._units: dict[str, KnowledgeUnit] = {}
 
     # ------------------------------------------------------------------ #
     # Séances « première révision » et « révision »
@@ -254,6 +256,7 @@ class SessionComposer:
         évitées tant que la notion en a d'autres. `history` : dernières réponses par notion, pour
         ajuster la difficulté (§36)."""
         rng = random.Random(seed)
+        self._units = {u.id: u for u in units}
         self.recent = recent
         # Formats des questions des dernières séances (l'empreinte commence par le format).
         self.played = Counter(ActivityCode(p.split(":", 1)[0]) for p in recent if p.split(":", 1)[0] in CODES)
@@ -319,6 +322,9 @@ class SessionComposer:
         # ⚡ Défi rapide : les notions à travailler d'abord, complétées par les autres si besoin.
         add(self._speed(ranked, rng), Block.SPEED)
 
+        # Le jeu ne prend pas le pas sur l'apprentissage (§5.77), avant de compléter la durée.
+        recalled = self._recall_guard(items, blocks, used, rng) if core_size > 0 else set()
+
         # Séance trop courte (leçon de 2 ou 3 questions) : d'autres questions avant le jeu de fin.
         extra: list[BuiltActivity] = []
         if core_size > 0:
@@ -349,7 +355,9 @@ class SessionComposer:
                         repeat=fingerprint(a) in repeated,
                     )
                     if tail < i <= tail + len(extra)
-                    else _visual(a, self._reason(a, block, first, by_id, masteries, now)),
+                    else _recall(
+                        i - 1 in recalled, _visual(a, self._reason(a, block, first, by_id, masteries, now))
+                    ),
                     a,
                     by_id,
                 ),
@@ -378,6 +386,58 @@ class SessionComposer:
             )
         kind = SessionKind.FIRST if first else SessionKind.REVIEW
         return SessionPlan(kind, planned, self.estimate_duration_s(items, with_replay=True), express)
+
+    def _recall_guard(
+        self,
+        items: list[BuiltActivity],
+        blocks: list[Block],
+        used: dict[str, set[ActivityCode]],
+        rng: random.Random,
+    ) -> set[int]:
+        """Le jeu ne prend pas le pas sur l'apprentissage (§5.77) : si trop peu d'activités
+        principales demandent de retrouver la réponse sans la voir, des activités de reconnaissance
+        de l'approfondissement sont remplacées par un format « se rappeler » de la même notion,
+        jamais deux fois le même format à la suite. Rend les positions remplacées."""
+        main = [i for i, b in enumerate(blocks) if b in (Block.WARMUP, Block.CORE)]
+        if not main:
+            return set()
+
+        def recalls(a: BuiltActivity) -> bool:
+            return cognitive_level(a.type, a.difficulty) >= 2
+
+        needed = math.ceil(MIN_RECALL_SHARE * len(main)) - sum(recalls(items[i]) for i in main)
+        replaced: set[int] = set()
+        for i in reversed(main):  # la fin de l'approfondissement d'abord : l'échauffement reste facile
+            if needed <= 0:
+                break
+            current = items[i]
+            if blocks[i] is not Block.CORE or recalls(current) or len(current.knowledge_ids) != 1:
+                continue
+            key = current.knowledge_ids[0]
+            unit = self._units.get(key)
+            if unit is None:
+                continue
+            neighbours = {items[j].type for j in (i - 1, i + 1) if 0 <= j < len(items)}
+            options = sorted(
+                (code, d)
+                for code, d in self.registry.single_options(unit)
+                if code not in ON_REQUEST
+                and code not in used.get(key, set())
+                and code not in neighbours
+                and cognitive_level(code, d) >= 2
+                and d == current.difficulty  # la difficulté choisie par le moteur ne change pas
+            )
+            rng.shuffle(options)
+            asked = {fingerprint(a) for a in items}
+            for code, difficulty in options:
+                candidate = self._fresh(code, unit, difficulty, rng)
+                if fingerprint(candidate) not in asked:  # jamais deux fois la même question
+                    items[i] = candidate
+                    used.setdefault(key, set()).add(code)
+                    replaced.add(i)
+                    needed -= 1
+                    break
+        return replaced
 
     def _daily_game(
         self,
@@ -774,14 +834,35 @@ class SessionComposer:
         if chain is None:
             chain = [(u, *options[u.id][0]) for u in playable]
 
-        activities = []
-        for unit, code, difficulty in chain:
+        activities: list[BuiltActivity] = []
+        asked = {fingerprint(a) for a in previous}
+        for index, (unit, code, difficulty) in enumerate(chain):
+            activity = self._fresh(code, unit, difficulty, rng, asked)
+            if fingerprint(activity) in asked:
+                # Deux notions de la séance donneraient la même question (deux événements de 1789
+                # sur la droite graduée) : un autre format de la notion, s'il en reste un qui ne
+                # suit ni ne précède le même format.
+                before = activities[-1].type if activities else last
+                after = chain[index + 1][1] if index + 1 < len(chain) else None
+                for other, level in options[unit.id]:
+                    if other in (code, before, after) or other in used.get(unit.id, set()):
+                        continue
+                    candidate = self._fresh(other, unit, level, rng, asked)
+                    if fingerprint(candidate) not in asked:
+                        code, activity = other, candidate
+                        break
             used.setdefault(unit.id, set()).add(code)
-            activities.append(self._fresh(code, unit, difficulty, rng))
+            asked.add(fingerprint(activity))
+            activities.append(activity)
         return activities
 
     def _fresh(
-        self, code: ActivityCode, unit: KnowledgeUnit, difficulty: int, rng: random.Random
+        self,
+        code: ActivityCode,
+        unit: KnowledgeUnit,
+        difficulty: int,
+        rng: random.Random,
+        asked: frozenset[str] | set[str] = frozenset(),
     ) -> BuiltActivity:
         """L'activité, avec une question pas encore posée aux séances précédentes si la notion en
         a une (autre question du QCM, autre affirmation, autre ordre…). La leçon prime (§5.58) :
@@ -791,7 +872,9 @@ class SessionComposer:
         first = activity_type.build([unit], difficulty, rng)
 
         def fresh(activity: BuiltActivity) -> bool:
-            return not self.recent or fingerprint(activity) not in self.recent
+            # Pas posée aux séances précédentes, ni déjà dans cette séance (`asked`).
+            seen = fingerprint(activity)
+            return seen not in asked and (not self.recent or seen not in self.recent)
 
         if fresh(first) and first.solution.get("from_lesson") is not False:
             return first
@@ -949,6 +1032,13 @@ def fingerprint(activity: BuiltActivity) -> str:
         if isinstance(value, str) and value:
             return f"{activity.type}:{key}:{normalize(value)}"
     return f"{activity.type}:{normalize(str(sorted(payload)))}"
+
+
+def _recall(replaced: bool, why: Reason) -> Reason:
+    """Une activité choisie par le garde-fou « apprendre, pas seulement jouer » le dit (§5.77)."""
+    if replaced:
+        why["facts"]["recall_guard"] = True
+    return why
 
 
 def _visual(activity: BuiltActivity, why: Reason) -> Reason:

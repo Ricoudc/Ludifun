@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.18.0"
+version = "1.19.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -24,6 +24,10 @@ daily_game = true           # un « jeu du jour », différent chaque jour, dans
 # notions de la leçon (autre format ou autre question), sans dépasser `max_minutes`.
 min_minutes = 5
 max_minutes = 10
+# Le jeu ne prend pas le pas sur l'apprentissage (1.19.0, §5.77) : au moins cette part des
+# activités principales (échauffement et approfondissement) demande de retrouver la réponse sans
+# la voir (texte à trous, carte mémoire, remettre dans l'ordre…), pas seulement de la reconnaître.
+min_recall_share = 0.34
 
 [mastery]
 review_interval_days = { "1" = 1, "2" = 2, "3" = 4, "4" = 7, "5" = 14 }  # boîte → jours

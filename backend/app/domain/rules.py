@@ -39,6 +39,9 @@ class SessionRules(_Section):
     # `max_minutes` (le temps du jour choisi par le parent peut demander plus : il décide alors).
     min_minutes: int = Field(5, ge=0)
     max_minutes: int = Field(10, ge=1)
+    # 1.19.0 : le jeu ne prend pas le pas sur l'apprentissage (§5.77) : part minimale des
+    # activités principales où l'enfant retrouve la réponse sans la voir (niveau ≥ se rappeler).
+    min_recall_share: float = Field(0.0, ge=0, le=1)
 
 
 class MasteryRules(_Section):

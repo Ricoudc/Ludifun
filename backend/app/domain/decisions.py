@@ -52,6 +52,8 @@ def describe(decision: Reason | None) -> str | None:
         text += " Jeu visuel proposé avant un quiz."
     if text is not None and f.get("writing_only"):
         text += " Mot à savoir écrire : seulement des jeux où l'on écrit le mot."
+    if text is not None and f.get("recall_guard"):
+        text += " Pour apprendre et pas seulement jouer : ici, on retrouve la réponse sans la voir."
     if text is not None and f.get("daily_game"):
         text += f" C'est aussi le jeu du jour ({f.get('name')})."
     return text
