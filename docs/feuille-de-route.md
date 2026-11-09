@@ -111,7 +111,9 @@ jour, missions du jour.
 
 À faire :
 - ⬜ Essais sur de vrais téléphones Android, puis avec cinq familles (`tests-familles.md`).
-- ⬜ Vérifier sauvegarde et restauration en conditions réelles.
+- 🟡 Vérifier sauvegarde et restauration en conditions réelles : procédure rejouée sur une vraie
+  base, ancienne version comprise (§5.83) ; reste l'essai par `Ludifun.bat` sur le PC, et sur un
+  autre PC depuis une clé USB.
 - 🟡 Finaliser les documents RGPD et valider l'analyse d'impact : brouillons remis à jour d'après le
   code (IA au choix, images, voix, §5.82) ; restent les DPA, la liste des fournisseurs proposés et la
   validation par un juriste ou un DPO.

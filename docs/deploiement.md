@@ -80,6 +80,10 @@ age -d -i cle-ludifun.txt ludifun-AAAAMMJJ-HHMM.dump.age > ludifun.dump
 createdb ludifun_restauration && pg_restore -d ludifun_restauration ludifun.dump
 ```
 
+Vérification (§5.83 de la spécification) : sauvegarde, restauration et reprise d'une sauvegarde
+d'une version plus ancienne ont été rejouées sur une vraie base ; à refaire sur le serveur réel
+avant la bêta (restaurer la sauvegarde de la nuit dans une base à part et comparer).
+
 ## 5. Supervision
 
 | Quoi | Comment |

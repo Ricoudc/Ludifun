@@ -2310,6 +2310,28 @@ définitive des fournisseurs d'IA proposés sont « À COMPLÉTER », et l'ensem
 (conseil juridique ou DPO) avant la bêta. Test : `tests/api/test_email_verification.py`
 (`test_public_pages`).
 
+### 5.83 Sauvegarde et restauration vérifiées sur une vraie base (novembre 2026)
+
+Feuille de route, point 6. Les commandes de `Ludifun.bat` (`Sauvegarder-Base`, `Restaurer-Base`
+dans `scripts/windows/commun.ps1`) ont été rejouées à l'identique avec PostgreSQL 16, hors
+Docker et hors Windows, sur la famille de démonstration (`app.tools.demo_family` : 35 tables,
+589 lignes, 3 leçons, 133 réponses) :
+
+1. **Sauvegarde puis restauration** : `pg_dump --format=custom`, modification de la base après
+   coup (réponses effacées, prénoms changés), restauration dans `ludifun_restauration`
+   (`pg_restore --no-owner --exit-on-error`), bascule par renommage. Résultat : les 35 tables
+   identiques à la sauvegarde, contenu compris (nombre de lignes et empreinte md5 de chaque table).
+2. **Sauvegarde d'une version plus ancienne** (schéma 0030) remise sous la version actuelle :
+   au démarrage, `alembic upgrade head` (comme l'image Docker) passe 0030 → 0032 sans perte
+   (3 leçons, 133 réponses ; les leçons existantes reprises comme validées par le parent, §5.69).
+3. **Le serveur sur la base restaurée** : `/health/ready` répond `schema 0032` ; le parent de
+   démonstration se connecte et son tableau de bord montre ses 4 semaines, le plan de la semaine
+   et ses matières.
+
+Reste à faire sur le PC de la famille : la même chose par `Ludifun.bat` (Docker, chemins
+Windows, copie des fichiers par `docker compose cp`), et une restauration sur un autre PC à partir
+du dossier copié sur une clé USB (sauvegardes et `reglages.env`).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
