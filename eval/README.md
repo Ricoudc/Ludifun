@@ -74,7 +74,7 @@ export ANTHROPIC_API_KEY=...        # ou `ant auth login`
 uv run python -m app.tools.evaluate ../eval/lessons
 ```
 
-Options : `--only lecon1,lecon2`, `--concurrency 3` (leçons en parallèle), `--provider fake` (démonstration hors ligne sur `eval/example`).
+Options : `--only lecon1,lecon2`, `--concurrency 3` (leçons en parallèle), `--provider fake` (démonstration hors ligne sur `eval/example`), `--prompt analysis=v7` (évaluer une ancienne version d'un prompt, répétable).
 
 Quand la lecture d'une photo signale des passages douteux, l'application demanderait à l'enfant
 « Peux-tu vérifier ? ». L'évaluation joue l'enfant qui confirme ce qui a été lu, puis
@@ -97,6 +97,7 @@ Chaque lancement crée `eval/results/<date-heure>/` :
 | `report.md` | mesures du §17.2 avec les seuils (✅ / ❌), tableau par leçon, notions indispensables manquées |
 | `<leçon>.txt` | ce que l'élève verrait : texte lu, notions, séance complète avec les réponses |
 | `<leçon>.json` | tout le détail : texte OCR, analyse, matériel, éléments rejetés et raisons, appels IA (jetons, latence, coût) |
+| `metrics.json` | les mesures et la configuration (fournisseur, modèles, version de chaque prompt), pour comparer deux évaluations |
 
 ## 4. Évaluation humaine
 
@@ -105,4 +106,25 @@ Pour 10 leçons, un adulte relit `<leçon>.txt` (ou joue la séance) et remplit
 
 ## 5. Améliorer, puis mesurer à nouveau
 
-Les prompts sont dans `backend/app/ai/prompts/` et sont versionnés : `analysis.v1.md` devient `analysis.v2.md`, puis on met à jour `PROMPT_VERSIONS` dans `backend/app/ai/ports.py`. On relance ensuite l'évaluation **sur le même corpus** et on compare les deux `report.md`. Les modèles et l'effort de chaque étape se changent sans toucher au code (variables `LUDIFUN_AI_*`, voir `backend/README.md`), ce qui permet de comparer coût et qualité.
+Les prompts sont dans `backend/app/ai/prompts/` et sont versionnés : `analysis.v1.md` devient `analysis.v2.md`, puis on met à jour `PROMPT_VERSIONS` dans `backend/app/ai/ports.py`. On relance ensuite l'évaluation **sur le même corpus**, puis on compare les deux résultats (§5.81) :
+
+```bash
+cd backend
+uv run python -m app.tools.evaluate ../eval/lessons --prompt analysis=v7   # A : l'ancienne version
+uv run python -m app.tools.evaluate ../eval/lessons                        # B : la nouvelle
+uv run python -m app.tools.compare ../eval/results/<A> ../eval/results/<B> --out ../eval/results/comparaison.md
+```
+
+Sur le PC de la famille (Docker) :
+
+```powershell
+docker compose run --rm --no-deps -v "${PWD}\eval:/eval" api python -m app.tools.compare /eval/results/<A> /eval/results/<B>
+```
+
+La comparaison met les mesures côte à côte (◀ A, B ▶ ou =), compare leçon par leçon, puis
+conclut : la justesse d'abord (leçons traitées, rappel des notions, notions inventées, noms
+personnels, matériel rejeté), la durée et le coût ensuite. Elle dit quoi remettre pour revenir à
+la configuration retenue (version de prompt dans `PROMPT_VERSIONS`, fournisseur, modèle). Les
+modèles et l'effort de chaque étape se changent sans toucher au code (variables `LUDIFUN_AI_*`,
+voir `backend/README.md`), ce qui permet de comparer aussi deux modèles. Relire quelques séances
+des deux côtés avant de trancher : les chiffres ne voient pas tout.

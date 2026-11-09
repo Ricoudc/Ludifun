@@ -2,6 +2,9 @@
 
     uv run python -m app.tools.evaluate ../eval/lessons
     uv run python -m app.tools.evaluate ../eval/example --provider fake
+    uv run python -m app.tools.evaluate ../eval/lessons --prompt analysis=v7   # ancienne version
+
+Pour comparer deux évaluations (deux prompts, deux modèles) : `app.tools.compare` (§5.81).
 
 Chaque leçon est un dossier contenant ses photos (page1.jpg, page2.jpg…), un PDF, un Word
 (.docx) ou un LibreOffice (.odt), ou un `lesson.txt`, et si possible un `expected.json` annoté
@@ -26,7 +29,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.ai.factory import build_providers
-from app.ai.ports import PageImage
+from app.ai.ports import PROMPT_VERSIONS, PROMPTS_DIR, PageImage, Stage
 from app.ai.presets import PRESETS
 from app.ai.pricing import run_cost
 from app.config import get_settings
@@ -389,7 +392,7 @@ async def resume_after_review(pipeline: LessonPipeline, paused: PipelineResult) 
 
 async def evaluate(
     lessons: list[LessonInput], provider: str | None, concurrency: int
-) -> list[tuple[LessonInput, PipelineResult, float]]:
+) -> tuple[list[tuple[LessonInput, PipelineResult, float]], dict[str, str]]:
     settings = get_settings()
     if provider:
         settings = settings.model_copy(update={"ai_provider": provider})
@@ -409,7 +412,46 @@ async def evaluate(
             )
             return lesson, result, duration
 
-    return list(await asyncio.gather(*(one(lesson) for lesson in lessons)))
+    results = list(await asyncio.gather(*(one(lesson) for lesson in lessons)))
+    models = {stage: llm.model_for(stage) for stage in ("analysis", "material", "evaluation")}
+    return results, models
+
+
+def configuration(provider: str, models: dict[str, str]) -> dict[str, Any]:
+    """Ce qui a produit ces résultats : fournisseur, modèle et version du prompt de chaque étape."""
+    return {"provider": provider, "models": models, "prompts": dict(sorted(PROMPT_VERSIONS.items()))}
+
+
+def metrics_json(scores: list[LessonScore], config: dict[str, Any], started: datetime) -> dict[str, Any]:
+    """Les mesures, lisibles par `app.tools.compare` (§5.81)."""
+    return {
+        "started": started.isoformat(timespec="seconds"),
+        "configuration": config,
+        "metrics": [
+            {"name": m.name, "value": m.value, "display": m.display, "target": m.target, "ok": m.ok}
+            for m in metrics(scores)
+        ],
+        "lessons": {
+            s.name: {
+                "ready": s.failure is None,
+                "recall": s.recall,
+                "invented": s.invented,
+                "rejected": s.material_rejected,
+                "kept": s.material_kept,
+                "duration_s": round(s.duration_s, 1),
+                "cost_usd": s.cost_usd,
+            }
+            for s in scores
+        },
+    }
+
+
+def _prompt_choice(text: str) -> tuple[Stage, str]:
+    """« analysis=v7 » → (étape, version) ; le fichier du prompt doit exister."""
+    stage, _, version = text.partition("=")
+    if stage not in PROMPT_VERSIONS or not (PROMPTS_DIR / f"{stage}.{version}.md").exists():
+        raise argparse.ArgumentTypeError(f"prompt inconnu : {text} (ex. analysis=v7)")
+    return stage, version
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -421,7 +463,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--only", help="noms de leçons séparés par des virgules")
     parser.add_argument("--concurrency", type=int, default=3, help="leçons traitées en parallèle")
+    parser.add_argument(
+        "--prompt",
+        action="append",
+        type=_prompt_choice,
+        default=[],
+        help="version de prompt à évaluer à la place de l'actuelle, ex. analysis=v7 (répétable)",
+    )
     args = parser.parse_args(argv)
+    current = dict(PROMPT_VERSIONS)
+    try:
+        for stage, version in args.prompt:  # le temps de cette évaluation seulement
+            PROMPT_VERSIONS[stage] = version
+        return _run(parser, args)
+    finally:
+        PROMPT_VERSIONS.clear()
+        PROMPT_VERSIONS.update(current)
+
+
+def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
 
     lessons = load_corpus(args.corpus, set(args.only.split(",")) if args.only else None)
     if not lessons:
@@ -430,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
     started = datetime.now(UTC)
     provider = args.provider or get_settings().ai_provider
     print(f"Évaluation de {len(lessons)} leçon(s) avec « {provider} »…", file=sys.stderr)
-    runs = asyncio.run(evaluate(lessons, args.provider, args.concurrency))
+    runs, models = asyncio.run(evaluate(lessons, args.provider, args.concurrency))
 
     out = (args.out or args.corpus.resolve().parent / "results") / f"{started:%Y%m%d-%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
@@ -455,6 +515,12 @@ def main(argv: list[str] | None = None) -> int:
 
     text = render_report(scores, provider, started)
     (out / "report.md").write_text(text, encoding="utf-8")
+    (out / "metrics.json").write_text(
+        json.dumps(
+            metrics_json(scores, configuration(provider, models), started), ensure_ascii=False, indent=2
+        ),
+        encoding="utf-8",
+    )
     print(text)
     print(f"Résultats détaillés : {out}", file=sys.stderr)
     return 0

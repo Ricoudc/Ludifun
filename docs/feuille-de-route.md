@@ -119,5 +119,6 @@ jour, missions du jour.
 ## Suivi technique
 
 - ✅ Prompts versionnés, version enregistrée avec chaque analyse ; règles du moteur versionnées.
-- ⬜ Comparer deux versions de prompt ou de modèle sur le même corpus, et revenir à la meilleure.
+- ✅ Comparer deux versions de prompt ou de modèle sur le même corpus, et revenir à la meilleure
+  (§5.81) ; à faire tourner sur les vraies leçons.
 - ✅ Coût par leçon et qualité des exercices dans la page de suivi (§5.80).

@@ -2271,6 +2271,25 @@ analysée. Toujours des chiffres seulement : ni prénom, ni titre, ni texte de l
 Tests : `tests/api/test_monitoring.py` (page, données, rapport ; prix publics, modèle inconnu,
 éléments écartés comptés).
 
+### 5.81 Comparer deux versions de prompt ou de modèle, revenir à la meilleure (novembre 2026)
+
+Feuille de route, suivi technique. L'évaluation (`app.tools.evaluate`, `Ludifun.bat` choix 12)
+écrit en plus `metrics.json` : les mesures du §17.2, le résultat par leçon (rappel, notions
+inventées, matériel rejeté, durée, coût) et la configuration (fournisseur, modèle par étape,
+version de chaque prompt). Option `--prompt étape=vN` (répétable) : évaluer une ancienne version
+d'un prompt, le temps de l'évaluation seulement (les versions d'origine sont rétablies ensuite).
+
+`app.tools.compare A B` met deux évaluations côte à côte : ce qui change de A à B, chaque mesure
+avec la meilleure (sens connu : moins de notions inventées, de rejets, de durée, de coût, de
+noms personnels ; plus pour le reste ; « photos à vérifier » neutre ; écart ≤ 0,5 négligeable),
+les leçons communes (celles d'un seul côté sont signalées, pas comparées), puis le verdict : la
+justesse décide, la durée puis le coût départagent ; égalité : garder l'actuelle. Il dit quoi
+remettre pour revenir à la configuration retenue. Aucun texte de leçon : chiffres et noms de
+dossiers. Mode d'emploi : `eval/README.md`, §5.
+
+Tests : `tests/tools/test_compare.py` (sens des mesures, justesse avant vitesse, égalité, retour
+en arrière, évaluation réelle avec `--prompt analysis=v7` puis comparaison).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
