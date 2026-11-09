@@ -2017,6 +2017,26 @@ les erreurs avant que l'enfant ait accès à la leçon, car l'IA fait des erreur
   valide ses leçons comme un parent ; application : `parent_flow_test` (relire, corriger le
   résumé, retirer, valider ; la case) et `child_flow_test` (leçon fermée).
 
+### 5.70 Adresses d'IA des familles : rien derrière le serveur (novembre 2026)
+
+Revue extérieure du dépôt (`feuille-de-route.md`, point 0) : une adresse d'IA libre (Ollama,
+« autre service ») est appelée par le serveur lui-même ; elle ne doit pas lui faire interroger ce
+qui est derrière lui (SSRF). `app/ai/url_safety.py`, appliqué à l'enregistrement et au test
+(`_choice`, 422 `ai_url_refused` avec la raison pour le parent) :
+
+- **toujours refusées** : services internes (`db`, `recherche`, `api`…), métadonnées des
+  hébergeurs (169.254.0.0/16, fe80::/10, `metadata…`), identifiants dans l'adresse, 0.0.0.0,
+  adresses de diffusion ou réservées ;
+- **en production** (adresses libres permises par `LUDIFUN_ALLOW_CUSTOM_AI_URL`), aussi la machine
+  et le réseau local, sauf l'Ollama réglé par le serveur ; sur le PC de la famille, Ollama sur ce
+  PC ou sur un autre ordinateur de la maison reste possible.
+
+Limites : un nom de domaine n'est pas résolu (un nom qui pointerait vers une adresse interne
+passerait) ; une adresse enregistrée avant ce contrôle n'est pas revérifiée à l'usage.
+Aussi : `backend/.coverage` (mesure de couverture) retiré du dépôt et ignoré.
+
+Tests : `tests/ai/test_url_safety.py`, `tests/api/test_ai_settings.py`.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

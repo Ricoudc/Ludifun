@@ -326,3 +326,17 @@ async def test_a_key_lost_with_the_server_secret_is_asked_again(
     # La clé collée de nouveau : tout repart.
     again = await put(client, family["parent"], {"provider": "claude", "api_key": "sk-ant-secret-5678"})
     assert again["family"]["key_lost"] is False and again["family"]["key_hint"] == "…5678"
+
+
+async def test_an_internal_address_is_refused(client: AsyncClient) -> None:
+    """Une famille ne peut pas faire appeler par le serveur sa propre base ni les métadonnées de
+    l'hébergeur (§5.70) ; Ollama sur un autre ordinateur de la maison reste possible."""
+    family = await family_with_device(client)
+    for url in ("http://db:5432", "http://169.254.169.254/latest/meta-data/"):
+        body = {"provider": "ollama", "model": "gemma3:12b", "base_url": url}
+        refused = await put(client, family["parent"], body, expected=422)
+        assert refused["error"]["code"] == "ai_url_refused"
+        tested = await client.post("/v1/parent/ai/test", json=body, headers=auth(family["parent"]))
+        assert tested.status_code == 422
+    home = {"provider": "ollama", "model": "gemma3:12b", "base_url": "http://192.168.1.20:11434"}
+    assert (await put(client, family["parent"], home))["family"]["base_url"] == home["base_url"]
