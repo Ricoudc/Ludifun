@@ -2189,6 +2189,27 @@ champ (serveur ancien), rien ne change.
 Tests : `tests/domain/test_coach.py`, `tests/api/test_adaptation.py`
 (`test_ludi_says_a_word_after_each_answer`), `session_flow_test` (§5.76).
 
+### 5.77 Le jeu ne prend pas le pas sur l'apprentissage (novembre 2026, règles 1.19.0)
+
+Feuille de route, point 5. Les jeux de Ludifun sont tous des activités d'apprentissage dans la
+séance ; l'XP est plafonnée par jour (`rewards.daily_xp_cap`) et récompense l'effort, pas la note
+(§5.10) ; les jeux de hasard (roue, boîtes, cartes aléatoires) ne servent qu'au jeu de fin de
+séance, un par séance. Le risque restant : une séance faite seulement de reconnaissance (QCM,
+vrai/faux, association), où l'enfant ne retrouve jamais une réponse de mémoire.
+
+Garde-fou du composeur (`SessionComposer._recall_guard`) : au moins `session.min_recall_share`
+= 0,34 des activités principales (échauffement et approfondissement) sollicitent le niveau
+« se rappeler » ou plus (texte à trous, carte mémoire, remettre dans l'ordre, ranger, questions
+ouvertes…, `understanding.cognitive_level`). Sinon, des activités de reconnaissance de
+l'approfondissement (la fin d'abord ; l'échauffement reste facile) sont remplacées par un format
+« se rappeler » de la même notion, à la même difficulté, jamais deux fois le même format à la
+suite, jamais une question déjà posée dans la séance. Le garde-fou passe avant que la séance soit
+complétée jusqu'à sa durée minimale. La raison le dit : « Pour apprendre et pas seulement jouer :
+ici, on retrouve la réponse sans la voir. » Une leçon qui n'a aucun format « se rappeler » garde
+sa séance telle quelle.
+
+Tests : `tests/domain/test_recall_guard.py` (toutes les leçons de référence, plusieurs graines).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

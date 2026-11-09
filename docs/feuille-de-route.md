@@ -104,7 +104,7 @@ jour, missions du jour.
 - ✅ Un personnage qui accompagne la séance et explique l'erreur à l'âge de l'enfant
   (« Tu y es presque ! Regarde la deuxième étape. ») : Ludi, §5.76.
 - ⬜ Réponses à voix haute (reconnaissance vocale), pour les plus jeunes.
-- ⬜ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage.
+- ✅ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage (§5.77).
 
 ## 6. Distribution
 
