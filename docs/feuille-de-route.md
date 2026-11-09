@@ -51,8 +51,8 @@ Fait :
   | Erreurs pédagogiques graves | 0 |
 
 - ⬜ Notation automatique des séances, avec relecture humaine d'un échantillon.
-- ⬜ Tests de non-régression pédagogique : une séance qui marchait ne doit pas se dégrader quand
-  le moteur change (séances de référence rejouées, comparées).
+- ✅ Tests de non-régression pédagogique : une séance qui marchait ne doit pas se dégrader quand
+  le moteur change (séances de référence rejouées, comparées), §5.79.
 
 ## 2. Performances de l'IA
 

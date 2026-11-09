@@ -2236,6 +2236,22 @@ disponibilité hors ligne selon le téléphone) reste à vérifier sur de vrais 
 Tests : `activities_test` (§5.78 : la case se remplit et la réponse part ; rien entendu ; pas de
 micro sans reconnaissance hors ligne).
 
+### 5.79 Séances de référence : non-régression pédagogique (novembre 2026)
+
+Feuille de route, point 1. Pour chacune des 6 leçons de référence et trois situations (première
+séance ; révision mêlée, scores 30, 65 et 95 ; notions fragiles, score 40), le moteur compose une
+séance, graine et date fixées. Le résultat, lisible (bloc, jeu, difficulté, notions, raison en
+clair), est enregistré dans `backend/tests/golden/reference_sessions.txt`, en tête la version des
+règles. `tests/domain/test_reference_sessions.py` recompose et compare : un changement du moteur
+ou de ses règles qui modifie une séance fait échouer le test, avec la différence ligne à ligne
+(« enregistré » / « moteur actuel »). Changement voulu : relire la différence, puis
+`uv run python -m app.tools.reference_sessions --update` ; le fichier mis à jour passe dans la PR,
+où la différence pédagogique se relit comme le code.
+
+Ce n'est pas un jugement de qualité : les invariants pédagogiques (pas deux formats à la suite,
+part de « se rappeler », difficulté selon le score…) restent dans leurs propres tests ; celui-ci
+dit seulement ce qui a changé, pour qu'aucun changement de séance ne passe inaperçu.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
