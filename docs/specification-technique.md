@@ -646,6 +646,15 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   plafond est atteint avec un raisonnement et sans réponse, le message le dit (« l'IA a réfléchi
   sans répondre »). Non testé avec un vrai Ollama.
 
+- **Texte en anglais dans une leçon qui n'est pas de l'anglais** (`text.written_in_english`,
+  `validation.py`) : un petit modèle local a écrit « The correct word to complete the noun
+  'trésor' is 'un'. » dans une leçon de français, et le jeu « Démêler » l'a montrée à l'enfant.
+  Un texte compte comme anglais s'il a au moins deux mots-outils anglais différents et plus de
+  mots-outils anglais que français, citations entre guillemets mises à part. Hors des matières
+  « anglais » et « autre », une notion dont le titre ou la phrase à retenir est en anglais est
+  rejetée, et tout élément du matériel en anglais est écarté, sauf s'il est recopié de la leçon.
+  Les leçons déjà enregistrées ne sont pas reprises : il faut les analyser de nouveau.
+
 ### 5.16 Jeux en plus (étape 26)
 
 Demande de la famille, comparée aux jeux existants : Quiz = `MCQ`, Apparier = `MATCH`, Fiches de

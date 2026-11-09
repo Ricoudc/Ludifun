@@ -413,7 +413,10 @@ class LessonPipeline:
         for material in output.output.materials:
             if material.knowledge_id in by_id and material.knowledge_id not in found:
                 found[material.knowledge_id] = validate_material(
-                    by_id[material.knowledge_id], material.model_dump(mode="json"), text
+                    by_id[material.knowledge_id],
+                    material.model_dump(mode="json"),
+                    text,
+                    analysis.lesson.subject if analysis.lesson else None,
                 )
         result.runs[-1].warnings += [
             f"{k}.{r.element} : {r.reason}" for k, v in found.items() for r in v.rejected
