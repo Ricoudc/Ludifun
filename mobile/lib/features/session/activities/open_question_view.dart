@@ -57,6 +57,7 @@ class _OpenQuestionViewState extends State<OpenQuestionView> {
         ),
         onChanged: (_) => setState(() {}),
       ),
+      SpeakAnswerButton(controller: _answer, enabled: !_sent, onChanged: () => setState(() {})),
       const SizedBox(height: 12),
       FilledButton(
         onPressed: _answer.text.trim().isEmpty || _sent ? null : _submit,

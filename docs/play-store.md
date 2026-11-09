@@ -91,8 +91,11 @@ PEGI 3.
 
 ### Autorisations
 
-`INTERNET`, et `CAMERA`, ajoutée par la lecture du QR code de liaison (`mobile_scanner`). La
-caméra n'est demandée qu'au moment de scanner. Les photos de leçons passent par l'application
+`INTERNET`, `CAMERA`, ajoutée par la lecture du QR code de liaison (`mobile_scanner`), et
+`RECORD_AUDIO` pour « Dire ma réponse » (§5.78 : reconnaissance sur le téléphone, rien n'est
+envoyé ni enregistré). La caméra n'est demandée qu'au moment de scanner, le micro qu'au premier
+toucher de « Dire ma réponse ». Formulaire « Sécurité des données » : la voix n'est ni collectée
+ni partagée (elle ne quitte pas l'appareil). Les photos de leçons passent par l'application
 Appareil photo du téléphone. La sauvegarde Android est désactivée : les jetons ne sont pas
 restaurés sur un autre appareil.
 

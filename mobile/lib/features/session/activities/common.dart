@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
+import '../../../core/listening.dart';
 import '../../../core/speech.dart';
 
 /// Comment jouer, dit au niveau de la classe de l'enfant (envoyé par le serveur, étape 25).
@@ -236,4 +237,100 @@ class AnswerButton extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// « 🎤 Dire ma réponse » (§5.78) : ce que l'enfant dit remplit la case, qu'il peut corriger
+/// avant de valider. Rien n'apparaît si le téléphone ne sait pas écouter le français hors ligne.
+class SpeakAnswerButton extends StatefulWidget {
+  const SpeakAnswerButton({
+    required this.controller,
+    required this.onChanged,
+    this.enabled = true,
+    super.key,
+  });
+
+  /// Remplacé dans les tests.
+  static VoiceInput Function() voiceFactory = PhoneVoiceInput.new;
+
+  final TextEditingController controller;
+
+  /// Appelé quand la voix a rempli la case (le bouton « Valider » se met à jour).
+  final VoidCallback onChanged;
+  final bool enabled;
+
+  @override
+  State<SpeakAnswerButton> createState() => _SpeakAnswerButtonState();
+}
+
+class _SpeakAnswerButtonState extends State<SpeakAnswerButton> {
+  late final VoiceInput _voice = SpeakAnswerButton.voiceFactory();
+  bool _available = false;
+  bool _listening = false;
+  bool _nothing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      _voice.available().then((ok) {
+        if (mounted) setState(() => _available = ok);
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    if (_listening) unawaited(_voice.stop());
+    super.dispose();
+  }
+
+  void _show(String words) {
+    if (!mounted || words.isEmpty) return;
+    widget.controller.value = TextEditingValue(
+      text: words,
+      selection: TextSelection.collapsed(offset: words.length),
+    );
+    widget.onChanged();
+  }
+
+  Future<void> _toggle() async {
+    if (_listening) {
+      await _voice.stop();
+      return;
+    }
+    setState(() {
+      _listening = true;
+      _nothing = false;
+    });
+    final words = await _voice.listen(_show);
+    if (!mounted) return;
+    _show(words);
+    setState(() {
+      _listening = false;
+      _nothing = words.trim().isEmpty;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_available) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: widget.enabled ? _toggle : null,
+          icon: Text(_listening ? '⏹️' : '🎤', style: const TextStyle(fontSize: 20)),
+          label: Text(_listening ? 'Je t\'écoute… (touche pour arrêter)' : 'Dire ma réponse'),
+        ),
+        if (_nothing)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Je n\'ai pas bien entendu : réessaie ou écris ta réponse.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+      ],
+    );
+  }
 }

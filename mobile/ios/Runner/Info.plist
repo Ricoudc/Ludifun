@@ -15,6 +15,10 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Ludifun utilise l'appareil photo pour photographier tes leçons et lire le QR code de ton parent.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ludifun écoute ta réponse quand tu touches « Dire ma réponse ». Ta voix reste sur le téléphone.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ludifun transforme ta réponse dite à voix haute en texte, sur le téléphone, sans l'envoyer sur Internet.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ludifun ouvre ta galerie pour ajouter la photo d'une leçon.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>

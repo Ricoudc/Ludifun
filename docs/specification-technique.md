@@ -2215,6 +2215,27 @@ sinon un autre format de la notion (`SessionComposer._sequence`).
 Tests : `tests/domain/test_recall_guard.py` (toutes les leçons de référence, plusieurs graines ;
 aucune question posée deux fois dans une séance).
 
+### 5.78 Répondre à voix haute (novembre 2026)
+
+Feuille de route, point 5, pour les plus jeunes. Dans les textes à trous et les questions
+ouvertes, le bouton « 🎤 Dire ma réponse » : ce que l'enfant dit remplit la case, qu'il peut
+corriger avant de valider (la réponse part comme une réponse écrite : rien ne change côté
+serveur). Pas de micro dans les dictées et les jeux d'orthographe : écrire y est ce qu'on apprend.
+
+Vie privée : `lib/core/listening.dart` (`PhoneVoiceInput`, bibliothèque `speech_to_text`)
+impose la reconnaissance **sur le téléphone** (`onDevice`) en français ; la voix n'est ni
+envoyée ni enregistrée. Si le téléphone ne sait pas reconnaître le français hors ligne, le bouton
+n'apparaît pas. Écoute de 20 s au plus, arrêtée par 3 s de silence ou un toucher ; « Je n'ai pas
+bien entendu » si rien n'est compris. Autorisations : `RECORD_AUDIO` (Android, demandée au premier
+toucher), `NSMicrophoneUsageDescription` et `NSSpeechRecognitionUsageDescription` (iOS). AIPD et
+fiche Play Store mises à jour.
+
+Limite : testé avec une voix simulée seulement ; la reconnaissance réelle (accent, voix d'enfant,
+disponibilité hors ligne selon le téléphone) reste à vérifier sur de vrais téléphones.
+
+Tests : `activities_test` (§5.78 : la case se remplit et la réponse part ; rien entendu ; pas de
+micro sans reconnaissance hors ligne).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

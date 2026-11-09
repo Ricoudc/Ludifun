@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- §5.78 : réponse dite à voix haute, reconnue sur le téléphone (jamais envoyée en ligne). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Pas de sauvegarde : les jetons chiffrés ne doivent pas être restaurés ailleurs (§16.1). -->
     <application
         android:label="Ludifun"
@@ -54,6 +56,9 @@
         <!-- Dictée : la synthèse vocale du téléphone (flutter_tts, Android 11 et plus). -->
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

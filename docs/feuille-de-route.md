@@ -103,7 +103,8 @@ jour, missions du jour.
 À faire :
 - ✅ Un personnage qui accompagne la séance et explique l'erreur à l'âge de l'enfant
   (« Tu y es presque ! Regarde la deuxième étape. ») : Ludi, §5.76.
-- ⬜ Réponses à voix haute (reconnaissance vocale), pour les plus jeunes.
+- ✅ Réponses à voix haute (reconnaissance vocale sur le téléphone), pour les plus jeunes (§5.78) ;
+  reste à essayer sur de vrais téléphones.
 - ✅ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage (§5.77).
 
 ## 6. Distribution

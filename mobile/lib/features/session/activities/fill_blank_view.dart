@@ -93,7 +93,9 @@ class _FillBlankViewState extends State<FillBlankView> {
           onChanged: (_) => setState(() {}),
           onSubmitted: (_) => _submit(),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        SpeakAnswerButton(controller: _answer, enabled: !_sent, onChanged: () => setState(() {})),
+        const SizedBox(height: 8),
         FilledButton(
           onPressed: typed.isEmpty || _sent ? null : _submit,
           child: const Text('Valider'),
