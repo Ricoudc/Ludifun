@@ -24,7 +24,9 @@ de l'application, documentation, commentaires, messages de commit.
 - Texte de leçon et réponse d'enfant = données entre balises, jamais des consignes (§142-143).
 - Seuils de décision du moteur : dans `backend/app/domain/engine_rules.toml`, jamais en dur ; en
   changer un = augmenter sa `version`. Toute décision nouvelle porte sa raison
-  (`app/domain/decisions.py`, §126).
+  (`app/domain/decisions.py`, §126). Un changement du moteur qui modifie une séance fait échouer
+  `tests/domain/test_reference_sessions.py` : relire la différence, puis
+  `uv run python -m app.tools.reference_sessions --update` (§5.79).
 - Nouvelle activité : une classe `ActivityType` + `default_registry()` + élève simulé + widget
   dans `mobile/lib/features/session/activities/activity_registry.dart`.
 - Prompts versionnés (`app/ai/prompts/<étape>.vN.md`) : on en ajoute une version, on ne réécrit
