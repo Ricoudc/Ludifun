@@ -639,6 +639,13 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   encore tronquée, un second essai n'envoie que les citations. La validation se fait toujours sur
   le texte entier. Le message « réponse tronquée » donne les jetons lus, écrits et le contexte.
 
+- **Modèles qui réfléchissent** (qwen3-vl, qwen3…) : leur raisonnement compte dans la longueur
+  maximale de la réponse ; sur le PC d'essai, `qwen3-vl:8b` atteignait le plafond à chaque étape
+  sans rien répondre (« tourné en boucle »). Chaque appel à Ollama demande donc `think: false` ;
+  un modèle qui refuse ce réglage (erreur 400) est rappelé sans lui, et c'est retenu. Si le
+  plafond est atteint avec un raisonnement et sans réponse, le message le dit (« l'IA a réfléchi
+  sans répondre »). Non testé avec un vrai Ollama.
+
 ### 5.16 Jeux en plus (étape 26)
 
 Demande de la famille, comparée aux jeux existants : Quiz = `MCQ`, Apparier = `MATCH`, Fiches de

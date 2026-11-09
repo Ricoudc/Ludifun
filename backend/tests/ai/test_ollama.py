@@ -513,3 +513,47 @@ async def test_qwen3_reasoning_is_not_the_answer() -> None:
     )
     result = await llm.structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
     assert result.output.text == "Les fractions"
+
+
+async def test_reasoning_is_switched_off() -> None:
+    """qwen3-vl:8b écrivait 2500 jetons de raisonnement et aucune réponse (PC d'essai)."""
+    bodies: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={"message": {"content": '{"text": "ok"}'}, "done_reason": "stop"})
+
+    await ollama(handler).structured(prompt=Prompt("analysis", "v6", "Analyse."), input="x", schema=Page)
+    assert bodies[0]["think"] is False
+
+
+async def test_a_model_that_refuses_the_setting_is_called_without_it() -> None:
+    bodies: list[dict[str, Any]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        if "think" in body:
+            return httpx.Response(400, json={"error": '"qwen2.5vl:7b" does not support thinking'})
+        return httpx.Response(200, json={"message": {"content": '{"text": "ok"}'}, "done_reason": "stop"})
+
+    llm = ollama(handler)
+    prompt = Prompt("analysis", "v6", "Analyse.")
+    assert (await llm.structured(prompt=prompt, input="x", schema=Page)).output.text == "ok"
+    await llm.structured(prompt=prompt, input="x", schema=Page)
+    assert ["think" in b for b in bodies] == [True, False, False]  # retenu pour la suite
+
+
+async def test_reasoning_without_an_answer_is_named() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "message": {"content": "", "thinking": "Voyons la page…"},
+                "done_reason": "length",
+                "eval_count": MAX_OUTPUT["ocr"],
+            },
+        )
+
+    with pytest.raises(AIInvalidOutput, match="réfléchi sans répondre"):
+        await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)

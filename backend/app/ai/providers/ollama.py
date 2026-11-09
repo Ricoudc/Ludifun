@@ -53,6 +53,10 @@ KEEP_ALIVE = "30m"
 _CRASH_MARKERS = (
     "llama-server", "llama runner", "wsarecv", "forcibly closed", "exit status", "health resp",
 )  # fmt: skip
+# Modèles « qui réfléchissent » (qwen3-vl, qwen3…) : Ollama leur fait écrire un raisonnement avant
+# la réponse, et ce raisonnement compte dans la longueur maximale. Sur le PC d'essai, qwen3-vl:8b
+# atteignait le plafond à chaque lecture de photo (2500 jetons, aucune réponse) : le raisonnement
+# est donc coupé (`think: false`). Un modèle qui refuse ce réglage est rappelé sans lui.
 # Longueur maximale de la réponse, par étape (jetons). Un petit modèle de vision se met parfois à
 # répéter le même texte sans fin : sans plafond, il remplit tout le contexte (un quart d'heure sur
 # certains PC) et bloque les leçons suivantes. Réponses réelles observées : lecture 300-750 jetons,
@@ -159,6 +163,7 @@ class OllamaProvider:
         self.num_ctx = num_ctx
         self._client = client or httpx.AsyncClient(timeout=TIMEOUT_S)
         self.last_speed: float | None = None  # jetons écrits par seconde au dernier appel
+        self._cannot_think_off: set[str] = set()  # modèles qui refusent le réglage `think`
 
     def model_for(self, stage: Stage) -> str:
         return self.models[stage]
@@ -293,9 +298,16 @@ class OllamaProvider:
         }
         if format is not None:
             body["format"] = format
+        if model not in self._cannot_think_off:
+            body["think"] = False
         started = time.perf_counter()
         try:
             response = await self._client.post(f"{self.base_url}/api/chat", json=body)
+            if response.status_code == 400 and "think" in body and "think" in response.text.lower():
+                # Ce modèle (ou un Ollama ancien) refuse le réglage : on s'en passe désormais.
+                self._cannot_think_off.add(model)
+                del body["think"]
+                response = await self._client.post(f"{self.base_url}/api/chat", json=body)
         except httpx.TimeoutException as exc:
             cause = await self._placement(model)
             logger.warning("Ollama : %s sans réponse après %d s ; %s", prompt.stage, TIMEOUT_S, cause)
@@ -331,6 +343,12 @@ class OllamaProvider:
         if data.get("done_reason") == "length":
             written = data.get("eval_count")
             if isinstance(written, int) and written >= MAX_OUTPUT[prompt.stage]:
+                message = data.get("message") or {}
+                if message.get("thinking") and not (message.get("content") or "").strip():
+                    raise AIInvalidOutput(
+                        f"l'IA a réfléchi sans répondre : réponse coupée après {written} jetons "
+                        "(nouvel essai)"
+                    )
                 raise AIInvalidOutput(
                     f"l'IA a tourné en boucle : réponse coupée après {written} jetons (nouvel essai)"
                 )
