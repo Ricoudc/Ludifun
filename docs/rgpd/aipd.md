@@ -8,15 +8,22 @@
 ## 1. Description
 
 Un enfant, sous le contrôle de son parent, photographie ou colle une leçon. Un modèle d'IA
-(Anthropic) en extrait le texte, les notions et des exercices. L'application compose des
+(celui du serveur, Claude par défaut, ou celui que la famille a choisi : un autre service en
+ligne avec sa propre clé, ou Ollama sur son PC) en extrait le texte, les notions et des
+exercices ; le parent relit et corrige la leçon avant l'enfant (§5.69). L'application compose des
 séances de révision et suit la maîtrise de chaque notion. Le parent consulte un tableau de bord.
 
 Flux de données :
 1. téléphone → API : photos (au plus 6 × 8 Mo), réponses, temps ;
-2. API → Anthropic : photos, texte de la leçon, réponses rédigées, niveau scolaire ;
+2. API → IA choisie (Anthropic par défaut ; OpenAI, Google, Mistral, Groq, xAI, Azure si la
+   famille le choisit ; rien ne sort avec Ollama ou Tesseract) : photos, texte de la leçon,
+   réponses rédigées, explications d'« Enseigne-moi », énoncés du mode devoirs, notion et type
+   d'erreur pour un exercice neuf, niveau scolaire ; jamais le prénom ;
 3. API → base de données (UE) : texte de la leçon, notions, résultats ; les photos sont
    effacées dès la lecture ;
-4. API → fournisseur d'e-mails (UE) : adresse du parent et message de service.
+4. API → fournisseur d'e-mails (UE) : adresse du parent et message de service ;
+5. facultatif : API → service d'images (Pollinations, Cloudflare) : une description en anglais
+   d'une chose concrète, contrôlée par le code ; ni prénom, ni texte de leçon.
 
 Réponse dite à voix haute (§5.78) : la voix de l'enfant est reconnue **sur le téléphone**
 (reconnaissance hors ligne imposée) et n'est ni envoyée au serveur ni enregistrée ; seul le texte
@@ -41,7 +48,7 @@ ligne en français, le micro n'est pas proposé.
 |---|---|---|---|---|---|
 | Accès illégitime aux résultats d'un enfant | vol d'un téléphone, d'un jeton ou d'un compte parent | importante | limitée | séparation parent/enfant et entre familles testée sur chaque route ; jetons hachés ; déliaison à distance ; rotation des jetons avec détection de réutilisation ; limites de débit | limité |
 | Données personnelles dans la photo (nom sur le cahier, visage) | photo prise par l'enfant | importante | importante | photos jamais stockées ; la transcription exclut les en-têtes personnels ; conseil affiché avant la photo | limité, **à mesurer à l'étape 18** |
-| Réutilisation des données par le fournisseur d'IA | transfert vers Anthropic | importante | négligeable | offre commerciale sans entraînement sur les données ; DPA ; aucun prénom transmis | négligeable |
+| Réutilisation des données par le fournisseur d'IA | transfert vers l'IA choisie | importante | négligeable (IA du serveur), **limitée** (IA choisie par la famille) | IA du serveur : offre commerciale sans entraînement, DPA ; IA de la famille : avertissement au moment du choix (Gemini gratuit), Ollama proposé pour que rien ne sorte ; aucun prénom transmis ; contrôles du code sur tout ce qui revient | limité, **à revoir avec la liste définitive des fournisseurs proposés** |
 | Contenu faux ou inadapté produit par l'IA | erreur du modèle | modérée | limitée | validations (citations obligatoires, règles), évaluation humaine (étape 18), avis des parents | limité |
 | Perte de données | panne du serveur | modérée | limitée | sauvegardes chiffrées quotidiennes, restauration testée | limité |
 | Conservation excessive | compte abandonné | modérée | importante | suppression automatique après 12 mois et prévenance | négligeable |
@@ -51,6 +58,11 @@ ligne en français, le micro n'est pas proposé.
 ## 4. Plan d'action avant la bêta
 
 - [ ] Signer les DPA (hébergeur, e-mails, Anthropic) et compléter le registre.
+- [ ] Décider quels fournisseurs d'IA la famille peut choisir dans la version publique, vérifier
+      pour chacun le lieu de traitement, l'absence d'entraînement sur les données et le DPA ;
+      retirer ceux qui ne conviennent pas (registre, « Fournisseurs d'IA »).
+- [ ] Si un service d'images en ligne est utilisé : vérifier ses conditions (ou s'en tenir aux
+      images dessinées sur le PC).
 - [ ] Mesurer, sur les 30 leçons de l'étape 5, combien de transcriptions contiennent encore un
       nom de l'élève, de l'école ou de l'enseignant (champ `personal` de `expected.json`, mesure
       « Noms personnels dans le texte lu » du rapport, seuil 0). Si le seuil n'est pas atteint,
