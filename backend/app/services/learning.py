@@ -49,7 +49,8 @@ from app.domain.errors import with_speed
 from app.domain.help import ExternalHelp, HelpStep, next_help, result_with_help
 from app.domain.mastery import Mastery
 from app.domain.planning import Focus
-from app.domain.rules import ENGINE_VERSION
+from app.domain.prerequisites import prerequisite_of
+from app.domain.rules import ENGINE_VERSION, RULES
 from app.domain.scoring import (
     Evidence,
     KnowledgeStatus,
@@ -757,7 +758,13 @@ async def _remediate(
     if not failing_now:
         return []
     items = await session_items(session, revision)
-    remediated = {k for i in items if i.block == Block.REMEDIATION for k in i.knowledge_ids}
+    # Notions remédiées ; la notion préalable revue en passant (§5.72) n'en est pas une.
+    remediated = {
+        k
+        for i in items
+        if i.block == Block.REMEDIATION and (i.reason or {}).get("rule") != Rule.PREREQUISITE
+        for k in i.knowledge_ids
+    }
     if len(remediated) >= MAX_REMEDIATIONS:
         return []
     failures: dict[uuid.UUID, int] = {}
@@ -782,12 +789,28 @@ async def _remediate(
             continue
         unit = next(u for u in lesson.units if u.id == key)
         previous = [activity_of(i, lesson.id_to_key) for i in items]
-        planned = SessionComposer(registry).remediation(unit, previous, item.position + 1, revision.seed)
+        masteries = await load_masteries(session, revision.child_id, lesson)
+        before = prerequisite_of(unit, lesson.units, masteries, RULES.adaptation.prerequisite_below)
+        planned = SessionComposer(registry).remediation(
+            unit, previous, item.position + 1, revision.seed, prerequisite=before
+        )
         if not planned:
             return []
         await _shift_after(session, revision, item.position, len(planned))
-        _persist_plan(session, revision, planned, lesson, intro=f"📖 Rappel : {unit.item.statement}")
-        log_decision(revision, planned[0].reason, position=item.position, notion=unit.item.label)
+        first = [p for p in planned if p.reason.get("rule") == Rule.PREREQUISITE]
+        rest = planned[len(first) :]
+        if first and before is not None:
+            _persist_plan(
+                session,
+                revision,
+                first,
+                lesson,
+                intro=f"📖 On revient d'abord sur « {before.item.label} » : {before.item.statement}",
+            )
+            log_decision(revision, first[0].reason, position=item.position, notion=before.item.label)
+        _persist_plan(session, revision, rest, lesson, intro=f"📖 Rappel : {unit.item.statement}")
+        if rest:
+            log_decision(revision, rest[0].reason, position=item.position, notion=unit.item.label)
         await session.flush()
         positions = {p.position for p in planned}
         return [i for i in await session_items(session, revision) if i.position in positions]

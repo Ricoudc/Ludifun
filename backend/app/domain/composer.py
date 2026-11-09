@@ -651,10 +651,28 @@ class SessionComposer:
         previous: Sequence[BuiltActivity],
         start_position: int,
         seed: int,
+        prerequisite: KnowledgeUnit | None = None,
     ) -> list[PlannedItem]:
         """Après deux échecs sur une notion : une activité facile (reconnaître), puis une autre dans
-        un format pas encore raté, à insérer tout de suite (le rappel de la règle les précède)."""
+        un format pas encore raté, à insérer tout de suite (le rappel de la règle les précède).
+
+        `prerequisite` : notion préalable pas encore maîtrisée (§5.72), revue d'abord par une
+        activité facile, avec sa propre raison."""
         rng = random.Random(f"{seed}:remediation:{unit.id}")
+        before: list[PlannedItem] = []
+        if prerequisite is not None:
+            easy_first: Prefs = lambda u: ((1,), EASY)  # noqa: E731
+            used_before = {prerequisite.id: {a.type for a in previous if prerequisite.id in a.knowledge_ids}}
+            built = self._sequence([prerequisite], easy_first, previous, used_before, rng)[:1]
+            why_before = reason(
+                Rule.PREREQUISITE,
+                failed=unit.item.label,
+                prerequisite=prerequisite.item.label,
+                below=RULES.adaptation.prerequisite_below,
+            )
+            before = [PlannedItem(start_position, Block.REMEDIATION, a, why_before) for a in built]
+            previous = [*previous, *built]
+            start_position += len(before)
         failed = {a.type for a in previous if unit.id in a.knowledge_ids}
         used = {unit.id: set(failed)}
         easy: Prefs = lambda u: ((1,), EASY)  # noqa: E731
@@ -667,8 +685,11 @@ class SessionComposer:
             failed=sorted(code.value for code in failed),
         )
         return [
-            PlannedItem(start_position + i, Block.REMEDIATION, a, why)
-            for i, a in enumerate([*first, *second])
+            *before,
+            *(
+                PlannedItem(start_position + i, Block.REMEDIATION, a, why)
+                for i, a in enumerate([*first, *second])
+            ),
         ]
 
     def bonus(

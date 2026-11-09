@@ -18,6 +18,7 @@ class Rule(StrEnum):
     SPEED = "speed"  # défi rapide
     REPLAY = "replay"  # reprise d'une erreur de la séance
     REMEDIATION = "remediation"  # échecs répétés : rappel puis activités plus faciles
+    PREREQUISITE = "prerequisite"  # échecs répétés : d'abord une notion préalable pas maîtrisée
     BONUS = "bonus"  # séance rapide et réussie : défis plus difficiles
     ERRORS_SESSION = "errors_session"  # « Revoir mes erreurs »
     PAUSE_FAST_GUESSING = "pause_fast_guessing"  # réponses au hasard : pause proposée
@@ -108,6 +109,12 @@ def _sentence(rule: Any, f: dict[str, Any]) -> str | None:
             return (
                 f"{f.get('failures')} échecs sur cette notion dans la séance : "
                 "rappel puis activité plus facile."
+            )
+        case Rule.PREREQUISITE:
+            return (
+                f"Échecs répétés sur « {f.get('failed')} » : on revient d'abord sur "
+                f"« {f.get('prerequisite')} », notion préalable pas encore maîtrisée "
+                f"(score sous {f.get('below')})."
             )
         case Rule.BONUS:
             return (

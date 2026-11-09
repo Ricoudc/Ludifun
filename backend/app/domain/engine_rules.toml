@@ -4,7 +4,7 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.15.0"
+version = "1.16.0"
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement
@@ -45,6 +45,7 @@ level_proof_max_help = 2    # au-delà, la réponse ne valide pas un niveau de c
 [adaptation]
 remediation_after_failures = 2  # échecs sur la même notion : rappel puis activités plus faciles
 max_remediations = 2            # par séance
+prerequisite_below = 80         # notion préalable revue d'abord si son score est en dessous (§5.72)
 failure_below = 0.5             # résultat en dessous duquel une réponse est un échec
 window = 5                      # réponses regardées pour proposer une pause
 fast_wrong = 3                  # réponses fausses et trop rapides dans la fenêtre : au hasard

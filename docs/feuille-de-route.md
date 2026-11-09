@@ -81,7 +81,7 @@ Fait :
 - ⬜ Profil par notion visible : réussite, temps de réponse, tentatives, type d'erreur, sans aide,
   transfert, dernière révision ; et la décision qui en découle (« révision espacée », « exercices
   en plus », « reprendre les bases »).
-- ⬜ Revenir sur une connaissance préalable quand une notion échoue.
+- ✅ Revenir sur une connaissance préalable quand une notion échoue (§5.72).
 - ⬜ Exercice neuf généré sur une erreur qui revient (§118).
 
 ## 4. Tableau de bord parental

@@ -2061,6 +2061,35 @@ Application : carte « Cette semaine avec Emma » sous « En bref ».
 Tests : `tests/domain/test_weekly_plan.py`, `tests/api/test_parent_review.py` (la leçon à relire
 vient en premier, puis disparaît), `parent_flow_test` (la carte).
 
+### 5.72 Revenir sur une notion préalable quand une notion échoue (novembre 2026, règles 1.16.0)
+
+Feuille de route, point 3. Une erreur répétée vient souvent d'avant : une division ratée parce que
+les tables ne sont pas sues, un accord raté parce que le verbe n'est pas reconnu. Domaine pur
+`app/domain/prerequisites.py` : `prerequisite_of(notion, notions, maîtrises, seuil)`.
+
+D'où vient le lien « préalable » (jamais d'appel à l'IA pendant la séance) :
+1. l'analyse a noté que la notion ratée est un exemple d'une autre (`example_of`) : la règle
+   générale d'abord ;
+2. sinon, une carte écrite à la main entre les thèmes (§5.47), `THEME_PREREQUISITES` : la
+   soustraction demande l'addition, la division la multiplication et la soustraction, les
+   fractions la division, les pourcentages les fractions et la proportionnalité, Pythagore les
+   puissances et les aires, la conjugaison, les homophones, le genre et le nombre la nature des
+   mots… Carte sans cycle (testé).
+
+Seule une notion de la même leçon, pas encore maîtrisée (score sous `adaptation.prerequisite_below`
+= 80 ; jamais travaillée : 0), est retenue ; parmi plusieurs, la moins maîtrisée puis la plus
+importante. Après deux échecs (§ étape 17), `SessionComposer.remediation(…, prerequisite=…)`
+insère d'abord une activité facile sur cette notion (intro « 📖 On revient d'abord sur « … » :
+… »), puis la remédiation habituelle (« 📖 Rappel : … », activité facile, autre format). Raison
+nouvelle `Rule.PREREQUISITE` (« Échecs répétés sur « … » : on revient d'abord sur « … », notion
+préalable pas encore maîtrisée »), visible par le parent et journalisée dans les décisions de la
+séance. La notion préalable revue ne compte pas dans `max_remediations`. Sans lien ni notion
+préalable fragile : la remédiation d'avant, inchangée. Contrat d'API inchangé (bloc
+`remediation`, raison en texte).
+
+Tests : `tests/domain/test_prerequisites.py`, `tests/api/test_adaptation.py`
+(`test_remediation_goes_back_to_a_prerequisite_first`).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
