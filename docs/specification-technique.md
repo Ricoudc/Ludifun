@@ -1986,6 +1986,37 @@ de liste sans mention de l'écriture, en histoire, ou à deux mots ; mot repris 
 matériel de l'IA ; jeux d'écriture seulement ; de bout en bout, une IA qui oublie les mots donne
 une séance de jeux d'écriture avec une seule demande de matériel).
 
+### 5.69 Le parent relit la leçon avant l'enfant (novembre 2026, schéma 0031)
+
+Demande de la famille : « que l'adulte puisse voir la leçon entière et modifier les consignes et
+les erreurs avant que l'enfant ait accès à la leçon, car l'IA fait des erreurs ».
+
+- **Réglage de la famille** « Je relis chaque leçon avant mon enfant » (`families.review_lessons`,
+  **coché par défaut** ; « Objectifs et contrôles »). `GET/PUT /v1/parent/review-lessons`.
+- **Verrou** (`app/services/lesson_review.py`) : une leçon prête sans `parent_approved_at`, dans
+  une famille qui relit, attend le parent. Lu au moment de l'accès : décocher ouvre aussitôt les
+  leçons en attente. L'enfant voit la leçon dans sa liste (« 🔒 Un adulte la relit »,
+  `awaiting_parent`, champ nouveau et facultatif) ; `GET /v1/lessons/{id}` ne donne alors rien de
+  la leçon (ni notions, ni compétences, ni ressources) ; séance, fiche (« Mon cahier »),
+  « Enseigne-moi » : 409 `lesson_awaiting_parent` (« Un adulte relit ta leçon… ») ; pas de
+  mission du jour sur elle. Une ancienne application reçoit ce message au lancement de la séance.
+- **Le parent** (« Questions de la leçon ») voit toute la leçon, réponses comprises, et :
+  - corrige le **titre, l'objectif et le résumé** (`PUT …/lessons/{l}/info`) ;
+  - corrige le **nom et la phrase « à retenir »** d'une notion (`PUT …/notions/{k}/text`) ; pour un
+    mot de liste (§5.68), corriger le nom corrige le mot que les jeux font écrire ;
+  - corrige les **questions et réponses** comme avant (§5.59), ou les fait refaire par l'IA ;
+  - **retire une notion** fausse ou inventée (`POST …/notions/{k}/remove`, `restore` pour la
+    remettre ; `knowledge_items.removed_at`) : plus jamais proposée à l'enfant (`load_units`),
+    sa progression gardée ; jamais la dernière (409 `last_notion`) ;
+  - **valide** la leçon (`POST …/lessons/{l}/approve`, 409 `no_notion_left` si tout est retiré).
+- **Migration 0031** : les leçons existantes sont reprises comme validées (l'enfant les garde) ;
+  retour arrière : les colonnes disparaissent, une notion retirée redevient proposée.
+- **Tests** : la famille de test décoche la case (`tests/api/helpers.register`), sauf dans
+  `tests/api/test_parent_review.py` (verrou côté enfant, corrections, retrait, validation, case
+  décochée, mot de liste corrigé) ; les 8 routes dans `test_separation.py` ; `demo_family`
+  valide ses leçons comme un parent ; application : `parent_flow_test` (relire, corriger le
+  résumé, retirer, valider ; la case) et `child_flow_test` (leçon fermée).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

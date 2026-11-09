@@ -1206,6 +1206,97 @@ void main() {
     expect(find.text('Numérateur'), findsOneWidget);
   });
 
+  testWidgets('§5.69 : le parent relit la leçon, corrige, retire une notion, puis la valide', (
+    tester,
+  ) async {
+    var approved = false;
+    var removed = false;
+    var summary = 'Un résumé avec une erreur.';
+    Map<String, Object?> notion(String id, String label, {bool gone = false}) => {
+      'knowledge_id': id,
+      'label': label,
+      'statement': '$label : phrase à retenir.',
+      'blocks': <Object>[],
+      'removed': gone,
+    };
+    Map<String, Object?> content() => {
+      'lesson_id': 'l2',
+      'title': 'Les fractions',
+      'grade': 'CM1',
+      'text': null,
+      'objective': 'Comprendre les fractions',
+      'summary': summary,
+      'approved': approved,
+      'awaiting_parent': !approved,
+      'notions': [notion('n1', 'Numérateur'), notion('n2', 'Inventée', gone: removed)],
+    };
+    Map<String, Object?>? info;
+    server
+      ..on('GET /v1/children/c1/lessons/l2/content', (_) => (200, content()))
+      ..on('PUT /v1/children/c1/lessons/l2/info', (r) {
+        info = r.data as Map<String, Object?>;
+        summary = info!['summary']! as String;
+        return (200, content());
+      })
+      ..on('POST /v1/children/c1/lessons/l2/notions/n2/remove', (_) {
+        removed = true;
+        return (200, notion('n2', 'Inventée', gone: true));
+      })
+      ..on('POST /v1/children/c1/lessons/l2/approve', (_) {
+        approved = true;
+        return (200, content());
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    expect(find.text('🔒 L\'enfant n\'a pas encore accès à cette leçon'), findsOneWidget);
+    expect(find.text('Un résumé avec une erreur.'), findsOneWidget);
+
+    // Corriger le résumé.
+    await tap(tester, find.text('Modifier le titre et le résumé'));
+    await tester.enterText(find.widgetWithText(TextField, 'Résumé'), 'Un résumé juste.');
+    await tap(tester, find.text('Enregistrer'));
+    expect(info, {
+      'title': 'Les fractions',
+      'objective': 'Comprendre les fractions',
+      'summary': 'Un résumé juste.',
+    });
+    expect(find.text('Un résumé juste.'), findsOneWidget);
+
+    // Retirer la notion inventée, après confirmation.
+    await tap(tester, find.text('Inventée'));
+    await tap(tester, find.text('Retirer cette notion'));
+    await tap(tester, find.text('Retirer'));
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/notions/n2/remove'));
+    expect(find.text('Inventée (retirée)'), findsOneWidget);
+
+    // Valider : l'enfant y a accès.
+    await tap(tester, find.text('Valider la leçon').first);
+    expect(server.routes, contains('POST /v1/children/c1/lessons/l2/approve'));
+    expect(find.text('✅ Leçon validée : l\'enfant peut la réviser.'), findsOneWidget);
+    expect(find.text('Valider la leçon'), findsNothing);
+  });
+
+  testWidgets('§5.69 : « Je relis chaque leçon avant mon enfant », cochée, se décoche', (
+    tester,
+  ) async {
+    var enabled = true;
+    server
+      ..on('GET /v1/parent/review-lessons', (_) => (200, {'enabled': enabled}))
+      ..on('PUT /v1/parent/review-lessons', (r) {
+        enabled = (r.data as Map<String, Object?>)['enabled']! as bool;
+        return (200, {'enabled': enabled});
+      })
+      ..on('GET /v1/children/c1/exams', (_) => (200, <Object>[]));
+    final container = await launch(tester);
+    await go(tester, container, Routes.childGoals('c1'));
+    final box = find.widgetWithText(SwitchListTile, 'Je relis chaque leçon avant mon enfant');
+    expect(tester.widget<SwitchListTile>(box).value, isTrue);
+    await tap(tester, box);
+    expect(enabled, isFalse);
+    expect(tester.widget<SwitchListTile>(box).value, isFalse);
+    expect(find.textContaining('ouvertes à l\'enfant dès qu\'elles sont prêtes'), findsOneWidget);
+  });
+
   testWidgets('§5.61 : une figure exacte dessinée par Ludifun est signalée au parent', (
     tester,
   ) async {

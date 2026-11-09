@@ -29,6 +29,7 @@ from sqlalchemy import (
     Uuid,
     func,
     text,
+    true,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -125,6 +126,8 @@ class Family(Base):
     created_at: Mapped[datetime] = _created_at()
     # Recherche de sources sur des sites éducatifs (étape 24), au choix du parent ; désactivée.
     web_sources: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # « Je relis chaque leçon avant mon enfant » (§5.69) : coché par défaut.
+    review_lessons: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=true())
 
 
 class FamilyAiSettings(Base):
@@ -304,6 +307,8 @@ class Lesson(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     page_count: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     source: Mapped[str] = mapped_column(Text, nullable=False, server_default="photo")  # photo ou texte collé
+    # Validée par le parent (§5.69) : sans cela, et si la famille relit ses leçons, l'enfant attend.
+    parent_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     prompt_versions: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _created_at()
@@ -479,6 +484,7 @@ class KnowledgeItem(Base):
     confidence: Mapped[float | None] = mapped_column(REAL)
     doubts: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # par le parent
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # retirée par le parent
     # Thème choisi par l'IA dans une liste fermée (§5.47) ; NULL : aucun ou analysée avant.
     theme: Mapped[str | None] = mapped_column(Text)
 

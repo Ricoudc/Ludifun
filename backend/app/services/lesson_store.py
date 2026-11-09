@@ -188,7 +188,7 @@ async def load_units(session: AsyncSession, lesson: db.Lesson) -> LessonUnits:
         await session.execute(
             select(db.KnowledgeItem, db.KnowledgeMaterial)
             .join(db.KnowledgeMaterial, db.KnowledgeMaterial.knowledge_id == db.KnowledgeItem.id)
-            .where(db.KnowledgeItem.lesson_id == lesson.id)
+            .where(db.KnowledgeItem.lesson_id == lesson.id, db.KnowledgeItem.removed_at.is_(None))
             .order_by(db.KnowledgeItem.position)
         )
     ).all()

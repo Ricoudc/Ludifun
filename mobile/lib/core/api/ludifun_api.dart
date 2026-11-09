@@ -309,6 +309,68 @@ class LudifunApi {
     return LessonContent.fromJson(r.data!);
   });
 
+  // Relecture par le parent avant l'enfant (§5.69).
+
+  /// « Valider la leçon » : l'enfant peut l'ouvrir et la réviser.
+  Future<LessonContent> approveLesson(String childId, String lessonId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/approve');
+    return LessonContent.fromJson(r.data!);
+  });
+
+  /// Le parent corrige le titre, l'objectif et le résumé que l'enfant lira.
+  Future<LessonContent> editLessonInfo(
+    String childId,
+    String lessonId, {
+    required String title,
+    required String objective,
+    required String summary,
+  }) => _call(() async {
+    final r = await _dio.put<Json>(
+      '/v1/children/$childId/lessons/$lessonId/info',
+      data: {'title': title, 'objective': objective, 'summary': summary},
+    );
+    return LessonContent.fromJson(r.data!);
+  });
+
+  /// Le parent corrige le nom d'une notion et sa phrase « à retenir ».
+  Future<NotionContent> editNotionText(
+    String childId,
+    String lessonId,
+    String knowledgeId, {
+    required String label,
+    required String statement,
+  }) => _call(() async {
+    final r = await _dio.put<Json>(
+      '/v1/children/$childId/lessons/$lessonId/notions/$knowledgeId/text',
+      data: {'label': label, 'statement': statement},
+    );
+    return NotionContent.fromJson(r.data!);
+  });
+
+  /// Retire (ou remet) une notion fausse : elle n'est plus proposée à l'enfant.
+  Future<NotionContent> setNotionRemoved(
+    String childId,
+    String lessonId,
+    String knowledgeId, {
+    required bool removed,
+  }) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/children/$childId/lessons/$lessonId/notions/$knowledgeId/${removed ? 'remove' : 'restore'}',
+    );
+    return NotionContent.fromJson(r.data!);
+  });
+
+  /// « Je relis chaque leçon avant mon enfant » (coché par défaut).
+  Future<bool> reviewLessons() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/review-lessons');
+    return r.data!['enabled'] as bool;
+  });
+
+  Future<bool> setReviewLessons({required bool enabled}) => _call(() async {
+    final r = await _dio.put<Json>('/v1/parent/review-lessons', data: {'enabled': enabled});
+    return r.data!['enabled'] as bool;
+  });
+
   /// « C'est bien ce qui est écrit » : le parent confirme une notion lue avec peu de confiance.
   Future<NotionContent> confirmNotion(String childId, String lessonId, String knowledgeId) =>
       _call(() async {

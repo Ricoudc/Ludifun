@@ -187,6 +187,8 @@ async def create_demo_family(
                 ready = await call("GET", f"/v1/lessons/{lesson['id']}", tablet)
                 if ready["status"] != "ready":
                     raise DemoError(f"leçon {revision.lesson} non analysée : {ready['status']}")
+                # Le parent relit la leçon et la valide avant qu'Emma la révise (§5.69).
+                await call("POST", f"/v1/children/{emma['id']}/lessons/{lesson['id']}/approve", parent)
                 now[0] += timedelta(minutes=2)
             await _revise(call, database, tablet, lessons[revision.lesson], revision.knows, now)
             sessions += 1

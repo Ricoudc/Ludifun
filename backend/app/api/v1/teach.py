@@ -33,6 +33,7 @@ from app.domain.teach import (
 from app.domain.text import display_text
 from app.domain.understanding import CognitiveLevel
 from app.services import ai_budget
+from app.services.lesson_review import AWAITING_MESSAGE, awaiting_parent
 from app.services.lesson_store import load_masteries, load_units
 from app.services.teach import ludi_reply
 
@@ -147,6 +148,8 @@ async def start_teaching(
     lesson = await lesson_of_child(dbs, child, lesson_id)
     if lesson.status != "ready":
         raise ApiError(409, "lesson_not_ready", "Cette leçon n'est pas encore prête.")
+    if await awaiting_parent(dbs, lesson):
+        raise ApiError(409, "lesson_awaiting_parent", AWAITING_MESSAGE)
     await ensure_ai_budget(dbs, settings)
     rate_limit(request, f"teach:{child.id}", limit=settings.lessons_per_day, window_s=86400)
     units = await load_units(dbs, lesson)

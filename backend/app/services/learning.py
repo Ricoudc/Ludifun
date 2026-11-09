@@ -61,6 +61,7 @@ from app.domain.scoring import (
 from app.domain.scoring import summarize_session as summarize
 from app.domain.understanding import MasteryLevel, cognitive_level, notion_level
 from app.services.answer_evaluation import AnswerEvaluator
+from app.services.lesson_review import awaiting_parent
 from app.services.lesson_store import LessonUnits, load_masteries, load_units, save_masteries
 
 STALE_SESSION = timedelta(hours=24)  # au-delà, une séance non terminée est abandonnée
@@ -647,6 +648,8 @@ async def mission_of_the_day(
     options = options or SessionOptions()
 
     async def estimate(lesson_row: db.Lesson, focus: Focus | None = None) -> int | None:
+        if await awaiting_parent(session, lesson_row):  # le parent ne l'a pas encore relue (§5.69)
+            return None
         lesson = await load_units(session, lesson_row)
         masteries = await load_masteries(session, child_id, lesson)
         chosen = SessionOptions(options.core_size, focus)

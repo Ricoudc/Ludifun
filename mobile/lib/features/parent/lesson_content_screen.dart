@@ -85,6 +85,8 @@ class LessonContentScreen extends ConsumerWidget {
                   ),
                 ),
               const SizedBox(height: 12),
+              _ReviewBanner(value, childId: childId, lessonId: lessonId),
+              _LessonInfoCard(value, childId: childId, lessonId: lessonId),
               LessonImageCard(childId: childId, lessonId: lessonId),
               LessonResourcesCard(childId: childId, lessonId: lessonId),
               if (value.text case final text?)
@@ -111,6 +113,10 @@ class LessonContentScreen extends ConsumerWidget {
                 ),
               for (final notion in value.notions)
                 _NotionCard(notion, childId: childId, lessonId: lessonId),
+              if (value.awaitingParent) ...[
+                const SizedBox(height: 8),
+                _ApproveButton(childId: childId, lessonId: lessonId),
+              ],
             ],
             AsyncError(:final error) => [
               ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
@@ -203,7 +209,14 @@ class _NotionCard extends ConsumerWidget {
       child: ExpansionTile(
         shape: const Border(),
         initiallyExpanded: notion.toCheck,
-        title: Text('${notion.toCheck ? '⚠️ ' : ''}${notion.label}', style: theme.titleMedium),
+        title: Text(
+          '${notion.toCheck && !notion.removed ? '⚠️ ' : ''}${notion.label}'
+          '${notion.removed ? ' (retirée)' : ''}',
+          style: theme.titleMedium?.copyWith(
+            decoration: notion.removed ? TextDecoration.lineThrough : null,
+            color: notion.removed ? Colors.black45 : null,
+          ),
+        ),
         subtitle: Text(notion.statement),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
@@ -246,6 +259,23 @@ class _NotionCard extends ConsumerWidget {
                 icon: const Icon(Icons.auto_fix_high),
                 label: const Text('Demander une correction à l\'IA'),
               ),
+              OutlinedButton.icon(
+                onPressed: () => _editText(context, ref),
+                icon: const Icon(Icons.short_text),
+                label: const Text('Modifier le nom et la phrase'),
+              ),
+              if (notion.removed)
+                OutlinedButton.icon(
+                  onPressed: () => _setRemoved(context, ref, removed: false),
+                  icon: const Icon(Icons.undo),
+                  label: const Text('Remettre cette notion'),
+                )
+              else
+                TextButton.icon(
+                  onPressed: () => _setRemoved(context, ref, removed: true),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Retirer cette notion'),
+                ),
               TextButton.icon(
                 onPressed: () => copyText(context, notionText(notion), 'Questions copiées.'),
                 icon: const Icon(Icons.copy_outlined),
@@ -254,6 +284,300 @@ class _NotionCard extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _editText(BuildContext context, WidgetRef ref) async {
+    final values = await editTexts(
+      context,
+      title: 'Ce que l\'enfant doit retenir',
+      fields: [
+        ('Nom de la notion (pour une liste de mots : le mot à écrire)', notion.label, 120, 1),
+        ('Phrase à retenir', notion.statement, 600, 4),
+      ],
+    );
+    if (values == null || !context.mounted) return;
+    await _save(
+      context,
+      ref,
+      () => ref
+          .read(apiProvider)
+          .editNotionText(
+            childId,
+            lessonId,
+            notion.knowledgeId,
+            label: values[0],
+            statement: values[1],
+          ),
+      'Notion corrigée.',
+    );
+  }
+
+  Future<void> _setRemoved(BuildContext context, WidgetRef ref, {required bool removed}) async {
+    if (removed) {
+      final sure = await showDialog<bool>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: const Text('Retirer cette notion ?'),
+          content: Text(
+            '« ${notion.label} » ne sera plus proposée à l\'enfant. Vous pourrez la remettre.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialog).pop(false),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialog).pop(true),
+              child: const Text('Retirer'),
+            ),
+          ],
+        ),
+      );
+      if (sure != true || !context.mounted) return;
+    }
+    await _save(
+      context,
+      ref,
+      () => ref
+          .read(apiProvider)
+          .setNotionRemoved(childId, lessonId, notion.knowledgeId, removed: removed),
+      removed ? 'Notion retirée.' : 'Notion remise.',
+    );
+  }
+
+  Future<void> _save(
+    BuildContext context,
+    WidgetRef ref,
+    Future<Object?> Function() action,
+    String done,
+  ) async {
+    String message = done;
+    try {
+      await action();
+    } on ApiException catch (error) {
+      message = error.message;
+    }
+    ref.invalidate(lessonContentProvider((childId, lessonId)));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+}
+
+/// Fenêtre à plusieurs champs de texte, pré-remplis ; `null` si le parent annule.
+/// Chaque champ : (étiquette, valeur, longueur maximale, lignes).
+Future<List<String>?> editTexts(
+  BuildContext context, {
+  required String title,
+  required List<(String, String, int, int)> fields,
+}) => showModalBottomSheet<List<String>>(
+  context: context,
+  isScrollControlled: true,
+  builder: (_) => _TextsSheet(title: title, fields: fields),
+);
+
+class _TextsSheet extends StatefulWidget {
+  const _TextsSheet({required this.title, required this.fields});
+
+  final String title;
+  final List<(String, String, int, int)> fields;
+
+  @override
+  State<_TextsSheet> createState() => _TextsSheetState();
+}
+
+class _TextsSheetState extends State<_TextsSheet> {
+  late final _controllers = [for (final f in widget.fields) TextEditingController(text: f.$2)];
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  bool get _ready => _controllers.every((c) => c.text.trim().isNotEmpty);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + MediaQuery.viewInsetsOf(context).bottom),
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          for (final (i, field) in widget.fields.indexed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: TextField(
+                controller: _controllers[i],
+                maxLength: field.$3,
+                minLines: 1,
+                maxLines: field.$4,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(labelText: field.$1),
+              ),
+            ),
+          FilledButton(
+            onPressed: _ready
+                ? () => Navigator.of(context).pop([for (final c in _controllers) c.text.trim()])
+                : null,
+            child: const Text('Enregistrer'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Relecture avant l'enfant (§5.69) : ce que l'enfant attend, et « Valider la leçon ».
+class _ReviewBanner extends StatelessWidget {
+  const _ReviewBanner(this.content, {required this.childId, required this.lessonId});
+
+  final LessonContent content;
+  final String childId;
+  final String lessonId;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!content.awaitingParent) {
+      return content.approved
+          ? const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                '✅ Leçon validée : l\'enfant peut la réviser.',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              ),
+            )
+          : const SizedBox.shrink();
+    }
+    return Card(
+      color: const Color(0xFFFFF3E0),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              '🔒 L\'enfant n\'a pas encore accès à cette leçon',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'L\'IA peut se tromper. Relisez le résumé, chaque notion et ses questions ; corrigez ou '
+              'retirez ce qui est faux, puis validez.',
+              style: TextStyle(fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            _ApproveButton(childId: childId, lessonId: lessonId),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ApproveButton extends ConsumerWidget {
+  const _ApproveButton({required this.childId, required this.lessonId});
+
+  final String childId;
+  final String lessonId;
+
+  Future<void> _approve(BuildContext context, WidgetRef ref) async {
+    String message = 'Leçon validée : l\'enfant peut la réviser.';
+    try {
+      await ref.read(apiProvider).approveLesson(childId, lessonId);
+    } on ApiException catch (error) {
+      message = error.message;
+    }
+    ref.invalidate(lessonContentProvider((childId, lessonId)));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => FilledButton.icon(
+    onPressed: () => _approve(context, ref),
+    icon: const Icon(Icons.check_circle_outline),
+    label: const Text('Valider la leçon'),
+  );
+}
+
+/// Titre, objectif et résumé que l'enfant lit ; le parent les corrige (§5.69).
+class _LessonInfoCard extends ConsumerWidget {
+  const _LessonInfoCard(this.content, {required this.childId, required this.lessonId});
+
+  final LessonContent content;
+  final String childId;
+  final String lessonId;
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final values = await editTexts(
+      context,
+      title: 'Titre et résumé de la leçon',
+      fields: [
+        ('Titre', content.title ?? '', 120, 1),
+        ('Objectif', content.objective ?? '', 400, 3),
+        ('Résumé', content.summary ?? '', 2000, 8),
+      ],
+    );
+    if (values == null || !context.mounted) return;
+    String message = 'Titre et résumé corrigés.';
+    try {
+      await ref
+          .read(apiProvider)
+          .editLessonInfo(
+            childId,
+            lessonId,
+            title: values[0],
+            objective: values[1],
+            summary: values[2],
+          );
+    } on ApiException catch (error) {
+      message = error.message;
+    }
+    ref.invalidate(lessonContentProvider((childId, lessonId)));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (content.summary == null && content.objective == null) return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(content.title ?? 'Sans titre', style: Theme.of(context).textTheme.titleMedium),
+            if (content.objective case final objective?) ...[
+              const SizedBox(height: 4),
+              Text('🎯 $objective', style: const TextStyle(fontSize: 15)),
+            ],
+            if (content.summary case final summary?) ...[
+              const SizedBox(height: 4),
+              Text(summary, style: const TextStyle(fontSize: 15, color: Colors.black87)),
+            ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => _edit(context, ref),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Modifier le titre et le résumé'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

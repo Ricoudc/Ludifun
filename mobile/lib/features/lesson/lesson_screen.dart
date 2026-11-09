@@ -59,6 +59,24 @@ class LessonScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(leading: BackButton(onPressed: () => context.go(Routes.childHome))),
       body: switch (lesson) {
+        // Relecture par l'adulte avant l'enfant (§5.69) : rien de la leçon, pas de séance.
+        AsyncData(:final value) when value.awaitingParent => CenteredBody(
+          children: [
+            const Text('🔒', textAlign: TextAlign.center, style: TextStyle(fontSize: 56)),
+            const SizedBox(height: 12),
+            Text(
+              'Un adulte relit ta leçon « ${value.title ?? 'Leçon'} » avant que tu la révises. '
+              'Elle arrive bientôt !',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 20),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () => context.go(Routes.childHome),
+              child: const Text('Retour à l\'accueil'),
+            ),
+          ],
+        ),
         AsyncData(:final value) => _Summary(value),
         AsyncError(:final error) => CenteredBody(
           children: [

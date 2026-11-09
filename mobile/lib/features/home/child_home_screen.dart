@@ -182,6 +182,10 @@ class _LessonRow extends ConsumerWidget {
 
   Future<void> _open(BuildContext context, WidgetRef ref) async {
     switch (lesson.status) {
+      case LessonStatus.ready when lesson.awaitingParent:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Un adulte relit ta leçon avant que tu la révises. 🔒')),
+        );
       case LessonStatus.ready:
         context.go(Routes.lesson(lesson.id));
       case LessonStatus.failed:
@@ -246,6 +250,12 @@ class _LessonRow extends ConsumerWidget {
         'Un mot à vérifier',
         null,
         const Chip(label: Text('Vérifier'), avatar: Icon(Icons.search, size: 18)),
+      ),
+      // Relecture par l'adulte avant l'enfant (§5.69) : la leçon attend.
+      LessonStatus.ready when lesson.awaitingParent => (
+        lesson.title ?? 'Leçon',
+        const Text('🔒 Un adulte la relit', style: TextStyle(fontSize: 15)),
+        const Icon(Icons.lock_outline),
       ),
       LessonStatus.ready => (
         lesson.title ?? 'Leçon',

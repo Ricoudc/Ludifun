@@ -752,6 +752,7 @@ class NotionContent {
     this.doubts = const [],
     this.confirmed = false,
     this.editable = const [],
+    this.removed = false,
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
@@ -766,6 +767,7 @@ class NotionContent {
       for (final e in json['editable'] as List<dynamic>? ?? const [])
         EditableElement.fromJson(e as Json),
     ],
+    removed: json['removed'] as bool? ?? false,
   );
 
   final String knowledgeId;
@@ -783,20 +785,44 @@ class NotionContent {
   final bool confirmed;
 
   bool get toCheck => !confirmed && (trust == 'medium' || trust == 'low');
+
+  /// Retirée par le parent (§5.69) : plus proposée à l'enfant.
+  final bool removed;
 }
 
 class LessonContent {
-  const LessonContent({required this.grade, required this.notions, this.title, this.text});
+  const LessonContent({
+    required this.grade,
+    required this.notions,
+    this.title,
+    this.text,
+    this.objective,
+    this.summary,
+    this.approved = true,
+    this.awaitingParent = false,
+  });
 
   factory LessonContent.fromJson(Json json) => LessonContent(
     title: json['title'] as String?,
     grade: json['grade'] as String,
     text: json['text'] as String?,
     notions: [for (final n in json['notions'] as List<dynamic>) NotionContent.fromJson(n as Json)],
+    objective: json['objective'] as String?,
+    summary: json['summary'] as String?,
+    approved: json['approved'] as bool? ?? true,
+    awaitingParent: json['awaiting_parent'] as bool? ?? false,
   );
 
   final String? title;
   final String grade;
+
+  /// Ce que l'enfant lit sur l'écran de la leçon ; le parent peut les corriger (§5.69).
+  final String? objective;
+  final String? summary;
+
+  /// Validée par le parent ; `awaitingParent` : l'enfant attend cette validation.
+  final bool approved;
+  final bool awaitingParent;
 
   /// Texte de la leçon tel que l'IA l'a lu.
   final String? text;

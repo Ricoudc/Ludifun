@@ -828,6 +828,31 @@ void main() {
     expect(find.text('Vérifier'), findsOneWidget);
   });
 
+  testWidgets('§5.69 : une leçon que l\'adulte relit reste fermée', (tester) async {
+    final waiting = {
+      ...lessonJson('ready'),
+      'awaiting_parent': true,
+      'knowledge': <Object>[],
+      'skills': <Object>[],
+    };
+    server
+      ..on('GET /v1/lessons', (_) => (200, [waiting]))
+      ..on('GET /v1/lessons/l1', (_) => (200, waiting));
+    final container = await launch(tester, MemoryCredentialStore(child));
+    expect(find.text('🔒 Un adulte la relit'), findsOneWidget);
+    await tester.tap(find.text('La Révolution française'));
+    await tester.pump();
+    expect(find.text('Un adulte relit ta leçon avant que tu la révises. 🔒'), findsOneWidget);
+    // Ouverte par un lien : un message, et aucune séance demandée.
+    container.read(routerProvider).go(Routes.lesson('l1'));
+    await tester.pumpAndSettle();
+    expect(
+      find.textContaining('Un adulte relit ta leçon « La Révolution française »'),
+      findsOneWidget,
+    );
+    expect(server.routes.where((r) => r.startsWith('POST /v1/lessons/l1/sessions')), isEmpty);
+  });
+
   testWidgets('leçon à jour : pas de séance, date de la prochaine révision', (tester) async {
     server
       ..on(

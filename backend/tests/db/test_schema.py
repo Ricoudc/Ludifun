@@ -728,3 +728,24 @@ async def test_migration_0030_family_sites(engine: AsyncEngine, db: AsyncSession
         providers = (await conn.execute(text("SELECT provider FROM lesson_resources"))).scalars().all()
     assert providers == ["lumni"]
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0031_parent_review(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Relecture par le parent (§5.69) : les familles relisent par défaut ; les leçons déjà là
+    sont reprises comme validées (l'enfant les garde) ; retour arrière sans perte de leçon."""
+    await create_full_lesson(db)
+    await db.commit()
+    await run_alembic("downgrade", "0030")
+    await run_alembic("upgrade", "head")
+    async with engine.connect() as conn:
+        families = (await conn.execute(text("SELECT review_lessons FROM families"))).scalars().all()
+        lessons = (await conn.execute(text("SELECT parent_approved_at, created_at FROM lessons"))).all()
+        removed = (await conn.execute(text("SELECT removed_at FROM knowledge_items"))).scalars().all()
+    assert families and all(families)
+    assert lessons and all(row.parent_approved_at == row.created_at for row in lessons)
+    assert removed and all(r is None for r in removed)
+    await run_alembic("downgrade", "0030")
+    async with engine.connect() as conn:
+        count = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
+        assert count is not None and count > 0
+    await run_alembic("upgrade", "head")

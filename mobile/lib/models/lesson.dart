@@ -63,6 +63,7 @@ class LessonSummary {
     this.due = false,
     this.mastered = false,
     this.notionsToCheck = 0,
+    this.awaitingParent = false,
   });
 
   factory LessonSummary.fromJson(Json json) => LessonSummary(
@@ -79,6 +80,7 @@ class LessonSummary {
     due: json['due'] as bool? ?? false,
     mastered: json['mastered'] as bool? ?? false,
     notionsToCheck: json['notions_to_check'] as int? ?? 0,
+    awaitingParent: json['awaiting_parent'] as bool? ?? false,
   );
 
   final String id;
@@ -93,6 +95,9 @@ class LessonSummary {
 
   /// Notions lues avec peu de confiance, à vérifier par le parent (§115).
   final int notionsToCheck;
+
+  /// Prête, mais le parent ne l'a pas encore relue et validée (§5.69) : l'enfant attend.
+  final bool awaitingParent;
 }
 
 class Knowledge {
@@ -145,6 +150,7 @@ class Lesson extends LessonSummary {
     super.nextReviewAt,
     super.due,
     super.mastered,
+    super.awaitingParent,
     this.steps = const {},
     this.failureMessage,
     this.grade,
@@ -172,6 +178,7 @@ class Lesson extends LessonSummary {
       nextReviewAt: base.nextReviewAt,
       due: base.due,
       mastered: base.mastered,
+      awaitingParent: base.awaitingParent,
       steps: {
         for (final MapEntry(:key, :value) in (steps ?? const {}).entries)
           key: AnalysisStep.values.byName(value as String),

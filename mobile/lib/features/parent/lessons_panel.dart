@@ -17,6 +17,8 @@ class LessonsPanel extends ConsumerWidget {
   final String childId;
 
   static String status(LessonSummary lesson) => switch (lesson.status) {
+    LessonStatus.ready when lesson.awaitingParent =>
+      '🔒 À relire et valider avant l\'enfant · touchez pour la relire',
     LessonStatus.ready when lesson.notionsToCheck > 0 =>
       '⚠️ ${lesson.notionsToCheck} notion(s) à vérifier · touchez pour comparer au cahier',
     LessonStatus.ready => '✅ Prête · touchez pour vérifier questions et réponses',

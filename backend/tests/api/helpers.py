@@ -9,12 +9,21 @@ def auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def register(client: AsyncClient, email: str = "parent@example.fr") -> dict[str, Any]:
+async def register(
+    client: AsyncClient, email: str = "parent@example.fr", review_lessons: bool = False
+) -> dict[str, Any]:
+    """Un compte parent. Les tests jouent les leçons aussitôt analysées : la case « Je relis chaque
+    leçon avant mon enfant » (cochée par défaut, §5.69) est décochée, sauf `review_lessons`."""
     r = await client.post(
         "/v1/auth/register", json={"email": email, "password": PASSWORD, "accepted_privacy_policy": True}
     )
     assert r.status_code == 201, r.text
     body: dict[str, Any] = r.json()
+    if not review_lessons:
+        setting = await client.put(
+            "/v1/parent/review-lessons", json={"enabled": False}, headers=auth(body["access_token"])
+        )
+        assert setting.status_code == 200, setting.text
     return body
 
 
@@ -44,9 +53,11 @@ async def link_device(
 PHOTO = b"\xff\xd8\xff\xe0" + b"photo de lecon" * 10
 
 
-async def family_with_device(client: AsyncClient, email: str = "parent@example.fr") -> dict[str, Any]:
+async def family_with_device(
+    client: AsyncClient, email: str = "parent@example.fr", review_lessons: bool = False
+) -> dict[str, Any]:
     """Un parent, Emma, et la tablette d'Emma liée."""
-    parent = (await register(client, email))["access_token"]
+    parent = (await register(client, email, review_lessons))["access_token"]
     child = await add_child(client, parent)
     device = await link_device(client, parent, child["id"])
     return {"parent": parent, "child": child, "device": device["token"]}

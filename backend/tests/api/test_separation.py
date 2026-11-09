@@ -48,6 +48,23 @@ PARENT_ROUTES = [
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/" + LESSON + "/hide", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/" + LESSON + "/show", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/resources/prepare", None),
+    # Relecture par le parent avant l'enfant (§5.69).
+    ("GET", "/v1/parent/review-lessons", None),
+    ("PUT", "/v1/parent/review-lessons", {"enabled": True}),
+    ("GET", "/v1/children/{child}/lessons/" + LESSON + "/content", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/approve", None),
+    (
+        "PUT",
+        "/v1/children/{child}/lessons/" + LESSON + "/info",
+        {"title": "T", "objective": "O", "summary": "S"},
+    ),
+    (
+        "PUT",
+        "/v1/children/{child}/lessons/" + LESSON + "/notions/" + LESSON + "/text",
+        {"label": "L", "statement": "S"},
+    ),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/notions/" + LESSON + "/remove", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/notions/" + LESSON + "/restore", None),
 ]
 CHILD_SPECIFIC = [route for route in PARENT_ROUTES if "{child}" in route[1]]
 

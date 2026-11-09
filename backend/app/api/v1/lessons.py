@@ -51,6 +51,7 @@ from app.domain.text import fuzzy_contains
 from app.services import ai_budget, goals, illustration, learning, lesson_diagnostics
 from app.services.documents import DocumentError, read_document
 from app.services.lesson_processing import process_lesson
+from app.services.lesson_review import awaiting_parent
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 from app.services.live_calls import LIVE
 
@@ -121,6 +122,9 @@ async def summary_of(db: DbSession, child: Child, lesson: Lesson) -> LessonSumma
         title=lesson.title,
         created_at=lesson.created_at,
     )
+    if await awaiting_parent(db, lesson):
+        out.awaiting_parent = True  # rien de la leçon avant que le parent l'ait relue (§5.69)
+        return out
     if lesson.status == "ready":
         units = await load_units(db, lesson)
         review = review_state(units, await load_masteries(db, child.id, units), clock.now())
@@ -362,7 +366,7 @@ async def get_lesson(lesson_id: uuid.UUID, child: ChildInScope, db: DbSession) -
             ReviewItemOut(id=i.id, page_index=i.page_index, read_text=i.read_text, context=i.context)
             for i in await review_items(db, lesson)
         ]
-    if lesson.status == "ready":
+    if lesson.status == "ready" and not out.awaiting_parent:
         approved = await db.scalar(
             select(LessonImage).where(
                 LessonImage.lesson_id == lesson.id,
