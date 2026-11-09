@@ -7,6 +7,7 @@ Ordre, du plus urgent au plus général :
 
 1. une leçon attend la relecture du parent (§5.69) : l'enfant ne peut pas la réviser avant ;
 2. un contrôle dans les 7 jours ;
+2 bis. la matière qui décroche (note moyenne en baisse sur 4 semaines, §5.75) ;
 3. la notion la plus fragile : la lui faire expliquer avec ses mots, la phrase à retenir sous
    les yeux ;
 4. l'erreur qui revient : le geste qui y répond (relire l'énoncé, poser le calcul…) ;
@@ -19,6 +20,7 @@ from datetime import date
 from typing import Literal
 
 from app.domain.errors import ErrorType
+from app.domain.subject_trend import Slipping
 
 MAX_ACTIONS = 3
 REGULAR_DAYS = 3  # en dessous (jours de révision sur 7), conseiller un moment fixe
@@ -85,10 +87,11 @@ class WeekFacts:
     reviews_due: int = 0
     daily_minutes: int | None = None  # temps choisi par le parent
     lessons: int = 0  # leçons prêtes
+    slipping: Slipping | None = None  # la matière qui décroche (§5.75)
 
 
 # Sorte d'action, pour l'icône de l'application.
-ActionKind = Literal["review", "exam", "explain", "error", "routine", "due", "lesson"]
+ActionKind = Literal["review", "exam", "subject", "explain", "error", "routine", "due", "lesson"]
 
 
 @dataclass(frozen=True)
@@ -97,6 +100,10 @@ class WeekAction:
     title: str
     detail: str
     why: str
+
+
+def _note(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",").removesuffix(",0")
 
 
 def _when(day: date, today: date) -> str:
@@ -132,6 +139,18 @@ def week_actions(facts: WeekFacts) -> list[WeekAction]:
                 f"Une courte séance par jour d'ici là : le plan de révision est prêt pour {child}. "
                 "La veille, demandez-lui d'expliquer la leçon avec ses mots.",
                 f"Contrôle prévu le {day.day:02d}/{day.month:02d}.",
+            )
+        )
+    if facts.slipping is not None:
+        slip = facts.slipping
+        actions.append(
+            WeekAction(
+                "subject",
+                f"Reprendre {slip.name} avec {child}",
+                "Choisissez ensemble une leçon de cette matière et faites la séance de révision "
+                "côte à côte, puis demandez ce qui a été difficile.",
+                f"Note moyenne en baisse : {_note(slip.before)} → {_note(slip.after)} / 10 "
+                "sur les 4 dernières semaines.",
             )
         )
     if facts.weak is not None:

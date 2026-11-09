@@ -2148,6 +2148,26 @@ Tests : `tests/domain/test_targeted_practice.py`, `tests/api/test_targeted_pract
 (erreur récurrente → exercice, pas deux fois, vu par le parent ; IA en panne → rien ne change),
 `tests/db/test_schema.py` (`test_migration_0032_targeted_stage`).
 
+### 5.75 La matière qui décroche, et le temps par semaine (novembre 2026)
+
+Feuille de route, point 4. Domaine pur `app/domain/subject_trend.py` : pour chaque matière, la
+note moyenne des séances terminées des 2 dernières semaines (semaine en cours comprise) est
+comparée à celle des 2 semaines d'avant. Elle décroche si la baisse atteint 1,5 point sur 10,
+avec au moins 2 séances de chaque côté (une mauvaise séance n'est pas une tendance) ; la plus
+forte baisse l'emporte. Ce sont des conseils au parent, pas une décision du moteur : seuils dans
+le module, comme ceux de `weekly_plan.py`.
+
+« Cette semaine avec … » (§5.71) gagne l'action `subject`, après le contrôle à venir : « Reprendre
+les maths avec Sam » ; détail : une séance côte à côte puis demander ce qui a été difficile ;
+raison : « Note moyenne en baisse : 7,5 → 5 / 10 sur les 4 dernières semaines. » Phrases neutres
+(testé). Valeur nouvelle de `kind` : une ancienne application montre l'icône par défaut.
+
+Le temps passé à apprendre existait par semaine (`DashboardOut.weeks[].minutes`) mais ne se voyait
+qu'au toucher d'une barre : il est maintenant écrit sous chaque semaine du graphique « Progrès ».
+
+Tests : `tests/domain/test_subject_trend.py`, `tests/api/test_dashboard.py`
+(`test_the_subject_that_slips_is_in_the_week_plan`), `parent_flow_test` (§5.71).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

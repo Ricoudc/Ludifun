@@ -84,6 +84,21 @@ class ProgressChart extends StatelessWidget {
               ),
           ],
         ),
+        // Temps passé à apprendre, semaine par semaine (§5.75).
+        ExcludeSemantics(
+          child: Row(
+            children: [
+              for (final w in weeks)
+                Expanded(
+                  child: Text(
+                    w.minutes == 0 ? '–' : '${w.minutes} min',
+                    textAlign: TextAlign.center,
+                    style: muted?.copyWith(fontSize: 11),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ],
     );
   }

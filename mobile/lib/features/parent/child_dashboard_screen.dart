@@ -432,6 +432,7 @@ class WeekPlanCard extends StatelessWidget {
   static String icon(String kind) => switch (kind) {
     'review' => '🔒',
     'exam' => '📝',
+    'subject' => '📉',
     'explain' => '🗣️',
     'error' => '🔁',
     'routine' => '⏰',
