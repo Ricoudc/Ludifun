@@ -1,0 +1,29 @@
+{
+  "subject": "french",
+  "grade": "CP",
+  "support": "manuel",
+  "essential": [
+    {
+      "label": "L'alphabet"
+    },
+    {
+      "label": "Voyelles et consonnes",
+      "aliases": [
+        "Les voyelles et les consonnes"
+      ]
+    },
+    {
+      "label": "Voyelle",
+      "aliases": [
+        "Les voyelles"
+      ]
+    },
+    {
+      "label": "Syllabe"
+    },
+    {
+      "label": "Les syllabes de moto"
+    }
+  ],
+  "notes": "Référence synthétique issue du jeu de données déterministe de test."
+}
