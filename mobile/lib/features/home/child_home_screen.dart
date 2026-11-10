@@ -70,22 +70,26 @@ class ChildHomeScreen extends ConsumerWidget {
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.capture),
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Nouvelle leçon', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Nouvelle leçon',
+              description: 'Prends ton cahier en photo pour apprendre.',
+              icon: Icons.add_a_photo_outlined,
+              route: Routes.capture,
+              primary: true,
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.homeworkStart),
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Aide aux devoirs', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Aide aux devoirs',
+              description: 'Avance pas à pas avec un coup de main.',
+              icon: Icons.edit_note,
+              route: Routes.homeworkStart,
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.notebook),
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Mon cahier', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Mon cahier',
+              description: 'Retrouve tes leçons et tes découvertes.',
+              icon: Icons.menu_book_outlined,
+              route: Routes.notebook,
             ),
             const SizedBox(height: 28),
             ...switch (lessons) {
@@ -106,6 +110,55 @@ class ChildHomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Tuile d'accès rapide : un intitulé, une explication et une grande zone tactile.
+class _HomeActionTile extends StatelessWidget {
+  const _HomeActionTile({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.route,
+    this.primary = false,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final String route;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: primary ? LudiColors.primary : Colors.white,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => context.go(route),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        leading: CircleAvatar(
+          backgroundColor: primary ? const Color(0x33FFFFFF) : LudiColors.primary.withValues(alpha: 0.1),
+          child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            color: primary ? Colors.white : null,
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        subtitle: Text(
+          description,
+          style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
+        ),
+        trailing: Icon(
+          Icons.chevron_right,
+          color: primary ? Colors.white : LudiColors.primary,
+        ),
+      ),
+    ),
+  );
 }
 
 class _MissionCard extends ConsumerWidget {
