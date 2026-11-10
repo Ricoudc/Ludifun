@@ -145,6 +145,11 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     report = render_report([good, failed], "fake", datetime(2026, 9, 23))
     assert "- **histoire** : Napoléon Bonaparte" in report
     assert "- **crepes** : verbe" in report
+    assert "## Rappel des notions par matière et niveau" in report
+    assert "| history | 5 | 6 | 83 % |" in report
+    assert "| french | 0 | 1 | 0 % |" in report
+    assert "| CM1 | 5 | 6 | 83 % |" in report
+    assert "| CE1 | 0 | 1 | 0 % |" in report
 
 
 HISTORY = LessonScript.from_file(DEMO_LESSON).ocr_text
