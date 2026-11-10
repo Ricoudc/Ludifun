@@ -283,6 +283,38 @@ void main() {
     expect(find.text('Question 2 / 2'), findsOneWidget);
   });
 
+  testWidgets('la correction garde « Continuer » visible avec une longue explication', (
+    tester,
+  ) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    final attempt = server.handlers['POST /v1/sessions/s1/attempts']!;
+    server.on('POST /v1/sessions/s1/attempts', (request) async {
+      final (status, body) = await attempt(request);
+      return (
+        status,
+        {
+          ...body! as Map<String, Object?>,
+          'explanation': List.filled(
+            24,
+            'Une explication détaillée aide à comprendre la règle et à retenir la bonne méthode.',
+          ).join(' '),
+        },
+      );
+    });
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1492');
+    expect(find.textContaining('Une explication détaillée'), findsOneWidget);
+    final continueButton = find.widgetWithText(FilledButton, 'Continuer');
+    expect(continueButton, findsOneWidget);
+    final buttonRect = tester.getRect(continueButton);
+    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(buttonRect.bottom, lessThanOrEqualTo(screenHeight));
+
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+  });
+
   testWidgets('le bilan garde ses actions visibles et « Terminer » revient à l’accueil', (
     tester,
   ) async {

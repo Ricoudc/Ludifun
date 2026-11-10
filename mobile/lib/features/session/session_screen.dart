@@ -149,6 +149,37 @@ class SessionScreen extends ConsumerWidget {
                 onReviewErrors: () => _reviewErrors(context, ref),
                 onDone: () => _leave(context, ref, state),
               )
+            : state.phase == Phase.correction && state.correction != null
+            ? SafeArea(
+                top: false,
+                child: Material(
+                  elevation: 8,
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FilledButton(
+                          onPressed: controller.next,
+                          child: const Text('Continuer'),
+                        ),
+                        if (state.correction!.pauseMessage != null) ...[
+                          const SizedBox(height: 8),
+                          OutlinedButton(
+                            onPressed: () {
+                              refreshHome(ref);
+                              context.go(Routes.childHome);
+                            },
+                            child: const Text('Faire une pause'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              )
             : null,
         body: CenteredBody(
           top: _playing(state) || state.phase == Phase.report,
@@ -225,6 +256,7 @@ class SessionScreen extends ConsumerWidget {
                 streak: state.streak,
                 onStar: () => ref.read(soundsProvider).play(Sound.star),
                 onContinue: controller.next,
+                showContinueButton: false,
                 report: ReportQuestionButton(
                   key: ValueKey(item.id),
                   sessionId: sessionId,

@@ -925,7 +925,10 @@ void main() {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
 
     final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
-    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    expect(answers.map((answer) => answer.color), [
+      LudiColors.primary,
+      LudiColors.accent,
+    ]);
     expect(find.byIcon(Icons.check_circle), findsNothing);
 
     await tester.tap(find.text('❌ Faux'));

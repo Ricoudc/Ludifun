@@ -20,6 +20,7 @@ class CorrectionView extends StatelessWidget {
     this.stars,
     this.streak = 0,
     this.onStar,
+    this.showContinueButton = true,
     super.key,
   });
 
@@ -41,6 +42,9 @@ class CorrectionView extends StatelessWidget {
 
   /// Chaque étoile qui apparaît (petit son).
   final VoidCallback? onStar;
+
+  /// Le parent peut déplacer l'action dans une barre fixe au bas de l'écran.
+  final bool showContinueButton;
 
   @override
   Widget build(BuildContext context) {
@@ -190,11 +194,13 @@ class CorrectionView extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 28),
-        FilledButton(autofocus: true, onPressed: onContinue, child: const Text('Continuer')),
-        if (correction.pauseMessage != null && onPause != null) ...[
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
+        if (showContinueButton) ...[
+          const SizedBox(height: 28),
+          FilledButton(autofocus: true, onPressed: onContinue, child: const Text('Continuer')),
+          if (correction.pauseMessage != null && onPause != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
+          ],
         ],
         if (report case final report?) ...[const SizedBox(height: 8), Center(child: report)],
       ],
