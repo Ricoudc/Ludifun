@@ -57,6 +57,32 @@ def test_expected_notion_recall_never_counts_one_produced_notion_twice() -> None
     assert match_notions(expected, knowledge) == ["k1", None]
 
 
+def test_notion_matching_reassigns_a_broad_match_to_maximize_recall() -> None:
+    template = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
+    knowledge = [
+        template.model_copy(
+            update={
+                "id": "k1",
+                "label": "Louis XVI",
+                "statement": "Le roi de France réunit les états généraux.",
+            }
+        ),
+        template.model_copy(
+            update={
+                "id": "k2",
+                "label": "Louis XVI",
+                "statement": "Louis XVI est arrêté.",
+            }
+        ),
+    ]
+    expected = [
+        ExpectedNotion(label="Louis XVI"),
+        ExpectedNotion(label="roi de France"),
+    ]
+
+    assert match_notions(expected, knowledge) == ["k2", "k1"]
+
+
 @pytest.mark.parametrize(
     "model, cost",
     [
