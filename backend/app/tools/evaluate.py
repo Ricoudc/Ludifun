@@ -261,9 +261,7 @@ def metrics(scores: list[LessonScore]) -> list[Metric]:
     open_per_lesson = statistics.mean(s.open_questions for s in ready) if ready else None
     important_notions = sum(s.important_notions for s in scores)
     important_with_open = sum(s.important_with_open_question for s in scores)
-    important_open_coverage = (
-        100 * important_with_open / important_notions if important_notions else None
-    )
+    important_open_coverage = 100 * important_with_open / important_notions if important_notions else None
     annotated = [s for s in scores if s.expected.personal]
     leaks = sum(s.personal_leaks for s in annotated)
 
