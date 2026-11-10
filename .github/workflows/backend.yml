@@ -47,6 +47,15 @@ jobs:
         run: uv run mypy app tests
       - name: Tests (PostgreSQL réel, migrations incluses)
         run: uv run pytest -q
+      - name: Générer le rapport de référence (corpus synthétique)
+        run: uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai
+      - name: Publier le rapport et les résultats détaillés
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludifun-quality-ai-benchmark
+          path: artifacts/quality-ai/
+          if-no-files-found: error
+          retention-days: 14
 
   compose:
     name: docker compose up
