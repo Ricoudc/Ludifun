@@ -788,9 +788,10 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
             "| Niveau | Annotées | En attente | Pertinentes | À corriger | Hors sujet |\\n"
             "|---:|---:|---:|---:|---:|---:|\\n"
         )
+        level_names = {"3": "3 — appliquer", "4": "4 — expliquer", "5": "5 — transférer"}
         for level, bucket in review_summary["by_level"].items():
             text += (
-                f"| {level} | {bucket['annotated']} | {bucket['pending']} | "
+                f"| {level_names.get(level, level)} | {bucket['annotated']} | {bucket['pending']} | "
                 f"{bucket['pertinent']} | {bucket['à corriger']} | {bucket['hors sujet']} |\\n"
             )
     (out / "report.md").write_text(text, encoding="utf-8")
