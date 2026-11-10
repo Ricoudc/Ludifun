@@ -1176,6 +1176,10 @@ void main() {
     expect(speaker.said, [sentence, 'Le docteur', 'travaille', 'à l\'hôpital.', sentence]);
     expect(find.text(sentence), findsNothing);
     expect(find.text('La phrase a 6 mots.'), findsOneWidget);
+    expect(find.text('0 / 6'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Le docteur travaille');
+    await tester.pump();
+    expect(find.text('3 / 6'), findsOneWidget);
     await tester.tap(find.text('Morceau par morceau'));
     await tester.pump();
     expect(speaker.said, hasLength(8));
