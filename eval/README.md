@@ -126,17 +126,35 @@ Chaque lancement crée `eval/results/<date-heure>/` :
 | `<leçon>.txt` | ce que l'élève verrait : texte lu, notions, séance complète avec les réponses |
 | `<leçon>.json` | tout le détail : texte OCR, analyse, matériel, éléments rejetés et raisons, appels IA (jetons, latence, coût) |
 | `metrics.json` | les mesures et la configuration (fournisseur, modèles, version de chaque prompt), pour comparer deux évaluations |
+| `open_questions_review.json` | questions ouvertes avec leur notion, son énoncé, le niveau, les points clés et la réponse modèle, prêtes pour une revue pédagogique humaine |
 
 Le rapport détaille également le **rappel des notions indispensables par matière et par niveau**.
 Ces tableaux sont calculés à partir des notions annotées et retrouvées (pondération par notion),
 et non à partir d'une moyenne non pondérée des pourcentages de chaque leçon.
 
-## 4. Évaluation humaine
+## 4. Revue de pertinence des questions ouvertes
+
+Le fichier `open_questions_review.json` rassemble chaque question avec le contexte nécessaire
+pour juger sa pertinence : notion visée, énoncé de la notion, importance, niveau cognitif,
+consigne, points clés, réponse modèle et éventuel passage source. Il propose cinq axes de revue :
+
+1. la question évalue bien la notion associée ;
+2. le niveau annoncé (appliquer, expliquer, transférer) correspond à la tâche demandée ;
+3. la question ne contient pas déjà sa réponse ;
+4. les points clés et la réponse modèle sont cohérents ;
+5. le vocabulaire et l'effort demandé conviennent à l'âge.
+
+Ce fichier est une **grille de revue, pas un score automatique** : une correspondance de mots ne
+suffit pas à prouver la pertinence pédagogique. Un adulte peut annoter chaque entrée
+(`pertinent`, `à corriger`, `hors sujet`) avant de constituer un corpus de référence.
+Le benchmark ne doit annoncer de taux de pertinence qu'à partir de ces annotations humaines.
+
+## 5. Évaluation humaine
 
 Pour 10 leçons, un adulte relit `<leçon>.txt` (ou joue la séance) et remplit
 [`grille-evaluation.md`](grille-evaluation.md). Ensuite, 5 enfants testent en situation réelle.
 
-## 5. Améliorer, puis mesurer à nouveau
+## 6. Améliorer, puis mesurer à nouveau
 
 Les prompts sont dans `backend/app/ai/prompts/` et sont versionnés : `analysis.v1.md` devient `analysis.v2.md`, puis on met à jour `PROMPT_VERSIONS` dans `backend/app/ai/ports.py`. On relance ensuite l'évaluation **sur le même corpus**, puis on compare les deux résultats (§5.81) :
 
