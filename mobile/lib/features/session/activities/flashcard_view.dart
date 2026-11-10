@@ -50,7 +50,8 @@ class _FlashcardViewState extends State<FlashcardView> {
             // La face visible seulement : jamais le verso avant de retourner la carte.
             ListenButton([
               if (!_flipped)
-                ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
+                ActivityInstruction.of(context) ??
+                    'Te souviens-tu de ce que ça veut dire ?',
               face,
             ], key: ValueKey(_flipped)),
           ],
