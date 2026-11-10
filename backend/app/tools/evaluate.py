@@ -160,7 +160,11 @@ def material_counts(result: PipelineResult) -> tuple[int, int]:
     for unit in result.units:
         m = unit.material
         kept += len(m.questions) + len(m.true_statements) + len(m.false_statements)
-        kept += sum(x is not None for x in (m.cloze, m.pair, m.flashcard, m.tip))
+        kept += len(m.open_questions)
+        kept += sum(
+            x is not None
+            for x in (m.cloze, m.pair, m.flashcard, m.tip, m.help, m.sorting, m.sequence, m.spelling)
+        )
     rejected = sum(1 for r in result.rejected if "." in r.element and not r.element.startswith("analysis."))
     return kept, rejected
 
