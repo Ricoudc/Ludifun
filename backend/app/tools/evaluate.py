@@ -155,10 +155,14 @@ def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> st
     return match_notions([expected], knowledge)[0]
 
 
+QUESTION_REVIEW_LABELS = {"pertinent", "à corriger", "hors sujet"}
+
+
 def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[str, Any]]:
     """Exporte les questions ouvertes dans un format de revue humaine, sans score sémantique fictif."""
     return [
         {
+            "review_id": f"{lesson_name}:{unit.id}:{index + 1}",
             "lesson": lesson_name,
             "knowledge_id": unit.id,
             "notion": unit.item.label,
@@ -179,8 +183,64 @@ def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[
             ],
         }
         for unit in result.units
-        for question in unit.material.open_questions
+        for index, question in enumerate(unit.material.open_questions)
     ]
+
+
+def apply_question_review_annotations(
+    reviews: list[dict[str, Any]], annotations: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Réapplique des labels humains uniquement si l'identifiant et l'énoncé correspondent."""
+    by_id: dict[str, dict[str, Any]] = {}
+    for annotation in annotations:
+        review_id = annotation.get("review_id")
+        if not isinstance(review_id, str) or not review_id:
+            raise ValueError("une annotation doit avoir un review_id")
+        if review_id in by_id:
+            raise ValueError(f"annotation en double : {review_id}")
+        if annotation.get("review_status") not in QUESTION_REVIEW_LABELS:
+            raise ValueError(f"label de revue invalide pour {review_id}")
+        by_id[review_id] = annotation
+
+    result = []
+    seen: set[str] = set()
+    for review in reviews:
+        review_id = review["review_id"]
+        if review_id in seen:
+            raise ValueError(f"question générée en double : {review_id}")
+        seen.add(review_id)
+        annotation = by_id.pop(review_id, None)
+        if annotation is not None:
+            if annotation.get("prompt") != review["prompt"]:
+                raise ValueError(f"énoncé modifié depuis l'annotation : {review_id}")
+            review = review | {"review_status": annotation["review_status"]}
+        result.append(review)
+    if by_id:
+        raise ValueError(f"annotations sans question correspondante : {', '.join(sorted(by_id))}")
+    return result
+
+
+def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compte les annotations humaines ; les questions non annotées ne sont pas au dénominateur."""
+    counts = {label: 0 for label in sorted(QUESTION_REVIEW_LABELS)}
+    pending = 0
+    for review in reviews:
+        label = review.get("review_status", "à annoter")
+        if label == "à annoter":
+            pending += 1
+        elif label in counts:
+            counts[label] += 1
+        else:
+            raise ValueError(f"label de revue inconnu : {label}")
+    annotated = sum(counts.values())
+    return {
+        "total": len(reviews),
+        "annotated": annotated,
+        "pending": pending,
+        "counts": counts,
+        "pertinent_rate": counts["pertinent"] / annotated if annotated else None,
+        "off_topic_rate": counts["hors sujet"] / annotated if annotated else None,
+    }
 
 
 def material_counts(result: PipelineResult) -> tuple[int, int]:
