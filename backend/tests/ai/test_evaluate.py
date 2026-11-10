@@ -17,6 +17,7 @@ from app.tools.evaluate import (
     load_corpus,
     main,
     match_notion,
+    match_notions,
     metrics,
     render_report,
     resume_after_review,
@@ -35,6 +36,24 @@ def test_match_notion() -> None:
     assert match_notion(ExpectedNotion(label="Prise de la Bastile"), knowledge) == "k4"  # faute de frappe
     assert match_notion(ExpectedNotion(label="Troisième ordre", aliases=["tiers état"]), knowledge) == "k6"
     assert match_notion(ExpectedNotion(label="Napoléon Bonaparte"), knowledge) is None
+
+
+def test_expected_notion_recall_never_counts_one_produced_notion_twice() -> None:
+    from types import SimpleNamespace
+
+    knowledge = [
+        SimpleNamespace(
+            id="k1",
+            label="Louis XVI",
+            statement="Louis XVI était le roi de France.",
+        )
+    ]
+    expected = [
+        ExpectedNotion(label="Louis XVI"),
+        ExpectedNotion(label="roi de France"),
+    ]
+
+    assert match_notions(expected, knowledge) == ["k1", None]
 
 
 @pytest.mark.parametrize(
