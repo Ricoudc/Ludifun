@@ -36,6 +36,8 @@ Fait :
 - ✅ Contrôles du code sur toute sortie de l'IA (schémas, citations exactes, `validation.py`).
 - ✅ Confiance par notion et passages douteux montrés au parent (§5.38).
 - ✅ Le parent relit, corrige et valide chaque leçon avant l'enfant (§5.69).
+- ✅ Le parent essaie la leçon comme son enfant, sans rien compter pour lui, et note les erreurs
+  à corriger (§5.84).
 - ✅ Outil d'évaluation sur les vraies leçons de la famille (`Ludifun.bat`, choix 12, §5.55).
 
 À faire :

@@ -56,6 +56,12 @@ PARENT_ROUTES = [
     ("PUT", "/v1/parent/review-lessons", {"enabled": True}),
     ("GET", "/v1/children/{child}/lessons/" + LESSON + "/content", None),
     ("POST", "/v1/children/{child}/lessons/" + LESSON + "/approve", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/trial", None),
+    (
+        "POST",
+        "/v1/children/{child}/lessons/" + LESSON + "/trial/check",
+        {"seed": "1", "plan": "x", "position": 1, "response": {}},
+    ),
     (
         "PUT",
         "/v1/children/{child}/lessons/" + LESSON + "/info",

@@ -201,3 +201,123 @@ def fuzzy_contains(text: str, excerpt: str, min_ratio: float = 0.9) -> bool:
             if SequenceMatcher(None, window, norm_excerpt).ratio() >= min_ratio:
                 return True
     return False
+
+
+# Texte écrit en anglais par l'IA dans une leçon qui n'est pas de l'anglais (petit modèle local :
+# « The correct word to complete the noun 'trésor' is 'un'. », PC d'essai). Mots-outils sans
+# homographe français courant ; ce qui est cité entre guillemets ne compte pas (un titre, un mot
+# étudié).
+_ENGLISH = frozenset(
+    [
+        "the",
+        "is",
+        "of",
+        "and",
+        "to",
+        "which",
+        "what",
+        "this",
+        "that",
+        "with",
+        "for",
+        "was",
+        "were",
+        "has",
+        "have",
+        "does",
+        "not",
+        "you",
+        "your",
+        "it",
+        "from",
+        "when",
+        "where",
+        "who",
+        "how",
+        "why",
+        "word",
+        "words",
+        "sentence",
+        "answer",
+        "following",
+        "choose",
+        "write",
+        "between",
+        "noun",
+        "verb",
+        "should",
+        "must",
+        "these",
+        "those",
+        "there",
+        "their",
+        "they",
+        "we",
+        "my",
+        "he",
+        "she",
+        "be",
+        "been",
+        "will",
+        "would",
+    ]
+)
+_FRENCH = frozenset(
+    [
+        "le",
+        "la",
+        "les",
+        "un",
+        "une",
+        "des",
+        "du",
+        "de",
+        "et",
+        "est",
+        "sont",
+        "dans",
+        "pour",
+        "que",
+        "qui",
+        "il",
+        "elle",
+        "ils",
+        "elles",
+        "on",
+        "ne",
+        "pas",
+        "au",
+        "aux",
+        "en",
+        "ce",
+        "cette",
+        "ces",
+        "se",
+        "sa",
+        "son",
+        "ses",
+        "sur",
+        "avec",
+        "par",
+        "plus",
+        "ou",
+        "je",
+        "tu",
+        "nous",
+        "vous",
+        "mot",
+        "mots",
+        "phrase",
+    ]
+)
+_QUOTED = re.compile(r"«[^»]*»|“[^”]*”|\"[^\"]*\"|(?<![^\W\d_])['‘][^'’]{1,60}['’](?![^\W\d_])")
+_LATIN_WORD = re.compile(r"[^\W\d_]+")
+
+
+def written_in_english(text: str) -> bool:
+    """Le texte est une phrase en anglais (au moins deux mots-outils anglais différents, et plus
+    de mots-outils anglais que français), citations entre guillemets mises à part."""
+    words = [w.lower() for w in _LATIN_WORD.findall(_QUOTED.sub(" ", text))]
+    english = [w for w in words if w in _ENGLISH]
+    french = sum(1 for w in words if w in _FRENCH)
+    return len(set(english)) >= 2 and len(english) > french

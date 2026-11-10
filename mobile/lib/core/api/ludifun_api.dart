@@ -10,6 +10,7 @@ import '../../models/homework.dart';
 import '../../models/lesson_sheet.dart';
 import '../../models/reminder.dart';
 import '../../models/teach.dart';
+import '../../models/trial.dart';
 import '../../models/lesson.dart';
 import '../../models/parent.dart';
 import '../../models/programme.dart';
@@ -315,6 +316,28 @@ class LudifunApi {
   Future<LessonContent> approveLesson(String childId, String lessonId) => _call(() async {
     final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/approve');
     return LessonContent.fromJson(r.data!);
+  });
+
+  /// « Essayer la leçon » : la séance que l'enfant aura, sans rien enregistrer (§5.84).
+  Future<LessonTrial> startTrial(String childId, String lessonId) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/trial');
+    return LessonTrial.fromJson(r.data!);
+  });
+
+  /// La correction d'une réponse de l'essai, telle que l'enfant la verrait.
+  /// Lève [ApiException] `trial_outdated` si la leçon a changé depuis le début de l'essai.
+  Future<Correction> checkTrial(
+    String childId,
+    String lessonId,
+    LessonTrial trial,
+    int position,
+    Map<String, Object?> response,
+  ) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/children/$childId/lessons/$lessonId/trial/check',
+      data: {'seed': trial.seed, 'plan': trial.plan, 'position': position, 'response': response},
+    );
+    return Correction.fromJson(r.data!);
   });
 
   /// Le parent corrige le titre, l'objectif et le résumé que l'enfant lira.

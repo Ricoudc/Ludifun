@@ -1294,6 +1294,173 @@ void main() {
     expect(find.text('Valider la leçon'), findsNothing);
   });
 
+  testWidgets('§5.84 : le parent essaie la leçon, note une erreur, puis revient la corriger', (
+    tester,
+  ) async {
+    Map<String, Object?> question(int position, String prompt, String good, String bad) => {
+      'id': 'i$position',
+      'position': position,
+      'block': 'core',
+      'type': 'MCQ',
+      'difficulty': 1,
+      'knowledge_ids': ['n1'],
+      'help_available': false,
+      'instruction': 'Choisis la bonne réponse.',
+      'payload': {
+        'prompt': prompt,
+        'choices': [
+          {'id': 'a', 'text': good},
+          {'id': 'b', 'text': bad},
+        ],
+      },
+    };
+    final checks = <Map<String, Object?>>[];
+    server
+      ..on(
+        'GET /v1/children/c1/lessons/l2/content',
+        (_) => (
+          200,
+          {
+            'lesson_id': 'l2',
+            'title': 'Les fractions',
+            'grade': 'CM1',
+            'text': null,
+            'objective': 'Comprendre les fractions',
+            'summary': 'Un résumé.',
+            'approved': false,
+            'awaiting_parent': true,
+            'notions': [
+              {
+                'knowledge_id': 'n1',
+                'label': 'Numérateur',
+                'statement': 'Le numérateur est en haut.',
+                'blocks': <Object>[],
+                'removed': false,
+              },
+            ],
+          },
+        ),
+      )
+      ..on(
+        'POST /v1/children/c1/lessons/l2/trial',
+        (_) => (
+          200,
+          {
+            'seed': '42',
+            'plan': 'empreinte',
+            'notions': {'n1': 'Numérateur'},
+            'items': [
+              question(1, 'Où est le numérateur ?', 'En haut', 'En bas'),
+              question(2, 'Combien font 1/2 + 1/2 ?', 'Deux', 'Un'),
+            ],
+          },
+        ),
+      )
+      ..on('POST /v1/children/c1/lessons/l2/trial/check', (r) {
+        final body = r.data as Map<String, Object?>;
+        checks.add(body);
+        final right = (body['response']! as Map<String, Object?>)['choice_id'] == 'a';
+        return (
+          200,
+          {
+            'item_id': 'i${body['position']}',
+            'result': right ? 'correct' : 'incorrect',
+            'score': right ? 1.0 : 0.0,
+            'correct_answer': body['position'] == 1 ? 'En haut' : 'Deux',
+            'tip': null,
+            'explanation': null,
+            'details': <Object>[],
+          },
+        );
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    await tap(tester, find.text('Essayer la leçon comme mon enfant'));
+    expect(find.text('Essai · question 1 / 2'), findsOneWidget);
+    expect(find.textContaining('Rien n\'est compté pour lui'), findsOneWidget);
+    expect(find.text('Notion : Numérateur'), findsOneWidget);
+
+    // Première question : juste.
+    await tap(tester, find.text('En haut'));
+    expect(checks.last, {
+      'seed': '42',
+      'plan': 'empreinte',
+      'position': 1,
+      'response': {'choice_id': 'a'},
+    });
+    expect(find.text('✅ Bravo !'), findsOneWidget);
+    await tap(tester, find.text('Continuer'));
+
+    // Seconde question : la réponse « juste » de l'IA est fausse, le parent la note.
+    expect(find.text('Essai · question 2 / 2'), findsOneWidget);
+    await tap(tester, find.text('Un'));
+    expect(find.textContaining('Deux'), findsWidgets);
+    await tap(tester, find.text('Il y a une erreur dans cette question'));
+    expect(find.text('Erreur notée'), findsOneWidget);
+    await tap(tester, find.text('Continuer'));
+
+    // Bilan : rien de compté, l'erreur notée, retour aux questions pour corriger.
+    expect(find.text('Essai terminé'), findsOneWidget);
+    expect(find.textContaining('1 bonne(s) réponse(s) sur 2'), findsOneWidget);
+    expect(find.text('Question 2 · Numérateur'), findsOneWidget);
+    expect(find.text('Réponse donnée pour juste : Deux'), findsOneWidget);
+    expect(server.routes.where((r) => r.contains('/sessions')), isEmpty);
+    await tap(tester, find.text('Corriger les questions'));
+    expect(find.text('🔒 L\'enfant n\'a pas encore accès à cette leçon'), findsOneWidget);
+  });
+
+  testWidgets('§5.84 : la leçon a changé pendant l\'essai, il se relance', (tester) async {
+    var started = 0;
+    server
+      ..on('POST /v1/children/c1/lessons/l2/trial', (_) {
+        started++;
+        return (
+          200,
+          {
+            'seed': '$started',
+            'plan': 'p$started',
+            'notions': <String, Object>{},
+            'items': [
+              {
+                'id': 'i1',
+                'position': 1,
+                'block': 'core',
+                'type': 'MCQ',
+                'difficulty': 1,
+                'knowledge_ids': <Object>[],
+                'payload': {
+                  'prompt': 'Question ?',
+                  'choices': [
+                    {'id': 'a', 'text': 'Oui'},
+                    {'id': 'b', 'text': 'Non'},
+                  ],
+                },
+              },
+            ],
+          },
+        );
+      })
+      ..on(
+        'POST /v1/children/c1/lessons/l2/trial/check',
+        (_) => (
+          409,
+          {
+            'error': {
+              'code': 'trial_outdated',
+              'message': 'La leçon a changé depuis le début de l\'essai : relancez-le.',
+            },
+          },
+        ),
+      );
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonTrial('c1', 'l2'));
+    await tap(tester, find.text('Oui'));
+    expect(find.textContaining('La leçon a changé'), findsOneWidget);
+    await tap(tester, find.text('Relancer l\'essai'));
+    expect(started, 2);
+    expect(find.text('Essai · question 1 / 1'), findsOneWidget);
+  });
+
   testWidgets('§5.69 : « Je relis chaque leçon avant mon enfant », cochée, se décoche', (
     tester,
   ) async {

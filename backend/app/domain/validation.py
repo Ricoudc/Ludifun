@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.domain.child_safety import unsafe_reason
+from app.domain.child_safety import strings, unsafe_reason
 from app.domain.equivalence import all_different, same_answer, separate_boxes, statement_truth
 from app.domain.errors import ErrorType
 from app.domain.knowledge import (
@@ -43,6 +43,7 @@ from app.domain.text import (
     gives_away,
     normalize,
     strip_markup,
+    written_in_english,
 )
 
 TIP_MAX_LENGTH = 120
@@ -85,6 +86,17 @@ _ABSENT_SUPPORT = re.compile(
 SUPPORT_REASON = "renvoie à la fiche ou à un texte que l'enfant n'aura plus sous les yeux"
 PAIR_REASON = "les deux côtés de la paire sont pareils, ou l'un contient l'autre : rien à chercher"
 PASSAGE_REASON = "le passage à relire n'est pas recopié de la leçon"
+ENGLISH_REASON = "écrit en anglais, alors que la leçon n'est pas une leçon d'anglais"
+# Matières où un texte en anglais est attendu (« autre » : une autre langue, une chanson…).
+FOREIGN_TEXT_SUBJECTS = frozenset({Subject.ENGLISH, Subject.OTHER})
+
+
+def _in_english(value: Any, subject: Subject | None, source: str) -> bool:
+    """Un texte de `value` est en anglais sans être recopié de la leçon, dans une matière où
+    l'enfant doit lire du français."""
+    if subject is None or subject in FOREIGN_TEXT_SUBJECTS:
+        return False
+    return any(written_in_english(t) and not fuzzy_contains(source, t) for t in strings(value))
 
 
 def needs_support(text: str) -> bool:
@@ -197,6 +209,8 @@ def validate_analysis(raw: Mapping[str, Any], ocr_text: str) -> AnalysisValidati
             rejected.append(Rejection(element, "identifiant en double"))
         elif reason := unsafe_reason(item.model_dump(mode="json"), ocr_text):
             rejected.append(Rejection(element, reason))
+        elif _in_english([item.label, item.statement], lesson.subject, ocr_text):
+            rejected.append(Rejection(element, ENGLISH_REASON))
         elif not fuzzy_contains(ocr_text, item.source_excerpt):
             rejected.append(Rejection(element, "source_excerpt introuvable dans le texte de la leçon"))
         else:
@@ -412,20 +426,29 @@ def _check_tip(tip: str, item: KnowledgeItem) -> str:
     return ""
 
 
-def _screen_for_child(raw: Mapping[str, Any], context: str, rejected: list[Rejection]) -> dict[str, Any]:
+def _screen_for_child(
+    raw: Mapping[str, Any], context: str, rejected: list[Rejection], subject: Subject | None = None
+) -> dict[str, Any]:
     """§141 : chaque élément destiné à l'enfant qui contient un passage inadapté, absent de la
-    leçon, est écarté (le reste de la notion est gardé)."""
+    leçon, est écarté (le reste de la notion est gardé). De même pour un élément écrit en anglais
+    dans une leçon qui n'est pas de l'anglais."""
+
+    def refused(value: Any) -> str | None:
+        if reason := unsafe_reason(value, context):
+            return reason
+        return ENGLISH_REASON if _in_english(value, subject, context) else None
+
     screened: dict[str, Any] = {}
     for key, value in raw.items():
         if isinstance(value, list):
             kept = []
             for i, element in enumerate(value):
-                if reason := unsafe_reason(element, context):
+                if reason := refused(element):
                     rejected.append(Rejection(f"{key}[{i}]", reason))
                 else:
                     kept.append(element)
             screened[key] = kept
-        elif reason := unsafe_reason(value, context):
+        elif reason := refused(value):
             rejected.append(Rejection(key, reason))
         else:
             screened[key] = value
@@ -433,14 +456,18 @@ def _screen_for_child(raw: Mapping[str, Any], context: str, rejected: list[Rejec
 
 
 def validate_material(
-    item: KnowledgeItem, raw: Mapping[str, Any], lesson_text: str | None = None
+    item: KnowledgeItem,
+    raw: Mapping[str, Any],
+    lesson_text: str | None = None,
+    subject: Subject | None = None,
 ) -> MaterialValidation:
     """`lesson_text` : le texte de la leçon, dont un passage à relire doit être recopié (sans
-    lui, le passage doit venir de la notion)."""
+    lui, le passage doit venir de la notion). `subject` : la matière de la leçon ; hors anglais,
+    un élément écrit en anglais est écarté."""
     rejected: list[Rejection] = []
     raw = clean_markup(dict(raw))
     source = strip_markup(lesson_text) if lesson_text is not None else item.corpus()
-    raw = _screen_for_child(raw, f"{source}\n{item.corpus()}", rejected)
+    raw = _screen_for_child(raw, f"{source}\n{item.corpus()}", rejected, subject)
 
     questions: list[MaterialQuestion] = []
     raw_questions = raw.get("questions")
