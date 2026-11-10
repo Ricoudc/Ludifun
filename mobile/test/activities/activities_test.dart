@@ -153,6 +153,37 @@ void main() {
       },
     ]);
   });
+  testWidgets('memory : la progression suit les paires trouvées', (tester) async {
+    await show(tester, 'MEMORY', {
+      'prompt': 'Retrouve les paires.',
+      'cards': [
+        {'id': 'a', 'text': 'Chat', 'pair': 'animal'},
+        {'id': 'b', 'text': 'Chien', 'pair': 'animal'},
+        {'id': 'c', 'text': 'Rouge', 'pair': 'couleur'},
+        {'id': 'd', 'text': 'Bleu', 'pair': 'couleur'},
+      ],
+    });
+    expect(find.text('0 / 2 paires trouvées'), findsOneWidget);
+    expect(find.text('0 coups'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('memory-card-a')));
+    await tester.tap(find.byKey(const ValueKey('memory-card-b')));
+    await tester.pump();
+    expect(find.text('1 / 2 paires trouvées'), findsOneWidget);
+    expect(find.text('1 coups'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('memory-card-c')));
+    await tester.tap(find.byKey(const ValueKey('memory-card-d')));
+    await tester.pump();
+    expect(find.text('2 / 2 paires trouvées'), findsOneWidget);
+    expect(sent, [
+      {
+        'moves': [
+          ['a', 'b'],
+          ['c', 'd'],
+        ],
+      },
+    ]);
+  });
+
   testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {
     await show(tester, 'MCQ', {
       'prompt': 'Quel animal vertébré vit dans la mer ?',
