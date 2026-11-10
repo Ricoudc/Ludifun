@@ -110,7 +110,13 @@ En plus des mesures du §17.2, le rapport suit ce qu'ont ajouté les étapes 13 
 | Notions reliées à une compétence | ≥ 90 % |
 | Notions avec indice et rappel (« Je n'ai pas compris ») | ≥ 90 % |
 | Questions ouvertes par leçon | ≥ 1 en moyenne |
+| Notions importantes avec question ouverte | indicateur de suivi, selon pertinence pédagogique |
 | Noms personnels dans le texte lu | 0 |
+
+La couverture des questions ouvertes rapporte la part des notions d'importance 4 ou 5 qui
+disposent d'au moins une question ouverte. Elle est affichée séparément du nombre brut de
+questions : certaines notions importantes (date, nom ou fait à mémoriser) ne se prêtent pas
+à une réponse rédigée. Cette couverture est donc informative et n'est pas un seuil automatique.
 
 Chaque lancement crée `eval/results/<date-heure>/` :
 
