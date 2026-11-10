@@ -843,6 +843,7 @@ void main() {
       ..on('GET /v1/lessons/l1', (_) => (200, waiting));
     final container = await launch(tester, MemoryCredentialStore(child));
     expect(find.text('🔒 Un adulte la relit'), findsOneWidget);
+    await tester.ensureVisible(find.text('La Révolution française'));
     await tester.tap(find.text('La Révolution française'));
     await tester.pump();
     expect(find.text('Un adulte relit ta leçon avant que tu la révises. 🔒'), findsOneWidget);

@@ -31,9 +31,7 @@ jobs:
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
       - name: Format
-        run: |
-          dart format lib/features/home/child_home_screen.dart
-          git diff -- lib/features/home/child_home_screen.dart
+        run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
         run: flutter analyze
       - name: Tests
