@@ -9,7 +9,7 @@ from app.ai.pricing import run_cost
 from app.ai.providers.fake import DEMO_LESSON, FakeProvider, LessonScript
 from app.ai.schemas import OcrPage, OcrResult, UncertainOut
 from app.domain.activities.registry import default_registry
-from app.domain.knowledge import Grade, Subject
+from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQuestion, Subject
 from app.services.lesson_pipeline import LessonPipeline
 from app.tools.evaluate import (
     Expected,
@@ -20,6 +20,7 @@ from app.tools.evaluate import (
     match_notions,
     material_counts,
     metrics,
+    open_question_review,
     render_report,
     resume_after_review,
     score,
@@ -28,6 +29,35 @@ from tests.domain.conftest import load_lesson
 from tests.support_documents import docx, scanned_pdf
 
 EXAMPLE = Path(__file__).resolve().parents[3] / "eval" / "example"
+
+
+def test_open_question_review_export_keeps_notion_context_and_review_dimensions() -> None:
+    item = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
+    question = OpenQuestion(
+        level=4,
+        prompt="Pourquoi cette notion est-elle importante ?",
+        key_points=[item.label],
+        model_answer=f"Cette notion est importante : {item.label}.",
+        passage=None,
+    )
+    unit = KnowledgeUnit(
+        item=item,
+        material=KnowledgeMaterial(
+            knowledge_id=item.id,
+            explanation=item.statement,
+            open_questions=[question],
+        ),
+    )
+    result = PipelineResult(failure_reason=None, units=[unit])
+
+    [review] = open_question_review(result, "histoire_cm1")
+    assert review["lesson"] == "histoire_cm1"
+    assert review["knowledge_id"] == item.id
+    assert review["notion"] == item.label
+    assert review["prompt"] == question.prompt
+    assert review["key_points"] == question.key_points
+    assert review["review_status"] == "à annoter"
+    assert "pertinence_par_rapport_a_la_notion" in review["review_dimensions"]
 
 
 def test_match_notion() -> None:
