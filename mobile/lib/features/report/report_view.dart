@@ -43,19 +43,35 @@ class ReportView extends StatelessWidget {
           style: theme.headlineMedium,
         ),
         const SizedBox(height: 20),
-        Text(
-          '${score(report.scoreOn10)} / 10',
-          textAlign: TextAlign.center,
-          style: theme.displayMedium?.copyWith(
-            fontWeight: FontWeight.w900,
-            color: LudiColors.primary,
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                const Text(
+                  'Ton résultat',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${score(report.scoreOn10)} / 10',
+                  textAlign: TextAlign.center,
+                  style: theme.displayMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: LudiColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: LinearProgressIndicator(
+                    value: report.scoreOn10 / 10,
+                    minHeight: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: report.scoreOn10 / 10,
-          minHeight: 14,
-          borderRadius: BorderRadius.circular(7),
         ),
         if (stars > 0) ...[
           const SizedBox(height: 16),
