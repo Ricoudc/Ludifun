@@ -157,11 +157,7 @@ async def test_missed_notions_and_failures_are_reported() -> None:
         bool(unit.material.open_questions) for unit in important_units
     )
     by_name = {metric.name: metric for metric in metrics([good])}
-    coverage = (
-        100 * good.important_with_open_question / good.important_notions
-        if good.important_notions
-        else None
-    )
+    coverage = 100 * good.important_with_open_question / good.important_notions if good.important_notions else None
     assert by_name["Notions importantes avec question ouverte"].value == coverage
 
     failed_result = await pipeline.run(text="Recette des crêpes : farine, œufs, lait.")
