@@ -28,7 +28,9 @@ class _FlashcardViewState extends State<FlashcardView> {
 
   @override
   Widget build(BuildContext context) {
-    final face = _flipped ? widget.payload['back'] as String : widget.payload['front'] as String;
+    final face = _flipped
+        ? widget.payload['back'] as String
+        : widget.payload['front'] as String;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -72,7 +74,9 @@ class _FlashcardViewState extends State<FlashcardView> {
                     ScaleTransition(scale: animation, child: child),
                 child: Card(
                   key: ValueKey(_flipped),
-                  color: _flipped ? LudiColors.accent.withValues(alpha: 0.15) : Colors.white,
+                  color: _flipped
+                      ? LudiColors.accent.withValues(alpha: 0.15)
+                      : Colors.white,
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 200),
                     alignment: Alignment.center,
