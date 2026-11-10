@@ -619,8 +619,8 @@ def validate_material(
             if normalize(open_question.model_answer).startswith(normalize(open_question.prompt)):
                 rejected.append(Rejection(f"open_questions[{i}]", "la réponse attendue recopie la question"))
                 continue
-            if reason := _open_question_content_reason(open_question, source):
-                rejected.append(Rejection(f"open_questions[{i}]", reason))
+            if content_reason := _open_question_content_reason(open_question, source):
+                rejected.append(Rejection(f"open_questions[{i}]", content_reason))
                 continue
             open_questions.append(open_question)
         except ValidationError as exc:
