@@ -14,8 +14,8 @@ from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQu
 from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.evaluate import (
     Expected,
-    _question_review_signature,
     ExpectedNotion,
+    _question_review_signature,
     apply_question_review_annotations,
     load_corpus,
     main,
