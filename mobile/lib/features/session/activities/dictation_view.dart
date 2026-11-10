@@ -148,9 +148,6 @@ class _DictationViewState extends State<DictationView> {
 /// Comme en classe : le téléphone lit la phrase, puis morceau par morceau, puis encore en
 /// entier ; l'enfant l'écrit sans l'avoir vue. Il peut réécouter la phrase ou les morceaux.
 /// Sans voix française sur le téléphone, la phrase s'affiche `show_ms` millisecondes.
-int _countWrittenWords(String text) =>
-    RegExp(r'\S+').allMatches(text).length;
-
 class SentenceDictationView extends StatefulWidget {
   const SentenceDictationView({required this.payload, required this.onSubmit, super.key});
 
