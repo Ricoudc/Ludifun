@@ -53,6 +53,7 @@ def test_open_question_review_export_keeps_notion_context_and_review_dimensions(
     result = PipelineResult(failure_reason=None, units=[unit])
 
     [review] = open_question_review(result, "histoire_cm1")
+    assert review["review_id"] == f"histoire_cm1:{item.id}:1"
     assert review["lesson"] == "histoire_cm1"
     assert review["knowledge_id"] == item.id
     assert review["notion"] == item.label
