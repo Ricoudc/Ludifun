@@ -83,10 +83,7 @@ class CorrectionView extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: color.withValues(alpha: 0.55),
-                width: 1.5,
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -118,10 +115,8 @@ class CorrectionView extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: color, fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -138,11 +133,7 @@ class CorrectionView extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       '${(correction.score.clamp(0.0, 1.0) * 100).round()}%',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900),
                     ),
                   ],
                 ),
@@ -170,11 +161,7 @@ class CorrectionView extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     correction.correctAnswer!,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      height: 1.3,
-                    ),
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.3),
                   ),
                 ] else if (showAnswer && correction.correctAnswer != null) ...[
                   const SizedBox(height: 12),
