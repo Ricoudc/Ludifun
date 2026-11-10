@@ -113,9 +113,18 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     ]
     assert "| Noms personnels dans le texte lu | — (aucune annotation) | 0 | · |" in measures
     assert "piege_liste_de_courses | photo | 1 | ✅ not_a_lesson (piège)" in report
-    for name in ("history_cm1_revolution", "math_cm2_fractions", "science_ce2_water_states"):
+    for name in (
+        "history_cm1_revolution",
+        "math_cm2_fractions",
+        "science_ce2_water_states",
+        "french_cp_vowels",
+        "geography_6e_continents",
+        "math_3e_pythagoras",
+    ):
         assert (run_dir / f"{name}.json").exists()
         assert "══ Séance" in (run_dir / f"{name}.txt").read_text(encoding="utf-8")
+    assert "## Rappel des notions par matière et niveau" in report
+    assert "### Par matière" in report and "### Par niveau" in report
 
 
 async def test_missed_notions_and_failures_are_reported() -> None:
