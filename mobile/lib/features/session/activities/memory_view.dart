@@ -80,6 +80,7 @@ class _MemoryViewState extends State<MemoryView> {
     final visible = found || _open.contains(card.id);
     final color = found ? LudiColors.mastered : LudiColors.primary;
     return Semantics(
+      key: ValueKey('memory-card-${card.id}'),
       button: !visible,
       label: visible ? card.text : 'Carte cachée',
       excludeSemantics: true,
@@ -115,10 +116,38 @@ class _MemoryViewState extends State<MemoryView> {
     children: [
       Prompt(widget.payload['prompt'] as String, label: 'Memory'),
       const SizedBox(height: 8),
-      Text(
-        '${_found.length ~/ 2} paire(s) trouvée(s) sur ${_cards.length ~/ 2} · ${_moves.length} coup(s)',
-        style: const TextStyle(fontSize: 16, color: Colors.black54),
-      ),
+      if (_cards.isNotEmpty)
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.grid_view_rounded, color: LudiColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_found.length ~/ 2} / ${_cards.length ~/ 2} paires trouvées',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Text('${_moves.length} coups'),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (_found.length / _cards.length).clamp(0.0, 1.0),
+                    minHeight: 9,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       const SizedBox(height: 16),
       GridView.count(
         crossAxisCount: _cards.length > 8 ? 3 : 2,
