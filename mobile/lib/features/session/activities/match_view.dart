@@ -135,7 +135,39 @@ class _MatchViewState extends State<MatchView> {
             : 'Touche un élément à gauche, puis sa réponse à droite.',
         style: const TextStyle(fontSize: 16, color: Colors.black54),
       ),
-      const SizedBox(height: 12),
+      if (_lefts.isNotEmpty) ...[
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.link_rounded, color: LudiColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_pairs.length} / ${_lefts.length} associations réalisées',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (_pairs.length / _lefts.length).clamp(0.0, 1.0),
+                    minHeight: 9,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
