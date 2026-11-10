@@ -133,7 +133,7 @@ class _MemoryViewState extends State<MemoryView> {
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    Text('${_moves.length} coups'),
+                    Text('${_moves.length} ${_moves.length == 1 ? 'coup' : 'coups'}'),
                   ],
                 ),
                 const SizedBox(height: 8),
