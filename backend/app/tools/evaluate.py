@@ -106,18 +106,53 @@ class LessonScore:
         return self.failure in ("not_a_lesson", "unreadable")
 
 
+def _notion_matches(expected: ExpectedNotion, item: KnowledgeItem) -> bool:
+    text = f"{item.label} {item.statement}"
+    return any(
+        contains_words(text, name)
+        or SequenceMatcher(None, normalize(item.label), normalize(name)).ratio() >= 0.85
+        for name in [expected.label, *expected.aliases]
+    )
+
+
+def match_notions(
+    expected: list[ExpectedNotion], knowledge: list[KnowledgeItem]
+) -> list[str | None]:
+    """Associe les notions attendues aux notions produites sans compter deux fois la même.
+
+    Un appariement biparti (avec réaffectation) évite qu'une seule notion produite valide
+    plusieurs notions attendues simplement parce que son énoncé contient plusieurs libellés.
+    Le résultat conserve l'ordre des annotations.
+    """
+    candidates = [
+        [index for index, item in enumerate(knowledge) if _notion_matches(notion, item)]
+        for notion in expected
+    ]
+    assigned: dict[int, int] = {}
+
+    def assign(expected_index: int, visited: set[int]) -> bool:
+        for item_index in candidates[expected_index]:
+            if item_index in visited:
+                continue
+            visited.add(item_index)
+            previous = assigned.get(item_index)
+            if previous is None or assign(previous, visited):
+                assigned[item_index] = expected_index
+                return True
+        return False
+
+    for expected_index in range(len(expected)):
+        assign(expected_index, set())
+
+    result: list[str | None] = [None] * len(expected)
+    for item_index, expected_index in assigned.items():
+        result[expected_index] = knowledge[item_index].id
+    return result
+
+
 def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> str | None:
-    """Notion produite qui correspond à une notion attendue (libellé ou variante)."""
-    names = [expected.label, *expected.aliases]
-    for item in knowledge:
-        text = f"{item.label} {item.statement}"
-        for name in names:
-            if (
-                contains_words(text, name)
-                or SequenceMatcher(None, normalize(item.label), normalize(name)).ratio() >= 0.85
-            ):
-                return item.id
-    return None
+    """Compatibilité unitaire ; les scores de corpus utilisent match_notions."""
+    return match_notions([expected], knowledge)[0]
 
 
 def material_counts(result: PipelineResult) -> tuple[int, int]:
@@ -156,7 +191,10 @@ def score(
             s.grade_ok = abs(GRADES.index(lesson.grade) - GRADES.index(expected.grade)) <= 1
     if expected.is_lesson:
         knowledge = analysis.knowledge if analysis else []
-        s.found = {n.label: match_notion(n, knowledge) for n in expected.essential}
+        matches = match_notions(expected.essential, knowledge)
+        s.found = {
+            notion.label: item_id for notion, item_id in zip(expected.essential, matches, strict=True)
+        }
     s.review = len(result.review)
     s.notions = len(result.units)
     if analysis is not None:
