@@ -100,10 +100,7 @@ class ChildHomeScreen extends ConsumerWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 12),
-                for (final lesson in list) ...[
-                  _LessonRow(lesson),
-                  const SizedBox(height: 8),
-                ],
+                for (final lesson in list) ...[_LessonRow(lesson), const SizedBox(height: 8)],
               ],
               AsyncError(:final error) => [
                 ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
