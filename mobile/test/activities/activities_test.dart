@@ -919,27 +919,21 @@ void main() {
     ]);
   });
 
-  testWidgets(
-    'vrai ou faux : couleurs neutres, choix unique et sélection visible',
-    (tester) async {
-      await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
+  testWidgets('vrai ou faux : couleurs neutres, choix unique et sélection visible', (tester) async {
+    await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
 
-      final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
-      expect(answers.map((answer) => answer.color), [
-        LudiColors.primary,
-        LudiColors.accent,
-      ]);
-      expect(find.byIcon(Icons.check_circle), findsNothing);
+    final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
+    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    expect(find.byIcon(Icons.check_circle), findsNothing);
 
-      await tester.tap(find.text('❌ Faux'));
-      await tester.pump();
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
-      await tester.tap(find.text('✅ Vrai')); // le deuxième choix est désormais verrouillé
-      expect(sent, [
-        {'value': false},
-      ]);
-    },
-  );
+    await tester.tap(find.text('❌ Faux'));
+    await tester.pump();
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    await tester.tap(find.text('✅ Vrai')); // le deuxième choix est désormais verrouillé
+    expect(sent, [
+      {'value': false},
+    ]);
+  });
 
   testWidgets(
     'étape 25 : la consigne du serveur, au niveau de la classe, remplace la consigne par défaut',
@@ -1222,37 +1216,31 @@ void main() {
     ]);
   });
 
-  testWidgets(
-    'défi rapide : une affirmation à la fois, avec le temps passé',
-    (tester) async {
-      await show(tester, 'SPEED_CHALLENGE', {
-        'time_limit_s': 30,
-        'statements': [
-          {'id': 's1', 'text': 'La Bastille est prise en 1789.'},
-          {'id': 's2', 'text': 'Louis XVI est empereur.'},
-        ],
-      });
-      expect(find.text('⏱️ 30 s'), findsOneWidget);
-      final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
-      expect(answers.map((answer) => answer.color), [
-        LudiColors.primary,
-        LudiColors.accent,
-      ]);
-      await tester.pump(const Duration(milliseconds: 2000));
-      expect(find.text('⏱️ 28 s'), findsOneWidget);
-      await tester.tap(find.text('✅ Vrai'));
-      await tester.pump();
-      expect(find.text('Louis XVI est empereur.'), findsOneWidget);
-      await tester.pump(const Duration(milliseconds: 1000));
-      await tester.tap(find.text('❌ Faux'));
-      await tester.pump();
-      expect(sent.single['answers'], [
-        {'id': 's1', 'value': true},
-        {'id': 's2', 'value': false},
-      ]);
-      expect(sent.single['elapsed_ms'], 3000);
-    },
-  );
+  testWidgets('défi rapide : une affirmation à la fois, avec le temps passé', (tester) async {
+    await show(tester, 'SPEED_CHALLENGE', {
+      'time_limit_s': 30,
+      'statements': [
+        {'id': 's1', 'text': 'La Bastille est prise en 1789.'},
+        {'id': 's2', 'text': 'Louis XVI est empereur.'},
+      ],
+    });
+    expect(find.text('⏱️ 30 s'), findsOneWidget);
+    final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
+    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    await tester.pump(const Duration(milliseconds: 2000));
+    expect(find.text('⏱️ 28 s'), findsOneWidget);
+    await tester.tap(find.text('✅ Vrai'));
+    await tester.pump();
+    expect(find.text('Louis XVI est empereur.'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.tap(find.text('❌ Faux'));
+    await tester.pump();
+    expect(sent.single['answers'], [
+      {'id': 's1', 'value': true},
+      {'id': 's2', 'value': false},
+    ]);
+    expect(sent.single['elapsed_ms'], 3000);
+  });
 
   testWidgets('défi rapide : le temps écoulé envoie les réponses données', (tester) async {
     await show(tester, 'SPEED_CHALLENGE', {
@@ -1358,3 +1346,4 @@ void main() {
     expect(find.text('bien (mot en trop)'), findsOneWidget);
   });
 }
+
