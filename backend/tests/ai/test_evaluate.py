@@ -68,9 +68,7 @@ def test_question_review_annotations_are_reapplied_only_to_same_prompt() -> None
         {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "à annoter"},
         {"review_id": "histoire:k6:1", "prompt": "Pourquoi ?", "review_status": "à annoter"},
     ]
-    annotations = [
-        {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"}
-    ]
+    annotations = [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"}]
     applied = apply_question_review_annotations(reviews, annotations)
     assert [row["review_status"] for row in applied] == ["pertinent", "à annoter"]
     summary = question_review_summary(applied)
