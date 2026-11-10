@@ -126,6 +126,33 @@ void main() {
     ]);
   });
 
+  testWidgets('ordre : progression mise à jour et réversible avant validation', (tester) async {
+    await show(tester, 'ORDER', {
+      'prompt': 'Remets les étapes dans l’ordre.',
+      'items': [
+        {'id': 'a', 'text': 'Étape A'},
+        {'id': 'b', 'text': 'Étape B'},
+      ],
+    });
+    expect(find.text('0 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Étape A'));
+    await tester.pump();
+    expect(find.text('1 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('1 : Étape A. Toucher pour retirer.'));
+    await tester.pump();
+    expect(find.text('0 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Étape B'));
+    await tester.pump();
+    await tester.tap(find.text('Étape A'));
+    await tester.pump();
+    expect(find.text('2 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'order': ['b', 'a'],
+      },
+    ]);
+  });
   testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {
     await show(tester, 'MCQ', {
       'prompt': 'Quel animal vertébré vit dans la mer ?',
