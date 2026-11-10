@@ -30,6 +30,8 @@ jobs:
           cache: true
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
+      - name: Diagnostic formatage
+        run: dart format --output=show lib/features/home/child_home_screen.dart
       - name: Format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
@@ -41,14 +43,12 @@ jobs:
     name: APK Android (debug)
     runs-on: ubuntu-latest
     permissions:
-      contents: write # publier l'APK de test dans la release « apk-test »
+      contents: write
     defaults:
       run:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
-      # La compilation remplissait le disque de la machine de GitHub (« No space left on
-      # device ») : on retire des outils préinstallés qui ne servent pas ici.
       - name: Place sur le disque
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost \
@@ -65,16 +65,9 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - name: Compilation
-        # Numéro de construction croissant : l'application compare le sien à celui que propose le
-        # serveur de la maison (bandeau « Nouvelle version », spécification technique §5.50).
         run: >-
           flutter build apk --debug --build-number=${{ github.run_number }}
           --dart-define=LUDIFUN_BUILD=${{ github.run_number }}
-      # APK de test à télécharger : page « Releases » du dépôt, version « apk-test »
-      # (https://github.com/Ricoudc/Ludifun/releases/tag/apk-test), remplacé à chaque envoi de
-      # code. Les « Artifacts » d'Actions ne servent plus : leur quota de stockage était plein
-      # (« Artifact storage quota has been hit ») ; une release n'y compte pas. Voir
-      # docs/tester-sur-telephone.md. L'adresse du serveur se règle dans l'application.
       - name: APK de test téléchargeable
         if: github.event_name != 'pull_request'
         continue-on-error: true
