@@ -86,8 +86,7 @@ class _SpeedChallengeViewState extends State<SpeedChallengeView> {
           label: 'Temps restant',
           value: '$left secondes',
           child: LinearProgressIndicator(
-            value:
-                (1 - _elapsed.inMilliseconds / _limit.inMilliseconds).clamp(0.0, 1.0),
+            value: (1 - _elapsed.inMilliseconds / _limit.inMilliseconds).clamp(0.0, 1.0),
             minHeight: 10,
             borderRadius: BorderRadius.circular(5),
             color: left <= 5 ? LudiColors.notMastered : LudiColors.accent,
@@ -101,18 +100,12 @@ class _SpeedChallengeViewState extends State<SpeedChallengeView> {
         const SizedBox(height: 8),
         Row(
           children: [
-            const Icon(
-              Icons.check_circle_outline_rounded,
-              size: 18,
-              color: LudiColors.primary,
-            ),
+            const Icon(Icons.check_circle_outline_rounded, size: 18, color: LudiColors.primary),
             const SizedBox(width: 6),
             Text(
               '${_answers.length} / ${_statements.length} réponses',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: LudiColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: LudiColors.primary, fontWeight: FontWeight.w700),
             ),
           ],
         ),
