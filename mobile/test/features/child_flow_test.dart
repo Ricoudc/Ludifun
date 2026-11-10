@@ -189,7 +189,7 @@ void main() {
     // Écran 1 : rien à réviser, aucune leçon.
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
     expect(find.text('🎉 Tout est à jour ! Photographie une nouvelle leçon.'), findsOneWidget);
-    expect(find.text('Photographie ta première leçon !'), findsOneWidget);
+    expect(find.text('Ton cahier commence ici'), findsOneWidget);
     await shot(tester, 'e02_accueil_vide');
 
     // Écran 2 : deux pages de la galerie et une photo, puis la photo passe en premier.
