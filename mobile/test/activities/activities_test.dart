@@ -1224,6 +1224,7 @@ void main() {
       ],
     });
     expect(find.text('Encore 2 à relier'), findsOneWidget);
+    expect(find.text('0 / 2 associations réalisées'), findsOneWidget);
     expect(find.text('À relier'), findsOneWidget);
     expect(find.text('Réponses'), findsOneWidget);
     await tester.tap(find.text('1789'));
@@ -1243,6 +1244,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Roi de France'));
     await tester.pump();
+    expect(find.text('2 / 2 associations réalisées'), findsOneWidget);
     await tester.tap(find.text('Valider'));
     expect(sent, [
       {
