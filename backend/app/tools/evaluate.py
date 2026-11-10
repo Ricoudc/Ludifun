@@ -193,6 +193,8 @@ def apply_question_review_annotations(
     """Réapplique des labels humains uniquement si l'identifiant et l'énoncé correspondent."""
     by_id: dict[str, dict[str, Any]] = {}
     for annotation in annotations:
+        if not isinstance(annotation, dict):
+            raise ValueError("chaque annotation doit être un objet JSON")
         review_id = annotation.get("review_id")
         if not isinstance(review_id, str) or not review_id:
             raise ValueError("une annotation doit avoir un review_id")
@@ -724,12 +726,12 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     )
     text = render_report(scores, provider, started)
     text += (
-        "\\n\\n## Revue humaine des questions ouvertes\\n\\n"
+        "\n\n## Revue humaine des questions ouvertes\n\n"
         f"- Questions : {review_summary['total']} ; annotées : {review_summary['annotated']} ; "
-        f"en attente : {review_summary['pending']}\\n"
+        f"en attente : {review_summary['pending']}\n"
         f"- Pertinentes : {review_summary['counts']['pertinent']} ; "
         f"à corriger : {review_summary['counts']['à corriger']} ; "
-        f"hors sujet : {review_summary['counts']['hors sujet']}\\n"
+        f"hors sujet : {review_summary['counts']['hors sujet']}\n"
     )
     (out / "report.md").write_text(text, encoding="utf-8")
     metrics_data = metrics_json(scores, configuration(provider, models), started)
