@@ -10,6 +10,7 @@ import 'package:ludifun/features/session/activities/math_games_views.dart';
 import 'package:ludifun/core/listening.dart';
 import 'package:ludifun/core/speech.dart';
 import 'package:ludifun/features/session/activities/common.dart';
+import 'package:ludifun/features/session/activities/classify_view.dart';
 import 'package:ludifun/features/session/activities/dictation_view.dart';
 import 'package:ludifun/features/session/correction_view.dart';
 import 'package:ludifun/models/session.dart';
@@ -81,6 +82,38 @@ void main() {
     );
     await shot(tester, 'a_$type');
   }
+
+  testWidgets('classement : la progression suit les étiquettes rangées', (tester) async {
+    await show(tester, 'CLASSIFY', {
+      'prompt': 'Range les mots dans les bonnes cases.',
+      'categories': [
+        {'id': 'noun', 'name': 'Noms'},
+        {'id': 'verb', 'name': 'Verbes'},
+      ],
+      'items': [
+        {'id': 'cat', 'text': 'chat'},
+        {'id': 'run', 'text': 'courir'},
+      ],
+    });
+    expect(find.text('0 / 2 étiquettes rangées'), findsOneWidget);
+    await tester.tap(find.text('chat'));
+    await tester.tap(find.text('Noms'));
+    await tester.pump();
+    expect(find.text('1 / 2 étiquettes rangées'), findsOneWidget);
+    await tester.tap(find.text('courir'));
+    await tester.tap(find.text('Verbes'));
+    await tester.pump();
+    expect(find.text('2 / 2 étiquettes rangées'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'assignments': [
+          ['cat', 'noun'],
+          ['run', 'verb'],
+        ],
+      },
+    ]);
+  });
 
   testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {
     await show(tester, 'MCQ', {
