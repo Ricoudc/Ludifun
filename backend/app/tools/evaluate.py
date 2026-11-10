@@ -231,11 +231,11 @@ def apply_question_review_annotations(
         if review_id in seen:
             raise ValueError(f"question générée en double : {review_id}")
         seen.add(review_id)
-        annotation = by_id.pop(review_id) if review_id in by_id else None
-        if annotation is not None:
-            if annotation.get("review_signature") != _question_review_signature(review):
+        matched_annotation = by_id.pop(review_id) if review_id in by_id else None
+        if matched_annotation is not None:
+            if matched_annotation.get("review_signature") != _question_review_signature(review):
                 raise ValueError(f"contenu pédagogique modifié depuis l'annotation : {review_id}")
-            review = review | {"review_status": annotation["review_status"]}
+            review = review | {"review_status": matched_annotation["review_status"]}
         result.append(review)
     if by_id:
         raise ValueError(f"annotations sans question correspondante : {', '.join(sorted(by_id))}")
