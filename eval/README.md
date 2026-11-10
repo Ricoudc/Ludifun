@@ -84,6 +84,24 @@ Quand la lecture d'une photo signale des passages douteux, l'application demande
 « Peux-tu vérifier ? ». L'évaluation joue l'enfant qui confirme ce qui a été lu, puis
 l'analyse reprend : ces passages sont comptés, et la leçon est quand même mesurée.
 
+## 4. Rapport téléchargeable depuis GitHub Actions
+
+À chaque CI backend de cette branche, après les tests PostgreSQL, le workflow exécute le corpus
+synthétique avec le fournisseur déterministe `fake` et publie un artefact
+`ludifun-quality-ai-benchmark` pendant 14 jours.
+
+Dans GitHub : ouvrir **Actions → Backend → exécution réussie → Artifacts** et télécharger
+`ludifun-quality-ai-benchmark`. L'archive contient le rapport Markdown, les métriques JSON,
+les résultats JSON par leçon et les séances générées. Ce rapport vérifie le fonctionnement
+reproductible de l'évaluateur ; il ne constitue pas une mesure de performance d'un modèle réel.
+
+Pour produire le même rapport localement :
+
+```bash
+cd backend
+uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai
+```
+
 En plus des mesures du §17.2, le rapport suit ce qu'ont ajouté les étapes 13 à 15 :
 
 | Mesure | Seuil |
