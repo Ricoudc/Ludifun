@@ -62,8 +62,9 @@ class SessionScreen extends ConsumerWidget {
     if (id != null) {
       context.go(Routes.session(id));
     } else if (ref.read(sessionControllerProvider(sessionId)).phase != Phase.error) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Aucune erreur à revoir : bravo !')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aucune erreur à revoir : bravo !')),
+      );
     }
   }
 
