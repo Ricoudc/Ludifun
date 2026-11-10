@@ -143,44 +143,44 @@ class SessionScreen extends ConsumerWidget {
                 )
               : null,
         ),
-        bottomNavigationBar: state.phase == Phase.report && state.report != null
-            ? ReportActions(
-                report: state.report!,
-                onReviewErrors: () => _reviewErrors(context, ref),
-                onDone: () => _leave(context, ref, state),
-              )
-            : state.phase == Phase.correction && state.correction != null
-            ? SafeArea(
-                top: false,
-                child: Material(
-                  elevation: 8,
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        FilledButton(
-                          onPressed: controller.next,
-                          child: const Text('Continuer'),
-                        ),
-                        if (state.correction!.pauseMessage != null) ...[
-                          const SizedBox(height: 8),
-                          OutlinedButton(
-                            onPressed: () {
-                              refreshHome(ref);
-                              context.go(Routes.childHome);
-                            },
-                            child: const Text('Faire une pause'),
-                          ),
-                        ],
-                      ],
+        bottomNavigationBar: switch (state.phase) {
+          Phase.report when state.report != null => ReportActions(
+            report: state.report!,
+            onReviewErrors: () => _reviewErrors(context, ref),
+            onDone: () => _leave(context, ref, state),
+          ),
+          Phase.correction when state.correction != null => SafeArea(
+            top: false,
+            child: Material(
+              elevation: 8,
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    FilledButton(
+                      onPressed: controller.next,
+                      child: const Text('Continuer'),
                     ),
-                  ),
+                    if (state.correction!.pauseMessage != null) ...[
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: () {
+                          refreshHome(ref);
+                          context.go(Routes.childHome);
+                        },
+                        child: const Text('Faire une pause'),
+                      ),
+                    ],
+                  ],
                 ),
-              )
-            : null,
+              ),
+            ),
+          ),
+          _ => null,
+        },
         body: CenteredBody(
           top: _playing(state) || state.phase == Phase.report,
           children: [

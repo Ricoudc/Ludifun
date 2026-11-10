@@ -1231,7 +1231,10 @@ void main() {
     });
     expect(find.text('⏱️ 30 s'), findsOneWidget);
     final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
-    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    expect(answers.map((answer) => answer.color), [
+      LudiColors.primary,
+      LudiColors.accent,
+    ]);
     await tester.pump(const Duration(milliseconds: 2000));
     expect(find.text('⏱️ 28 s'), findsOneWidget);
     await tester.tap(find.text('✅ Vrai'));
