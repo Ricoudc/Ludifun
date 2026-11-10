@@ -283,6 +283,40 @@ void main() {
     expect(find.text('Question 2 / 2'), findsOneWidget);
   });
 
+  testWidgets('le bilan garde ses actions visibles et « Terminer » revient à l’accueil', (
+    tester,
+  ) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Revoir mes erreurs'), findsOneWidget);
+    expect(find.text('Terminer'), findsOneWidget);
+
+    await tapAndSettle(tester, 'Terminer');
+    expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
+    expect(find.text('🎉 Révision terminée !'), findsNothing);
+  });
+
+  testWidgets('le bilan masque la reprise quand aucune erreur n’est disponible', (tester) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    server.on(
+      'POST /v1/sessions/s1/complete',
+      (_) => (200, {...FakeSessionBackend.report, 'can_review_errors': false}),
+    );
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Revoir mes erreurs'), findsNothing);
+    expect(find.text('Terminer'), findsOneWidget);
+  });
+
   testWidgets('« Revoir mes erreurs » sans erreur à revoir', (tester) async {
     FakeSessionBackend(server, 's1', [mcq('i1')]);
     server.on(
