@@ -1227,12 +1227,14 @@ void main() {
       ],
     });
     expect(find.text('⏱️ 30 s'), findsOneWidget);
+    expect(find.text('0 / 2 réponses'), findsOneWidget);
     final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
     expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
     await tester.pump(const Duration(milliseconds: 2000));
     expect(find.text('⏱️ 28 s'), findsOneWidget);
     await tester.tap(find.text('✅ Vrai'));
     await tester.pump();
+    expect(find.text('1 / 2 réponses'), findsOneWidget);
     expect(find.text('Louis XVI est empereur.'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1000));
     await tester.tap(find.text('❌ Faux'));
