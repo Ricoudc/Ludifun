@@ -1,7 +1,7 @@
 {
   "subject": "french",
   "grade": "CP",
-  "support": "manuel",
+  "support": "texte synthétique",
   "essential": [
     {
       "label": "L'alphabet"
