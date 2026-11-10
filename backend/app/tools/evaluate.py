@@ -322,6 +322,52 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
         "|---|---|---|---|",
     ]
     lines += [f"| {m.name} | {m.display} | {m.target} | {icon[m.ok]} |" for m in metrics(scores)]
+
+    def recall_breakdown(attribute: str) -> list[tuple[str, int, int, float]]:
+        groups: dict[str, list[bool]] = {}
+        for score in scores:
+            if not score.expected.is_lesson:
+                continue
+            value = getattr(score.expected, attribute)
+            if value is None:
+                continue
+            label = value.value
+            groups.setdefault(label, []).extend(found is not None for found in score.found.values())
+        return [
+            (label, sum(values), len(values), 100 * sum(values) / len(values))
+            for label, values in sorted(groups.items())
+            if values
+        ]
+
+    by_subject = recall_breakdown("subject")
+    by_grade = recall_breakdown("grade")
+    if by_subject or by_grade:
+        lines += ["", "## Rappel des notions par matière et niveau", ""]
+        if by_subject:
+            lines += [
+                "### Par matière",
+                "",
+                "| Matière | Notions retrouvées | Total | Rappel |",
+                "|---|---:|---:|---:|",
+            ]
+            lines += [
+                f"| {label} | {found} | {total} | {recall:.0f} % |"
+                for label, found, total, recall in by_subject
+            ]
+            lines.append("")
+        if by_grade:
+            lines += [
+                "### Par niveau",
+                "",
+                "| Niveau | Notions retrouvées | Total | Rappel |",
+                "|---|---:|---:|---:|",
+            ]
+            lines += [
+                f"| {label} | {found} | {total} | {recall:.0f} % |"
+                for label, found, total, recall in by_grade
+            ]
+            lines.append("")
+
     lines += [
         "",
         "## Par leçon",
