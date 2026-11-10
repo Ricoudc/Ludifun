@@ -28,7 +28,9 @@ class _FlashcardViewState extends State<FlashcardView> {
 
   @override
   Widget build(BuildContext context) {
-    final face = _flipped ? widget.payload['back'] as String : widget.payload['front'] as String;
+    final face = _flipped
+        ? widget.payload['back'] as String
+        : widget.payload['front'] as String;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
