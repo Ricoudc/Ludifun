@@ -52,17 +52,43 @@ class _McqViewState extends State<McqView> {
               '${_letters[i % _letters.length]} : ${choice.text}',
           ],
         ),
-        const SizedBox(height: 24),
-        for (final (i, choice) in choices.indexed) ...[
-          AnswerButton(
-            label: choice.text,
-            leading: _letters[i % _letters.length],
-            color: _colors[i % _colors.length],
-            selected: _chosen == choice.id,
-            onPressed: () => _choose(choice.id),
+        const SizedBox(height: 22),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: LudiColors.primary.withValues(alpha: 0.12)),
           ),
-          const SizedBox(height: 12),
-        ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(left: 4, bottom: 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.touch_app_rounded, color: LudiColors.primary, size: 22),
+                    SizedBox(width: 8),
+                    Text(
+                      'Choisis ta réponse',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+              for (final (i, choice) in choices.indexed) ...[
+                AnswerButton(
+                  label: choice.text,
+                  leading: _letters[i % _letters.length],
+                  color: _colors[i % _colors.length],
+                  selected: _chosen == choice.id,
+                  onPressed: () => _choose(choice.id),
+                ),
+                if (i != choices.length - 1) const SizedBox(height: 10),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

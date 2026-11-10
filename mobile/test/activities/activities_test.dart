@@ -109,6 +109,8 @@ void main() {
       ],
     });
     expect(find.text('En quelle année commence la Révolution ?'), findsOneWidget);
+    expect(find.text('Choisis ta réponse'), findsOneWidget);
+    expect(find.byIcon(Icons.touch_app_rounded), findsOneWidget);
     await tester.tap(find.text('1789'));
     await tester.tap(find.text('1492')); // trop tard
     expect(sent, [
