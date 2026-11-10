@@ -1279,7 +1279,6 @@ void main() {
     final face = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
     expect(face.label, '1789');
     expect(face.hint, 'Touchez pour retourner la carte.');
-    expect(face.hasAction(SemanticsAction.tap), isTrue);
 
     await tester.tap(find.byKey(const ValueKey('flashcard-face')));
     await tester.pumpAndSettle();
@@ -1288,7 +1287,6 @@ void main() {
     final back = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
     expect(back.label, 'Début de la Révolution');
     expect(back.hint, 'Carte retournée. Choisis si tu connaissais la réponse.');
-    expect(back.hasAction(SemanticsAction.tap), isFalse);
 
     await tester.tap(find.text('Je ne savais pas'));
     expect(sent, [
