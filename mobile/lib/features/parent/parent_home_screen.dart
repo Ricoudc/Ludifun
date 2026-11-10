@@ -85,6 +85,7 @@ class ParentHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
+            _FamilyWelcomeCard(),
             const AppUpdateBanner(),
             const EmailVerificationBanner(),
             const RemindersCard(),
@@ -124,6 +125,65 @@ class ParentHomeScreen extends ConsumerWidget {
   }
 }
 
+class _FamilyWelcomeCard extends StatelessWidget {
+  const _FamilyWelcomeCard();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF315FBA), Color(0xFF4389D8)],
+      ),
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: const Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'VOTRE ESPACE FAMILLE',
+                style: TextStyle(
+                  color: Color(0xFFDCEAFF),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Les progrès se construisent ensemble.',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  height: 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 6),
+              Text(
+                'Suivez les apprentissages et accompagnez chaque étape.',
+                style: TextStyle(color: Colors.white, height: 1.35),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(width: 12),
+        CircleAvatar(
+          radius: 30,
+          backgroundColor: Color(0x33FFFFFF),
+          child: Text('🌱', style: TextStyle(fontSize: 30)),
+        ),
+      ],
+    ),
+  );
+}
+
 class _ChildTile extends StatelessWidget {
   const _ChildTile(this.child);
 
@@ -131,32 +191,60 @@ class _ChildTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Card(
-    child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: LudiColors.primary.withValues(alpha: 0.12),
-        child: Text(avatarOf(child), style: const TextStyle(fontSize: 24)),
-      ),
-      title: Text(
-        '${child.displayName} · ${child.grade}',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      subtitle: child.devices == 0
-          ? TextButton.icon(
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                alignment: Alignment.centerLeft,
-              ),
-              onPressed: () => context.go(Routes.childLink(child.id)),
-              icon: const Icon(Icons.link),
-              label: const Text('Lier un appareil'),
-            )
-          : Text(
-              '📱 ${child.devices} appareil${child.devices > 1 ? 's' : ''} lié${child.devices > 1 ? 's' : ''}',
-            ),
-      trailing: const Icon(Icons.chevron_right),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
       onTap: () => context.go(Routes.childDashboard(child.id)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 27,
+              backgroundColor: LudiColors.primary.withValues(alpha: 0.12),
+              child: Text(avatarOf(child), style: const TextStyle(fontSize: 27)),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    child.displayName,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    child.grade,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  if (child.devices == 0)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.centerLeft,
+                        minimumSize: const Size(48, 36),
+                      ),
+                      onPressed: () => context.go(Routes.childLink(child.id)),
+                      icon: const Icon(Icons.link, size: 18),
+                      label: const Text('Lier un appareil'),
+                    )
+                  else
+                    Text(
+                      '📱 ${child.devices} appareil${child.devices > 1 ? 's' : ''} lié${child.devices > 1 ? 's' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded),
+          ],
+        ),
+      ),
     ),
   );
 }

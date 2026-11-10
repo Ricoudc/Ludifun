@@ -48,11 +48,32 @@ class ChildHomeScreen extends ConsumerWidget {
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
-            _HomeActionTile(icon: Icons.add_a_photo_rounded, title: 'Ajouter une leçon', subtitle: 'Photographie ou importe ton cours', color: const Color(0xFFEAF2FF), iconColor: const Color(0xFF356FD0), onTap: () => context.go(Routes.capture)),
+            _HomeActionTile(
+              icon: Icons.add_a_photo_rounded,
+              title: 'Ajouter une leçon',
+              subtitle: 'Photographie ou importe ton cours',
+              color: const Color(0xFFEAF2FF),
+              iconColor: const Color(0xFF356FD0),
+              onTap: () => context.go(Routes.capture),
+            ),
             const SizedBox(height: 8),
-            _HomeActionTile(icon: Icons.auto_awesome_rounded, title: 'Aide aux devoirs', subtitle: 'Avance pas à pas avec un coup de pouce', color: const Color(0xFFFFF1E9), iconColor: const Color(0xFFD97848), onTap: () => context.go(Routes.homeworkStart)),
+            _HomeActionTile(
+              icon: Icons.auto_awesome_rounded,
+              title: 'Aide aux devoirs',
+              subtitle: 'Avance pas à pas avec un coup de pouce',
+              color: const Color(0xFFFFF1E9),
+              iconColor: const Color(0xFFD97848),
+              onTap: () => context.go(Routes.homeworkStart),
+            ),
             const SizedBox(height: 8),
-            _HomeActionTile(icon: Icons.menu_book_rounded, title: 'Mon cahier', subtitle: 'Retrouve tes leçons et tes révisions', color: const Color(0xFFE8F7F2), iconColor: const Color(0xFF238C76), onTap: () => context.go(Routes.notebook)),
+            _HomeActionTile(
+              icon: Icons.menu_book_rounded,
+              title: 'Mon cahier',
+              subtitle: 'Retrouve tes leçons et tes révisions',
+              color: const Color(0xFFE8F7F2),
+              iconColor: const Color(0xFF238C76),
+              onTap: () => context.go(Routes.notebook),
+            ),
             const SizedBox(height: 28),
             ...switch (lessons) {
               AsyncData(value: final list) when list.isEmpty => [const _EmptyState()],
@@ -78,7 +99,9 @@ class ChildHomeScreen extends ConsumerWidget {
 /// Accueil enfant : hiérarchie visuelle centrée sur la prochaine action utile.
 class _WelcomeHero extends StatelessWidget {
   const _WelcomeHero({required this.name});
+
   final String name;
+
   @override
   Widget build(BuildContext context) {
     final firstName = name.trim().isEmpty ? 'champion' : name.trim();
@@ -86,59 +109,148 @@ class _WelcomeHero extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 16, 20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-          colors: [Color(0xFF315FBA), Color(0xFF4389D8)]),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF315FBA), Color(0xFF4389D8)],
+        ),
         borderRadius: BorderRadius.circular(26),
-        boxShadow: [BoxShadow(color: const Color(0xFF315FBA).withValues(alpha: 0.18),
-          blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF315FBA).withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('TON PETIT RENDEZ-VOUS', style: TextStyle(color: Color(0xFFDCEAFF),
-            fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1)),
-          const SizedBox(height: 8),
-          Text('Salut $firstName ! 👋', maxLines: 2, overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: Colors.white, fontSize: 25, height: 1.12, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 7),
-          const Text('Prêt à faire grandir tes super-pouvoirs ?',
-            style: TextStyle(color: Colors.white, fontSize: 14, height: 1.35)),
-        ])),
-        const SizedBox(width: 10),
-        Container(width: 76, height: 76,
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.16), shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.24))),
-          alignment: Alignment.center, child: const Text('🦊', style: TextStyle(fontSize: 43))),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'TON PETIT RENDEZ-VOUS',
+                  style: TextStyle(
+                    color: Color(0xFFDCEAFF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Salut $firstName ! 👋',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 25,
+                    height: 1.12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Prêt à faire grandir tes super-pouvoirs ?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.16),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.24),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: const Text('🦊', style: TextStyle(fontSize: 43)),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _HomeActionTile extends StatelessWidget {
-  const _HomeActionTile({required this.icon, required this.title, required this.subtitle,
-    required this.color, required this.iconColor, required this.onTap});
+  const _HomeActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.iconColor,
+    required this.onTap,
+  });
+
   final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
   final Color iconColor;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Card(child: InkWell(
-    borderRadius: BorderRadius.circular(20), onTap: onTap,
-    child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(children: [
-        Container(width: 48, height: 48,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(15)),
-          alignment: Alignment.center, child: Icon(icon, color: iconColor, size: 25)),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 3),
-          Text(subtitle, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        ])),
-        Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Theme.of(context).colorScheme.onSurfaceVariant),
-      ])),
-  ));
+  Widget build(BuildContext context) => Card(
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: iconColor, size: 25),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _MissionCard extends ConsumerWidget {
