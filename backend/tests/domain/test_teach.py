@@ -19,7 +19,7 @@ from app.domain.teach import (
 )
 from tests.domain.conftest import ReferenceLesson
 
-POINTS = ["les hommes naissent libres", "égaux en droits"]
+POINTS = ["les hommes naissent et demeurent libres", "égaux en droits"]
 NOW = datetime(2026, 10, 9, 17, 0, tzinfo=UTC)
 
 
