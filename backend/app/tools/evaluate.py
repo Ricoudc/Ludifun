@@ -793,7 +793,7 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
             text += (
                 f"| {level_names.get(level, level)} | {bucket['annotated']} | {bucket['pending']} | "
                 f"{bucket['pertinent']} | {bucket['à corriger']} | {bucket['hors sujet']} | "
-                f"{_fmt(100 * bucket['pertinent_rate'] if bucket['pertinent_rate'] is not None else None)} |\\n"
+                f"{_fmt(100 * bucket['pertinent_rate'] if bucket['pertinent_rate'] is not None else None)} |\n"
             )
     (out / "report.md").write_text(text, encoding="utf-8")
     metrics_data = metrics_json(scores, configuration(provider, models), started)
