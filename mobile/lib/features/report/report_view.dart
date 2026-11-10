@@ -42,6 +42,14 @@ class ReportView extends StatelessWidget {
           textAlign: TextAlign.center,
           style: theme.headlineMedium,
         ),
+        const SizedBox(height: 8),
+        Text(
+          report.lessonMastered
+              ? 'Toutes les notions sont maîtrisées. Bravo pour ton travail !'
+              : 'Chaque réponse t’aide à apprendre. Regarde ce que tu as déjà réussi et ce que tu peux revoir.',
+          textAlign: TextAlign.center,
+          style: theme.bodyLarge?.copyWith(color: LudiColors.primary, height: 1.35),
+        ),
         const SizedBox(height: 20),
         Card(
           child: Padding(
