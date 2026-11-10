@@ -919,9 +919,19 @@ void main() {
     ]);
   });
 
-  testWidgets('vrai ou faux', (tester) async {
+  testWidgets('vrai ou faux : couleurs neutres, choix unique et sélection visible', (
+    tester,
+  ) async {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
+
+    final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
+    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    expect(find.byIcon(Icons.check_circle), findsNothing);
+
     await tester.tap(find.text('❌ Faux'));
+    await tester.pump();
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    await tester.tap(find.text('✅ Vrai')); // le deuxième choix est désormais verrouillé
     expect(sent, [
       {'value': false},
     ]);
