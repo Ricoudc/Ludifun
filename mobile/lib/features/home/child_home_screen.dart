@@ -95,15 +95,9 @@ class ChildHomeScreen extends ConsumerWidget {
             ...switch (lessons) {
               AsyncData(value: final list) when list.isEmpty => [const _EmptyState()],
               AsyncData(value: final list) => [
-                Text(
-                  'Mes dernières révisions',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Mes dernières révisions', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
-                for (final lesson in list) ...[
-                  _LessonRow(lesson),
-                  const SizedBox(height: 8),
-                ],
+                for (final lesson in list) ...[_LessonRow(lesson), const SizedBox(height: 8)],
               ],
               AsyncError(:final error) => [
                 ErrorMessage(error is ApiException ? error.message : ApiException.unexpected),
@@ -252,10 +246,7 @@ class _EmptyState extends StatelessWidget {
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-            ),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
             alignment: Alignment.center,
             child: const Text('📚', style: TextStyle(fontSize: 30)),
           ),
