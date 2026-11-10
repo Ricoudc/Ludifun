@@ -155,6 +155,34 @@ def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> st
     return match_notions([expected], knowledge)[0]
 
 
+def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[str, Any]]:
+    """Exporte les questions ouvertes dans un format de revue humaine, sans score sémantique fictif."""
+    return [
+        {
+            "lesson": lesson_name,
+            "knowledge_id": unit.id,
+            "notion": unit.item.label,
+            "notion_statement": unit.item.statement,
+            "importance": unit.item.importance,
+            "level": question.level,
+            "prompt": question.prompt,
+            "key_points": question.key_points,
+            "model_answer": question.model_answer,
+            "passage": question.passage,
+            "review_status": "à annoter",
+            "review_dimensions": [
+                "pertinence_par_rapport_a_la_notion",
+                "niveau_cognitif_annonce",
+                "absence_de_reponse_dans_la_question",
+                "points_cles_et_reponse_modele",
+                "adaptation_a_l_age",
+            ],
+        }
+        for unit in result.units
+        for question in unit.material.open_questions
+    ]
+
+
 def material_counts(result: PipelineResult) -> tuple[int, int]:
     kept = 0
     for unit in result.units:
@@ -597,7 +625,9 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     out = (args.out or args.corpus.resolve().parent / "results") / f"{started:%Y%m%d-%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
     scores = []
+    question_reviews: list[dict[str, Any]] = []
     for lesson, result, duration in runs:
+        question_reviews.extend(open_question_review(result, lesson.name))
         s = score(
             lesson.name, lesson.expected, result, len(lesson.pages) or 1, duration, lesson.text is not None
         )
@@ -615,6 +645,9 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         report(result, seed=1, out=session)
         (out / f"{lesson.name}.txt").write_text(session.getvalue(), encoding="utf-8")
 
+    (out / "open_questions_review.json").write_text(
+        json.dumps(question_reviews, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     text = render_report(scores, provider, started)
     (out / "report.md").write_text(text, encoding="utf-8")
     (out / "metrics.json").write_text(
