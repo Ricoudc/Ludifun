@@ -1271,11 +1271,25 @@ void main() {
   });
 
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
+    final semantics = tester.ensureSemantics();
+    addTearDown(semantics.dispose);
     await show(tester, 'FLASHCARD', {'front': '1789', 'back': 'Début de la Révolution'});
     expect(find.text('Je savais 👍'), findsNothing);
-    await tester.tap(find.text('Retourner la carte'));
+
+    final face = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
+    expect(face.label, '1789');
+    expect(face.hint, 'Touchez pour retourner la carte.');
+    expect(face.hasAction(SemanticsAction.tap), isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('flashcard-face')));
     await tester.pumpAndSettle();
     expect(find.text('Début de la Révolution'), findsOneWidget);
+
+    final back = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
+    expect(back.label, 'Début de la Révolution');
+    expect(back.hint, 'Carte retournée. Choisis si tu connaissais la réponse.');
+    expect(back.hasAction(SemanticsAction.tap), isFalse);
+
     await tester.tap(find.text('Je ne savais pas'));
     expect(sent, [
       {'self_assessment': 'didnt_know'},
