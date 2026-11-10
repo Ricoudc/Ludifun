@@ -169,7 +169,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('memory-card-b')));
     await tester.pump();
     expect(find.text('1 / 2 paires trouvées'), findsOneWidget);
-    expect(find.text('1 coups'), findsOneWidget);
+    expect(find.text('1 coup'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('memory-card-c')));
     await tester.tap(find.byKey(const ValueKey('memory-card-d')));
     await tester.pump();
