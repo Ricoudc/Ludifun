@@ -18,6 +18,7 @@ from app.tools.evaluate import (
     main,
     match_notion,
     match_notions,
+    material_counts,
     metrics,
     render_report,
     resume_after_review,
@@ -137,6 +138,43 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     assert "| 6e | 6 | 6 | 100 % |" in report
     assert "Notions importantes avec question ouverte" in measures
     assert "Ouvertes / notions importantes" in report
+
+
+async def test_material_counts_include_open_questions_help_and_all_games() -> None:
+    corpus = {lesson.name: lesson for lesson in load_corpus(EXAMPLE)}
+    history = corpus["history_cm1_revolution"]
+    llm = FakeProvider()
+    pipeline = LessonPipeline(VisionLLMOcr(llm), llm, default_registry())
+    result = await pipeline.run(text=history.text)
+
+    expected_kept = sum(
+        len(unit.material.questions)
+        + len(unit.material.true_statements)
+        + len(unit.material.false_statements)
+        + len(unit.material.open_questions)
+        + sum(
+            value is not None
+            for value in (
+                unit.material.cloze,
+                unit.material.pair,
+                unit.material.flashcard,
+                unit.material.tip,
+                unit.material.help,
+                unit.material.sorting,
+                unit.material.sequence,
+                unit.material.spelling,
+            )
+        )
+        for unit in result.units
+    )
+
+    kept, rejected = material_counts(result)
+    assert kept == expected_kept
+    assert rejected == sum(
+        1
+        for rejection in result.rejected
+        if "." in rejection.element and not rejection.element.startswith("analysis.")
+    )
 
 
 async def test_missed_notions_and_failures_are_reported() -> None:
