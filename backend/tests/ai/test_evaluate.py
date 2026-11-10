@@ -13,6 +13,7 @@ from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQu
 from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.evaluate import (
     Expected,
+    _question_review_signature,
     ExpectedNotion,
     apply_question_review_annotations,
     load_corpus,
@@ -63,12 +64,28 @@ def test_open_question_review_export_keeps_notion_context_and_review_dimensions(
     assert "pertinence_par_rapport_a_la_notion" in review["review_dimensions"]
 
 
-def test_question_review_annotations_are_reapplied_only_to_same_prompt() -> None:
+def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_content() -> None:
     reviews = [
-        {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "à annoter"},
+        {
+            "review_id": "histoire:k5:1",
+            "knowledge_id": "k5",
+            "notion_statement": "La Révolution commence en 1789.",
+            "level": 3,
+            "prompt": "Explique 1789.",
+            "key_points": ["date", "causes"],
+            "model_answer": "La Révolution débute en 1789 pour plusieurs causes.",
+            "passage": "En 1789...",
+            "review_status": "à annoter",
+        },
         {"review_id": "histoire:k6:1", "prompt": "Pourquoi ?", "review_status": "à annoter"},
     ]
-    annotations = [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"}]
+    annotations = [
+        {
+            "review_id": "histoire:k5:1",
+            "review_signature": _question_review_signature(reviews[0]),
+            "review_status": "pertinent",
+        }
+    ]
     applied = apply_question_review_annotations(reviews, annotations)
     assert [row["review_status"] for row in applied] == ["pertinent", "à annoter"]
     summary = question_review_summary(applied)
@@ -81,21 +98,21 @@ def test_question_review_annotations_are_reapplied_only_to_same_prompt() -> None
     [
         (
             [
-                {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"},
-                {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "hors sujet"},
+                {"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "pertinent"},
+                {"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "hors sujet"},
             ],
             "annotation en double",
         ),
         (
-            [{"review_id": "histoire:k5:1", "prompt": "Autre question", "review_status": "pertinent"}],
-            "énoncé modifié",
+            [{"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "pertinent"}],
+            "contenu pédagogique modifié",
         ),
         (
-            [{"review_id": "histoire:inconnu:1", "prompt": "?", "review_status": "pertinent"}],
+            [{"review_id": "histoire:inconnu:1", "review_signature": "stale", "review_status": "pertinent"}],
             "sans question correspondante",
         ),
         (
-            [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "excellent"}],
+            [{"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "excellent"}],
             "label de revue invalide",
         ),
     ],
