@@ -220,9 +220,7 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
   Widget build(BuildContext context) {
     final count = widget.payload['word_count'] as int?;
     final typed = _answer.text.trim();
-    final writtenWords = typed.isEmpty
-        ? 0
-        : typed.split(RegExp(r'\s+')).length;
+    final writtenWords = RegExp(r'\S+').allMatches(typed).length;
     final idle = !_speaking && !_sent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
