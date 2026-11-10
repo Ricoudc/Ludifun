@@ -115,8 +115,10 @@ class CorrectionView extends StatelessWidget {
                         children: [
                           Text(
                             title,
-                            style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(color: color, fontWeight: FontWeight.w800),
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -165,7 +167,11 @@ class CorrectionView extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     correction.correctAnswer!,
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, height: 1.3),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      height: 1.3,
+                    ),
                   ),
                 ] else if (showAnswer && correction.correctAnswer != null) ...[
                   const SizedBox(height: 12),
