@@ -95,7 +95,10 @@ class ChildHomeScreen extends ConsumerWidget {
             ...switch (lessons) {
               AsyncData(value: final list) when list.isEmpty => [const _EmptyState()],
               AsyncData(value: final list) => [
-                Text('Mes dernières révisions', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Mes dernières révisions',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 12),
                 for (final lesson in list) ...[_LessonRow(lesson), const SizedBox(height: 8)],
               ],
