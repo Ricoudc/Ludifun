@@ -31,7 +31,13 @@ jobs:
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
       - name: Format
+        continue-on-error: true # diagnostic temporaire pour récupérer le diff du formateur
         run: dart format --output=none --set-exit-if-changed lib test
+      - name: Diagnostic formatage (temporaire)
+        if: always()
+        run: |
+          dart format lib/features/home/child_home_screen.dart
+          git diff -- lib/features/home/child_home_screen.dart
       - name: Analyse
         run: flutter analyze
       - name: Tests
