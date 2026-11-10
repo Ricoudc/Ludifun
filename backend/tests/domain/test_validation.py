@@ -221,6 +221,76 @@ def test_missing_explanation_falls_back_to_statement(history: ReferenceLesson) -
     assert [r.element for r in result.rejected] == ["explanation"]
 
 
+def test_open_question_keeps_grounded_key_points_covered_by_model_answer(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point],
+            "model_answer": f"Il faut retenir {point}.",
+        }
+    ]
+
+    result = validate_material(item, raw)
+    assert result.material.open_questions[0].key_points == [point]
+    assert not any(r.element == "open_questions[0]" for r in result.rejected)
+
+
+def test_open_question_is_rejected_when_model_answer_omits_a_key_point(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point],
+            "model_answer": "C'est une notion importante.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert "ne couvre pas le point clé" in reasons["open_questions[0]"]
+
+
+def test_open_question_is_rejected_when_a_key_point_is_not_in_the_lesson(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": "Explique cette notion.",
+            "key_points": ["une information totalement inventée"],
+            "model_answer": "Cette information totalement inventée est importante.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert reasons["open_questions[0]"] == "un point clé n'est pas étayé par la leçon"
+
+
+def test_open_question_with_duplicate_key_points_is_rejected(history: ReferenceLesson) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point, point],
+            "model_answer": f"Il faut retenir {point}.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert reasons["open_questions[0]"] == "les points clés sont en double"
+
+
 def test_rejection_rate(history: ReferenceLesson) -> None:
     item, raw = _material(history)
     raw["tip"] = "x" * 200
