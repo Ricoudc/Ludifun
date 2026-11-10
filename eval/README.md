@@ -65,7 +65,10 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
   sur la photo.
 - Cas piège : `"is_lesson": false` et `"essential": []`.
 
-Des exemples complets sont dans `eval/example/`.
+Des exemples complets sont dans `eval/example/`. Le corpus de démonstration contient six leçons
+de référence déterministes (CP, CE2, CM1, CM2, 6e et 3e) et un cas piège. Il sert à vérifier le
+fonctionnement du rapport et les régressions logicielles ; **il ne remplace pas les dix premières
+leçons réelles annotées** attendues dans `eval/lessons/`.
 
 ## 3. Lancer l'évaluation
 
@@ -99,6 +102,10 @@ Chaque lancement crée `eval/results/<date-heure>/` :
 | `<leçon>.txt` | ce que l'élève verrait : texte lu, notions, séance complète avec les réponses |
 | `<leçon>.json` | tout le détail : texte OCR, analyse, matériel, éléments rejetés et raisons, appels IA (jetons, latence, coût) |
 | `metrics.json` | les mesures et la configuration (fournisseur, modèles, version de chaque prompt), pour comparer deux évaluations |
+
+Le rapport détaille également le **rappel des notions indispensables par matière et par niveau**.
+Ces tableaux sont calculés à partir des notions annotées et retrouvées (pondération par notion),
+et non à partir d'une moyenne non pondérée des pourcentages de chaque leçon.
 
 ## 4. Évaluation humaine
 
