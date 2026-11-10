@@ -20,12 +20,12 @@ class MatchView extends StatefulWidget {
 
 class _MatchViewState extends State<MatchView> {
   static const _pairColors = [
-    Color(0xFF5B4FE0),
-    Color(0xFFFF9F1C),
-    Color(0xFF2EB872),
-    Color(0xFF1E88E5),
-    Color(0xFFD81B60),
-    Color(0xFF6D4C41),
+    LudiColors.primary,
+    LudiColors.accent,
+    LudiColors.mastered,
+    LudiColors.toReview,
+    LudiColors.notMastered,
+    Color(0xFF35A995),
   ];
 
   final _pairs = <String, String>{}; // gauche → droite
