@@ -148,13 +148,19 @@ Ce fichier est une **grille de revue, pas un score automatique** : une correspon
 suffit pas à prouver la pertinence pédagogique. Un adulte renseigne `review_status` avec
 `pertinent`, `à corriger` ou `hors sujet`, puis conserve le fichier annoté séparément.
 Les identifiants `review_id` permettent de rattacher les labels à la même notion et au même
-rang de question. À la prochaine évaluation, réappliquer les labels et calculer les taux :
+rang de question. Chaque entrée contient aussi une `review_signature` calculée à partir du
+contenu pédagogique (notion, niveau, énoncé, points clés, réponse modèle et passage source).
+Conservez cette signature avec le label humain : elle permet de détecter une question qui a
+conservé son énoncé mais dont les points clés ou la réponse ont changé. À la prochaine
+évaluation, réappliquer les labels et calculer les taux :
 
 ```bash
 uv run python -m app.tools.evaluate ../eval/lessons --question-reviews ../eval/annotations/open_questions_review.json
 ```
 
-Le rattachement vérifie aussi que l'énoncé n'a pas changé : une annotation périmée ou orpheline
+Le rattachement vérifie la signature de l'ensemble du contenu pédagogique : toute modification
+de la notion, du niveau, de l'énoncé, des points clés, de la réponse modèle ou du passage source
+invalide l'annotation. Une signature absente ou périmée, une annotation dupliquée ou orpheline
 fait échouer l'évaluation au lieu d'être attribuée silencieusement à une autre question. Les
 questions non annotées restent hors du dénominateur. Le rapport et `metrics.json` indiquent le
 nombre annoté, le nombre en attente, les trois catégories et les taux parmi les seules questions
