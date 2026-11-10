@@ -62,9 +62,8 @@ class SessionScreen extends ConsumerWidget {
     if (id != null) {
       context.go(Routes.session(id));
     } else if (ref.read(sessionControllerProvider(sessionId)).phase != Phase.error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aucune erreur à revoir : bravo !')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Aucune erreur à revoir : bravo !')));
     }
   }
 
@@ -93,10 +92,7 @@ class SessionScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilledButton(
-                  onPressed: onContinue,
-                  child: const Text('Continuer'),
-                ),
+                FilledButton(onPressed: onContinue, child: const Text('Continuer')),
                 if (state.correction!.pauseMessage != null) ...[
                   const SizedBox(height: 8),
                   OutlinedButton(
@@ -378,3 +374,4 @@ class _Waiting extends StatelessWidget {
     ],
   );
 }
+
