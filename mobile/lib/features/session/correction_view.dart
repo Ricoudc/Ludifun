@@ -79,19 +79,77 @@ class CorrectionView extends StatelessWidget {
         Cheer(
           happy: correction.result == AttemptResult.correct,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color, width: 2),
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium
-                      ?.copyWith(color: color, fontWeight: FontWeight.w800),
+                Row(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        correction.result == AttemptResult.correct
+                            ? Icons.emoji_events_rounded
+                            : correction.result == AttemptResult.partial
+                            ? Icons.lightbulb_rounded
+                            : Icons.auto_awesome_rounded,
+                        color: color,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: color, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            correction.result == AttemptResult.correct
+                                ? 'Tu as trouvé la bonne réponse !'
+                                : correction.result == AttemptResult.partial
+                                ? 'Tu progresses, continue comme ça.'
+                                : 'Chaque essai t’aide à apprendre.',
+                            style: const TextStyle(fontSize: 15, height: 1.25),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(correction.score.clamp(0.0, 1.0) * 100).round()}%',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: correction.score.clamp(0.0, 1.0).toDouble(),
+                    minHeight: 9,
+                    backgroundColor: color.withValues(alpha: 0.14),
+                    color: color,
+                  ),
                 ),
                 if (showAnswer && openQuestion && correction.correctAnswer != null) ...[
                   const SizedBox(height: 12),
@@ -150,7 +208,17 @@ class CorrectionView extends StatelessWidget {
             ),
           ),
         ],
-        if (details.isNotEmpty) ...[const SizedBox(height: 16), ...details],
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Regardons ensemble',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            ),
+          ),
+          ...details,
+        ],
         if ((correction.result != AttemptResult.correct && correction.tip != null) ||
             correction.explanation != null) ...[
           const SizedBox(height: 16),
