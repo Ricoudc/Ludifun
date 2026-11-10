@@ -1272,7 +1272,6 @@ void main() {
 
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
     await show(tester, 'FLASHCARD', {'front': '1789', 'back': 'Début de la Révolution'});
     expect(find.text('Je savais 👍'), findsNothing);
 
@@ -1292,6 +1291,7 @@ void main() {
     expect(sent, [
       {'self_assessment': 'didnt_know'},
     ]);
+    semantics.dispose();
   });
 
   testWidgets('association : relier, détacher, valider quand tout est relié', (tester) async {
