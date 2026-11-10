@@ -30,8 +30,6 @@ jobs:
           cache: true
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
-      - name: Diagnostic format (temporaire)
-        run: dart format --output=show lib/features/session/activities/speed_challenge_view.dart
       - name: Format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
