@@ -115,9 +115,7 @@ def _notion_matches(expected: ExpectedNotion, item: KnowledgeItem) -> bool:
     )
 
 
-def match_notions(
-    expected: list[ExpectedNotion], knowledge: list[KnowledgeItem]
-) -> list[str | None]:
+def match_notions(expected: list[ExpectedNotion], knowledge: list[KnowledgeItem]) -> list[str | None]:
     """Associe les notions attendues aux notions produites sans compter deux fois la même.
 
     Un appariement biparti (avec réaffectation) évite qu'une seule notion produite valide
@@ -192,9 +190,7 @@ def score(
     if expected.is_lesson:
         knowledge = analysis.knowledge if analysis else []
         matches = match_notions(expected.essential, knowledge)
-        s.found = {
-            notion.label: item_id for notion, item_id in zip(expected.essential, matches, strict=True)
-        }
+        s.found = {notion.label: item_id for notion, item_id in zip(expected.essential, matches, strict=True)}
     s.review = len(result.review)
     s.notions = len(result.units)
     if analysis is not None:
