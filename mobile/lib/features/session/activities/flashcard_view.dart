@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+Z import 'package:flutter/material.dart';
 
 import '../../../app/theme.dart';
 import '../../../models/account.dart';
@@ -28,9 +28,7 @@ class _FlashcardViewState extends State<FlashcardView> {
 
   @override
   Widget build(BuildContext context) {
-    final face = _flipped
-        ? widget.payload['back'] as String
-        : widget.payload['front'] as String;
+    final face = _flipped ? widget.payload['back'] as String : widget.payload['front'] as String;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -40,16 +38,14 @@ class _FlashcardViewState extends State<FlashcardView> {
               child: Text(
                 _flipped
                     ? 'Le savais-tu ?'
-                    : ActivityInstruction.of(context) ??
-                        'Te souviens-tu de ce que ça veut dire ?',
+                    : ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
                 style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
               ),
             ),
             // La face visible seulement : jamais le verso avant de retourner la carte.
             ListenButton([
               if (!_flipped)
-                ActivityInstruction.of(context) ??
-                    'Te souviens-tu de ce que ça veut dire ?',
+                ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
               face,
             ], key: ValueKey(_flipped)),
           ],
@@ -62,23 +58,17 @@ class _FlashcardViewState extends State<FlashcardView> {
           hint: _flipped
               ? 'Carte retournée. Choisis si tu connaissais la réponse.'
               : 'Touchez pour retourner la carte.',
-          onTap: !_flipped && !_sent
-              ? () => setState(() => _flipped = true)
-              : null,
+          onTap: !_flipped && !_sent ? () => setState(() => _flipped = true) : null,
           child: ExcludeSemantics(
             child: GestureDetector(
-              onTap: !_flipped && !_sent
-                  ? () => setState(() => _flipped = true)
-                  : null,
+              onTap: !_flipped && !_sent ? () => setState(() => _flipped = true) : null,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 transitionBuilder: (child, animation) =>
                     ScaleTransition(scale: animation, child: child),
                 child: Card(
                   key: ValueKey(_flipped),
-                  color: _flipped
-                      ? LudiColors.accent.withValues(alpha: 0.15)
-                      : Colors.white,
+                  color: _flipped ? LudiColors.accent.withValues(alpha: 0.15) : Colors.white,
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 200),
                     alignment: Alignment.center,
@@ -126,3 +116,4 @@ class _FlashcardViewState extends State<FlashcardView> {
     );
   }
 }
+2026-11-10T17:29:15.9217928
