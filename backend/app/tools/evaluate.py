@@ -652,6 +652,11 @@ def main(argv: list[str] | None = None) -> int:
         "--provider", choices=[*sorted(PRESETS), "fake"], help="fournisseur d'IA (défaut : configuration)"
     )
     parser.add_argument("--only", help="noms de leçons séparés par des virgules")
+    parser.add_argument(
+        "--question-reviews",
+        type=Path,
+        help="annotations humaines précédentes à réappliquer (open_questions_review.json)",
+    )
     parser.add_argument("--concurrency", type=int, default=3, help="leçons traitées en parallèle")
     parser.add_argument(
         "--prompt",
@@ -705,16 +710,32 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         report(result, seed=1, out=session)
         (out / f"{lesson.name}.txt").write_text(session.getvalue(), encoding="utf-8")
 
+    if args.question_reviews:
+        annotations = json.loads(args.question_reviews.read_text(encoding="utf-8"))
+        if not isinstance(annotations, list):
+            parser.error("--question-reviews doit contenir une liste JSON")
+        try:
+            question_reviews = apply_question_review_annotations(question_reviews, annotations)
+        except ValueError as exc:
+            parser.error(str(exc))
+    review_summary = question_review_summary(question_reviews)
     (out / "open_questions_review.json").write_text(
         json.dumps(question_reviews, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     text = render_report(scores, provider, started)
+    text += (
+        "\\n\\n## Revue humaine des questions ouvertes\\n\\n"
+        f"- Questions : {review_summary['total']} ; annotées : {review_summary['annotated']} ; "
+        f"en attente : {review_summary['pending']}\\n"
+        f"- Pertinentes : {review_summary['counts']['pertinent']} ; "
+        f"à corriger : {review_summary['counts']['à corriger']} ; "
+        f"hors sujet : {review_summary['counts']['hors sujet']}\\n"
+    )
     (out / "report.md").write_text(text, encoding="utf-8")
+    metrics_data = metrics_json(scores, configuration(provider, models), started)
+    metrics_data["open_question_review"] = review_summary
     (out / "metrics.json").write_text(
-        json.dumps(
-            metrics_json(scores, configuration(provider, models), started), ensure_ascii=False, indent=2
-        ),
-        encoding="utf-8",
+        json.dumps(metrics_data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(text)
     print(f"Résultats détaillés : {out}", file=sys.stderr)
