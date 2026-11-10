@@ -129,36 +129,41 @@ class _HomeActionTile extends StatelessWidget {
   final bool primary;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: primary ? LudiColors.primary : Colors.white,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () => context.go(route),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        leading: CircleAvatar(
-          backgroundColor: primary ? const Color(0x33FFFFFF) : LudiColors.primary.withValues(alpha: 0.1),
-          child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: primary ? Colors.white : null,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final iconBackground = primary
+        ? const Color(0x33FFFFFF)
+        : LudiColors.primary.withValues(alpha: 0.1);
+    return Card(
+      color: primary ? LudiColors.primary : Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.go(route),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: CircleAvatar(
+            backgroundColor: iconBackground,
+            child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: primary ? Colors.white : null,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          subtitle: Text(
+            description,
+            style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
+          ),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: primary ? Colors.white : LudiColors.primary,
           ),
         ),
-        subtitle: Text(
-          description,
-          style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
-        ),
-        trailing: Icon(
-          Icons.chevron_right,
-          color: primary ? Colors.white : LudiColors.primary,
-        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _MissionCard extends ConsumerWidget {
