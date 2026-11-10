@@ -105,6 +105,31 @@ def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_cont
     }
 
 
+def test_question_review_summary_separates_levels_and_excludes_pending_from_rates() -> None:
+    summary = question_review_summary(
+        [
+            {"level": 3, "review_status": "pertinent"},
+            {"level": 3, "review_status": "hors sujet"},
+            {"level": 3, "review_status": "à annoter"},
+            {"level": 4, "review_status": "à corriger"},
+            {"level": 4, "review_status": "à annoter"},
+            {"review_status": "pertinent"},
+        ]
+    )
+
+    assert summary["total"] == 6
+    assert summary["annotated"] == 3
+    assert summary["pending"] == 2
+    assert summary["by_level"]["3"]["total"] == 3
+    assert summary["by_level"]["3"]["pertinent_rate"] == 0.5
+    assert summary["by_level"]["3"]["off_topic_rate"] == 0.5
+    assert summary["by_level"]["4"]["total"] == 2
+    assert summary["by_level"]["4"]["annotated"] == 1
+    assert summary["by_level"]["4"]["pertinent_rate"] == 0.0
+    assert summary["by_level"]["4"]["off_topic_rate"] == 0.0
+    assert set(summary["by_level"]) == {"3", "4"}
+
+
 @pytest.mark.parametrize(
     "changed_field, changed_value",
     [
