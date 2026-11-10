@@ -136,6 +136,7 @@ class _ClassifyViewState extends State<ClassifyView> {
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
+                  key: ValueKey('classify-category-${category.id}'),
                   onTap: _sent || _selected == null ? null : () => _drop(category.id),
                   child: Container(
                     constraints: const BoxConstraints(minHeight: 80),
