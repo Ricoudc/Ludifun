@@ -69,9 +69,13 @@ class _McqViewState extends State<McqView> {
                   children: [
                     Icon(Icons.touch_app_rounded, color: LudiColors.primary, size: 22),
                     SizedBox(width: 8),
-                    Text(
-                      'Choisis ta réponse',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                    Expanded(
+                      child: Text(
+                        'Choisis ta réponse',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                      ),
                     ),
                   ],
                 ),
