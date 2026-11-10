@@ -83,7 +83,10 @@ class CorrectionView extends StatelessWidget {
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
+              border: Border.all(
+                color: color.withValues(alpha: 0.55),
+                width: 1.5,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
