@@ -10,7 +10,7 @@ from app.ai.providers.fake import DEMO_LESSON, FakeProvider, LessonScript
 from app.ai.schemas import OcrPage, OcrResult, UncertainOut
 from app.domain.activities.registry import default_registry
 from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQuestion, Subject
-from app.services.lesson_pipeline import LessonPipeline
+from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.evaluate import (
     Expected,
     ExpectedNotion,
