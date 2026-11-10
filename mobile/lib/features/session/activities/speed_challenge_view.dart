@@ -82,18 +82,46 @@ class _SpeedChallengeViewState extends State<SpeedChallengeView> {
           ],
         ),
         const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: 1 - _elapsed.inMilliseconds / _limit.inMilliseconds,
-          minHeight: 10,
-          borderRadius: BorderRadius.circular(5),
-          color: left <= 5 ? LudiColors.notMastered : LudiColors.accent,
+        Semantics(
+          label: 'Temps restant',
+          value: '$left secondes',
+          child: LinearProgressIndicator(
+            value: (1 - _elapsed.inMilliseconds / _limit.inMilliseconds).clamp(0.0, 1.0),
+            minHeight: 10,
+            borderRadius: BorderRadius.circular(5),
+            color: left <= 5 ? LudiColors.notMastered : LudiColors.accent,
+          ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         Text(
           'Affirmation ${index + 1} / ${_statements.length}',
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.check_circle_outline_rounded, size: 18, color: LudiColors.primary),
+            const SizedBox(width: 6),
+            Text(
+              '${_answers.length} / ${_statements.length} réponses',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: LudiColors.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: _answers.length / _statements.length,
+            minHeight: 7,
+            backgroundColor: LudiColors.primary.withValues(alpha: 0.10),
+            color: LudiColors.primary,
+          ),
+        ),
+        const SizedBox(height: 16),
         Prompt(_statements[index].text),
         const SizedBox(height: 32),
         Row(
