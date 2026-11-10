@@ -169,9 +169,8 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
 
   String get _sentence => widget.payload['sentence'] as String;
 
-  List<String> get _chunks => List<String>.from(
-    widget.payload['chunks'] as List<dynamic>? ?? const [],
-  );
+  List<String> get _chunks =>
+      List<String>.from(widget.payload['chunks'] as List<dynamic>? ?? const []);
 
   @override
   void initState() {
@@ -306,10 +305,7 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Mots écrits',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                  ),
+                  const Text('Mots écrits', style: TextStyle(fontSize: 12, color: Colors.black54)),
                 ],
               ),
             ),
