@@ -391,7 +391,8 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
         "## Par leçon",
         "",
         "| Leçon | Support | Pages | Issue | Matière | Niveau | Rappel | Inventées "
-        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes | Ouvertes / notions importantes | Durée | Coût |",
+        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes "
+        "| Ouvertes / notions importantes | Durée | Coût |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for s in scores:
