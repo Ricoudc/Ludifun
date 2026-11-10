@@ -236,9 +236,13 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: LudiColors.primary.withValues(alpha: 0.06),
-    child: Padding(
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: 'Ton cahier commence ici. Tes leçons et tes progrès apparaîtront ici après ta première révision.',
+    child: ExcludeSemantics(
+      child: Card(
+        color: LudiColors.primary.withValues(alpha: 0.06),
+        child: Padding(
       padding: const EdgeInsets.all(20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -268,6 +272,8 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    ),
       ),
     ),
   );
