@@ -106,10 +106,13 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     [run_dir] = list(tmp_path.iterdir())
     report = (run_dir / "report.md").read_text(encoding="utf-8")
     measures = report.split("## Par leçon")[0]
-    assert measures.count("| ✅ |") == 9  # toutes les mesures à seuil sont atteintes…
-    # …sauf les aides : les leçons de référence de l'IA factice datent d'avant l'étape 14.
+    assert measures.count("| ✅ |") == 7
+    # Le corpus couvre désormais plusieurs niveaux et matières : il révèle aussi les métriques
+    # pédagogiques que le fournisseur factice ne satisfait pas encore.
     assert [line.split(" |")[0] for line in measures.splitlines() if "❌" in line] == [
-        "| Notions avec indice et rappel"
+        "| Notions reliées à une compétence",
+        "| Notions avec indice et rappel",
+        "| Questions ouvertes par leçon (moyenne)",
     ]
     assert "| Noms personnels dans le texte lu | — (aucune annotation) | 0 | · |" in measures
     assert "piege_liste_de_courses | photo | 1 | ✅ not_a_lesson (piège)" in report
@@ -125,6 +128,13 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
         assert "══ Séance" in (run_dir / f"{name}.txt").read_text(encoding="utf-8")
     assert "## Rappel des notions par matière et niveau" in report
     assert "### Par matière" in report and "### Par niveau" in report
+    assert "| french | 5 | 5 | 100 % |" in report
+    assert "| geography | 6 | 6 | 100 % |" in report
+    assert "| history | 5 | 5 | 100 % |" in report
+    assert "| math | 9 | 9 | 100 % |" in report
+    assert "| science | 4 | 4 | 100 % |" in report
+    assert "| 3e | 5 | 5 | 100 % |" in report
+    assert "| 6e | 6 | 6 | 100 % |" in report
 
 
 async def test_missed_notions_and_failures_are_reported() -> None:
