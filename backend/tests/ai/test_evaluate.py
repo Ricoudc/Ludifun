@@ -135,6 +135,8 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     assert "| science | 4 | 4 | 100 % |" in report
     assert "| 3e | 5 | 5 | 100 % |" in report
     assert "| 6e | 6 | 6 | 100 % |" in report
+    assert "Notions importantes avec question ouverte" in measures
+    assert "Ouvertes / notions importantes" in report
 
 
 async def test_missed_notions_and_failures_are_reported() -> None:
@@ -149,6 +151,16 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     )
     good = score("histoire", expected, result, pages=2, duration_s=30.0)
     assert good.recall == pytest.approx(5 / 6)
+    important_units = [unit for unit in result.units if unit.item.importance >= 4]
+    assert good.important_notions == len(important_units)
+    assert good.important_with_open_question == sum(bool(unit.material.open_questions) for unit in important_units)
+    by_name = {metric.name: metric for metric in metrics([good])}
+    coverage = (
+        100 * good.important_with_open_question / good.important_notions
+        if good.important_notions
+        else None
+    )
+    assert by_name["Notions importantes avec question ouverte"].value == coverage
 
     failed_result = await pipeline.run(text="Recette des crêpes : farine, œufs, lait.")
     expected_verb = Expected(subject="french", grade="CE1", essential=[ExpectedNotion(label="verbe")])
