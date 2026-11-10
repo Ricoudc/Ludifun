@@ -153,7 +153,9 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     assert good.recall == pytest.approx(5 / 6)
     important_units = [unit for unit in result.units if unit.item.importance >= 4]
     assert good.important_notions == len(important_units)
-    assert good.important_with_open_question == sum(bool(unit.material.open_questions) for unit in important_units)
+    assert good.important_with_open_question == sum(
+        bool(unit.material.open_questions) for unit in important_units
+    )
     by_name = {metric.name: metric for metric in metrics([good])}
     coverage = (
         100 * good.important_with_open_question / good.important_notions
