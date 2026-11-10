@@ -919,9 +919,9 @@ void main() {
     ]);
   });
 
-  testWidgets('vrai ou faux : couleurs neutres, choix unique et sélection visible', (
-    tester,
-  ) async {
+  testWidgets(
+    'vrai ou faux : couleurs neutres, choix unique et sélection visible',
+    (tester) async {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
 
     final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
@@ -1221,7 +1221,9 @@ void main() {
     ]);
   });
 
-  testWidgets('défi rapide : une affirmation à la fois, avec le temps passé', (tester) async {
+  testWidgets(
+    'défi rapide : une affirmation à la fois, avec le temps passé',
+    (tester) async {
     await show(tester, 'SPEED_CHALLENGE', {
       'time_limit_s': 30,
       'statements': [
