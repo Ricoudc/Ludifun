@@ -93,6 +93,16 @@ def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_cont
     summary = question_review_summary(applied)
     assert summary["total"] == 2 and summary["annotated"] == 1 and summary["pending"] == 1
     assert summary["pertinent_rate"] == 1.0 and summary["off_topic_rate"] == 0.0
+    assert summary["by_level"]["3"] == {
+        "total": 1,
+        "annotated": 1,
+        "pending": 0,
+        "pertinent": 1,
+        "à corriger": 0,
+        "hors sujet": 0,
+        "pertinent_rate": 1.0,
+        "off_topic_rate": 0.0,
+    }
 
 
 @pytest.mark.parametrize(
