@@ -15,6 +15,7 @@ chaque leçon le résultat complet (`<leçon>.json`) et la séance à relire (`<
 
 import argparse
 import asyncio
+import hashlib
 import io
 import json
 import statistics
@@ -158,9 +159,27 @@ def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> st
 QUESTION_REVIEW_LABELS = {"pertinent", "à corriger", "hors sujet"}
 
 
+def _question_review_signature(review: dict[str, Any]) -> str:
+    """Empreinte des contenus pédagogiques qui rendent une annotation valable."""
+    snapshot = {
+        key: review.get(key)
+        for key in (
+            "knowledge_id",
+            "notion_statement",
+            "level",
+            "prompt",
+            "key_points",
+            "model_answer",
+            "passage",
+        )
+    }
+    payload = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[str, Any]]:
     """Exporte les questions ouvertes dans un format de revue humaine, sans score sémantique fictif."""
-    return [
+    reviews = [
         {
             "review_id": f"{lesson_name}:{unit.id}:{index + 1}",
             "lesson": lesson_name,
@@ -185,12 +204,13 @@ def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[
         for unit in result.units
         for index, question in enumerate(unit.material.open_questions)
     ]
+    return [review | {"review_signature": _question_review_signature(review)} for review in reviews]
 
 
 def apply_question_review_annotations(
     reviews: list[dict[str, Any]], annotations: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    """Réapplique des labels humains uniquement si l'identifiant et l'énoncé correspondent."""
+    """Réapplique les labels uniquement si l'identifiant et le contenu pédagogique correspondent."""
     by_id: dict[str, dict[str, Any]] = {}
     for annotation in annotations:
         if not isinstance(annotation, dict):
@@ -211,10 +231,10 @@ def apply_question_review_annotations(
         if review_id in seen:
             raise ValueError(f"question générée en double : {review_id}")
         seen.add(review_id)
-        annotation = by_id.pop(review_id, None)
+        annotation = by_id.pop(review_id) if review_id in by_id else None
         if annotation is not None:
-            if annotation.get("prompt") != review["prompt"]:
-                raise ValueError(f"énoncé modifié depuis l'annotation : {review_id}")
+            if annotation.get("review_signature") != _question_review_signature(review):
+                raise ValueError(f"contenu pédagogique modifié depuis l'annotation : {review_id}")
             review = review | {"review_status": annotation["review_status"]}
         result.append(review)
     if by_id:
