@@ -236,18 +236,42 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24),
-    child: Column(
-      children: [
-        const Text('📸', style: TextStyle(fontSize: 64)),
-        const SizedBox(height: 8),
-        Text(
-          'Photographie ta première leçon !',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
-      ],
+  Widget build(BuildContext context) => Card(
+    color: LudiColors.primary.withValues(alpha: 0.06),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            alignment: Alignment.center,
+            child: const Text('📚', style: TextStyle(fontSize: 30)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ton cahier commence ici',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Tes leçons et tes progrès apparaîtront ici après ta première révision.',
+                  style: TextStyle(fontSize: 14, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     ),
   );
 }
