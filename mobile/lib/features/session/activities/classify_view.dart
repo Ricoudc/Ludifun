@@ -81,6 +81,39 @@ class _ClassifyViewState extends State<ClassifyView> {
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 12),
+        if (_items.isNotEmpty) ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.inventory_2_outlined, color: LudiColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_placed.length} / ${_items.length} étiquettes rangées',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: (_placed.length / _items.length).clamp(0.0, 1.0),
+                      minHeight: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 8,
