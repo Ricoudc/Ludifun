@@ -21,6 +21,8 @@ from app.tools.evaluate import (
     material_counts,
     metrics,
     open_question_review,
+    apply_question_review_annotations,
+    question_review_summary,
     render_report,
     resume_after_review,
     score,
@@ -58,6 +60,53 @@ def test_open_question_review_export_keeps_notion_context_and_review_dimensions(
     assert review["key_points"] == question.key_points
     assert review["review_status"] == "à annoter"
     assert "pertinence_par_rapport_a_la_notion" in review["review_dimensions"]
+
+
+def test_question_review_annotations_are_reapplied_only_to_same_prompt() -> None:
+    reviews = [
+        {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "à annoter"},
+        {"review_id": "histoire:k6:1", "prompt": "Pourquoi ?", "review_status": "à annoter"},
+    ]
+    annotations = [
+        {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"}
+    ]
+    applied = apply_question_review_annotations(reviews, annotations)
+    assert [row["review_status"] for row in applied] == ["pertinent", "à annoter"]
+    summary = question_review_summary(applied)
+    assert summary["total"] == 2 and summary["annotated"] == 1 and summary["pending"] == 1
+    assert summary["pertinent_rate"] == 1.0 and summary["off_topic_rate"] == 0.0
+
+
+@pytest.mark.parametrize(
+    "annotations, message",
+    [
+        (
+            [
+                {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "pertinent"},
+                {"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "hors sujet"},
+            ],
+            "annotation en double",
+        ),
+        (
+            [{"review_id": "histoire:k5:1", "prompt": "Autre question", "review_status": "pertinent"}],
+            "énoncé modifié",
+        ),
+        (
+            [{"review_id": "histoire:inconnu:1", "prompt": "?", "review_status": "pertinent"}],
+            "sans question correspondante",
+        ),
+        (
+            [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "excellent"}],
+            "label de revue invalide",
+        ),
+    ],
+)
+def test_question_review_annotations_reject_stale_or_invalid_data(
+    annotations: list[dict[str, str]], message: str
+) -> None:
+    reviews = [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "à annoter"}]
+    with pytest.raises(ValueError, match=message):
+        apply_question_review_annotations(reviews, annotations)
 
 
 def test_match_notion() -> None:
