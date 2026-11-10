@@ -255,6 +255,34 @@ def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
         else:
             raise ValueError(f"label de revue inconnu : {label}")
     annotated = sum(counts.values())
+    by_level: dict[str, dict[str, int]] = {}
+    for review in reviews:
+        level = review.get("level")
+        if level is None:
+            continue
+        key = str(level)
+        bucket = by_level.setdefault(
+            key, {"total": 0, "annotated": 0, "pending": 0, **{label: 0 for label in counts}}
+        )
+        bucket["total"] += 1
+        label = review.get("review_status", "à annoter")
+        if label == "à annoter":
+            bucket["pending"] += 1
+        elif label in counts:
+            bucket["annotated"] += 1
+            bucket[label] += 1
+
+    level_summary = {}
+    for level, bucket in sorted(by_level.items(), key=lambda item: int(item[0])):
+        level_summary[level] = bucket | {
+            "pertinent_rate": bucket["pertinent"] / bucket["annotated"]
+            if bucket["annotated"]
+            else None,
+            "off_topic_rate": bucket["hors sujet"] / bucket["annotated"]
+            if bucket["annotated"]
+            else None,
+        }
+
     return {
         "total": len(reviews),
         "annotated": annotated,
@@ -262,6 +290,7 @@ def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
         "counts": counts,
         "pertinent_rate": counts["pertinent"] / annotated if annotated else None,
         "off_topic_rate": counts["hors sujet"] / annotated if annotated else None,
+        "by_level": level_summary,
     }
 
 
@@ -753,6 +782,17 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         f"à corriger : {review_summary['counts']['à corriger']} ; "
         f"hors sujet : {review_summary['counts']['hors sujet']}\n"
     )
+    if review_summary["by_level"]:
+        text += (
+            "\\n### Résultats par niveau cognitif\\n\\n"
+            "| Niveau | Annotées | En attente | Pertinentes | À corriger | Hors sujet |\\n"
+            "|---:|---:|---:|---:|---:|---:|\\n"
+        )
+        for level, bucket in review_summary["by_level"].items():
+            text += (
+                f"| {level} | {bucket['annotated']} | {bucket['pending']} | "
+                f"{bucket['pertinent']} | {bucket['à corriger']} | {bucket['hors sujet']} |\\n"
+            )
     (out / "report.md").write_text(text, encoding="utf-8")
     metrics_data = metrics_json(scores, configuration(provider, models), started)
     metrics_data["open_question_review"] = review_summary
