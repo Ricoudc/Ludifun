@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -66,7 +67,7 @@ def test_open_question_review_export_keeps_notion_context_and_review_dimensions(
 
 
 def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_content() -> None:
-    reviews = [
+    reviews: list[dict[str, Any]] = [
         {
             "review_id": "histoire:k5:1",
             "knowledge_id": "k5",
@@ -104,9 +105,9 @@ def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_cont
     ],
 )
 def test_question_review_annotation_is_invalidated_when_pedagogical_content_changes(
-    changed_field: str, changed_value: object
+    changed_field: str, changed_value: Any
 ) -> None:
-    review = {
+    review: dict[str, Any] = {
         "review_id": "histoire:k5:1",
         "knowledge_id": "k5",
         "notion_statement": "La Révolution commence en 1789.",
