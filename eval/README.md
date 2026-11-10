@@ -57,6 +57,7 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
 - `subject` : `french`, `math`, `history`, `geography`, `science`, `english`, `civics`, `other`.
 - `grade` : `CP`, `CE1`, `CE2`, `CM1`, `CM2`, `6e`, `5e`, `4e`, `3e`.
 - `essential` : 3 à 8 notions indispensables, avec leur nom le plus courant. `aliases` accepte d'autres façons de les nommer. La correspondance ignore la casse, les accents et les petites fautes.
+- **Rappel des notions** : l'évaluateur associe les notions attendues et produites un-à-un. Une notion produite ne peut donc pas valider plusieurs notions attendues, même si son énoncé contient plusieurs libellés.
 - `personal` (facultatif) : les noms écrits sur les pages (élève, école, enseignant). La lecture
   ne doit jamais les recopier ; le rapport compte ceux qui sont retrouvés dans le texte lu, sans
   jamais les écrire. C'est une mesure de l'analyse d'impact
