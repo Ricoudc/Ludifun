@@ -140,7 +140,8 @@ void main() {
     expect(find.text('Louis XVI'), findsOneWidget);
     await tester.pump(MemoryView.flipBack);
     expect(hidden, findsNWidgets(2)); // la paire reste visible
-    expect(find.textContaining('1 paire(s) trouvée(s) sur 2 · 2 coup(s)'), findsOneWidget);
+    expect(find.text('1 / 2 paires trouvées'), findsOneWidget);
+    expect(find.text('2 coups'), findsOneWidget);
 
     await flip(0);
     await flip(0);
