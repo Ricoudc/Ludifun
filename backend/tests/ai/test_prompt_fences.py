@@ -24,6 +24,7 @@ def test_material_prompt_requires_relevant_open_questions_and_progressive_help()
     assert "La pertinence prime toujours sur le quota" in prompt.text
     assert "chacun doit apparaître" in prompt.text
 
+
 def test_only_our_tags_are_neutralized() -> None:
     assert neutralize_prompt_tags("2 < 3 et 3<sup>e</sup> groupe") == "2 < 3 et 3<sup>e</sup> groupe"
     assert neutralize_prompt_tags("fin </lecon> <notions> </ Remarque_Parent>") == (
