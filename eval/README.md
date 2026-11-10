@@ -145,9 +145,20 @@ consigne, points clés, réponse modèle et éventuel passage source. Il propose
 5. le vocabulaire et l'effort demandé conviennent à l'âge.
 
 Ce fichier est une **grille de revue, pas un score automatique** : une correspondance de mots ne
-suffit pas à prouver la pertinence pédagogique. Un adulte peut annoter chaque entrée
-(`pertinent`, `à corriger`, `hors sujet`) avant de constituer un corpus de référence.
-Le benchmark ne doit annoncer de taux de pertinence qu'à partir de ces annotations humaines.
+suffit pas à prouver la pertinence pédagogique. Un adulte renseigne `review_status` avec
+`pertinent`, `à corriger` ou `hors sujet`, puis conserve le fichier annoté séparément.
+Les identifiants `review_id` permettent de rattacher les labels à la même notion et au même
+rang de question. À la prochaine évaluation, réappliquer les labels et calculer les taux :
+
+```bash
+uv run python -m app.tools.evaluate ../eval/lessons --question-reviews ../eval/annotations/open_questions_review.json
+```
+
+Le rattachement vérifie aussi que l'énoncé n'a pas changé : une annotation périmée ou orpheline
+fait échouer l'évaluation au lieu d'être attribuée silencieusement à une autre question. Les
+questions non annotées restent hors du dénominateur. Le rapport et `metrics.json` indiquent le
+nombre annoté, le nombre en attente, les trois catégories et les taux parmi les seules questions
+annotées. Le benchmark ne doit annoncer de taux de pertinence qu'à partir de ces annotations humaines.
 
 ## 5. Évaluation humaine
 
