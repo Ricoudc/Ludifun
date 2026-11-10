@@ -169,9 +169,9 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
 
   String get _sentence => widget.payload['sentence'] as String;
 
-  List<String> get _chunks => [
-    for (final chunk in widget.payload['chunks'] as List<dynamic>? ?? const []) chunk as String,
-  ];
+  List<String> get _chunks => List<String>.from(
+    widget.payload['chunks'] as List<dynamic>? ?? const [],
+  );
 
   @override
   void initState() {
