@@ -127,9 +127,13 @@ class _MatchViewState extends State<MatchView> {
       ),
       const SizedBox(height: 6),
       // Le geste, dit une fois : sans lui, rien ne distingue la colonne des réponses.
-      const Text(
-        'Touche un mot à gauche, puis sa réponse à droite.',
-        style: TextStyle(fontSize: 16, color: Colors.black54),
+      Text(
+        _left != null
+            ? 'Choisis maintenant la réponse à droite.'
+            : _right != null
+            ? 'Choisis maintenant l’élément à gauche.'
+            : 'Touche un élément à gauche, puis sa réponse à droite.',
+        style: const TextStyle(fontSize: 16, color: Colors.black54),
       ),
       const SizedBox(height: 12),
       Row(
@@ -138,6 +142,13 @@ class _MatchViewState extends State<MatchView> {
           Expanded(
             child: Column(
               children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'À relier',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
                 for (final left in _lefts)
                   _tile(
                     left,
@@ -152,6 +163,13 @@ class _MatchViewState extends State<MatchView> {
           Expanded(
             child: Column(
               children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Réponses',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
                 for (final right in _rights)
                   _tile(
                     right,

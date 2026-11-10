@@ -203,10 +203,7 @@ class SessionScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(16),
                           child: ActivityInstruction(
                             text: item.instruction,
-                            child: activityRegistry[item.type]!(
-                              item.payload,
-                              controller.submit,
-                            ),
+                            child: activityRegistry[item.type]!(item.payload, controller.submit),
                           ),
                         ),
                       ),

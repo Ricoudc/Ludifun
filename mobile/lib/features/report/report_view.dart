@@ -64,10 +64,7 @@ class ReportView extends StatelessWidget {
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(7),
-                  child: LinearProgressIndicator(
-                    value: report.scoreOn10 / 10,
-                    minHeight: 14,
-                  ),
+                  child: LinearProgressIndicator(value: report.scoreOn10 / 10, minHeight: 14),
                 ),
               ],
             ),

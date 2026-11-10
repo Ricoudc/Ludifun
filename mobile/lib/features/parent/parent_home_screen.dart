@@ -95,11 +95,7 @@ class ParentHomeScreen extends ConsumerWidget {
                 ),
                 title: Text(
                   'Les progrès se construisent ensemble.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(
                   'Suivez les apprentissages et accompagnez chaque étape.',

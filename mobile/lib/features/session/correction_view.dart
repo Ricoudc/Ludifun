@@ -161,8 +161,7 @@ class CorrectionView extends StatelessWidget {
                     '🧠 À retenir',
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
                   ),
-                  if (correction.result != AttemptResult.correct &&
-                      correction.tip != null) ...[
+                  if (correction.result != AttemptResult.correct && correction.tip != null) ...[
                     const SizedBox(height: 8),
                     Text(
                       '💡 Astuce pour retenir : ${correction.tip}',

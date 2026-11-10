@@ -39,21 +39,23 @@ class ChildHomeScreen extends ConsumerWidget {
           children: [
             Card(
               color: LudiColors.primary,
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                leading: const CircleAvatar(
-                  backgroundColor: Color(0x33FFFFFF),
-                  child: Text('🦊', style: TextStyle(fontSize: 28)),
-                ),
-                title: Text(
-                  'Bonjour $name ! 👋',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Colors.white,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Prêt à faire grandir tes super-pouvoirs ?',
-                  style: TextStyle(color: Colors.white, fontSize: 15),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0x33FFFFFF),
+                      child: Text('🦊', style: TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Bonjour $name ! 👋',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

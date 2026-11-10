@@ -1178,7 +1178,11 @@ void main() {
       ],
     });
     expect(find.text('Encore 2 à relier'), findsOneWidget);
+    expect(find.text('À relier'), findsOneWidget);
+    expect(find.text('Réponses'), findsOneWidget);
     await tester.tap(find.text('1789'));
+    await tester.pump();
+    expect(find.text('Choisis maintenant la réponse à droite.'), findsOneWidget);
     await tester.pump();
     await tester.tap(find.text('Roi de France')); // erreur…
     await tester.pump();
