@@ -30,10 +30,6 @@ jobs:
           cache: true
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
-      - name: Format diagnostics
-        run: |
-          dart format lib/app/theme.dart lib/features/home/child_home_screen.dart lib/features/parent/parent_home_screen.dart
-          git diff --no-ext-diff -- mobile/lib/app/theme.dart mobile/lib/features/home/child_home_screen.dart mobile/lib/features/parent/parent_home_screen.dart
       - name: Format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
