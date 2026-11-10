@@ -1346,4 +1346,3 @@ void main() {
     expect(find.text('bien (mot en trop)'), findsOneWidget);
   });
 }
-

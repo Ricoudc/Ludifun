@@ -374,4 +374,3 @@ class _Waiting extends StatelessWidget {
     ],
   );
 }
-
