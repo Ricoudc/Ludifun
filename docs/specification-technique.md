@@ -630,7 +630,7 @@ question (la notion, jamais l'enfant) → SearXNG (moteur local, profil « reche
   balises `<remarque_parent>` (chevrons neutralisés, §142-143) avec la classe de l'enfant ; la
   nouvelle version passe les contrôles de `validation.py` et doit permettre au moins un jeu, sinon
   l'ancienne reste. L'appel est journalisé dans `ai_runs` ; la maîtrise de l'enfant n'est pas
-  touchée. Pas encore : faire la séance soi-même en mode essai (sans compter pour l'enfant).
+  touchée. Faire la séance soi-même en mode essai, sans compter pour l'enfant : §5.84.
 
 - **Contexte d'Ollama** (`ai/providers/ollama.py`, `services/lesson_pipeline.py`) : pour la
   préparation des exercices, le schéma n'est plus recopié dans les consignes (Ollama l'impose avec
@@ -2347,6 +2347,38 @@ Docker et hors Windows, sur la famille de démonstration (`app.tools.demo_family
 Reste à faire sur le PC de la famille : la même chose par `Ludifun.bat` (Docker, chemins
 Windows, copie des fichiers par `docker compose cp`), et une restauration sur un autre PC à partir
 du dossier copié sur une clé USB (sauvegardes et `reglages.env`).
+
+### 5.84 Le parent essaie la leçon avant l'enfant (novembre 2026)
+
+Demande de la famille : « que le parent fasse la leçon afin d'identifier les erreurs avant
+l'élève ». Relire les questions (§5.69) ne montre pas tout : un jeu peut être injouable, une
+consigne obscure, une réponse « juste » fausse.
+
+- **Serveur** (`app/api/v1/lesson_trial.py`, espace parent) :
+  - `POST /v1/children/{c}/lessons/{l}/trial` : la **première séance que l'enfant aura** (aucune
+    maîtrise, la durée de ses réglages, notions retirées ou douteuses exclues comme pour lui),
+    sans les solutions ; renvoie `seed`, `plan` (empreinte de la séance), `items` et le nom des
+    notions ;
+  - `POST …/trial/check` (`seed`, `plan`, `position`, `response`) : la correction que l'enfant
+    verrait (résultat, bonne réponse, astuce, explication).
+- **Rien n'est enregistré** : ni séance, ni réponse, ni maîtrise, ni étoiles, ni tableau de
+  bord. Le moteur est déterministe pour une graine : la séance est recomposée à chaque correction.
+  Si la leçon a changé entre-temps (question corrigée, notion retirée), l'empreinte ne correspond
+  plus : 409 `trial_outdated`, l'essai se relance. Pas de migration.
+- **Limites** : une réponse rédigée est corrigée par ses mots clés, sans l'IA ; pas de « Je n'ai
+  pas compris », de remédiation ni de reprise des erreurs (elles dépendent des réponses de
+  l'enfant) ; chaque essai tire d'autres exercices, un essai ne montre donc pas toute la leçon.
+- **Application** : « Essayer la leçon comme mon enfant » dans « Questions de la leçon »
+  (`lesson_trial_screen.dart`) ; les jeux et la correction de l'enfant, la notion travaillée
+  affichée ; après chaque correction, « Il y a une erreur dans cette question » ; à la fin, le
+  nombre de bonnes réponses, la liste des erreurs notées (question, notion, réponse donnée pour
+  juste) et « Corriger les questions ». Les erreurs notées restent sur le téléphone, le temps
+  de l'essai.
+- **Tests** : `tests/api/test_lesson_trial.py` (chaque activité corrigée juste puis fausse par
+  l'élève simulé, aucune ligne ajoutée en base, leçon toujours en attente, empreinte périmée,
+  réponse invalide) ; les deux routes dans `test_separation.py` ; application :
+  `parent_flow_test` (essai, erreur notée, retour aux questions ; leçon changée).
+- **Non testé** : sur un vrai téléphone, avec une vraie leçon.
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

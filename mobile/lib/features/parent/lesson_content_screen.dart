@@ -71,6 +71,14 @@ class LessonContentScreen extends ConsumerWidget {
                 'n\'est pas touchée. Appuyez longuement sur un texte pour le copier.',
                 style: const TextStyle(fontSize: 15, color: Colors.black54),
               ),
+              if (value.notions.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(Routes.lessonTrial(childId, lessonId)),
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text('Essayer la leçon comme mon enfant'),
+                ),
+              ],
               if (value.notions.isNotEmpty)
                 Align(
                   alignment: Alignment.centerLeft,

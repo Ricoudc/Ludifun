@@ -12,6 +12,7 @@ from app.api.v1 import (
     lesson_content,
     lesson_images,
     lesson_resources,
+    lesson_trial,
     lessons,
     notebook,
     phone_app,
@@ -32,6 +33,7 @@ router.include_router(homework.router)
 router.include_router(lesson_content.router)
 router.include_router(lesson_images.router)
 router.include_router(lesson_resources.router)
+router.include_router(lesson_trial.router)
 router.include_router(lessons.router)
 router.include_router(notebook.router)
 router.include_router(phone_app.router)
