@@ -40,8 +40,11 @@ class _FlashcardViewState extends State<FlashcardView> {
               child: Text(
                 _flipped
                     ? 'Le savais-tu ?'
-                    : ActivityInstruction.of(context) ?? 'Te souviens-tu de ce que ça veut dire ?',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
+                    : ActivityInstruction.of(context) ??
+                        'Te souviens-tu de ce que ça veut dire ?',
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: LudiColors.primary,
+                ),
               ),
             ),
             // La face visible seulement : jamais le verso avant de retourner la carte.
