@@ -139,10 +139,16 @@ class _HomeActionTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: () => context.go(route),
         child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 6,
+          ),
           leading: CircleAvatar(
             backgroundColor: iconBackground,
-            child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
+            child: Icon(
+              icon,
+              color: primary ? Colors.white : LudiColors.primary,
+            ),
           ),
           title: Text(
             title,
@@ -154,7 +160,10 @@ class _HomeActionTile extends StatelessWidget {
           ),
           subtitle: Text(
             description,
-            style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
+            style: TextStyle(
+              color: primary ? Colors.white : null,
+              height: 1.25,
+            ),
           ),
           trailing: Icon(
             Icons.chevron_right,
