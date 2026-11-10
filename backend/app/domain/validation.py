@@ -124,6 +124,19 @@ def _passage(raw: Any, source: str) -> tuple[str | None, str | None]:
     return passage, None
 
 
+def _open_question_content_reason(question: OpenQuestion, source: str) -> str | None:
+    """Les points clés doivent être tirés de la leçon et couverts par la réponse modèle."""
+    normalized_points = [normalize(point) for point in question.key_points]
+    if len(set(normalized_points)) != len(normalized_points):
+        return "les points clés sont en double"
+    for point in question.key_points:
+        if not fuzzy_contains(source, point):
+            return "un point clé n'est pas étayé par la leçon"
+        if not contains_words(question.model_answer, point):
+            return f"la réponse modèle ne couvre pas le point clé « {point} »"
+    return None
+
+
 class AnalysisError(ValueError):
     """La sortie de l'analyse est inexploitable dans son ensemble (pas seulement une notion)."""
 
@@ -605,6 +618,9 @@ def validate_material(
                 continue
             if normalize(open_question.model_answer).startswith(normalize(open_question.prompt)):
                 rejected.append(Rejection(f"open_questions[{i}]", "la réponse attendue recopie la question"))
+                continue
+            if reason := _open_question_content_reason(open_question, source):
+                rejected.append(Rejection(f"open_questions[{i}]", reason))
                 continue
             open_questions.append(open_question)
         except ValidationError as exc:
