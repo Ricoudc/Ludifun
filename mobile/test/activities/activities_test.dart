@@ -938,7 +938,8 @@ void main() {
       expect(sent, [
         {'value': false},
       ]);
-    });
+    },
+  );
 
   testWidgets(
     'étape 25 : la consigne du serveur, au niveau de la classe, remplace la consigne par défaut',
@@ -1250,7 +1251,8 @@ void main() {
         {'id': 's2', 'value': false},
       ]);
       expect(sent.single['elapsed_ms'], 3000);
-    });
+    },
+  );
 
   testWidgets('défi rapide : le temps écoulé envoie les réponses données', (tester) async {
     await show(tester, 'SPEED_CHALLENGE', {
