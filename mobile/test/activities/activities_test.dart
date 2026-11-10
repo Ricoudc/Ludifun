@@ -97,14 +97,14 @@ void main() {
     expect(find.text('0 / 2 étiquettes rangées'), findsOneWidget);
     await tester.ensureVisible(find.text('chat'));
     await tester.tap(find.text('chat'));
-    await tester.ensureVisible(find.text('Noms'));
-    await tester.tap(find.text('Noms'));
+    await tester.ensureVisible(find.byKey(const ValueKey('classify-category-noun')));
+    await tester.tap(find.byKey(const ValueKey('classify-category-noun')));
     await tester.pump();
     expect(find.text('1 / 2 étiquettes rangées'), findsOneWidget);
     await tester.ensureVisible(find.text('courir'));
     await tester.tap(find.text('courir'));
-    await tester.ensureVisible(find.text('Verbes'));
-    await tester.tap(find.text('Verbes'));
+    await tester.ensureVisible(find.byKey(const ValueKey('classify-category-verb')));
+    await tester.tap(find.byKey(const ValueKey('classify-category-verb')));
     await tester.pump();
     expect(find.text('2 / 2 étiquettes rangées'), findsOneWidget);
     await tester.tap(find.text('Valider'));
