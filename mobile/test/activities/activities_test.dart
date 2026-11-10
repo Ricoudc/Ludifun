@@ -95,17 +95,25 @@ void main() {
       ],
     });
     expect(find.text('0 / 2 étiquettes rangées'), findsOneWidget);
-    await tester.ensureVisible(find.text('chat'));
-    await tester.tap(find.text('chat'));
-    await tester.ensureVisible(find.byKey(const ValueKey('classify-category-noun')));
-    await tester.tap(find.byKey(const ValueKey('classify-category-noun')));
-    await tester.pump();
+    final chatChip = find.ancestor(of: find.text('chat'), matching: find.byType(ChoiceChip));
+    await tester.ensureVisible(chatChip);
+    await tester.tap(chatChip);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(chatChip).selected, isTrue);
+    final nounCategory = find.byKey(const ValueKey('classify-category-noun'));
+    await tester.ensureVisible(nounCategory);
+    await tester.tap(nounCategory);
+    await tester.pumpAndSettle();
     expect(find.text('1 / 2 étiquettes rangées'), findsOneWidget);
-    await tester.ensureVisible(find.text('courir'));
-    await tester.tap(find.text('courir'));
-    await tester.ensureVisible(find.byKey(const ValueKey('classify-category-verb')));
-    await tester.tap(find.byKey(const ValueKey('classify-category-verb')));
-    await tester.pump();
+    final runChip = find.ancestor(of: find.text('courir'), matching: find.byType(ChoiceChip));
+    await tester.ensureVisible(runChip);
+    await tester.tap(runChip);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(runChip).selected, isTrue);
+    final verbCategory = find.byKey(const ValueKey('classify-category-verb'));
+    await tester.ensureVisible(verbCategory);
+    await tester.tap(verbCategory);
+    await tester.pumpAndSettle();
     expect(find.text('2 / 2 étiquettes rangées'), findsOneWidget);
     await tester.tap(find.text('Valider'));
     expect(sent, [
