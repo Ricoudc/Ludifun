@@ -39,13 +39,14 @@ def test_match_notion() -> None:
 
 
 def test_expected_notion_recall_never_counts_one_produced_notion_twice() -> None:
-    from types import SimpleNamespace
-
+    item = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
     knowledge = [
-        SimpleNamespace(
-            id="k1",
-            label="Louis XVI",
-            statement="Louis XVI était le roi de France.",
+        item.model_copy(
+            update={
+                "id": "k1",
+                "label": "Louis XVI",
+                "statement": "Louis XVI était le roi de France.",
+            }
         )
     ]
     expected = [
