@@ -101,7 +101,7 @@ class _SpeedChallengeViewState extends State<SpeedChallengeView> {
             Expanded(
               child: AnswerButton(
                 label: '✅ Vrai',
-                color: LudiColors.mastered,
+                color: LudiColors.primary,
                 onPressed: _sent ? null : () => _answer(true),
               ),
             ),
@@ -109,7 +109,7 @@ class _SpeedChallengeViewState extends State<SpeedChallengeView> {
             Expanded(
               child: AnswerButton(
                 label: '❌ Faux',
-                color: LudiColors.notMastered,
+                color: LudiColors.accent,
                 onPressed: _sent ? null : () => _answer(false),
               ),
             ),
