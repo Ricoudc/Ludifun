@@ -420,6 +420,9 @@ void main() {
     expect(find.text('à revoir vendredi'), findsOneWidget);
     expect(find.text('maîtrisée ✓'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Prends ton cahier en photo pour apprendre.'), findsOneWidget);
+    expect(find.text('Avance pas à pas avec un coup de main.'), findsOneWidget);
+    expect(find.text('Retrouve tes leçons et tes découvertes.'), findsOneWidget);
 
     await shot(tester, 'e10_accueil_mission', height: 1300);
     // Une photo ratée se retire par un appui long ; une leçon analysée, seul le parent la supprime.
