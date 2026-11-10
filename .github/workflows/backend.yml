@@ -4,7 +4,7 @@ on:
   push:
     paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
 
 concurrency:
   group: backend-${{ github.ref }}
