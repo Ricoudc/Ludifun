@@ -52,9 +52,8 @@ class ChildHomeScreen extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         'Bonjour $name ! 👋',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(color: Colors.white),
                       ),
                     ),
                   ],
