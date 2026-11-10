@@ -61,6 +61,7 @@ def test_open_question_review_export_keeps_notion_context_and_review_dimensions(
     assert review["prompt"] == question.prompt
     assert review["key_points"] == question.key_points
     assert review["review_status"] == "à annoter"
+    assert len(review["review_signature"]) == 64
     assert "pertinence_par_rapport_a_la_notion" in review["review_dimensions"]
 
 
@@ -91,6 +92,40 @@ def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_cont
     summary = question_review_summary(applied)
     assert summary["total"] == 2 and summary["annotated"] == 1 and summary["pending"] == 1
     assert summary["pertinent_rate"] == 1.0 and summary["off_topic_rate"] == 0.0
+
+
+@pytest.mark.parametrize(
+    "changed_field, changed_value",
+    [
+        ("level", 2),
+        ("key_points", ["date", "conséquences nouvelles"]),
+        ("model_answer", "Une réponse modèle différente."),
+        ("notion_statement", "Une notion reformulée."),
+    ],
+)
+def test_question_review_annotation_is_invalidated_when_pedagogical_content_changes(
+    changed_field: str, changed_value: object
+) -> None:
+    review = {
+        "review_id": "histoire:k5:1",
+        "knowledge_id": "k5",
+        "notion_statement": "La Révolution commence en 1789.",
+        "level": 3,
+        "prompt": "Explique 1789.",
+        "key_points": ["date", "causes"],
+        "model_answer": "La Révolution débute en 1789 pour plusieurs causes.",
+        "passage": "En 1789...",
+        "review_status": "à annoter",
+    }
+    annotation = {
+        "review_id": review["review_id"],
+        "review_signature": _question_review_signature(review),
+        "review_status": "pertinent",
+    }
+    changed_review = review | {changed_field: changed_value}
+
+    with pytest.raises(ValueError, match="contenu pédagogique modifié"):
+        apply_question_review_annotations([changed_review], [annotation])
 
 
 @pytest.mark.parametrize(
