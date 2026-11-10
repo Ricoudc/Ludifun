@@ -92,6 +92,8 @@ class LessonScore:
     skills: int = 0
     with_help: int = 0  # notions avec au moins un indice et un rappel
     open_questions: int = 0
+    important_notions: int = 0
+    important_with_open_question: int = 0
     personal_leaks: int = 0  # noms personnels retrouvés dans le texte lu
 
     @property
@@ -200,7 +202,11 @@ def score(
     for unit in result.units:
         ladder = unit.material.help
         s.with_help += ladder is not None and ladder.hint is not None and ladder.reminder is not None
-        s.open_questions += len(unit.material.open_questions)
+        open_count = len(unit.material.open_questions)
+        s.open_questions += open_count
+        if unit.item.importance >= 4:
+            s.important_notions += 1
+            s.important_with_open_question += open_count > 0
     if result.ocr is not None:
         read = result.ocr.text
         s.personal_leaks = sum(1 for name in expected.personal if contains_words(read, name))
@@ -253,6 +259,11 @@ def metrics(scores: list[LessonScore]) -> list[Metric]:
     helped = 100 * sum(s.with_help for s in scores) / notions if notions else None
     ready = [s for s in scores if s.notions]
     open_per_lesson = statistics.mean(s.open_questions for s in ready) if ready else None
+    important_notions = sum(s.important_notions for s in scores)
+    important_with_open = sum(s.important_with_open_question for s in scores)
+    important_open_coverage = (
+        100 * important_with_open / important_notions if important_notions else None
+    )
     annotated = [s for s in scores if s.expected.personal]
     leaks = sum(s.personal_leaks for s in annotated)
 
@@ -298,6 +309,13 @@ def metrics(scores: list[LessonScore]) -> list[Metric]:
             "—" if open_per_lesson is None else f"{open_per_lesson:.1f}",
             "≥ 1",
             None if open_per_lesson is None else open_per_lesson >= 1,
+        ),
+        Metric(
+            "Notions importantes avec question ouverte",
+            important_open_coverage,
+            _fmt(important_open_coverage),
+            "à suivre (selon pertinence pédagogique)",
+            None,
         ),
         Metric(
             "Noms personnels dans le texte lu",
@@ -373,8 +391,8 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
         "## Par leçon",
         "",
         "| Leçon | Support | Pages | Issue | Matière | Niveau | Rappel | Inventées "
-        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes | Durée | Coût |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes | Ouvertes / notions importantes | Durée | Coût |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for s in scores:
         outcome = "prête" if s.failure is None else s.failure
@@ -388,7 +406,8 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
             f"| {s.name} | {s.support} | {s.pages} | {icon[s.correct_outcome]} {outcome} "
             f"| {icon[s.subject_ok]} | {icon[s.grade_ok]} | {recall} "
             f"| {s.invented} | {rejects} | {s.review or '—'} | {s.skills} ({s.in_skill}/{s.notions}) "
-            f"| {s.with_help}/{s.notions} | {s.open_questions} | {s.duration_s:.1f} s | {cost} |"
+            f"| {s.with_help}/{s.notions} | {s.open_questions} "
+            f"| {s.important_with_open_question}/{s.important_notions} | {s.duration_s:.1f} s | {cost} |"
         )
     missed = [(s.name, label) for s in scores for label, found in s.found.items() if found is None]
     if missed:
