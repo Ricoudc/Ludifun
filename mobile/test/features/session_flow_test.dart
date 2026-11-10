@@ -83,6 +83,7 @@ void main() {
 
     // Écran 6 : correction bienveillante, avec l'astuce.
     expect(find.text('❌ Pas tout à fait !'), findsOneWidget);
+    expect(find.text('🧠 À retenir'), findsOneWidget);
     expect(find.textContaining('La bonne réponse est'), findsOneWidget);
     expect(
       find.text('💡 Astuce pour retenir : 1789 = début de la Révolution française.'),
@@ -109,6 +110,7 @@ void main() {
     // Écran 7 : bilan.
     expect(backend.completed, 1);
     expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Ton résultat'), findsOneWidget);
     expect(find.text('7,5 / 10'), findsOneWidget);
     expect(find.text('✅ 2 notions maîtrisées'), findsOneWidget);
     expect(find.text('🟠 1 notion à revoir'), findsOneWidget);
