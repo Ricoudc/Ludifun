@@ -198,9 +198,17 @@ class SessionScreen extends ConsumerWidget {
                     absorbing: state.phase == Phase.submitting,
                     child: KeyedSubtree(
                       key: ValueKey(item.id),
-                      child: ActivityInstruction(
-                        text: item.instruction,
-                        child: activityRegistry[item.type]!(item.payload, controller.submit),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ActivityInstruction(
+                            text: item.instruction,
+                            child: activityRegistry[item.type]!(
+                              item.payload,
+                              controller.submit,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),

@@ -147,13 +147,39 @@ class CorrectionView extends StatelessWidget {
           ),
         ],
         if (details.isNotEmpty) ...[const SizedBox(height: 16), ...details],
-        if (correction.result != AttemptResult.correct && correction.tip != null) ...[
+        if ((correction.result != AttemptResult.correct && correction.tip != null) ||
+            correction.explanation != null) ...[
           const SizedBox(height: 16),
-          Text('💡 Astuce pour retenir : ${correction.tip}', style: const TextStyle(fontSize: 18)),
-        ],
-        if (correction.explanation != null) ...[
-          const SizedBox(height: 12),
-          Text(correction.explanation!, style: const TextStyle(fontSize: 17, height: 1.35)),
+          Card(
+            color: LudiColors.primary.withValues(alpha: 0.06),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '🧠 À retenir',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                  if (correction.result != AttemptResult.correct &&
+                      correction.tip != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '💡 Astuce pour retenir : ${correction.tip}',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ],
+                  if (correction.explanation != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      correction.explanation!,
+                      style: const TextStyle(fontSize: 17, height: 1.35),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
         if (correction.pauseMessage case final message?) ...[
           const SizedBox(height: 20),
