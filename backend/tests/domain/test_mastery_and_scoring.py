@@ -49,9 +49,17 @@ def test_boxes_and_intervals(previous_box: int, rate: float, box: int, days: int
     assert m.next_review_at == NOW + timedelta(days=days)
 
 
+def test_score_blends_with_recalled_mastery_after_a_long_gap() -> None:
+    previous = Mastery(90, 1, NOW + timedelta(days=1), NOW - timedelta(days=9))
+    # Boîte 1 : demi-vie de 3 jours ; après 9 jours, 90 devient environ 11.
+    m = update_mastery(previous, 0.5, NOW)
+    assert previous.recall(NOW) == 11
+    assert m.score == 34  # 0,6 × 50 + 0,4 × 11
+
+
 def test_score_blends_session_and_history() -> None:
     m = update_mastery(mastery(40, 1), 1.0, NOW)
-    assert m.score == 76  # 0,6 × 100 + 0,4 × 40
+    assert m.score == 68  # 0,6 × 100 + 0,4 × 20 (score rappelé après 3 jours)
     assert m.sessions_count == 2
 
 
@@ -143,7 +151,7 @@ def test_summarize_session() -> None:
         ("k1", "mastered"),
     ]
     k1 = outcome.results[-1].mastery
-    assert (k1.score, k1.box, k1.sessions_count) == (88, 3, 2)
+    assert (k1.score, k1.box, k1.sessions_count) == (80, 3, 2)  # score précédent rappelé : 50
     assert outcome.next_review_at == NOW + timedelta(days=1)
     assert not outcome.lesson_mastered  # k4 jamais travaillée
     assert outcome.count(KnowledgeStatus.NOT_MASTERED) == 2
