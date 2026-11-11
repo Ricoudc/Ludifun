@@ -793,9 +793,7 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         level_names = {"3": "3 — appliquer", "4": "4 — expliquer", "5": "5 — transférer"}
         for level, bucket in review_summary["by_level"].items():
             pertinent_rate = bucket["pertinent_rate"]
-            pertinent_percent = _fmt(
-                100 * pertinent_rate if pertinent_rate is not None else None
-            )
+            pertinent_percent = _fmt(100 * pertinent_rate if pertinent_rate is not None else None)
             text += (
                 f"| {level_names.get(level, level)} | {bucket['annotated']} | "
                 f"{bucket['pending']} | {bucket['pertinent']} | "
