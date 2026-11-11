@@ -184,7 +184,7 @@ def test_five_successful_mcq_sessions_are_not_mastery(
         masteries = {"k2": outcome.results[0].mastery}
 
     level = outcome.results[0].level
-    assert masteries["k2"].score == 100 and masteries["k2"].box == 5
+    assert masteries["k2"].score == 96 and masteries["k2"].box == 5  # le score tient compte de l'oubli entre deux séances
     assert level.level is MasteryLevel.LEARNING  # et non « maîtrisée »
     assert level.missing == {2}
     assert "retrouver seul" in level.explanation
