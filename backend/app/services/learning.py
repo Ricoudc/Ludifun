@@ -243,6 +243,7 @@ async def recent_answers(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status == "completed",
             db.AttemptEvidence.knowledge_id.in_(list(keys)),
         )
         .order_by(db.Attempt.created_at.desc())
