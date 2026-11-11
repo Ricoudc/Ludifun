@@ -39,9 +39,7 @@ async def test_abandoned_sessions_do_not_influence_adaptive_difficulty(
     family = await family_with_device(client)
     token = family["device"]
     lesson = await upload_lesson(client, token)
-    session = (
-        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
-    ).json()
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     # Une série de réponses fausses existe, mais la séance est ensuite abandonnée.
     await play(client, db, token, session["id"], session["items"], lambda key: key != "k1")
     revision = await db.get(RevisionSession, uuid.UUID(session["id"]))
