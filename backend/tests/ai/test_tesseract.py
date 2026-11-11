@@ -182,6 +182,16 @@ async def test_auto_sends_only_the_weak_pages_to_the_vision_model() -> None:
     assert "2 page(s) relue(s)" in result.output.warnings[0]
 
 
+async def test_auto_reports_an_incomplete_vision_reread() -> None:
+    vision = FakeReader("vision", [OcrPage(index=0, quality="good", text="cursive")])
+    result = await auto(FakeReader("tesseract", TESS), vision).extract(PAGES)
+
+    assert result.output.pages[1].quality == "good"
+    assert result.output.pages[2] == TESS[2]  # page non renvoyée : texte Tesseract conservé
+    assert "1/2 page(s) relue(s)" in result.output.warnings[0]
+    assert "1 page(s) sans réponse" in result.output.warnings[1]
+
+
 async def test_auto_keeps_tesseract_when_the_ai_cannot_help() -> None:
     good = [OcrPage(index=i, quality="good", text="ok") for i in range(3)]
     vision = FakeReader("vision")
