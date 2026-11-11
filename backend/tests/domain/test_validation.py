@@ -337,3 +337,48 @@ def test_elements_that_need_the_lesson_picture_are_rejected(
 def test_a_geometric_figure_is_not_a_picture() -> None:
     assert not needs_picture("Quelle figure a quatre côtés égaux ?")
     assert needs_picture("Regarde l'illustration.")
+
+
+def test_questions_with_same_stem_and_conflicting_answers_are_all_rejected(
+    history: ReferenceLesson,
+) -> None:
+    """Une même consigne ne peut pas avoir deux réponses : la donnée manque."""
+    item, raw = _material(history)
+    first = copy.deepcopy(raw["questions"][0])
+    second = copy.deepcopy(first)
+    first["stem"] = second["stem"] = "Quelle date marque le début de la période étudiée ?"
+    second["answer"] = "1792"
+    second["distractors"] = ["1492", "1914", "1848"]
+    raw["questions"] = [first, second]
+
+    result = validate_material(item, raw)
+
+    assert result.material.questions == []
+    assert len(result.rejected) == 2
+    assert all("plusieurs réponses" in rejection.reason for rejection in result.rejected)
+
+
+def test_duplicate_question_with_same_answer_keeps_only_one(history: ReferenceLesson) -> None:
+    """Une répétition exacte ne doit pas gonfler artificiellement le matériel."""
+    item, raw = _material(history)
+    raw["questions"].append(copy.deepcopy(raw["questions"][0]))
+
+    result = validate_material(item, raw)
+
+    assert len(result.material.questions) == len(raw["questions"]) - 1
+    assert [(r.element, r.reason) for r in result.rejected] == [("questions", "question en double")]
+
+
+def test_question_with_invented_passage_is_rejected(
+    history: ReferenceLesson,
+) -> None:
+    """Un passage à relire doit être extrait de la leçon, pas inventé par le modèle."""
+    item, raw = _material(history)
+    raw["questions"][0]["passage"] = "Napoléon devient empereur en 1804."
+
+    result = validate_material(item, raw, lesson_text=history.raw["ocr_text"])
+
+    assert all(
+        question.passage != "Napoléon devient empereur en 1804." for question in result.material.questions
+    )
+    assert any(rejection.element == "questions[0]" for rejection in result.rejected)
