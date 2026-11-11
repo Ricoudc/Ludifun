@@ -58,7 +58,8 @@ def to_evaluation(
         or len(feedback) > FEEDBACK_MAX_LENGTH
         or not math.isfinite(output.confidence)
         or not MIN_CONFIDENCE <= output.confidence <= 1.0
-        or not key_points
+        or not math.isfinite(output.score)
+        or not 0.0 <= output.score <= 1.0
     ):
         return None
     if unsafe_reason(feedback, context) is not None:
@@ -66,7 +67,7 @@ def to_evaluation(
     found = [p for p in key_points if p in output.key_points_found]
     # Le score annoncé par le modèle ne doit jamais contredire sa propre liste de points.
     # La liste est filtrée sur les points attendus, puis le score est recalculé localement.
-    score = len(found) / len(key_points)
+    score = len(found) / len(key_points) if key_points else output.score
     return OpenEvaluation(
         score=score,
         key_points_found=found,
@@ -124,6 +125,8 @@ class AnswerEvaluator:
             usage.output_tokens,
             usage.latency_ms,
             "ok" if evaluation else "invalid_output",
-            [] if evaluation else ["sortie écartée (retour vide ou trop long, ou confiance trop faible)"],
+            []
+            if evaluation
+            else ["sortie écartée (retour, score ou confiance invalide)"],
         )
         return EvaluationRun(evaluation, run)
