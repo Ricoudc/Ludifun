@@ -303,5 +303,8 @@ def test_question_with_invented_passage_is_rejected(
 
     result = validate_material(item, raw, lesson_text=history.raw["ocr_text"])
 
-    assert all(question.passage != "Napoléon devient empereur en 1804." for question in result.material.questions)
+    assert all(
+        question.passage != "Napoléon devient empereur en 1804."
+        for question in result.material.questions
+    )
     assert any(rejection.element == "questions[0]" for rejection in result.rejected)
