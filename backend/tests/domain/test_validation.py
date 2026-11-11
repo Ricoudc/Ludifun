@@ -294,7 +294,9 @@ def test_duplicate_question_with_same_answer_keeps_only_one(history: ReferenceLe
     assert [(r.element, r.reason) for r in result.rejected] == [("questions", "question en double")]
 
 
-def test_question_with_invented_passage_is_rejected(history: ReferenceLesson) -> None:
+def test_question_with_invented_passage_is_rejected(
+    history: ReferenceLesson,
+) -> None:
     """Un passage à relire doit être extrait de la leçon, pas inventé par le modèle."""
     item, raw = _material(history)
     raw["questions"][0]["passage"] = "Napoléon devient empereur en 1804."
