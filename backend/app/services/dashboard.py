@@ -423,6 +423,7 @@ async def error_summary(
             .join(db.Lesson, db.Lesson.id == db.KnowledgeItem.lesson_id)
             .where(
                 db.RevisionSession.child_id == child_id,
+                db.RevisionSession.status == "completed",
                 db.AttemptEvidence.error_type.is_not(None),
                 db.Attempt.created_at >= now - RECURRING_WINDOW,
             )
