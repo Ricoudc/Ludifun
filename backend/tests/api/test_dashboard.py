@@ -283,6 +283,7 @@ async def test_abandoned_sessions_do_not_count_in_dashboard_activity(
         )
     ).json()
     assert board["this_week"]["sessions"] == 0
+    assert board["this_week"]["sessions"] == 1
     assert board["this_week"]["minutes"] == 0
     assert board["activities_this_week"] == {}
     assert board["help_this_week"] == 0
