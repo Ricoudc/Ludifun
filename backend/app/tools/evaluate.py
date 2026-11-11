@@ -792,13 +792,15 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         )
         level_names = {"3": "3 — appliquer", "4": "4 — expliquer", "5": "5 — transférer"}
         for level, bucket in review_summary["by_level"].items():
+            pertinent_rate = bucket["pertinent_rate"]
+            pertinent_percent = _fmt(
+                100 * pertinent_rate if pertinent_rate is not None else None
+            )
             text += (
-                f"| {level_names.get(level, level)} | {bucket['annotated']} | {bucket['pending']} | "
-                f"{bucket['pertinent']} | {bucket['à corriger']} | {bucket['hors sujet']} | "
-                pertinent_rate = bucket['pertinent_rate']
-                pertinent_percent = _fmt(100 * pertinent_rate if pertinent_rate is not None else None)
-                text += f"| {level_names.get(level, level)} | {bucket['annotated']} | {bucket['pending']} | "
-                text += f"{bucket['pertinent']} | {bucket['à corriger']} | {bucket['hors sujet']} | {pertinent_percent} |\n"
+                f"| {level_names.get(level, level)} | {bucket['annotated']} | "
+                f"{bucket['pending']} | {bucket['pertinent']} | "
+                f"{bucket['à corriger']} | {bucket['hors sujet']} | "
+                f"{pertinent_percent} |\n"
             )
     (out / "report.md").write_text(text, encoding="utf-8")
     metrics_data = metrics_json(scores, configuration(provider, models), started)
