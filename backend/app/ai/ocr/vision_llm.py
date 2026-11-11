@@ -25,9 +25,7 @@ class VisionLLMOcr:
         # arbitrairement une des transcriptions, qui pourrait être attribuée à la mauvaise page.
         counts = Counter(p.index for p in result.output.pages if 0 <= p.index < len(pages))
         by_index = {
-            p.index: p
-            for p in result.output.pages
-            if 0 <= p.index < len(pages) and counts[p.index] == 1
+            p.index: p for p in result.output.pages if 0 <= p.index < len(pages) and counts[p.index] == 1
         }
         duplicates = sorted(index for index, count in counts.items() if count > 1)
         invalid = sum(1 for p in result.output.pages if not 0 <= p.index < len(pages))
@@ -38,8 +36,7 @@ class VisionLLMOcr:
         if duplicates:
             labels = ", ".join(str(index + 1) for index in duplicates)
             warnings.append(
-                f"Transcription ambiguë pour la/les page(s) {labels} : "
-                "plusieurs réponses ; pages à vérifier."
+                f"Transcription ambiguë pour la/les page(s) {labels} : plusieurs réponses ; pages à vérifier."
             )
         if invalid:
             warnings.append(f"{invalid} transcription(s) ignorée(s) : numéro de page hors limites.")
