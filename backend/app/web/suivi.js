@@ -95,7 +95,7 @@ function afficher(d) {
 
   remplir("stats", d.stats.map((s) =>
     ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.p95_s), duree(s.max_s), dollars(s.cost_usd)])),
-    "Aucun appel.", 6);
+    "Aucun appel.", 7);
 
   remplir("erreurs", d.errors.map((e) =>
     ligne([quand(e.at), e.lesson, e.stage, e.model, el("span", e.status, "bad"), e.message])), "Aucune erreur.", 6);
