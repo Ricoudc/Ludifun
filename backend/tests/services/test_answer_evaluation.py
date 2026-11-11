@@ -72,6 +72,36 @@ def test_evaluation_rejects_non_finite_or_negative_confidence(invalid_confidence
     assert to_evaluation(output, ["A", "B"]) is None
 
 
+def test_incomplete_evaluation_without_error_type_is_rejected() -> None:
+    output = EvaluationOutput(
+        score=0.5,
+        key_points_found=["A"],
+        missing=["B"],
+        error_type=None,
+        confidence=0.9,
+        feedback="Tu as trouvé une partie de la réponse.",
+    )
+
+    assert to_evaluation(output, ["A", "B"]) is None
+
+
+def test_complete_evaluation_without_error_type_is_accepted() -> None:
+    output = EvaluationOutput(
+        score=1.0,
+        key_points_found=["A", "B"],
+        missing=[],
+        error_type=None,
+        confidence=0.9,
+        feedback="Bravo, ta réponse est complète !",
+    )
+
+    evaluation = to_evaluation(output, ["A", "B"])
+
+    assert evaluation is not None
+    assert evaluation.score == 1.0
+    assert evaluation.error_type is None
+
+
 def test_evaluation_without_key_points_preserves_validated_score() -> None:
     output = EvaluationOutput(
         score=0.5,
