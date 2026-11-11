@@ -189,7 +189,13 @@ void main() {
     // Écran 1 : rien à réviser, aucune leçon.
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
     expect(find.text('🎉 Tout est à jour ! Photographie une nouvelle leçon.'), findsOneWidget);
-    expect(find.text('Photographie ta première leçon !'), findsOneWidget);
+    expect(find.text('Ton cahier commence ici'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        'Ton cahier commence ici. Tes leçons et tes progrès apparaîtront ici après ta première révision.',
+      ),
+      findsOneWidget,
+    );
     await shot(tester, 'e02_accueil_vide');
 
     // Écran 2 : deux pages de la galerie et une photo, puis la photo passe en premier.
@@ -420,6 +426,9 @@ void main() {
     expect(find.text('à revoir vendredi'), findsOneWidget);
     expect(find.text('maîtrisée ✓'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
+    expect(find.text('Prends ton cahier en photo pour apprendre.'), findsOneWidget);
+    expect(find.text('Avance pas à pas avec un coup de main.'), findsOneWidget);
+    expect(find.text('Retrouve tes leçons et tes découvertes.'), findsOneWidget);
 
     await shot(tester, 'e10_accueil_mission', height: 1300);
     // Une photo ratée se retire par un appui long ; une leçon analysée, seul le parent la supprime.
@@ -840,6 +849,7 @@ void main() {
       ..on('GET /v1/lessons/l1', (_) => (200, waiting));
     final container = await launch(tester, MemoryCredentialStore(child));
     expect(find.text('🔒 Un adulte la relit'), findsOneWidget);
+    await tester.ensureVisible(find.text('La Révolution française'));
     await tester.tap(find.text('La Révolution française'));
     await tester.pump();
     expect(find.text('Un adulte relit ta leçon avant que tu la révises. 🔒'), findsOneWidget);

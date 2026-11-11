@@ -169,9 +169,8 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
 
   String get _sentence => widget.payload['sentence'] as String;
 
-  List<String> get _chunks => [
-    for (final chunk in widget.payload['chunks'] as List<dynamic>? ?? const []) chunk as String,
-  ];
+  List<String> get _chunks =>
+      List<String>.from(widget.payload['chunks'] as List<dynamic>? ?? const []);
 
   @override
   void initState() {
@@ -216,10 +215,16 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
     widget.onSubmit({'text': text});
   }
 
+  int _countWords(String text) {
+    if (text.isEmpty) return 0;
+    return text.split(RegExp(r'\s+')).length;
+  }
+
   @override
   Widget build(BuildContext context) {
     final count = widget.payload['word_count'] as int?;
     final typed = _answer.text.trim();
+    final writtenWords = _countWords(typed);
     final idle = !_speaking && !_sent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -266,10 +271,44 @@ class _SentenceDictationViewState extends State<SentenceDictationView> {
           ),
         if (count != null) ...[
           const SizedBox(height: 12),
-          Text(
-            'La phrase a $count mots.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 17, color: LudiColors.primary),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.edit_note_rounded, color: LudiColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'La phrase a $count mots.',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      Text(
+                        '$writtenWords / $count',
+                        style: const TextStyle(
+                          color: LudiColors.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: (writtenWords / count).clamp(0.0, 1.0),
+                      minHeight: 7,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Mots écrits', style: TextStyle(fontSize: 12, color: Colors.black54)),
+                ],
+              ),
+            ),
           ),
         ],
         const SizedBox(height: 16),

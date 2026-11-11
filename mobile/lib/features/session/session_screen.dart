@@ -67,6 +67,51 @@ class SessionScreen extends ConsumerWidget {
     }
   }
 
+  Widget? _bottomBar(
+    BuildContext context,
+    WidgetRef ref,
+    SessionState state,
+    VoidCallback onContinue,
+  ) {
+    if (state.phase == Phase.report && state.report != null) {
+      return ReportActions(
+        report: state.report!,
+        onReviewErrors: () => _reviewErrors(context, ref),
+        onDone: () => _leave(context, ref, state),
+      );
+    }
+    if (state.phase == Phase.correction && state.correction != null) {
+      return SafeArea(
+        top: false,
+        child: Material(
+          elevation: 8,
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                FilledButton(onPressed: onContinue, child: const Text('Continuer')),
+                if (state.correction!.pauseMessage != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () {
+                      refreshHome(ref);
+                      context.go(Routes.childHome);
+                    },
+                    child: const Text('Faire une pause'),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Sons : la correction (juste, presque, pas tout à fait) et la fin de la séance.
@@ -143,13 +188,7 @@ class SessionScreen extends ConsumerWidget {
                 )
               : null,
         ),
-        bottomNavigationBar: state.phase == Phase.report && state.report != null
-            ? ReportActions(
-                report: state.report!,
-                onReviewErrors: () => _reviewErrors(context, ref),
-                onDone: () => _leave(context, ref, state),
-              )
-            : null,
+        bottomNavigationBar: _bottomBar(context, ref, state, controller.next),
         body: CenteredBody(
           top: _playing(state) || state.phase == Phase.report,
           children: [
@@ -198,9 +237,14 @@ class SessionScreen extends ConsumerWidget {
                     absorbing: state.phase == Phase.submitting,
                     child: KeyedSubtree(
                       key: ValueKey(item.id),
-                      child: ActivityInstruction(
-                        text: item.instruction,
-                        child: activityRegistry[item.type]!(item.payload, controller.submit),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ActivityInstruction(
+                            text: item.instruction,
+                            child: activityRegistry[item.type]!(item.payload, controller.submit),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -220,6 +264,7 @@ class SessionScreen extends ConsumerWidget {
                 streak: state.streak,
                 onStar: () => ref.read(soundsProvider).play(Sound.star),
                 onContinue: controller.next,
+                showContinueButton: false,
                 report: ReportQuestionButton(
                   key: ValueKey(item.id),
                   sessionId: sessionId,

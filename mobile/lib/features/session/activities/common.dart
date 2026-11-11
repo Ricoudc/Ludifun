@@ -193,50 +193,58 @@ class AnswerButton extends StatelessWidget {
   final bool selected;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    selected: selected,
-    child: Material(
-      color: selected ? color : color.withValues(alpha: 0.1),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: color, width: 2),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onPressed,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 64),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                if (leading != null) ...[
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: selected ? Colors.white : color,
-                    foregroundColor: selected ? color : Colors.white,
-                    child: Text(leading!, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  ),
-                  const SizedBox(width: 14),
-                ],
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w600,
-                      color: selected ? Colors.white : Colors.black87,
+  Widget build(BuildContext context) {
+    // Le jaune et les couleurs claires nécessitent un texte sombre pour rester lisibles.
+    final selectedForeground = color.computeLuminance() > 0.179 ? Colors.black87 : Colors.white;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? color : color.withValues(alpha: 0.1),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: color, width: 2),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 64),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  if (leading != null) ...[
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: selected ? selectedForeground : color,
+                      foregroundColor: selected ? color : Colors.white,
+                      child: Text(leading!, style: const TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(width: 14),
+                  ],
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w600,
+                        color: selected ? selectedForeground : Colors.black87,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                  if (selected) ...[
+                    const SizedBox(width: 8),
+                    Icon(Icons.check_circle, color: selectedForeground, size: 24),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// « 🎤 Dire ma réponse » (§5.78) : ce que l'enfant dit remplit la case, qu'il peut corriger

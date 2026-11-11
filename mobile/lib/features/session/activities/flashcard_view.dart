@@ -51,24 +51,35 @@ class _FlashcardViewState extends State<FlashcardView> {
           ],
         ),
         const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => setState(() => _flipped = true),
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            transitionBuilder: (child, animation) =>
-                ScaleTransition(scale: animation, child: child),
-            child: Card(
-              key: ValueKey(_flipped),
-              color: _flipped ? LudiColors.accent.withValues(alpha: 0.15) : Colors.white,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 200),
-                alignment: Alignment.center,
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  face,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w700),
+        Semantics(
+          key: const ValueKey('flashcard-face'),
+          button: !_flipped && !_sent,
+          label: face,
+          hint: _flipped
+              ? 'Carte retournée. Choisis si tu connaissais la réponse.'
+              : 'Touchez pour retourner la carte.',
+          onTap: !_flipped && !_sent ? () => setState(() => _flipped = true) : null,
+          child: ExcludeSemantics(
+            child: GestureDetector(
+              onTap: !_flipped && !_sent ? () => setState(() => _flipped = true) : null,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: Card(
+                  key: ValueKey(_flipped),
+                  color: _flipped ? LudiColors.accent.withValues(alpha: 0.15) : Colors.white,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 200),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      face,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -20,6 +20,7 @@ class CorrectionView extends StatelessWidget {
     this.stars,
     this.streak = 0,
     this.onStar,
+    this.showContinueButton = true,
     super.key,
   });
 
@@ -41,6 +42,9 @@ class CorrectionView extends StatelessWidget {
 
   /// Chaque étoile qui apparaît (petit son).
   final VoidCallback? onStar;
+
+  /// Le parent peut déplacer l'action dans une barre fixe au bas de l'écran.
+  final bool showContinueButton;
 
   @override
   Widget build(BuildContext context) {
@@ -75,19 +79,73 @@ class CorrectionView extends StatelessWidget {
         Cheer(
           happy: correction.result == AttemptResult.correct,
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: color, width: 2),
+              color: color.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: color.withValues(alpha: 0.55), width: 1.5),
             ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.headlineMedium
-                      ?.copyWith(color: color, fontWeight: FontWeight.w800),
+                Row(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        correction.result == AttemptResult.correct
+                            ? Icons.emoji_events_rounded
+                            : correction.result == AttemptResult.partial
+                            ? Icons.lightbulb_rounded
+                            : Icons.auto_awesome_rounded,
+                        color: color,
+                        size: 30,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(color: color, fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            correction.result == AttemptResult.correct
+                                ? 'Tu as trouvé la bonne réponse !'
+                                : correction.result == AttemptResult.partial
+                                ? 'Tu progresses, continue comme ça.'
+                                : 'Chaque essai t’aide à apprendre.',
+                            style: const TextStyle(fontSize: 15, height: 1.25),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${(correction.score.clamp(0.0, 1.0) * 100).round()}%',
+                      style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: correction.score.clamp(0.0, 1.0).toDouble(),
+                    minHeight: 9,
+                    backgroundColor: color.withValues(alpha: 0.14),
+                    color: color,
+                  ),
                 ),
                 if (showAnswer && openQuestion && correction.correctAnswer != null) ...[
                   const SizedBox(height: 12),
@@ -146,14 +204,49 @@ class CorrectionView extends StatelessWidget {
             ),
           ),
         ],
-        if (details.isNotEmpty) ...[const SizedBox(height: 16), ...details],
-        if (correction.result != AttemptResult.correct && correction.tip != null) ...[
-          const SizedBox(height: 16),
-          Text('💡 Astuce pour retenir : ${correction.tip}', style: const TextStyle(fontSize: 18)),
+        if (details.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Regardons ensemble',
+              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+            ),
+          ),
+          ...details,
         ],
-        if (correction.explanation != null) ...[
-          const SizedBox(height: 12),
-          Text(correction.explanation!, style: const TextStyle(fontSize: 17, height: 1.35)),
+        if ((correction.result != AttemptResult.correct && correction.tip != null) ||
+            correction.explanation != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            color: LudiColors.primary.withValues(alpha: 0.06),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '🧠 À retenir',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                  if (correction.result != AttemptResult.correct && correction.tip != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '💡 Astuce pour retenir : ${correction.tip}',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ],
+                  if (correction.explanation != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      correction.explanation!,
+                      style: const TextStyle(fontSize: 17, height: 1.35),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
         if (correction.pauseMessage case final message?) ...[
           const SizedBox(height: 20),
@@ -165,11 +258,13 @@ class CorrectionView extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: 28),
-        FilledButton(autofocus: true, onPressed: onContinue, child: const Text('Continuer')),
-        if (correction.pauseMessage != null && onPause != null) ...[
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
+        if (showContinueButton) ...[
+          const SizedBox(height: 28),
+          FilledButton(autofocus: true, onPressed: onContinue, child: const Text('Continuer')),
+          if (correction.pauseMessage != null && onPause != null) ...[
+            const SizedBox(height: 12),
+            OutlinedButton(onPressed: onPause, child: const Text('Faire une pause')),
+          ],
         ],
         if (report case final report?) ...[const SizedBox(height: 8), Center(child: report)],
       ],
