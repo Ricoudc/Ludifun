@@ -168,6 +168,7 @@ def _question_review_signature(review: dict[str, Any]) -> str:
             "notion",
             "notion_statement",
             "importance",
+            "review_dimensions",
             "level",
             "prompt",
             "key_points",
