@@ -178,9 +178,11 @@ async def build_dashboard(
         .where(db.RevisionSession.child_id == child_id, db.Attempt.created_at >= since)
     )
     for created_at, duration_ms, response, activity_type in attempts:
+        if response == {"skipped": True}:
+            continue
         week = week_start(created_at, tz)
         stats[week]._seconds += answer_seconds(duration_ms)
-        if week == current and response != {"skipped": True}:
+        if week == current:
             activities[activity_type] += 1
     closed = [stats[s].close() for s in starts]
 
@@ -370,12 +372,14 @@ async def recent_facts(
     since = now - RECENT
     days: set[date] = set()
     seconds = previous = 0.0
-    for created_at, duration_ms in await session.execute(
-        select(db.Attempt.created_at, db.Attempt.duration_ms)
+    for created_at, duration_ms, response in await session.execute(
+        select(db.Attempt.created_at, db.Attempt.duration_ms, db.Attempt.response)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(db.RevisionSession.child_id == child_id, db.Attempt.created_at >= since - RECENT)
     ):
+        if response == {"skipped": True}:
+            continue
         if created_at >= since:
             days.add(created_at.astimezone(tz).date())
             seconds += answer_seconds(duration_ms)
