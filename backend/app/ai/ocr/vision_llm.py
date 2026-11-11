@@ -37,7 +37,10 @@ class VisionLLMOcr:
         warnings = list(result.output.warnings)
         if duplicates:
             labels = ", ".join(str(index + 1) for index in duplicates)
-            warnings.append(f"Transcription ambiguë pour la/les page(s) {labels} : plusieurs réponses ; pages à vérifier.")
+            warnings.append(
+                f"Transcription ambiguë pour la/les page(s) {labels} : "
+                "plusieurs réponses ; pages à vérifier."
+            )
         if invalid:
             warnings.append(f"{invalid} transcription(s) ignorée(s) : numéro de page hors limites.")
         output = result.output.model_copy(update={"pages": ordered, "warnings": warnings})
