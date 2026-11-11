@@ -172,9 +172,7 @@ class OllamaProvider:
     async def can_read_images(self) -> bool:
         """Capacité vision du modèle OCR, mémorisée pour éviter une requête /api/show par page."""
         if self._vision_capability is None:
-            self._vision_capability = await reads_images(
-                self.base_url, self.model_for("ocr"), self._client
-            )
+            self._vision_capability = await reads_images(self.base_url, self.model_for("ocr"), self._client)
         return self._vision_capability
 
     async def structured[T: BaseModel](
