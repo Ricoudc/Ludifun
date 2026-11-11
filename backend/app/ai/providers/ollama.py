@@ -164,9 +164,16 @@ class OllamaProvider:
         self._client = client or httpx.AsyncClient(timeout=TIMEOUT_S)
         self.last_speed: float | None = None  # jetons écrits par seconde au dernier appel
         self._cannot_think_off: set[str] = set()  # modèles qui refusent le réglage `think`
+        self._vision_capability: bool | None = None
 
     def model_for(self, stage: Stage) -> str:
         return self.models[stage]
+
+    async def can_read_images(self) -> bool:
+        """Capacité vision du modèle OCR, mémorisée pour éviter une requête /api/show par page."""
+        if self._vision_capability is None:
+            self._vision_capability = await reads_images(self.base_url, self.model_for("ocr"), self._client)
+        return self._vision_capability
 
     async def structured[T: BaseModel](
         self, *, prompt: Prompt, input: str, schema: type[T], images: tuple[PageImage, ...] = ()

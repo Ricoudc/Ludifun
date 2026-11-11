@@ -39,7 +39,7 @@ class _TrueFalseViewState extends State<TrueFalseView> {
           Expanded(
             child: AnswerButton(
               label: '✅ Vrai',
-              color: LudiColors.mastered,
+              color: LudiColors.primary,
               selected: _value == true,
               onPressed: () => _answer(true),
             ),
@@ -48,7 +48,7 @@ class _TrueFalseViewState extends State<TrueFalseView> {
           Expanded(
             child: AnswerButton(
               label: '❌ Faux',
-              color: LudiColors.notMastered,
+              color: LudiColors.accent,
               selected: _value == false,
               onPressed: () => _answer(false),
             ),

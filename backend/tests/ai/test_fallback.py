@@ -1,10 +1,12 @@
 """Repli sur une autre IA (CDC §147)."""
 
+import httpx
 import pytest
 from pydantic import BaseModel
 
 from app.ai.fallback import FallbackLLM
 from app.ai.ports import AIError, AIInvalidOutput, LLMResult, PageImage, Prompt, Stage, Usage
+from app.ai.providers.ollama import OllamaProvider
 
 PROMPT = Prompt("analysis", "v9", "Analyse.")
 
@@ -38,6 +40,34 @@ async def test_the_next_ai_answers_when_the_first_is_down() -> None:
     result = await llm.structured(prompt=PROMPT, input="x", schema=Out)
     assert result.usage.provider == "gemini"
     assert result.usage.fallback_from == "ollama : Ollama n'a pas répondu en 15 min"
+
+
+async def test_text_only_ollama_is_skipped_and_vision_capability_is_cached() -> None:
+    probes = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal probes
+        assert request.url.path == "/api/show"
+        probes += 1
+        return httpx.Response(200, json={"capabilities": ["completion"]})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    local = OllamaProvider("http://pc:11434", {"ocr": "mistral:7b"}, client=client)
+    cloud = Stub("claude")
+    chain = FallbackLLM([local, cloud])
+    for _ in range(2):
+        result = await chain.structured(
+            prompt=PROMPT,
+            input="Transcris cette photo",
+            schema=Out,
+            images=(PageImage(b"photo", "image/png"),),
+        )
+        assert result.usage.provider == "claude"
+        assert "ne sait pas lire les images" in (result.usage.fallback_from or "")
+    await client.aclose()
+
+    assert probes == 1
+    assert cloud.calls == 2
 
 
 async def test_no_fallback_for_an_answer_out_of_format() -> None:

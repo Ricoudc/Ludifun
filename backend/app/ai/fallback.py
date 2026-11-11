@@ -10,6 +10,7 @@ from dataclasses import replace
 from pydantic import BaseModel
 
 from app.ai.ports import AIError, AIInvalidOutput, LLMProvider, LLMResult, PageImage, Prompt, Stage
+from app.ai.providers.ollama import OllamaProvider
 
 
 class FallbackLLM:
@@ -28,6 +29,11 @@ class FallbackLLM:
         failures: list[str] = []
         last: AIError | None = None
         for llm in self.chain:
+            if images and isinstance(llm, OllamaProvider) and not await llm.can_read_images():
+                reason = f"{llm.name} : le modèle {llm.model_for('ocr')} ne sait pas lire les images"
+                failures.append(reason)
+                last = AIError(reason)
+                continue
             try:
                 result = await llm.structured(prompt=prompt, input=input, schema=schema, images=images)
             except AIInvalidOutput:

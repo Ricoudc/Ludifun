@@ -213,15 +213,22 @@ class AutoOcr:
         except AIError:
             return _noted(first, "Relecture par l'IA impossible : la lecture de Tesseract est gardée.")
         merged = list(first.output.pages)
-        for k, index in enumerate(weak):
-            if k < len(second.output.pages):
-                again = second.output.pages[k].model_copy(update={"index": index})
-                if _RANK[again.quality] >= _RANK[merged[index].quality]:
-                    merged[index] = again
+        reread = min(len(second.output.pages), len(weak))
+        for k, index in enumerate(weak[:reread]):
+            again = second.output.pages[k].model_copy(update={"index": index})
+            if _RANK[again.quality] >= _RANK[merged[index].quality]:
+                merged[index] = again
+        warnings = [f"{reread}/{len(weak)} page(s) relue(s) par l'IA après Tesseract."]
+        if reread < len(weak):
+            warnings.append(
+                f"Relecture incomplète : {len(weak) - reread} page(s) sans réponse de l'IA ; "
+                "la lecture Tesseract est conservée."
+            )
+        warnings.extend(second.output.warnings)
         output = OcrResult(
             pages=merged,
             language=first.output.language,
-            warnings=[f"{len(weak)} page(s) relue(s) par l'IA après Tesseract.", *second.output.warnings],
+            warnings=warnings,
         )
         usage = replace(second.usage, latency_ms=first.usage.latency_ms + second.usage.latency_ms)
         return LLMResult(output, usage)

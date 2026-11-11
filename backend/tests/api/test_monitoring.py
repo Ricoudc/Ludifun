@@ -29,11 +29,19 @@ async def test_page_and_live_calls(client: AsyncClient, db: AsyncSession) -> Non
     assert recent["lesson"] == lesson["id"][:8] and recent["state"] == "ready" and recent["status"] == "prête"
     assert [s["status"] for s in recent["steps"]] and all(s["status"] == "ok" for s in recent["steps"])
     assert data["stats"] and data["errors"] == []
+    assert all(
+        {"median_s", "p95_s", "max_s", "input_tokens", "output_tokens", "output_tokens_per_s"} <= set(stat)
+        for stat in data["stats"]
+    )
+    assert all(stat["input_tokens"] >= 0 and stat["output_tokens"] >= 0 for stat in data["stats"])
+    output_rates = [stat["output_tokens_per_s"] for stat in data["stats"]]
+    assert all(rate is None or rate >= 0 for rate in output_rates)
     # Coût et qualité des exercices (§5.80) : l'IA factice ne coûte rien ; des chiffres seulement.
     assert recent["cost_usd"] == 0 and data["cost"] == {"week_usd": 0, "lessons": 1, "per_lesson_usd": 0}
     exercises = recent["exercises"]
     assert exercises["notions"] == 8 and exercises["questions"] > 0 and exercises["reports"] == 0
     assert exercises["rejected"] >= 0 and all(s["cost_usd"] == 0 for s in data["stats"])
+    assert all(s["fallback_calls"] == 0 and s["fallback_rate_pct"] == 0 for s in data["stats"])
 
     # Une analyse en cours : l'appel à l'IA et sa durée apparaissent.
     lesson_id = uuid.UUID(lesson["id"])
@@ -74,6 +82,15 @@ def test_error_messages_drop_lesson_content() -> None:
     assert len(clean_message("x" * 500)) == 200
 
 
+def test_p95_uses_nearest_rank_and_handles_small_samples() -> None:
+    from app.services.monitoring import _p95_ms
+
+    assert _p95_ms([]) == 0
+    assert _p95_ms([120]) == 120
+    assert _p95_ms(list(range(1, 21))) == 19
+    assert _p95_ms(list(range(1, 101))) == 95
+
+
 def test_cost_uses_public_prices_and_unknown_models_say_so() -> None:
     from app.db.models import AiRun
     from app.services.monitoring import _cost, _rejected
@@ -95,3 +112,53 @@ def test_cost_uses_public_prices_and_unknown_models_say_so() -> None:
     assert _cost([run("claude-sonnet-5"), run("modele-inconnu")]) is None
     notes = ["k1.questions[0] : l'énoncé contient la réponse", "taux de rejet du matériel élevé : 40%"]
     assert _rejected([run("fake", warnings=notes), run("fake", stage="analysis", warnings=notes)]) == 1
+
+
+def test_fallback_monitoring_counts_only_recorded_fallbacks() -> None:
+    from app.db.models import AiRun
+    from app.services.monitoring import _fallback_calls
+
+    def run(warnings: list[str] | None = None) -> AiRun:
+        return AiRun(
+            stage="analysis",
+            provider="ollama",
+            model="ollama/qwen2.5vl:7b",
+            prompt_version="v1",
+            input_tokens=100,
+            output_tokens=50,
+            latency_ms=1000,
+            status="ok",
+            warnings=warnings or [],
+        )
+
+    assert _fallback_calls([]) == 0
+    assert _fallback_calls([run(), run(["notion écartée : source absente"])]) == 0
+    assert _fallback_calls([run(["repli : ollama : indisponible"]), run()]) == 1
+    assert _fallback_calls([run(["repli : ollama : indisponible"]), run(["repli : quota dépassé"])]) == 2
+
+
+def test_monitoring_groups_same_model_by_provider_and_stage() -> None:
+    from app.db.models import AiRun
+    from app.services.monitoring import _group_runs
+
+    def run(provider: str, stage: str = "analysis") -> AiRun:
+        return AiRun(
+            stage=stage,
+            provider=provider,
+            model="shared-model",
+            prompt_version="v1",
+            input_tokens=10,
+            output_tokens=5,
+            latency_ms=100,
+            status="ok",
+            warnings=[],
+        )
+
+    grouped = _group_runs([run("ollama"), run("gemini"), run("ollama", "material")])
+    assert set(grouped) == {
+        ("ollama", "shared-model", "analysis"),
+        ("gemini", "shared-model", "analysis"),
+        ("ollama", "shared-model", "material"),
+    }
+    assert all(len(group) == 1 for group in grouped.values())
+    assert all(run.provider == key[0] for key, group in grouped.items() for run in group)

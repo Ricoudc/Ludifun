@@ -94,8 +94,11 @@ function afficher(d) {
   }
 
   remplir("stats", d.stats.map((s) =>
-    ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.max_s), dollars(s.cost_usd)])),
-    "Aucun appel.", 6);
+    ligne([s.provider, s.model, s.stage, s.ok + " / " + s.calls, s.fallback_calls + " / " + s.calls,
+      s.fallback_rate_pct.toFixed(1) + " %", duree(s.median_s), duree(s.p95_s), duree(s.max_s),
+      s.input_tokens, s.output_tokens, s.output_tokens_per_s === null ? "—" : s.output_tokens_per_s.toFixed(1),
+      dollars(s.cost_usd)])),
+    "Aucun appel.", 13);
 
   remplir("erreurs", d.errors.map((e) =>
     ligne([quand(e.at), e.lesson, e.stage, e.model, el("span", e.status, "bad"), e.message])), "Aucune erreur.", 6);

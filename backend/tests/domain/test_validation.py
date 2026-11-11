@@ -24,7 +24,12 @@ def test_reference_lessons_are_fully_valid(lesson: ReferenceLesson) -> None:
     assert validation.analysis.warnings == []
     assert len(validation.analysis.knowledge) == len(lesson.raw["analysis"]["knowledge"])
     for item in validation.analysis.knowledge:
-        material = validate_material(item, lesson.raw["material"][item.id])
+        material = validate_material(
+            item,
+            lesson.raw["material"][item.id],
+            lesson_text=lesson.raw["ocr_text"],
+            subject=lesson.analysis.lesson.subject if lesson.analysis.lesson is not None else None,
+        )
         assert material.rejected == [], (item.id, material.rejected)
         assert material.rejection_rate == 0
 
@@ -221,6 +226,76 @@ def test_missing_explanation_falls_back_to_statement(history: ReferenceLesson) -
     assert [r.element for r in result.rejected] == ["explanation"]
 
 
+def test_open_question_keeps_grounded_key_points_covered_by_model_answer(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point],
+            "model_answer": f"Il faut retenir {point}.",
+        }
+    ]
+
+    result = validate_material(item, raw)
+    assert result.material.open_questions[0].key_points == [point]
+    assert not any(r.element == "open_questions[0]" for r in result.rejected)
+
+
+def test_open_question_is_rejected_when_model_answer_omits_a_key_point(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point],
+            "model_answer": "C'est une notion importante.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert "ne couvre pas le point clé" in reasons["open_questions[0]"]
+
+
+def test_open_question_is_rejected_when_a_key_point_is_not_in_the_lesson(
+    history: ReferenceLesson,
+) -> None:
+    item, raw = _material(history)
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": "Explique cette notion.",
+            "key_points": ["une information totalement inventée"],
+            "model_answer": "Cette information totalement inventée est importante.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert reasons["open_questions[0]"] == "un point clé n'est pas étayé par la leçon"
+
+
+def test_open_question_with_duplicate_key_points_is_rejected(history: ReferenceLesson) -> None:
+    item, raw = _material(history)
+    point = item.label
+    raw["open_questions"] = [
+        {
+            "level": 4,
+            "prompt": f"Explique ce qu'il faut retenir sur {point}.",
+            "key_points": [point, point],
+            "model_answer": f"Il faut retenir {point}.",
+        }
+    ]
+
+    reasons = _reasons(item, raw)
+    assert reasons["open_questions[0]"] == "les points clés sont en double"
+
+
 def test_rejection_rate(history: ReferenceLesson) -> None:
     item, raw = _material(history)
     raw["tip"] = "x" * 200
@@ -262,3 +337,48 @@ def test_elements_that_need_the_lesson_picture_are_rejected(
 def test_a_geometric_figure_is_not_a_picture() -> None:
     assert not needs_picture("Quelle figure a quatre côtés égaux ?")
     assert needs_picture("Regarde l'illustration.")
+
+
+def test_questions_with_same_stem_and_conflicting_answers_are_all_rejected(
+    history: ReferenceLesson,
+) -> None:
+    """Une même consigne ne peut pas avoir deux réponses : la donnée manque."""
+    item, raw = _material(history)
+    first = copy.deepcopy(raw["questions"][0])
+    second = copy.deepcopy(first)
+    first["stem"] = second["stem"] = "Quelle date marque le début de la période étudiée ?"
+    second["answer"] = "1792"
+    second["distractors"] = ["1492", "1914", "1848"]
+    raw["questions"] = [first, second]
+
+    result = validate_material(item, raw)
+
+    assert result.material.questions == []
+    assert len(result.rejected) == 2
+    assert all("plusieurs réponses" in rejection.reason for rejection in result.rejected)
+
+
+def test_duplicate_question_with_same_answer_keeps_only_one(history: ReferenceLesson) -> None:
+    """Une répétition exacte ne doit pas gonfler artificiellement le matériel."""
+    item, raw = _material(history)
+    raw["questions"].append(copy.deepcopy(raw["questions"][0]))
+
+    result = validate_material(item, raw)
+
+    assert len(result.material.questions) == len(raw["questions"]) - 1
+    assert [(r.element, r.reason) for r in result.rejected] == [("questions", "question en double")]
+
+
+def test_question_with_invented_passage_is_rejected(
+    history: ReferenceLesson,
+) -> None:
+    """Un passage à relire doit être extrait de la leçon, pas inventé par le modèle."""
+    item, raw = _material(history)
+    raw["questions"][0]["passage"] = "Napoléon devient empereur en 1804."
+
+    result = validate_material(item, raw, lesson_text=history.raw["ocr_text"])
+
+    assert all(
+        question.passage != "Napoléon devient empereur en 1804." for question in result.material.questions
+    )
+    assert any(rejection.element == "questions[0]" for rejection in result.rejected)

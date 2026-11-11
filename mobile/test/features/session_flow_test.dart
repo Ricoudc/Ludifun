@@ -83,6 +83,7 @@ void main() {
 
     // Écran 6 : correction bienveillante, avec l'astuce.
     expect(find.text('❌ Pas tout à fait !'), findsOneWidget);
+    expect(find.text('🧠 À retenir'), findsOneWidget);
     expect(find.textContaining('La bonne réponse est'), findsOneWidget);
     expect(
       find.text('💡 Astuce pour retenir : 1789 = début de la Révolution française.'),
@@ -109,6 +110,7 @@ void main() {
     // Écran 7 : bilan.
     expect(backend.completed, 1);
     expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Ton résultat'), findsOneWidget);
     expect(find.text('7,5 / 10'), findsOneWidget);
     expect(find.text('✅ 2 notions maîtrisées'), findsOneWidget);
     expect(find.text('🟠 1 notion à revoir'), findsOneWidget);
@@ -279,6 +281,72 @@ void main() {
     await open(tester, 's1');
     expect(backend.items.first.answer, {'skipped': true});
     expect(find.text('Question 2 / 2'), findsOneWidget);
+  });
+
+  testWidgets('la correction garde « Continuer » visible avec une longue explication', (
+    tester,
+  ) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    final attempt = server.handlers['POST /v1/sessions/s1/attempts']!;
+    server.on('POST /v1/sessions/s1/attempts', (request) async {
+      final (status, body) = await attempt(request);
+      return (
+        status,
+        {
+          ...body! as Map<String, Object?>,
+          'explanation': List.filled(
+            24,
+            'Une explication détaillée aide à comprendre la règle et à retenir la bonne méthode.',
+          ).join(' '),
+        },
+      );
+    });
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1492');
+    expect(find.textContaining('Une explication détaillée'), findsOneWidget);
+    final continueButton = find.widgetWithText(FilledButton, 'Continuer');
+    expect(continueButton, findsOneWidget);
+    final buttonRect = tester.getRect(continueButton);
+    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(buttonRect.bottom, lessThanOrEqualTo(screenHeight));
+
+    await tapAndSettle(tester, 'Continuer');
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+  });
+
+  testWidgets('le bilan garde ses actions visibles et « Terminer » revient à l’accueil', (
+    tester,
+  ) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Revoir mes erreurs'), findsOneWidget);
+    expect(find.text('Terminer'), findsOneWidget);
+
+    await tapAndSettle(tester, 'Terminer');
+    expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
+    expect(find.text('🎉 Révision terminée !'), findsNothing);
+  });
+
+  testWidgets('le bilan masque la reprise quand aucune erreur n’est disponible', (tester) async {
+    FakeSessionBackend(server, 's1', [mcq('i1')]);
+    server.on(
+      'POST /v1/sessions/s1/complete',
+      (_) => (200, {...FakeSessionBackend.report, 'can_review_errors': false}),
+    );
+    await open(tester, 's1');
+
+    await tapAndSettle(tester, '1789');
+    await tapAndSettle(tester, 'Continuer');
+
+    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Revoir mes erreurs'), findsNothing);
+    expect(find.text('Terminer'), findsOneWidget);
   });
 
   testWidgets('« Revoir mes erreurs » sans erreur à revoir', (tester) async {

@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 /// Couleurs de Ludifun, et les trois couleurs de maîtrise communes au bilan de
 /// l'enfant et au tableau de bord du parent (§9.3).
 abstract final class LudiColors {
-  static const primary = Color(0xFF5B4FE0); // violet
-  static const accent = Color(0xFFFF9F1C); // orange
-  static const background = Color(0xFFF7F5FF);
-  static const mastered = Color(0xFF2EB872);
-  static const toReview = Color(0xFFFF9F1C);
-  static const notMastered = Color(0xFFE5484D);
+  static const primary = Color(0xFF356FC8);
+  static const accent = Color(0xFFFFC857);
+  static const background = Color(0xFFF6F8FC);
+  static const mastered = Color(0xFF269B78);
+  static const toReview = Color(0xFFE5A12C);
+  static const notMastered = Color(0xFFD95757);
 }
 
 /// Thème unique : gros textes et grosses cibles tactiles pour les enfants dès le CP.

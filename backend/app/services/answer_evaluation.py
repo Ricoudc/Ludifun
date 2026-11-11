@@ -8,6 +8,7 @@ ses mots clés (`OpenQuestionActivity.grade`) : l'enfant n'est jamais bloqué.
 
 import asyncio
 import logging
+import math
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -52,13 +53,28 @@ def to_evaluation(
     """Garde-fous sur la sortie : points clés connus seulement, score borné, retour court, rien
     d'inadapté à un enfant qui ne viendrait pas de la question ou de sa réponse (§141)."""
     feedback = output.feedback.strip()
-    if not feedback or len(feedback) > FEEDBACK_MAX_LENGTH or output.confidence < MIN_CONFIDENCE:
+    if (
+        not feedback
+        or len(feedback) > FEEDBACK_MAX_LENGTH
+        or not math.isfinite(output.confidence)
+        or not MIN_CONFIDENCE <= output.confidence <= 1.0
+        or not math.isfinite(output.score)
+        or not 0.0 <= output.score <= 1.0
+    ):
         return None
     if unsafe_reason(feedback, context) is not None:
         return None
     found = [p for p in key_points if p in output.key_points_found]
+    # Le score annoncé par le modèle ne doit jamais contredire sa propre liste de points.
+    # La liste est filtrée sur les points attendus, puis le score est recalculé localement.
+    score = len(found) / len(key_points) if key_points else output.score
+    # Une réponse incomplète sans type d'erreur ne doit pas être inventée comme « knowledge ».
+    # Rejeter cette correction déclenche le barème local, qui distingue oubli, imprécision et
+    # méconnaissance à partir de la réponse ; l'enfant n'est jamais bloqué.
+    if key_points and score < 1.0 and output.error_type is None:
+        return None
     return OpenEvaluation(
-        score=min(1.0, max(0.0, output.score)),
+        score=score,
         key_points_found=found,
         error_type=output.error_type,
         feedback=feedback,
@@ -114,6 +130,6 @@ class AnswerEvaluator:
             usage.output_tokens,
             usage.latency_ms,
             "ok" if evaluation else "invalid_output",
-            [] if evaluation else ["sortie écartée (retour vide ou trop long, ou confiance trop faible)"],
+            [] if evaluation else ["sortie écartée (retour, score ou confiance invalide)"],
         )
         return EvaluationRun(evaluation, run)

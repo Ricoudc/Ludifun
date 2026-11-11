@@ -175,9 +175,15 @@ async def build_dashboard(
         )
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
-        .where(db.RevisionSession.child_id == child_id, db.Attempt.created_at >= since)
+        .where(
+            db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status != "abandoned",
+            db.Attempt.created_at >= since,
+        )
     )
     for created_at, duration_ms, response, activity_type in attempts:
+        if response == {"skipped": True}:
+            continue
         week = week_start(created_at, tz)
         stats[week]._seconds += answer_seconds(duration_ms)
         if week == current and response != {"skipped": True}:
@@ -235,6 +241,7 @@ async def build_dashboard(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status != "abandoned",
             db.HelpRequest.requested_at >= local_midnight(current, tz),
         )
     )
@@ -370,12 +377,18 @@ async def recent_facts(
     since = now - RECENT
     days: set[date] = set()
     seconds = previous = 0.0
-    for created_at, duration_ms in await session.execute(
-        select(db.Attempt.created_at, db.Attempt.duration_ms)
+    for created_at, duration_ms, response in await session.execute(
+        select(db.Attempt.created_at, db.Attempt.duration_ms, db.Attempt.response)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
-        .where(db.RevisionSession.child_id == child_id, db.Attempt.created_at >= since - RECENT)
+        .where(
+            db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status != "abandoned",
+            db.Attempt.created_at >= since - RECENT,
+        )
     ):
+        if response == {"skipped": True}:
+            continue
         if created_at >= since:
             days.add(created_at.astimezone(tz).date())
             seconds += answer_seconds(duration_ms)
@@ -423,6 +436,7 @@ async def error_summary(
             .join(db.Lesson, db.Lesson.id == db.KnowledgeItem.lesson_id)
             .where(
                 db.RevisionSession.child_id == child_id,
+                db.RevisionSession.status == "completed",
                 db.AttemptEvidence.error_type.is_not(None),
                 db.Attempt.created_at >= now - RECURRING_WINDOW,
             )

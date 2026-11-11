@@ -60,6 +60,37 @@ class _OrderViewState extends State<OrderView> {
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         const SizedBox(height: 16),
+        if (_items.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.format_list_numbered_rounded, color: LudiColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${_order.length} / ${_items.length} étapes placées',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: (_order.length / _items.length).clamp(0.0, 1.0),
+                      minHeight: 7,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         for (final (index, id) in _order.indexed)
           _Placed(
             number: index + 1,

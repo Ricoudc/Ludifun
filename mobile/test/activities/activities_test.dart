@@ -82,6 +82,108 @@ void main() {
     await shot(tester, 'a_$type');
   }
 
+  testWidgets('classement : la progression suit les étiquettes rangées', (tester) async {
+    await show(tester, 'CLASSIFY', {
+      'prompt': 'Range les mots dans les bonnes cases.',
+      'categories': [
+        {'id': 'noun', 'name': 'Noms'},
+        {'id': 'verb', 'name': 'Verbes'},
+      ],
+      'items': [
+        {'id': 'cat', 'text': 'chat'},
+        {'id': 'run', 'text': 'courir'},
+      ],
+    });
+    expect(find.text('0 / 2 étiquettes rangées'), findsOneWidget);
+    final chatChip = find.ancestor(of: find.text('chat'), matching: find.byType(ChoiceChip));
+    await tester.ensureVisible(chatChip);
+    await tester.tap(chatChip);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(chatChip).selected, isTrue);
+    final nounCategory = find.byKey(const ValueKey('classify-category-noun'));
+    await tester.ensureVisible(nounCategory);
+    await tester.tap(nounCategory);
+    await tester.pumpAndSettle();
+    expect(find.text('1 / 2 étiquettes rangées'), findsOneWidget);
+    final runChip = find.ancestor(of: find.text('courir'), matching: find.byType(ChoiceChip));
+    await tester.ensureVisible(runChip);
+    await tester.tap(runChip);
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(runChip).selected, isTrue);
+    final verbCategory = find.byKey(const ValueKey('classify-category-verb'));
+    await tester.ensureVisible(verbCategory);
+    await tester.tap(verbCategory);
+    await tester.pumpAndSettle();
+    expect(find.text('2 / 2 étiquettes rangées'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'assignments': [
+          ['cat', 'noun'],
+          ['run', 'verb'],
+        ],
+      },
+    ]);
+  });
+
+  testWidgets('ordre : progression mise à jour et réversible avant validation', (tester) async {
+    await show(tester, 'ORDER', {
+      'prompt': 'Remets les étapes dans l’ordre.',
+      'items': [
+        {'id': 'a', 'text': 'Étape A'},
+        {'id': 'b', 'text': 'Étape B'},
+      ],
+    });
+    expect(find.text('0 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Étape A'));
+    await tester.pump();
+    expect(find.text('1 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('1 : Étape A. Toucher pour retirer.'));
+    await tester.pump();
+    expect(find.text('0 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Étape B'));
+    await tester.pump();
+    await tester.tap(find.text('Étape A'));
+    await tester.pump();
+    expect(find.text('2 / 2 étapes placées'), findsOneWidget);
+    await tester.tap(find.text('Valider'));
+    expect(sent, [
+      {
+        'order': ['b', 'a'],
+      },
+    ]);
+  });
+  testWidgets('memory : la progression suit les paires trouvées', (tester) async {
+    await show(tester, 'MEMORY', {
+      'prompt': 'Retrouve les paires.',
+      'cards': [
+        {'id': 'a', 'text': 'Chat', 'pair': 'animal'},
+        {'id': 'b', 'text': 'Chien', 'pair': 'animal'},
+        {'id': 'c', 'text': 'Rouge', 'pair': 'couleur'},
+        {'id': 'd', 'text': 'Bleu', 'pair': 'couleur'},
+      ],
+    });
+    expect(find.text('0 / 2 paires trouvées'), findsOneWidget);
+    expect(find.text('0 coups'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('memory-card-a')));
+    await tester.tap(find.byKey(const ValueKey('memory-card-b')));
+    await tester.pump();
+    expect(find.text('1 / 2 paires trouvées'), findsOneWidget);
+    expect(find.text('1 coup'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('memory-card-c')));
+    await tester.tap(find.byKey(const ValueKey('memory-card-d')));
+    await tester.pump();
+    expect(find.text('2 / 2 paires trouvées'), findsOneWidget);
+    expect(sent, [
+      {
+        'moves': [
+          ['a', 'b'],
+          ['c', 'd'],
+        ],
+      },
+    ]);
+  });
+
   testWidgets('QCM tiré d\'un site de confiance : la source est affichée', (tester) async {
     await show(tester, 'MCQ', {
       'prompt': 'Quel animal vertébré vit dans la mer ?',
@@ -109,6 +211,8 @@ void main() {
       ],
     });
     expect(find.text('En quelle année commence la Révolution ?'), findsOneWidget);
+    expect(find.text('Choisis ta réponse'), findsOneWidget);
+    expect(find.byIcon(Icons.touch_app_rounded), findsOneWidget);
     await tester.tap(find.text('1789'));
     await tester.tap(find.text('1492')); // trop tard
     expect(sent, [
@@ -919,9 +1023,17 @@ void main() {
     ]);
   });
 
-  testWidgets('vrai ou faux', (tester) async {
+  testWidgets('vrai ou faux : couleurs neutres, choix unique et sélection visible', (tester) async {
     await show(tester, 'TRUE_FALSE', {'statement': 'La Bastille est prise en 1789.'});
+
+    final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
+    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
+    expect(find.byIcon(Icons.check_circle), findsNothing);
+
     await tester.tap(find.text('❌ Faux'));
+    await tester.pump();
+    expect(find.byIcon(Icons.check_circle), findsOneWidget);
+    await tester.tap(find.text('✅ Vrai')); // le deuxième choix est désormais verrouillé
     expect(sent, [
       {'value': false},
     ]);
@@ -1122,6 +1234,10 @@ void main() {
     expect(speaker.said, [sentence, 'Le docteur', 'travaille', 'à l\'hôpital.', sentence]);
     expect(find.text(sentence), findsNothing);
     expect(find.text('La phrase a 6 mots.'), findsOneWidget);
+    expect(find.text('0 / 6'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Le docteur travaille');
+    await tester.pump();
+    expect(find.text('3 / 6'), findsOneWidget);
     await tester.tap(find.text('Morceau par morceau'));
     await tester.pump();
     expect(speaker.said, hasLength(8));
@@ -1155,15 +1271,27 @@ void main() {
   });
 
   testWidgets('carte mémoire : retourner, puis dire si on savait', (tester) async {
+    final semantics = tester.ensureSemantics();
     await show(tester, 'FLASHCARD', {'front': '1789', 'back': 'Début de la Révolution'});
     expect(find.text('Je savais 👍'), findsNothing);
-    await tester.tap(find.text('Retourner la carte'));
+
+    final face = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
+    expect(face.label, '1789');
+    expect(face.hint, 'Touchez pour retourner la carte.');
+
+    await tester.tap(find.byKey(const ValueKey('flashcard-face')));
     await tester.pumpAndSettle();
     expect(find.text('Début de la Révolution'), findsOneWidget);
+
+    final back = tester.getSemantics(find.byKey(const ValueKey('flashcard-face')));
+    expect(back.label, 'Début de la Révolution');
+    expect(back.hint, 'Carte retournée. Choisis si tu connaissais la réponse.');
+
     await tester.tap(find.text('Je ne savais pas'));
     expect(sent, [
       {'self_assessment': 'didnt_know'},
     ]);
+    semantics.dispose();
   });
 
   testWidgets('association : relier, détacher, valider quand tout est relié', (tester) async {
@@ -1178,7 +1306,12 @@ void main() {
       ],
     });
     expect(find.text('Encore 2 à relier'), findsOneWidget);
+    expect(find.text('0 / 2 associations réalisées'), findsOneWidget);
+    expect(find.text('À relier'), findsOneWidget);
+    expect(find.text('Réponses'), findsOneWidget);
     await tester.tap(find.text('1789'));
+    await tester.pump();
+    expect(find.text('Choisis maintenant la réponse à droite.'), findsOneWidget);
     await tester.pump();
     await tester.tap(find.text('Roi de France')); // erreur…
     await tester.pump();
@@ -1193,6 +1326,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Roi de France'));
     await tester.pump();
+    expect(find.text('2 / 2 associations réalisées'), findsOneWidget);
     await tester.tap(find.text('Valider'));
     expect(sent, [
       {
@@ -1213,10 +1347,14 @@ void main() {
       ],
     });
     expect(find.text('⏱️ 30 s'), findsOneWidget);
+    expect(find.text('0 / 2 réponses'), findsOneWidget);
+    final answers = tester.widgetList<AnswerButton>(find.byType(AnswerButton)).toList();
+    expect(answers.map((answer) => answer.color), [LudiColors.primary, LudiColors.accent]);
     await tester.pump(const Duration(milliseconds: 2000));
     expect(find.text('⏱️ 28 s'), findsOneWidget);
     await tester.tap(find.text('✅ Vrai'));
     await tester.pump();
+    expect(find.text('1 / 2 réponses'), findsOneWidget);
     expect(find.text('Louis XVI est empereur.'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 1000));
     await tester.tap(find.text('❌ Faux'));

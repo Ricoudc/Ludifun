@@ -681,6 +681,7 @@ class AttemptEvidence(Base):
     error_type: Mapped[str | None] = mapped_column(Text)  # notion ratée : pourquoi (§5.5)
 
     __table_args__ = (
+        Index("ix_attempt_evidence_knowledge_attempt", "knowledge_id", "attempt_id"),
         CheckConstraint("result BETWEEN 0 AND 1", name="result"),
         CheckConstraint("weight > 0 AND weight <= 1", name="weight"),
         CheckConstraint(_in("error_type", ERROR_TYPES), name="error_type"),

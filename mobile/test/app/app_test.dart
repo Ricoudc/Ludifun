@@ -90,7 +90,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mes enfants'), findsOneWidget);
     expect(find.text('Emma · CM1'), findsOneWidget);
-    expect(find.text('📱 1 appareil lié'), findsOneWidget);
+    expect(find.text('1 appareil lié'), findsOneWidget);
     expect(store.credentials, isA<ParentCredentials>());
   });
 
