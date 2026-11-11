@@ -137,7 +137,6 @@ def test_fallback_monitoring_counts_only_recorded_fallbacks() -> None:
     assert _fallback_calls([run(["repli : ollama : indisponible"]), run(["repli : quota dépassé"])]) == 2
 
 
-
 def test_monitoring_groups_same_model_by_provider_and_stage() -> None:
     from app.db.models import AiRun
     from app.services.monitoring import _group_runs
