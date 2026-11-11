@@ -72,7 +72,7 @@ def update_mastery(
         score = _round(100 * rate)
         box, count = MIN_BOX, 1
     else:
-        score = _round(0.6 * 100 * rate + 0.4 * previous.score)
+        score = _round(0.6 * 100 * rate + 0.4 * previous.recall(now))
         box, count = previous.box, previous.sessions_count + 1
     levels = frozenset(validated) | (previous.levels if previous else frozenset())
 
