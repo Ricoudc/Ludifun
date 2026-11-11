@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,15 +10,21 @@ from app.ai.pricing import run_cost
 from app.ai.providers.fake import DEMO_LESSON, FakeProvider, LessonScript
 from app.ai.schemas import OcrPage, OcrResult, UncertainOut
 from app.domain.activities.registry import default_registry
-from app.domain.knowledge import Grade, Subject
-from app.services.lesson_pipeline import LessonPipeline
+from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQuestion, Subject
+from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.evaluate import (
     Expected,
     ExpectedNotion,
+    _question_review_signature,
+    apply_question_review_annotations,
     load_corpus,
     main,
     match_notion,
+    match_notions,
+    material_counts,
     metrics,
+    open_question_review,
+    question_review_summary,
     render_report,
     resume_after_review,
     score,
@@ -28,6 +35,178 @@ from tests.support_documents import docx, scanned_pdf
 EXAMPLE = Path(__file__).resolve().parents[3] / "eval" / "example"
 
 
+def test_open_question_review_export_keeps_notion_context_and_review_dimensions() -> None:
+    item = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
+    question = OpenQuestion(
+        level=4,
+        prompt="Pourquoi cette notion est-elle importante ?",
+        key_points=[item.label],
+        model_answer=f"Cette notion est importante : {item.label}.",
+        passage=None,
+    )
+    unit = KnowledgeUnit(
+        item=item,
+        material=KnowledgeMaterial(
+            knowledge_id=item.id,
+            explanation=item.statement,
+            open_questions=[question],
+        ),
+    )
+    result = PipelineResult(failure_reason=None, units=[unit])
+
+    [review] = open_question_review(result, "histoire_cm1")
+    assert review["review_id"] == f"histoire_cm1:{item.id}:1"
+    assert review["lesson"] == "histoire_cm1"
+    assert review["knowledge_id"] == item.id
+    assert review["notion"] == item.label
+    assert review["prompt"] == question.prompt
+    assert review["key_points"] == question.key_points
+    assert review["review_status"] == "à annoter"
+    assert len(review["review_signature"]) == 64
+    assert "pertinence_par_rapport_a_la_notion" in review["review_dimensions"]
+
+
+def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_content() -> None:
+    reviews: list[dict[str, Any]] = [
+        {
+            "review_id": "histoire:k5:1",
+            "knowledge_id": "k5",
+            "notion_statement": "La Révolution commence en 1789.",
+            "level": 3,
+            "prompt": "Explique 1789.",
+            "key_points": ["date", "causes"],
+            "model_answer": "La Révolution débute en 1789 pour plusieurs causes.",
+            "passage": "En 1789...",
+            "review_status": "à annoter",
+        },
+        {"review_id": "histoire:k6:1", "level": 3, "prompt": "Pourquoi ?", "review_status": "à annoter"},
+    ]
+    annotations = [
+        {
+            "review_id": "histoire:k5:1",
+            "review_signature": _question_review_signature(reviews[0]),
+            "review_status": "pertinent",
+        }
+    ]
+    applied = apply_question_review_annotations(reviews, annotations)
+    assert [row["review_status"] for row in applied] == ["pertinent", "à annoter"]
+    summary = question_review_summary(applied)
+    assert summary["total"] == 2 and summary["annotated"] == 1 and summary["pending"] == 1
+    assert summary["pertinent_rate"] == 1.0 and summary["off_topic_rate"] == 0.0
+    assert summary["by_level"]["3"] == {
+        "total": 2,
+        "annotated": 1,
+        "pending": 1,
+        "pertinent": 1,
+        "à corriger": 0,
+        "hors sujet": 0,
+        "pertinent_rate": 1.0,
+        "off_topic_rate": 0.0,
+    }
+
+
+def test_question_review_summary_separates_levels_and_excludes_pending_from_rates() -> None:
+    summary = question_review_summary(
+        [
+            {"level": 3, "review_status": "pertinent"},
+            {"level": 3, "review_status": "hors sujet"},
+            {"level": 3, "review_status": "à annoter"},
+            {"level": 4, "review_status": "à corriger"},
+            {"level": 4, "review_status": "à annoter"},
+            {"review_status": "pertinent"},
+        ]
+    )
+
+    assert summary["total"] == 6
+    assert summary["annotated"] == 3
+    assert summary["pending"] == 2
+    assert summary["by_level"]["3"]["total"] == 3
+    assert summary["by_level"]["3"]["pertinent_rate"] == 0.5
+    assert summary["by_level"]["3"]["off_topic_rate"] == 0.5
+    assert summary["by_level"]["4"]["total"] == 2
+    assert summary["by_level"]["4"]["annotated"] == 1
+    assert summary["by_level"]["4"]["pertinent_rate"] == 0.0
+    assert summary["by_level"]["4"]["off_topic_rate"] == 0.0
+    assert set(summary["by_level"]) == {"3", "4"}
+
+
+@pytest.mark.parametrize(
+    "changed_field, changed_value",
+    [
+        ("level", 2),
+        ("review_dimensions", ["pertinence_par_rapport_a_la_notion"]),
+        ("prompt", "Une question reformulée."),
+        ("passage", "Un autre extrait source."),
+        ("key_points", ["date", "conséquences nouvelles"]),
+        ("model_answer", "Une réponse modèle différente."),
+        ("notion", "Une notion renommée."),
+        ("notion_statement", "Une notion reformulée."),
+        ("importance", 5),
+    ],
+)
+def test_question_review_annotation_is_invalidated_when_pedagogical_content_changes(
+    changed_field: str, changed_value: Any
+) -> None:
+    review: dict[str, Any] = {
+        "review_id": "histoire:k5:1",
+        "knowledge_id": "k5",
+        "notion": "La Révolution française",
+        "notion_statement": "La Révolution commence en 1789.",
+        "importance": 4,
+        "review_dimensions": [
+            "pertinence_par_rapport_a_la_notion",
+            "niveau_cognitif_annonce",
+        ],
+        "level": 3,
+        "prompt": "Explique 1789.",
+        "key_points": ["date", "causes"],
+        "model_answer": "La Révolution débute en 1789 pour plusieurs causes.",
+        "passage": "En 1789...",
+        "review_status": "à annoter",
+    }
+    annotation = {
+        "review_id": review["review_id"],
+        "review_signature": _question_review_signature(review),
+        "review_status": "pertinent",
+    }
+    changed_review = review | {changed_field: changed_value}
+
+    with pytest.raises(ValueError, match="contenu pédagogique modifié"):
+        apply_question_review_annotations([changed_review], [annotation])
+
+
+@pytest.mark.parametrize(
+    "annotations, message",
+    [
+        (
+            [
+                {"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "pertinent"},
+                {"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "hors sujet"},
+            ],
+            "annotation en double",
+        ),
+        (
+            [{"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "pertinent"}],
+            "contenu pédagogique modifié",
+        ),
+        (
+            [{"review_id": "histoire:inconnu:1", "review_signature": "stale", "review_status": "pertinent"}],
+            "sans question correspondante",
+        ),
+        (
+            [{"review_id": "histoire:k5:1", "review_signature": "stale", "review_status": "excellent"}],
+            "label de revue invalide",
+        ),
+    ],
+)
+def test_question_review_annotations_reject_stale_or_invalid_data(
+    annotations: list[dict[str, str]], message: str
+) -> None:
+    reviews = [{"review_id": "histoire:k5:1", "prompt": "Explique 1789.", "review_status": "à annoter"}]
+    with pytest.raises(ValueError, match=message):
+        apply_question_review_annotations(reviews, annotations)
+
+
 def test_match_notion() -> None:
     knowledge = load_lesson("history_cm1_revolution.json").analysis.knowledge
     assert match_notion(ExpectedNotion(label="Louis XVI"), knowledge) == "k2"
@@ -35,6 +214,51 @@ def test_match_notion() -> None:
     assert match_notion(ExpectedNotion(label="Prise de la Bastile"), knowledge) == "k4"  # faute de frappe
     assert match_notion(ExpectedNotion(label="Troisième ordre", aliases=["tiers état"]), knowledge) == "k6"
     assert match_notion(ExpectedNotion(label="Napoléon Bonaparte"), knowledge) is None
+
+
+def test_expected_notion_recall_never_counts_one_produced_notion_twice() -> None:
+    item = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
+    knowledge = [
+        item.model_copy(
+            update={
+                "id": "k1",
+                "label": "Louis XVI",
+                "statement": "Louis XVI était le roi de France.",
+            }
+        )
+    ]
+    expected = [
+        ExpectedNotion(label="Louis XVI"),
+        ExpectedNotion(label="roi de France"),
+    ]
+
+    assert match_notions(expected, knowledge) == ["k1", None]
+
+
+def test_notion_matching_reassigns_a_broad_match_to_maximize_recall() -> None:
+    template = load_lesson("history_cm1_revolution.json").analysis.knowledge[0]
+    knowledge = [
+        template.model_copy(
+            update={
+                "id": "k1",
+                "label": "Louis XVI",
+                "statement": "Le roi de France réunit les états généraux.",
+            }
+        ),
+        template.model_copy(
+            update={
+                "id": "k2",
+                "label": "Louis XVI",
+                "statement": "Louis XVI est arrêté.",
+            }
+        ),
+    ]
+    expected = [
+        ExpectedNotion(label="Louis XVI"),
+        ExpectedNotion(label="roi de France"),
+    ]
+
+    assert match_notions(expected, knowledge) == ["k2", "k1"]
 
 
 @pytest.mark.parametrize(
@@ -60,16 +284,74 @@ def test_example_corpus_end_to_end(tmp_path: Path) -> None:
     [run_dir] = list(tmp_path.iterdir())
     report = (run_dir / "report.md").read_text(encoding="utf-8")
     measures = report.split("## Par leçon")[0]
-    assert measures.count("| ✅ |") == 9  # toutes les mesures à seuil sont atteintes…
-    # …sauf les aides : les leçons de référence de l'IA factice datent d'avant l'étape 14.
+    assert measures.count("| ✅ |") == 7
+    # Le corpus couvre désormais plusieurs niveaux et matières : il révèle aussi les métriques
+    # pédagogiques que le fournisseur factice ne satisfait pas encore.
     assert [line.split(" |")[0] for line in measures.splitlines() if "❌" in line] == [
-        "| Notions avec indice et rappel"
+        "| Notions reliées à une compétence",
+        "| Notions avec indice et rappel",
+        "| Questions ouvertes par leçon (moyenne)",
     ]
     assert "| Noms personnels dans le texte lu | — (aucune annotation) | 0 | · |" in measures
     assert "piege_liste_de_courses | photo | 1 | ✅ not_a_lesson (piège)" in report
-    for name in ("history_cm1_revolution", "math_cm2_fractions", "science_ce2_water_states"):
+    for name in (
+        "history_cm1_revolution",
+        "math_cm2_fractions",
+        "science_ce2_water_states",
+        "french_cp_vowels",
+        "geography_6e_continents",
+        "math_3e_pythagoras",
+    ):
         assert (run_dir / f"{name}.json").exists()
         assert "══ Séance" in (run_dir / f"{name}.txt").read_text(encoding="utf-8")
+    assert "## Rappel des notions par matière et niveau" in report
+    assert "### Par matière" in report and "### Par niveau" in report
+    assert "| french | 5 | 5 | 100 % |" in report
+    assert "| geography | 6 | 6 | 100 % |" in report
+    assert "| history | 5 | 5 | 100 % |" in report
+    assert "| math | 9 | 9 | 100 % |" in report
+    assert "| science | 4 | 4 | 100 % |" in report
+    assert "| 3e | 5 | 5 | 100 % |" in report
+    assert "| 6e | 6 | 6 | 100 % |" in report
+    assert "Notions importantes avec question ouverte" in measures
+    assert "Ouvertes / notions importantes" in report
+
+
+async def test_material_counts_include_open_questions_help_and_all_games() -> None:
+    corpus = {lesson.name: lesson for lesson in load_corpus(EXAMPLE)}
+    history = corpus["history_cm1_revolution"]
+    llm = FakeProvider()
+    pipeline = LessonPipeline(VisionLLMOcr(llm), llm, default_registry())
+    result = await pipeline.run(text=history.text)
+
+    expected_kept = sum(
+        len(unit.material.questions)
+        + len(unit.material.true_statements)
+        + len(unit.material.false_statements)
+        + len(unit.material.open_questions)
+        + sum(
+            value is not None
+            for value in (
+                unit.material.cloze,
+                unit.material.pair,
+                unit.material.flashcard,
+                unit.material.tip,
+                unit.material.help,
+                unit.material.sorting,
+                unit.material.sequence,
+                unit.material.spelling,
+            )
+        )
+        for unit in result.units
+    )
+
+    kept, rejected = material_counts(result)
+    assert kept == expected_kept
+    assert rejected == sum(
+        1
+        for rejection in result.rejected
+        if "." in rejection.element and not rejection.element.startswith("analysis.")
+    )
 
 
 async def test_missed_notions_and_failures_are_reported() -> None:
@@ -84,6 +366,16 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     )
     good = score("histoire", expected, result, pages=2, duration_s=30.0)
     assert good.recall == pytest.approx(5 / 6)
+    important_units = [unit for unit in result.units if unit.item.importance >= 4]
+    assert good.important_notions == len(important_units)
+    assert good.important_with_open_question == sum(
+        bool(unit.material.open_questions) for unit in important_units
+    )
+    by_name = {metric.name: metric for metric in metrics([good])}
+    coverage = None
+    if good.important_notions:
+        coverage = 100 * good.important_with_open_question / good.important_notions
+    assert by_name["Notions importantes avec question ouverte"].value == coverage
 
     failed_result = await pipeline.run(text="Recette des crêpes : farine, œufs, lait.")
     expected_verb = Expected(subject="french", grade="CE1", essential=[ExpectedNotion(label="verbe")])
@@ -99,6 +391,11 @@ async def test_missed_notions_and_failures_are_reported() -> None:
     report = render_report([good, failed], "fake", datetime(2026, 9, 23))
     assert "- **histoire** : Napoléon Bonaparte" in report
     assert "- **crepes** : verbe" in report
+    assert "## Rappel des notions par matière et niveau" in report
+    assert "| history | 5 | 6 | 83 % |" in report
+    assert "| french | 0 | 1 | 0 % |" in report
+    assert "| CM1 | 5 | 6 | 83 % |" in report
+    assert "| CE1 | 0 | 1 | 0 % |" in report
 
 
 HISTORY = LessonScript.from_file(DEMO_LESSON).ocr_text

@@ -99,9 +99,19 @@ class OpenQuestionActivity(ActivityType):
         points: list[str] = activity.solution["key_points"]
         found = [p for p in points if point_found(text, p)]
         score = len(found) / len(points)
+        normalized = normalize(text)
+        explicit_unknown = normalized in {
+            "je ne sais pas",
+            "je sais pas",
+            "je ne sais plus",
+            "je sais plus",
+            "je ne connais pas",
+            "aucune idee",
+            "pas idee",
+        }
         error = (
             ErrorType.FORGOTTEN
-            if not _words(text)
+            if not _words(text) or explicit_unknown
             else ErrorType.IMPRECISION
             if score >= 0.5
             else ErrorType.KNOWLEDGE

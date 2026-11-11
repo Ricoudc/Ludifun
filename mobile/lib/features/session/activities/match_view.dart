@@ -20,12 +20,12 @@ class MatchView extends StatefulWidget {
 
 class _MatchViewState extends State<MatchView> {
   static const _pairColors = [
-    Color(0xFF5B4FE0),
-    Color(0xFFFF9F1C),
-    Color(0xFF2EB872),
-    Color(0xFF1E88E5),
-    Color(0xFFD81B60),
-    Color(0xFF6D4C41),
+    LudiColors.primary,
+    LudiColors.accent,
+    LudiColors.mastered,
+    LudiColors.toReview,
+    LudiColors.notMastered,
+    Color(0xFF35A995),
   ];
 
   final _pairs = <String, String>{}; // gauche → droite
@@ -127,17 +127,60 @@ class _MatchViewState extends State<MatchView> {
       ),
       const SizedBox(height: 6),
       // Le geste, dit une fois : sans lui, rien ne distingue la colonne des réponses.
-      const Text(
-        'Touche un mot à gauche, puis sa réponse à droite.',
-        style: TextStyle(fontSize: 16, color: Colors.black54),
+      Text(
+        _left != null
+            ? 'Choisis maintenant la réponse à droite.'
+            : _right != null
+            ? 'Choisis maintenant l’élément à gauche.'
+            : 'Touche un élément à gauche, puis sa réponse à droite.',
+        style: const TextStyle(fontSize: 16, color: Colors.black54),
       ),
-      const SizedBox(height: 12),
+      if (_lefts.isNotEmpty) ...[
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.link_rounded, color: LudiColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_pairs.length} / ${_lefts.length} associations réalisées',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (_pairs.length / _lefts.length).clamp(0.0, 1.0),
+                    minHeight: 9,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
               children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'À relier',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
                 for (final left in _lefts)
                   _tile(
                     left,
@@ -152,6 +195,13 @@ class _MatchViewState extends State<MatchView> {
           Expanded(
             child: Column(
               children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Réponses',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                  ),
+                ),
                 for (final right in _rights)
                   _tile(
                     right,

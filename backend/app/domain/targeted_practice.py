@@ -123,6 +123,13 @@ def check_targets(
     for i, p in enumerate(proposed):
         label = f"targeted[{i}]"
         trap = p.trap if p.trap and any(same_answer(p.trap, d) for d in p.distractors) else None
+        if trap is None:
+            rejected.append(Rejection(label, "le piège ciblé ne correspond à aucun distracteur"))
+            continue
+        why = p.why.strip()
+        if not why:
+            rejected.append(Rejection(label, "explication du piège manquante"))
+            continue
         question, reason = check_question(
             {
                 "difficulty": min(max(p.difficulty, 1), 2),
@@ -153,9 +160,5 @@ def check_targets(
         if question is None or reason:
             rejected.append(Rejection(label, reason))
             continue
-        kept.append(
-            question.model_copy(
-                update={"target_error": target.error.value, "target_why": p.why.strip() or None}
-            )
-        )
+        kept.append(question.model_copy(update={"target_error": target.error.value, "target_why": why}))
     return CheckedTargets(kept, rejected)

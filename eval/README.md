@@ -57,6 +57,7 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
 - `subject` : `french`, `math`, `history`, `geography`, `science`, `english`, `civics`, `other`.
 - `grade` : `CP`, `CE1`, `CE2`, `CM1`, `CM2`, `6e`, `5e`, `4e`, `3e`.
 - `essential` : 3 à 8 notions indispensables, avec leur nom le plus courant. `aliases` accepte d'autres façons de les nommer. La correspondance ignore la casse, les accents et les petites fautes.
+- **Rappel des notions** : l'évaluateur associe les notions attendues et produites un-à-un. Une notion produite ne peut donc pas valider plusieurs notions attendues, même si son énoncé contient plusieurs libellés.
 - `personal` (facultatif) : les noms écrits sur les pages (élève, école, enseignant). La lecture
   ne doit jamais les recopier ; le rapport compte ceux qui sont retrouvés dans le texte lu, sans
   jamais les écrire. C'est une mesure de l'analyse d'impact
@@ -64,7 +65,10 @@ Un adulte (enseignant ou parent) indique ce qu'un élève doit **forcément** sa
   sur la photo.
 - Cas piège : `"is_lesson": false` et `"essential": []`.
 
-Des exemples complets sont dans `eval/example/`.
+Des exemples complets sont dans `eval/example/`. Le corpus de démonstration contient six leçons
+de référence déterministes (CP, CE2, CM1, CM2, 6e et 3e) et un cas piège. Il sert à vérifier le
+fonctionnement du rapport et les régressions logicielles ; **il ne remplace pas les dix premières
+leçons réelles annotées** attendues dans `eval/lessons/`.
 
 ## 3. Lancer l'évaluation
 
@@ -80,6 +84,24 @@ Quand la lecture d'une photo signale des passages douteux, l'application demande
 « Peux-tu vérifier ? ». L'évaluation joue l'enfant qui confirme ce qui a été lu, puis
 l'analyse reprend : ces passages sont comptés, et la leçon est quand même mesurée.
 
+## 4. Rapport téléchargeable depuis GitHub Actions
+
+À chaque CI backend de cette branche, après les tests PostgreSQL, le workflow exécute le corpus
+synthétique avec le fournisseur déterministe `fake` et publie un artefact
+`ludifun-quality-ai-benchmark` pendant 14 jours.
+
+Dans GitHub : ouvrir **Actions → Backend → exécution réussie → Artifacts** et télécharger
+`ludifun-quality-ai-benchmark`. L'archive contient le rapport Markdown, les métriques JSON,
+les résultats JSON par leçon et les séances générées. Ce rapport vérifie le fonctionnement
+reproductible de l'évaluateur ; il ne constitue pas une mesure de performance d'un modèle réel.
+
+Pour produire le même rapport localement :
+
+```bash
+cd backend
+uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai
+```
+
 En plus des mesures du §17.2, le rapport suit ce qu'ont ajouté les étapes 13 à 15 :
 
 | Mesure | Seuil |
@@ -88,7 +110,13 @@ En plus des mesures du §17.2, le rapport suit ce qu'ont ajouté les étapes 13 
 | Notions reliées à une compétence | ≥ 90 % |
 | Notions avec indice et rappel (« Je n'ai pas compris ») | ≥ 90 % |
 | Questions ouvertes par leçon | ≥ 1 en moyenne |
+| Notions importantes avec question ouverte | indicateur de suivi, selon pertinence pédagogique |
 | Noms personnels dans le texte lu | 0 |
+
+La couverture des questions ouvertes rapporte la part des notions d'importance 4 ou 5 qui
+disposent d'au moins une question ouverte. Elle est affichée séparément du nombre brut de
+questions : certaines notions importantes (date, nom ou fait à mémoriser) ne se prêtent pas
+à une réponse rédigée. Cette couverture est donc informative et n'est pas un seuil automatique.
 
 Chaque lancement crée `eval/results/<date-heure>/` :
 
@@ -98,13 +126,53 @@ Chaque lancement crée `eval/results/<date-heure>/` :
 | `<leçon>.txt` | ce que l'élève verrait : texte lu, notions, séance complète avec les réponses |
 | `<leçon>.json` | tout le détail : texte OCR, analyse, matériel, éléments rejetés et raisons, appels IA (jetons, latence, coût) |
 | `metrics.json` | les mesures et la configuration (fournisseur, modèles, version de chaque prompt), pour comparer deux évaluations |
+| `open_questions_review.json` | questions ouvertes avec leur notion, son énoncé, le niveau, les points clés et la réponse modèle, prêtes pour une revue pédagogique humaine |
 
-## 4. Évaluation humaine
+Le rapport détaille également le **rappel des notions indispensables par matière et par niveau**.
+Ces tableaux sont calculés à partir des notions annotées et retrouvées (pondération par notion),
+et non à partir d'une moyenne non pondérée des pourcentages de chaque leçon.
+
+## 4. Revue de pertinence des questions ouvertes
+
+Le fichier `open_questions_review.json` rassemble chaque question avec le contexte nécessaire
+pour juger sa pertinence : notion visée, énoncé de la notion, importance, niveau cognitif,
+consigne, points clés, réponse modèle et éventuel passage source. Il propose cinq axes de revue :
+
+1. la question évalue bien la notion associée ;
+2. le niveau annoncé (appliquer, expliquer, transférer) correspond à la tâche demandée ;
+3. la question ne contient pas déjà sa réponse ;
+4. les points clés et la réponse modèle sont cohérents ;
+5. le vocabulaire et l'effort demandé conviennent à l'âge.
+
+Ce fichier est une **grille de revue, pas un score automatique** : une correspondance de mots ne
+suffit pas à prouver la pertinence pédagogique. Un adulte renseigne `review_status` avec
+`pertinent`, `à corriger` ou `hors sujet`, puis conserve le fichier annoté séparément.
+Les identifiants `review_id` permettent de rattacher les labels à la même notion et au même
+rang de question. Chaque entrée contient aussi une `review_signature` calculée à partir du
+contexte pédagogique complet (identifiant, libellé et énoncé de la notion, importance, grille de revue, niveau, énoncé de la question, points clés, réponse modèle et passage source).
+Conservez cette signature avec le label humain : elle permet de détecter une question qui a
+conservé son énoncé mais dont les points clés ou la réponse ont changé. À la prochaine
+évaluation, réappliquer les labels et calculer les taux :
+
+```bash
+uv run python -m app.tools.evaluate ../eval/lessons --question-reviews ../eval/annotations/open_questions_review.json
+```
+
+Le rattachement vérifie la signature de l'ensemble du contenu pédagogique : toute modification
+de l'identifiant, du libellé ou de l'énoncé de la notion, de son importance, du niveau, de
+l'énoncé de la question, des points clés, de la réponse modèle ou du passage source invalide
+l'annotation. Une signature absente ou périmée, une annotation dupliquée ou orpheline
+fait échouer l'évaluation au lieu d'être attribuée silencieusement à une autre question. Les
+questions non annotées restent hors du dénominateur. Le rapport et `metrics.json` indiquent le
+nombre annoté, le nombre en attente, les trois catégories et les taux parmi les seules questions
+annotées. Le benchmark ne doit annoncer de taux de pertinence qu'à partir de ces annotations humaines.
+
+## 5. Évaluation humaine
 
 Pour 10 leçons, un adulte relit `<leçon>.txt` (ou joue la séance) et remplit
 [`grille-evaluation.md`](grille-evaluation.md). Ensuite, 5 enfants testent en situation réelle.
 
-## 5. Améliorer, puis mesurer à nouveau
+## 6. Améliorer, puis mesurer à nouveau
 
 Les prompts sont dans `backend/app/ai/prompts/` et sont versionnés : `analysis.v1.md` devient `analysis.v2.md`, puis on met à jour `PROMPT_VERSIONS` dans `backend/app/ai/ports.py`. On relance ensuite l'évaluation **sur le même corpus**, puis on compare les deux résultats (§5.81) :
 

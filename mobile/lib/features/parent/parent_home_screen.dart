@@ -85,6 +85,24 @@ class ParentHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
+            Card(
+              color: LudiColors.primary,
+              child: const ListTile(
+                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                leading: CircleAvatar(
+                  backgroundColor: Color(0x33FFFFFF),
+                  child: Text('🌱', style: TextStyle(fontSize: 28)),
+                ),
+                title: Text(
+                  'Les progrès se construisent ensemble.',
+                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  'Suivez les apprentissages et accompagnez chaque étape.',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ),
             const AppUpdateBanner(),
             const EmailVerificationBanner(),
             const RemindersCard(),
@@ -130,35 +148,82 @@ class _ChildTile extends StatelessWidget {
   final Child child;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      leading: CircleAvatar(
-        radius: 24,
-        backgroundColor: LudiColors.primary.withValues(alpha: 0.12),
-        child: Text(avatarOf(child), style: const TextStyle(fontSize: 24)),
-      ),
-      title: Text(
-        '${child.displayName} · ${child.grade}',
-        style: Theme.of(context).textTheme.titleLarge,
-      ),
-      subtitle: child.devices == 0
-          ? TextButton.icon(
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                alignment: Alignment.centerLeft,
+  Widget build(BuildContext context) {
+    final linked = child.devices > 0;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.go(Routes.childDashboard(child.id)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+          child: Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: LudiColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(17),
+                ),
+                alignment: Alignment.center,
+                child: Text(avatarOf(child), style: const TextStyle(fontSize: 30)),
               ),
-              onPressed: () => context.go(Routes.childLink(child.id)),
-              icon: const Icon(Icons.link),
-              label: const Text('Lier un appareil'),
-            )
-          : Text(
-              '📱 ${child.devices} appareil${child.devices > 1 ? 's' : ''} lié${child.devices > 1 ? 's' : ''}',
-            ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => context.go(Routes.childDashboard(child.id)),
-    ),
-  );
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${child.displayName} · ${child.grade}',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Icon(
+                          linked ? Icons.devices_rounded : Icons.link_off_rounded,
+                          size: 16,
+                          color: linked ? LudiColors.mastered : LudiColors.toReview,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            linked
+                                ? '${child.devices} appareil${child.devices > 1 ? 's' : ''} lié${child.devices > 1 ? 's' : ''}'
+                                : 'Aucun appareil lié',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: linked ? LudiColors.mastered : LudiColors.toReview,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (!linked)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.only(top: 5),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: () => context.go(Routes.childLink(child.id)),
+                          icon: const Icon(Icons.add_link, size: 17),
+                          label: const Text('Lier un appareil'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: LudiColors.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Confirmation d'une action irréversible.

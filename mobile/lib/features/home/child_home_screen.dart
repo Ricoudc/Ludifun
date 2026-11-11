@@ -37,7 +37,29 @@ class ChildHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
-            Text('Bonjour $name ! 👋', style: Theme.of(context).textTheme.headlineMedium),
+            Card(
+              color: LudiColors.primary,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Color(0x33FFFFFF),
+                      child: Text('🦊', style: TextStyle(fontSize: 22)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Bonjour $name ! 👋',
+                        style: Theme.of(context).textTheme.titleLarge
+                            ?.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             if (ref.watch(progressProvider).value case final progress?) ...[
               ProgressStrip(progress, onBadges: () => context.go(Routes.badges)),
@@ -48,22 +70,26 @@ class ChildHomeScreen extends ConsumerWidget {
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.capture),
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Nouvelle leçon', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Nouvelle leçon',
+              description: 'Prends ton cahier en photo pour apprendre.',
+              icon: Icons.add_a_photo_outlined,
+              route: Routes.capture,
+              primary: true,
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.homeworkStart),
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Aide aux devoirs', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Aide aux devoirs',
+              description: 'Avance pas à pas avec un coup de main.',
+              icon: Icons.edit_note,
+              route: Routes.homeworkStart,
             ),
             const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => context.go(Routes.notebook),
-              icon: const Icon(Icons.menu_book_outlined),
-              label: const Text('Mon cahier', style: TextStyle(fontSize: 18)),
+            _HomeActionTile(
+              title: 'Mon cahier',
+              description: 'Retrouve tes leçons et tes découvertes.',
+              icon: Icons.menu_book_outlined,
+              route: Routes.notebook,
             ),
             const SizedBox(height: 28),
             ...switch (lessons) {
@@ -80,6 +106,57 @@ class ChildHomeScreen extends ConsumerWidget {
               _ => [const Center(child: CircularProgressIndicator())],
             },
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Tuile d'accès rapide : un intitulé, une explication et une grande zone tactile.
+class _HomeActionTile extends StatelessWidget {
+  const _HomeActionTile({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.route,
+    this.primary = false,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final String route;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconBackground = primary
+        ? const Color(0x33FFFFFF)
+        : LudiColors.primary.withValues(alpha: 0.1);
+    return Card(
+      color: primary ? LudiColors.primary : Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.go(route),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: CircleAvatar(
+            backgroundColor: iconBackground,
+            child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: primary ? Colors.white : null,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          subtitle: Text(
+            description,
+            style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
+          ),
+          trailing: Icon(Icons.chevron_right, color: primary ? Colors.white : LudiColors.primary),
         ),
       ),
     );
@@ -159,18 +236,45 @@ class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24),
-    child: Column(
-      children: [
-        const Text('📸', style: TextStyle(fontSize: 64)),
-        const SizedBox(height: 8),
-        Text(
-          'Photographie ta première leçon !',
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    label: 'Ton cahier commence ici. Tes leçons et tes progrès apparaîtront ici après ta première révision.',
+    child: ExcludeSemantics(
+      child: Card(
+        color: LudiColors.primary.withValues(alpha: 0.06),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                alignment: Alignment.center,
+                child: const Text('📚', style: TextStyle(fontSize: 30)),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ton cahier commence ici', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Tes leçons et tes progrès apparaîtront ici après ta première révision.',
+                      style: TextStyle(fontSize: 14, height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     ),
   );
 }

@@ -27,7 +27,7 @@ from app.ai.ports import LLMProvider, OcrProvider, Stage
 from app.ai.presets import PRESETS
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
-from app.ai.providers.ollama import OllamaProvider, reads_images
+from app.ai.providers.ollama import OllamaProvider
 from app.ai.providers.openai_compatible import OpenAICompatibleProvider
 from app.config import AiProviderName, Settings
 
@@ -163,10 +163,21 @@ def ocr_for(settings: Settings, llm: LLMProvider) -> OcrProvider:
     tesseract = TesseractOcr(settings.tesseract_cmd, settings.tesseract_languages)
     if settings.ocr_engine == "tesseract":
         return tesseract
-    first = llm.chain[0] if isinstance(llm, FallbackLLM) else llm
-    if isinstance(first, OllamaProvider):  # un modèle de texte seul ne doit pas « lire » une photo
-        base_url, model = first.base_url, first.model_for("ocr")
-        return AutoOcr(tesseract, vision, lambda: reads_images(base_url, model))
+    if isinstance(llm, FallbackLLM):
+
+        async def any_provider_reads_images() -> bool:
+            # Une IA locale texte seul ne doit pas empêcher le repli vers une IA vision du cloud.
+            for provider in llm.chain:
+                if isinstance(provider, OllamaProvider):
+                    if await provider.can_read_images():
+                        return True
+                else:
+                    return True  # les fournisseurs cloud configurés acceptent les images
+            return False
+
+        return AutoOcr(tesseract, vision, any_provider_reads_images)
+    if isinstance(llm, OllamaProvider):
+        return AutoOcr(tesseract, vision, llm.can_read_images)
     return AutoOcr(tesseract, vision)
 
 

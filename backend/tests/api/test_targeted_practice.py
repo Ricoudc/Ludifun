@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.ports import AIError
 from app.ai.providers.fake import FakeProvider
-from app.db.models import AiRun, AttemptEvidence, KnowledgeItem, KnowledgeMaterial
+from app.db.models import AiRun, AttemptEvidence, KnowledgeItem, KnowledgeMaterial, RevisionSession
 from tests.api.helpers import auth, family_with_device, upload_lesson
 from tests.api.test_sessions import now, play  # noqa: F401  (fixture)
 
@@ -38,9 +38,12 @@ async def three_sessions_with_the_same_error(
     lesson = await upload_lesson(client, token)
     k3 = await db.scalar(select(KnowledgeItem.id).where(KnowledgeItem.key == "k3"))
     for session_number in range(3):
-        session = (
-            await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
-        ).json()
+        response = await client.post(
+            f"/v1/lessons/{lesson['id']}/sessions",
+            json={},
+            headers=auth(token),
+        )
+        session = response.json()
         await play(client, db, token, session["id"], session["items"], lambda key: key != "k3")
         # La même erreur à chaque séance (le type précis dépend de la réponse de l'élève simulé).
         await db.execute(
@@ -93,3 +96,52 @@ async def test_an_ai_failure_changes_nothing_for_the_child(
     assert await targeted_questions(db, "k3") == []
     status = await db.scalar(select(AiRun.status).where(AiRun.stage == "targeted"))
     assert status == "error"
+
+
+async def test_abandoned_sessions_do_not_make_an_error_recurring(
+    client: AsyncClient,
+    db: AsyncSession,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    """Deux séances terminées + une abandonnée ne font pas trois séances récurrentes."""
+    family = await family_with_device(client)
+    token = family["device"]
+    lesson = await upload_lesson(client, token)
+    k3 = await db.scalar(select(KnowledgeItem.id).where(KnowledgeItem.key == "k3"))
+
+    for session_number in range(3):
+        session = (
+            await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
+        ).json()
+        await play(client, db, token, session["id"], session["items"], lambda key: key != "k3")
+        await db.execute(
+            update(AttemptEvidence)
+            .where(AttemptEvidence.knowledge_id == k3, AttemptEvidence.error_type.is_not(None))
+            .values(error_type="confusion")
+        )
+        await db.commit()
+        if session_number < 2:
+            completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+            assert completed.status_code == 200, completed.text
+        else:
+            await db.execute(
+                update(RevisionSession).where(RevisionSession.id == session["id"]).values(status="abandoned")
+            )
+            await db.commit()
+
+    # Une quatrième séance terminée déclenche le calcul : seules deux séances contiennent
+    # une erreur de confusion terminée, la troisième occurrence est dans une séance abandonnée.
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    await play(client, db, token, session["id"], session["items"], lambda _: True)
+    completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert completed.status_code == 200, completed.text
+    assert await targeted_questions(db, "k3") == []
+    assert await runs(db) == 0
+
+    board = (
+        await client.get(
+            f"/v1/children/{family['child']['id']}/dashboard",
+            headers=auth(family["parent"]),
+        )
+    ).json()
+    assert board["recurring_errors"] == []

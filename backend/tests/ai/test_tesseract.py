@@ -182,6 +182,16 @@ async def test_auto_sends_only_the_weak_pages_to_the_vision_model() -> None:
     assert "2 page(s) relue(s)" in result.output.warnings[0]
 
 
+async def test_auto_reports_an_incomplete_vision_reread() -> None:
+    vision = FakeReader("vision", [OcrPage(index=0, quality="good", text="cursive")])
+    result = await auto(FakeReader("tesseract", TESS), vision).extract(PAGES)
+
+    assert result.output.pages[1].quality == "good"
+    assert result.output.pages[2] == TESS[2]  # page non renvoyée : texte Tesseract conservé
+    assert "1/2 page(s) relue(s)" in result.output.warnings[0]
+    assert "1 page(s) sans réponse" in result.output.warnings[1]
+
+
 async def test_auto_keeps_tesseract_when_the_ai_cannot_help() -> None:
     good = [OcrPage(index=i, quality="good", text="ok") for i in range(3)]
     vision = FakeReader("vision")
@@ -225,6 +235,43 @@ def test_the_reader_follows_the_setting() -> None:
     assert ocr.name == "tesseract" and ocr.prompt_version == "tesseract.v1"
 
 
+async def test_vision_ocr_rejects_duplicate_and_out_of_range_page_indexes() -> None:
+    class Reader:
+        name = "vision"
+
+        def model_for(self, stage: str) -> str:
+            return "vision-model"
+
+        async def structured(
+            self,
+            *,
+            prompt: object,
+            input: str,
+            schema: object,
+            images: tuple[PageImage, ...] = (),
+        ) -> LLMResult[OcrResult]:
+            return LLMResult(
+                OcrResult(
+                    pages=[
+                        OcrPage(index=0, quality="good", text="page zéro"),
+                        OcrPage(index=1, quality="good", text="première version"),
+                        OcrPage(index=1, quality="good", text="seconde version"),
+                        OcrPage(index=9, quality="good", text="hors limites"),
+                    ],
+                    language="fr",
+                    warnings=[],
+                ),
+                Usage("vision", "vision-model", 10, 10, 20),
+            )
+
+    result = await VisionLLMOcr(Reader()).extract(PAGES)  # type: ignore[arg-type]
+
+    assert [page.text for page in result.output.pages] == ["page zéro", "", ""]
+    assert [page.quality for page in result.output.pages] == ["good", "unreadable", "unreadable"]
+    assert "page(s) 2" in result.output.warnings[0]
+    assert "1 transcription(s) ignorée(s)" in result.output.warnings[1]
+
+
 async def test_a_text_model_is_enough_when_tesseract_reads() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/tags":
@@ -240,6 +287,21 @@ async def test_a_text_model_is_enough_when_tesseract_reads() -> None:
     assert tesseract.ok and "Tesseract" in tesseract.message
     mixed = await check(choice, Settings(ocr_engine="auto"), client())
     assert mixed.ok and "Tesseract seul" in mixed.message
+
+
+async def test_auto_ocr_uses_vision_fallback_after_text_only_ollama() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/show"
+        return httpx.Response(200, json={"capabilities": ["completion"]})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    local = OllamaProvider("http://pc:11434", {"ocr": "mistral:7b"}, client=client)
+    fallback = FallbackLLM([local, FakeProvider()])
+    reader = ocr_for(Settings(ocr_engine="auto"), fallback)
+
+    assert isinstance(reader, AutoOcr)
+    assert await reader._vision_ok()  # le fournisseur de repli sait traiter les images
+    await client.aclose()
 
 
 def test_tesseract_reads_then_groq_analyses_and_creates(monkeypatch: pytest.MonkeyPatch) -> None:
