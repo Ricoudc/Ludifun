@@ -63,7 +63,12 @@ def test_only_proved_answers_are_kept(history: ReferenceLesson) -> None:
                 why="1792, c'est la proclamation de la République.",
             ),
             ProposedTarget(
-                "Qui présidait les États généraux ?", "Necker", ["Robespierre", "Danton", "Marat"], 1
+                "Qui présidait les États généraux ?",
+                "Necker",
+                ["Robespierre", "Danton", "Marat"],
+                1,
+                trap="Robespierre",
+                why="Robespierre n'est pas la bonne réponse.",
             ),
             ProposedTarget("Combien de jours dura la réunion ?", "1789", ["1789", "1790", "1791"], 1),
         ],
