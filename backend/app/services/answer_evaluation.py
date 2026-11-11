@@ -68,6 +68,11 @@ def to_evaluation(
     # Le score annoncé par le modèle ne doit jamais contredire sa propre liste de points.
     # La liste est filtrée sur les points attendus, puis le score est recalculé localement.
     score = len(found) / len(key_points) if key_points else output.score
+    # Une réponse incomplète sans type d'erreur ne doit pas être inventée comme « knowledge ».
+    # Rejeter cette correction déclenche le barème local, qui distingue oubli, imprécision et
+    # méconnaissance à partir de la réponse ; l'enfant n'est jamais bloqué.
+    if key_points and score < 1.0 and output.error_type is None:
+        return None
     return OpenEvaluation(
         score=score,
         key_points_found=found,
