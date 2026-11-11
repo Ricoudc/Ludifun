@@ -3,5 +3,5 @@ Une fraction représente une partie d'un tout partagé en parts égales.
 Dans la fraction 3/4, 3 est le numérateur et 4 est le dénominateur.
 Le numérateur indique le nombre de parts que l'on prend.
 Le dénominateur indique en combien de parts égales on a partagé l'unité.
-Quand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur. Exemple : 5/8 > 3/8.
+Quand deux fractions ont le même dénominateur, la plus grande est celle qui a le plus grand numérateur. Exemple : 5/8 > 3/8. On compare les numérateurs : 5 est plus grand que 3, donc 5/8 est plus grand que 3/8.
 Une fraction dont le numérateur est égal au dénominateur est égale à 1. Exemple : 4/4 = 1.

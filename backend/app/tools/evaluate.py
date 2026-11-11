@@ -15,6 +15,7 @@ chaque leçon le résultat complet (`<leçon>.json`) et la séance à relire (`<
 
 import argparse
 import asyncio
+import hashlib
 import io
 import json
 import statistics
@@ -92,6 +93,8 @@ class LessonScore:
     skills: int = 0
     with_help: int = 0  # notions avec au moins un indice et un rappel
     open_questions: int = 0
+    important_notions: int = 0
+    important_with_open_question: int = 0
     personal_leaks: int = 0  # noms personnels retrouvés dans le texte lu
 
     @property
@@ -106,18 +109,192 @@ class LessonScore:
         return self.failure in ("not_a_lesson", "unreadable")
 
 
+def _notion_matches(expected: ExpectedNotion, item: KnowledgeItem) -> bool:
+    text = f"{item.label} {item.statement}"
+    return any(
+        contains_words(text, name)
+        or SequenceMatcher(None, normalize(item.label), normalize(name)).ratio() >= 0.85
+        for name in [expected.label, *expected.aliases]
+    )
+
+
+def match_notions(expected: list[ExpectedNotion], knowledge: list[KnowledgeItem]) -> list[str | None]:
+    """Associe les notions attendues aux notions produites sans compter deux fois la même.
+
+    Un appariement biparti (avec réaffectation) évite qu'une seule notion produite valide
+    plusieurs notions attendues simplement parce que son énoncé contient plusieurs libellés.
+    Le résultat conserve l'ordre des annotations.
+    """
+    candidates = [
+        [index for index, item in enumerate(knowledge) if _notion_matches(notion, item)]
+        for notion in expected
+    ]
+    assigned: dict[int, int] = {}
+
+    def assign(expected_index: int, visited: set[int]) -> bool:
+        for item_index in candidates[expected_index]:
+            if item_index in visited:
+                continue
+            visited.add(item_index)
+            previous = assigned.get(item_index)
+            if previous is None or assign(previous, visited):
+                assigned[item_index] = expected_index
+                return True
+        return False
+
+    for expected_index in range(len(expected)):
+        assign(expected_index, set())
+
+    result: list[str | None] = [None] * len(expected)
+    for item_index, expected_index in assigned.items():
+        result[expected_index] = knowledge[item_index].id
+    return result
+
+
 def match_notion(expected: ExpectedNotion, knowledge: list[KnowledgeItem]) -> str | None:
-    """Notion produite qui correspond à une notion attendue (libellé ou variante)."""
-    names = [expected.label, *expected.aliases]
-    for item in knowledge:
-        text = f"{item.label} {item.statement}"
-        for name in names:
-            if (
-                contains_words(text, name)
-                or SequenceMatcher(None, normalize(item.label), normalize(name)).ratio() >= 0.85
-            ):
-                return item.id
-    return None
+    """Compatibilité unitaire ; les scores de corpus utilisent match_notions."""
+    return match_notions([expected], knowledge)[0]
+
+
+QUESTION_REVIEW_LABELS = {"pertinent", "à corriger", "hors sujet"}
+
+
+def _question_review_signature(review: dict[str, Any]) -> str:
+    """Empreinte des contenus pédagogiques qui rendent une annotation valable."""
+    snapshot = {
+        key: review.get(key)
+        for key in (
+            "knowledge_id",
+            "notion",
+            "notion_statement",
+            "importance",
+            "review_dimensions",
+            "level",
+            "prompt",
+            "key_points",
+            "model_answer",
+            "passage",
+        )
+    }
+    payload = json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def open_question_review(result: PipelineResult, lesson_name: str) -> list[dict[str, Any]]:
+    """Exporte les questions ouvertes dans un format de revue humaine, sans score sémantique fictif."""
+    reviews = [
+        {
+            "review_id": f"{lesson_name}:{unit.id}:{index + 1}",
+            "lesson": lesson_name,
+            "knowledge_id": unit.id,
+            "notion": unit.item.label,
+            "notion_statement": unit.item.statement,
+            "importance": unit.item.importance,
+            "level": question.level,
+            "prompt": question.prompt,
+            "key_points": question.key_points,
+            "model_answer": question.model_answer,
+            "passage": question.passage,
+            "review_status": "à annoter",
+            "review_dimensions": [
+                "pertinence_par_rapport_a_la_notion",
+                "niveau_cognitif_annonce",
+                "absence_de_reponse_dans_la_question",
+                "points_cles_et_reponse_modele",
+                "adaptation_a_l_age",
+            ],
+        }
+        for unit in result.units
+        for index, question in enumerate(unit.material.open_questions)
+    ]
+    return [review | {"review_signature": _question_review_signature(review)} for review in reviews]
+
+
+def apply_question_review_annotations(
+    reviews: list[dict[str, Any]], annotations: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Réapplique les labels uniquement si l'identifiant et le contenu pédagogique correspondent."""
+    by_id: dict[str, dict[str, Any]] = {}
+    for annotation in annotations:
+        if not isinstance(annotation, dict):
+            raise ValueError("chaque annotation doit être un objet JSON")
+        review_id = annotation.get("review_id")
+        if not isinstance(review_id, str) or not review_id:
+            raise ValueError("une annotation doit avoir un review_id")
+        if review_id in by_id:
+            raise ValueError(f"annotation en double : {review_id}")
+        if annotation.get("review_status") not in QUESTION_REVIEW_LABELS:
+            raise ValueError(f"label de revue invalide pour {review_id}")
+        by_id[review_id] = annotation
+
+    result = []
+    seen: set[str] = set()
+    for review in reviews:
+        review_id = review["review_id"]
+        if review_id in seen:
+            raise ValueError(f"question générée en double : {review_id}")
+        seen.add(review_id)
+        matched_annotation = by_id.pop(review_id) if review_id in by_id else None
+        if matched_annotation is not None:
+            if matched_annotation.get("review_signature") != _question_review_signature(review):
+                raise ValueError(f"contenu pédagogique modifié depuis l'annotation : {review_id}")
+            review = review | {"review_status": matched_annotation["review_status"]}
+        result.append(review)
+    if by_id:
+        raise ValueError(f"annotations sans question correspondante : {', '.join(sorted(by_id))}")
+    return result
+
+
+def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compte les annotations humaines ; les questions non annotées ne sont pas au dénominateur."""
+    counts = {label: 0 for label in sorted(QUESTION_REVIEW_LABELS)}
+    pending = 0
+    for review in reviews:
+        label = review.get("review_status", "à annoter")
+        if label != "à annoter" and label not in counts:
+            raise ValueError(f"label de revue inconnu : {label}")
+        # Une question sans niveau cognitif ne peut pas être évaluée dans les statistiques
+        # de pertinence par niveau ; elle reste toutefois comprise dans le total exporté.
+        if review.get("level") is None:
+            continue
+        if label == "à annoter":
+            pending += 1
+        else:
+            counts[label] += 1
+    annotated = sum(counts.values())
+    by_level: dict[str, dict[str, int]] = {}
+    for review in reviews:
+        level = review.get("level")
+        if level is None:
+            continue
+        key = str(level)
+        bucket = by_level.setdefault(
+            key, {"total": 0, "annotated": 0, "pending": 0, **{label: 0 for label in counts}}
+        )
+        bucket["total"] += 1
+        label = review.get("review_status", "à annoter")
+        if label == "à annoter":
+            bucket["pending"] += 1
+        elif label in counts:
+            bucket["annotated"] += 1
+            bucket[label] += 1
+
+    level_summary = {}
+    for level, bucket in sorted(by_level.items(), key=lambda item: int(item[0])):
+        level_summary[level] = bucket | {
+            "pertinent_rate": (bucket["pertinent"] / bucket["annotated"] if bucket["annotated"] else None),
+            "off_topic_rate": (bucket["hors sujet"] / bucket["annotated"] if bucket["annotated"] else None),
+        }
+
+    return {
+        "total": len(reviews),
+        "annotated": annotated,
+        "pending": pending,
+        "counts": counts,
+        "pertinent_rate": counts["pertinent"] / annotated if annotated else None,
+        "off_topic_rate": counts["hors sujet"] / annotated if annotated else None,
+        "by_level": level_summary,
+    }
 
 
 def material_counts(result: PipelineResult) -> tuple[int, int]:
@@ -125,7 +302,11 @@ def material_counts(result: PipelineResult) -> tuple[int, int]:
     for unit in result.units:
         m = unit.material
         kept += len(m.questions) + len(m.true_statements) + len(m.false_statements)
-        kept += sum(x is not None for x in (m.cloze, m.pair, m.flashcard, m.tip))
+        kept += len(m.open_questions)
+        kept += sum(
+            x is not None
+            for x in (m.cloze, m.pair, m.flashcard, m.tip, m.help, m.sorting, m.sequence, m.spelling)
+        )
     rejected = sum(1 for r in result.rejected if "." in r.element and not r.element.startswith("analysis."))
     return kept, rejected
 
@@ -156,7 +337,8 @@ def score(
             s.grade_ok = abs(GRADES.index(lesson.grade) - GRADES.index(expected.grade)) <= 1
     if expected.is_lesson:
         knowledge = analysis.knowledge if analysis else []
-        s.found = {n.label: match_notion(n, knowledge) for n in expected.essential}
+        matches = match_notions(expected.essential, knowledge)
+        s.found = {notion.label: item_id for notion, item_id in zip(expected.essential, matches, strict=True)}
     s.review = len(result.review)
     s.notions = len(result.units)
     if analysis is not None:
@@ -166,7 +348,11 @@ def score(
     for unit in result.units:
         ladder = unit.material.help
         s.with_help += ladder is not None and ladder.hint is not None and ladder.reminder is not None
-        s.open_questions += len(unit.material.open_questions)
+        open_count = len(unit.material.open_questions)
+        s.open_questions += open_count
+        if unit.item.importance >= 4:
+            s.important_notions += 1
+            s.important_with_open_question += open_count > 0
     if result.ocr is not None:
         read = result.ocr.text
         s.personal_leaks = sum(1 for name in expected.personal if contains_words(read, name))
@@ -219,6 +405,9 @@ def metrics(scores: list[LessonScore]) -> list[Metric]:
     helped = 100 * sum(s.with_help for s in scores) / notions if notions else None
     ready = [s for s in scores if s.notions]
     open_per_lesson = statistics.mean(s.open_questions for s in ready) if ready else None
+    important_notions = sum(s.important_notions for s in scores)
+    important_with_open = sum(s.important_with_open_question for s in scores)
+    important_open_coverage = 100 * important_with_open / important_notions if important_notions else None
     annotated = [s for s in scores if s.expected.personal]
     leaks = sum(s.personal_leaks for s in annotated)
 
@@ -266,6 +455,13 @@ def metrics(scores: list[LessonScore]) -> list[Metric]:
             None if open_per_lesson is None else open_per_lesson >= 1,
         ),
         Metric(
+            "Notions importantes avec question ouverte",
+            important_open_coverage,
+            _fmt(important_open_coverage),
+            "à suivre (selon pertinence pédagogique)",
+            None,
+        ),
+        Metric(
             "Noms personnels dans le texte lu",
             leaks if annotated else None,
             f"{leaks} ({len(annotated)} leçon(s) annotée(s))" if annotated else "— (aucune annotation)",
@@ -288,13 +484,60 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
         "|---|---|---|---|",
     ]
     lines += [f"| {m.name} | {m.display} | {m.target} | {icon[m.ok]} |" for m in metrics(scores)]
+
+    def recall_breakdown(attribute: str) -> list[tuple[str, int, int, float]]:
+        groups: dict[str, list[bool]] = {}
+        for score in scores:
+            if not score.expected.is_lesson:
+                continue
+            value = getattr(score.expected, attribute)
+            if value is None:
+                continue
+            label = value.value
+            groups.setdefault(label, []).extend(found is not None for found in score.found.values())
+        return [
+            (label, sum(values), len(values), 100 * sum(values) / len(values))
+            for label, values in sorted(groups.items())
+            if values
+        ]
+
+    by_subject = recall_breakdown("subject")
+    by_grade = recall_breakdown("grade")
+    if by_subject or by_grade:
+        lines += ["", "## Rappel des notions par matière et niveau", ""]
+        if by_subject:
+            lines += [
+                "### Par matière",
+                "",
+                "| Matière | Notions retrouvées | Total | Rappel |",
+                "|---|---:|---:|---:|",
+            ]
+            lines += [
+                f"| {label} | {found} | {total} | {recall:.0f} % |"
+                for label, found, total, recall in by_subject
+            ]
+            lines.append("")
+        if by_grade:
+            lines += [
+                "### Par niveau",
+                "",
+                "| Niveau | Notions retrouvées | Total | Rappel |",
+                "|---|---:|---:|---:|",
+            ]
+            lines += [
+                f"| {label} | {found} | {total} | {recall:.0f} % |"
+                for label, found, total, recall in by_grade
+            ]
+            lines.append("")
+
     lines += [
         "",
         "## Par leçon",
         "",
         "| Leçon | Support | Pages | Issue | Matière | Niveau | Rappel | Inventées "
-        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes | Durée | Coût |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| Rejets matériel | À vérifier | Compétences | Aides | Ouvertes "
+        "| Ouvertes / notions importantes | Durée | Coût |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for s in scores:
         outcome = "prête" if s.failure is None else s.failure
@@ -308,7 +551,8 @@ def render_report(scores: list[LessonScore], provider: str, started: datetime) -
             f"| {s.name} | {s.support} | {s.pages} | {icon[s.correct_outcome]} {outcome} "
             f"| {icon[s.subject_ok]} | {icon[s.grade_ok]} | {recall} "
             f"| {s.invented} | {rejects} | {s.review or '—'} | {s.skills} ({s.in_skill}/{s.notions}) "
-            f"| {s.with_help}/{s.notions} | {s.open_questions} | {s.duration_s:.1f} s | {cost} |"
+            f"| {s.with_help}/{s.notions} | {s.open_questions} "
+            f"| {s.important_with_open_question}/{s.important_notions} | {s.duration_s:.1f} s | {cost} |"
         )
     missed = [(s.name, label) for s in scores for label, found in s.found.items() if found is None]
     if missed:
@@ -462,6 +706,11 @@ def main(argv: list[str] | None = None) -> int:
         "--provider", choices=[*sorted(PRESETS), "fake"], help="fournisseur d'IA (défaut : configuration)"
     )
     parser.add_argument("--only", help="noms de leçons séparés par des virgules")
+    parser.add_argument(
+        "--question-reviews",
+        type=Path,
+        help="annotations humaines précédentes à réappliquer (open_questions_review.json)",
+    )
     parser.add_argument("--concurrency", type=int, default=3, help="leçons traitées en parallèle")
     parser.add_argument(
         "--prompt",
@@ -495,7 +744,9 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     out = (args.out or args.corpus.resolve().parent / "results") / f"{started:%Y%m%d-%H%M%S}"
     out.mkdir(parents=True, exist_ok=True)
     scores = []
+    question_reviews: list[dict[str, Any]] = []
     for lesson, result, duration in runs:
+        question_reviews.extend(open_question_review(result, lesson.name))
         s = score(
             lesson.name, lesson.expected, result, len(lesson.pages) or 1, duration, lesson.text is not None
         )
@@ -513,13 +764,48 @@ def _run(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         report(result, seed=1, out=session)
         (out / f"{lesson.name}.txt").write_text(session.getvalue(), encoding="utf-8")
 
+    if args.question_reviews:
+        annotations = json.loads(args.question_reviews.read_text(encoding="utf-8"))
+        if not isinstance(annotations, list):
+            parser.error("--question-reviews doit contenir une liste JSON")
+        try:
+            question_reviews = apply_question_review_annotations(question_reviews, annotations)
+        except ValueError as exc:
+            parser.error(str(exc))
+    review_summary = question_review_summary(question_reviews)
+    (out / "open_questions_review.json").write_text(
+        json.dumps(question_reviews, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     text = render_report(scores, provider, started)
+    text += (
+        "\n\n## Revue humaine des questions ouvertes\n\n"
+        f"- Questions : {review_summary['total']} ; annotées : {review_summary['annotated']} ; "
+        f"en attente : {review_summary['pending']}\n"
+        f"- Pertinentes : {review_summary['counts']['pertinent']} ; "
+        f"à corriger : {review_summary['counts']['à corriger']} ; "
+        f"hors sujet : {review_summary['counts']['hors sujet']}\n"
+    )
+    if review_summary["by_level"]:
+        text += (
+            "\\n### Résultats par niveau cognitif\\n\\n"
+            "| Niveau | Annotées | En attente | Pertinentes | À corriger | Hors sujet | Taux pertinent |\\n"
+            "|---:|---:|---:|---:|---:|---:|---:|\\n"
+        )
+        level_names = {"3": "3 — appliquer", "4": "4 — expliquer", "5": "5 — transférer"}
+        for level, bucket in review_summary["by_level"].items():
+            pertinent_rate = bucket["pertinent_rate"]
+            pertinent_percent = _fmt(100 * pertinent_rate if pertinent_rate is not None else None)
+            text += (
+                f"| {level_names.get(level, level)} | {bucket['annotated']} | "
+                f"{bucket['pending']} | {bucket['pertinent']} | "
+                f"{bucket['à corriger']} | {bucket['hors sujet']} | "
+                f"{pertinent_percent} |\n"
+            )
     (out / "report.md").write_text(text, encoding="utf-8")
+    metrics_data = metrics_json(scores, configuration(provider, models), started)
+    metrics_data["open_question_review"] = review_summary
     (out / "metrics.json").write_text(
-        json.dumps(
-            metrics_json(scores, configuration(provider, models), started), ensure_ascii=False, indent=2
-        ),
-        encoding="utf-8",
+        json.dumps(metrics_data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(text)
     print(f"Résultats détaillés : {out}", file=sys.stderr)

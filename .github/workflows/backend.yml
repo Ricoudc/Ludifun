@@ -1,10 +1,13 @@
 name: Backend
 
 on:
+  # Les branches de travail sont contrôlées via pull_request pour éviter
+  # de lancer deux fois la même CI (push + pull_request) sur chaque PR.
   push:
-    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+    branches: [main]
+    paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", "docker-compose.yml", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
 
 concurrency:
   group: backend-${{ github.ref }}
@@ -47,6 +50,15 @@ jobs:
         run: uv run mypy app tests
       - name: Tests (PostgreSQL réel, migrations incluses)
         run: uv run pytest -q
+      - name: Générer le rapport de référence (corpus synthétique)
+        run: uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai
+      - name: Publier le rapport et les résultats détaillés
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludifun-quality-ai-benchmark
+          path: artifacts/quality-ai/
+          if-no-files-found: error
+          retention-days: 14
 
   compose:
     name: docker compose up

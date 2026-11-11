@@ -1,0 +1,29 @@
+{
+  "subject": "geography",
+  "grade": "6e",
+  "support": "texte synthétique",
+  "essential": [
+    {
+      "label": "Continents et océans"
+    },
+    {
+      "label": "Asie"
+    },
+    {
+      "label": "Océan Pacifique",
+      "aliases": [
+        "océan Pacifique"
+      ]
+    },
+    {
+      "label": "Antarctique"
+    },
+    {
+      "label": "Europe"
+    },
+    {
+      "label": "L'eau sur la Terre"
+    }
+  ],
+  "notes": "Référence synthétique issue du jeu de données déterministe de test."
+}
