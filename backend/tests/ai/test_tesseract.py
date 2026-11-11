@@ -235,6 +235,43 @@ def test_the_reader_follows_the_setting() -> None:
     assert ocr.name == "tesseract" and ocr.prompt_version == "tesseract.v1"
 
 
+async def test_vision_ocr_rejects_duplicate_and_out_of_range_page_indexes() -> None:
+    class Reader:
+        name = "vision"
+
+        def model_for(self, stage: str) -> str:
+            return "vision-model"
+
+        async def structured(
+            self,
+            *,
+            prompt: object,
+            input: str,
+            schema: object,
+            images: tuple[PageImage, ...] = (),
+        ) -> LLMResult[OcrResult]:
+            return LLMResult(
+                OcrResult(
+                    pages=[
+                        OcrPage(index=0, quality="good", text="page zéro"),
+                        OcrPage(index=1, quality="good", text="première version"),
+                        OcrPage(index=1, quality="good", text="seconde version"),
+                        OcrPage(index=9, quality="good", text="hors limites"),
+                    ],
+                    language="fr",
+                    warnings=[],
+                ),
+                Usage("vision", "vision-model", 10, 10, 20),
+            )
+
+    result = await VisionLLMOcr(Reader()).extract(PAGES)  # type: ignore[arg-type]
+
+    assert [page.text for page in result.output.pages] == ["page zéro", "", ""]
+    assert [page.quality for page in result.output.pages] == ["good", "unreadable", "unreadable"]
+    assert "page(s) 2" in result.output.warnings[0]
+    assert "1 transcription(s) ignorée(s)" in result.output.warnings[1]
+
+
 async def test_a_text_model_is_enough_when_tesseract_reads() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/tags":
