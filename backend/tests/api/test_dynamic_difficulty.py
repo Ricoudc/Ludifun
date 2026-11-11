@@ -33,6 +33,7 @@ async def test_recent_answers_are_read_notion_by_notion(client: AsyncClient, db:
     assert others and all(a.result >= 0.8 and not a.helped for a in others)
     assert all(1 <= a.difficulty <= 3 for answers in history.values() for a in answers)
 
+
 async def test_abandoned_sessions_do_not_influence_adaptive_difficulty(
     client: AsyncClient, db: AsyncSession
 ) -> None:
