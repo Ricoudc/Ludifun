@@ -160,8 +160,9 @@ uv run python -m app.tools.evaluate ../eval/lessons --question-reviews ../eval/a
 ```
 
 Le rattachement vérifie la signature de l'ensemble du contenu pédagogique : toute modification
-de la notion, du niveau, de l'énoncé, des points clés, de la réponse modèle ou du passage source
-invalide l'annotation. Une signature absente ou périmée, une annotation dupliquée ou orpheline
+de l'identifiant, du libellé ou de l'énoncé de la notion, de son importance, du niveau, de
+l'énoncé de la question, des points clés, de la réponse modèle ou du passage source invalide
+l'annotation. Une signature absente ou périmée, une annotation dupliquée ou orpheline
 fait échouer l'évaluation au lieu d'être attribuée silencieusement à une autre question. Les
 questions non annotées restent hors du dénominateur. Le rapport et `metrics.json` indiquent le
 nombre annoté, le nombre en attente, les trois catégories et les taux parmi les seules questions
