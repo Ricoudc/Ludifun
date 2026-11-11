@@ -217,12 +217,20 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
     )
     assert skipped.json()["result"] == "skipped"
     wrong = {"choice_id": "a"} if second["type"] == "MCQ" else {"value": True}
-    await client.post(url, json={"item_id": second["id"], "response": wrong}, headers=auth(token))
-    report = (await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))).json()
-    assert report["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
-    late = await client.post(
-        url, json={"item_id": session["items"][2]["id"], "response": {}}, headers=auth(token)
+    wrong_response = await client.post(
+        url, json={"item_id": second["id"], "response": wrong}, headers=auth(token)
     )
+    assert wrong_response.status_code == 200, wrong_response.text
+    # Les autres activités sont explicitement sautées : elles ne contribuent ni à la note ni à la maîtrise.
+    for item in session["items"][2:]:
+        skipped_later = await client.post(
+            url, json={"item_id": item["id"], "response": {"skipped": True}}, headers=auth(token)
+        )
+        assert skipped_later.status_code == 200, skipped_later.text
+    report_response = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert report_response.status_code == 200, report_response.text
+    assert report_response.json()["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
+    late = await client.post(url, json={"item_id": first["id"], "response": {}}, headers=auth(token))
     assert late.status_code == 409 and late.json()["error"]["code"] == "session_closed"
 
 
@@ -320,3 +328,54 @@ async def test_answers_played_offline_keep_their_time(
         headers=auth(token),
     )
     assert naive.status_code == 422  # une heure sans fuseau est refusée
+
+
+async def test_session_cannot_be_completed_before_all_activities_are_answered(
+    client: AsyncClient,
+    db: AsyncSession,
+) -> None:
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+
+    await play(client, db, token, session["id"], session["items"][:1], lambda _: True)
+    premature = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert premature.status_code == 409
+    assert premature.json()["error"]["code"] == "session_not_finished"
+    # Une tentative prématurée ne ferme pas la séance : les activités restantes restent jouables.
+
+    await play(client, db, token, session["id"], session["items"][1:], lambda _: True)
+    replay = (await client.post(f"/v1/sessions/{session['id']}/replay", headers=auth(token))).json()["items"]
+    if replay:
+        await play(client, db, token, session["id"], replay, lambda _: True)
+
+    completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert completed.status_code == 200, completed.text
+
+
+async def test_a_session_played_offline_completes_without_the_remediation_it_never_saw(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """Sans Internet, l'application joue la séance téléchargée ; au retour du réseau, chaque
+    erreur envoyée fait ajouter une remédiation par le serveur. L'enfant ne l'a jamais vue :
+    la séance se clôt quand même, sinon son bilan et sa progression seraient perdus."""
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    keys = await knowledge_keys(db)
+    inserted = 0
+    for item in session["items"]:  # la séance téléchargée, et rien d'autre
+        row = await db.get(SessionItem, uuid.UUID(item["id"]))
+        assert row is not None
+        r = await client.post(
+            f"/v1/sessions/{session['id']}/attempts",
+            json={"item_id": item["id"], "response": respond(activity_of(row, keys), lambda _: False)},
+            headers=auth(token),
+        )
+        assert r.status_code == 200, r.text
+        inserted += len(r.json()["inserted_items"])
+    assert inserted > 0  # le serveur a bien ajouté de la remédiation, restée sans réponse
+
+    done = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert done.status_code == 200, done.text
+    assert done.json()["score_on_10"] == 0.0
