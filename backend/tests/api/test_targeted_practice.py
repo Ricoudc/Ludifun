@@ -97,6 +97,7 @@ async def test_an_ai_failure_changes_nothing_for_the_child(
     status = await db.scalar(select(AiRun.status).where(AiRun.stage == "targeted"))
     assert status == "error"
 
+
 async def test_abandoned_sessions_do_not_make_an_error_recurring(
     client: AsyncClient,
     db: AsyncSession,
