@@ -272,7 +272,9 @@ async def test_abandoned_sessions_do_not_count_in_dashboard_activity(
     ).json()
     await play(client, db, family["device"], session["id"], session["items"], lambda _: True)
     await db.execute(
-        update(RevisionSession).where(RevisionSession.id == session["id"]).values(status="abandoned")
+        update(RevisionSession)
+        .where(RevisionSession.id == session["id"])
+        .values(status="abandoned")
     )
     await db.commit()
 
