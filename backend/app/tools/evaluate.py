@@ -250,6 +250,10 @@ def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
     counts = {label: 0 for label in sorted(QUESTION_REVIEW_LABELS)}
     pending = 0
     for review in reviews:
+        # Une question sans niveau cognitif ne peut pas être évaluée dans les statistiques
+        # de pertinence par niveau ; elle reste toutefois comprise dans le total exporté.
+        if review.get("level") is None:
+            continue
         label = review.get("review_status", "à annoter")
         if label == "à annoter":
             pending += 1
