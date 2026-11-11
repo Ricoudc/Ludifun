@@ -184,8 +184,7 @@ def test_five_successful_mcq_sessions_are_not_mastery(
         masteries = {"k2": outcome.results[0].mastery}
 
     level = outcome.results[0].level
-    assert masteries["k2"].score == 96 and masteries["k2"].box == 5
-    # Le score tient compte de l'oubli entre deux séances.
+    assert masteries["k2"].score == 100 and masteries["k2"].box == 5
     assert level.level is MasteryLevel.LEARNING  # et non « maîtrisée »
     assert level.missing == {2}
     assert "retrouver seul" in level.explanation
@@ -202,10 +201,7 @@ def test_five_successful_mcq_sessions_are_not_mastery(
     scores, evidences = play(registry, [first], recalls=True)
     outcome = summarize_session(scores, evidences, masteries, {"k2": 5}, later, required)
     assert outcome.results[0].previous_level.level is MasteryLevel.LEARNING
-    # L'intervalle écoulé fait baisser le score rappelé : la notion reste maîtrisée,
-    # mais n'atteint plus le niveau « très bien maîtrisée » sans consolidation récente.
-    assert 80 <= outcome.results[0].mastery.score < 90
-    assert outcome.results[0].level.level is MasteryLevel.MASTERED
+    assert outcome.results[0].level.level is MasteryLevel.SOLID
     assert outcome.lesson_mastered
 
 

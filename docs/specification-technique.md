@@ -2380,6 +2380,25 @@ consigne obscure, une réponse « juste » fausse.
   `parent_flow_test` (essai, erreur notée, retour aux questions ; leçon changée).
 - **Non testé** : sur un vrai téléphone, avec une vraie leçon.
 
+### 5.86 Une maîtrise oubliée n'est pas réinjectée (novembre 2026, règles 1.20.0)
+
+Le score affiché baissait déjà entre deux séances (`Mastery.recall`), mais la mise à jour après
+une séance mélangeait le nouveau résultat avec l'ancien score entier : après des mois sans
+révision, une maîtrise oubliée revenait dans le score durable.
+
+- `update_mastery` : `0,6 × réussite de la séance + 0,4 × Mastery.overdue_recall(now)`.
+- `overdue_recall` : l'oubli ne compte **que sur le retard** par rapport à la date de révision
+  prévue (même demi-vie que `recall` : `half_life_factor` × intervalle de la boîte). Une révision
+  faite à l'heure retrouve le score entier.
+- Pourquoi pas `recall(now)` (oubli depuis la dernière séance) : un enfant qui réussit tout,
+  toujours à la date prévue, plafonnait alors à 88, sous le seuil « notion sue » (90) ; la
+  notion lui revenait sans fin et la leçon n'était jamais maîtrisée.
+- Exemples : boîte 1, révision 9 jours après la date prévue : 90 pèse 11 ; boîte 2, un jour de
+  retard : 70 pèse 62.
+- Séances de référence : identiques (seule la version du moteur change). Tests :
+  `tests/domain/test_mastery_and_scoring.py` (retard, révision à l'heure, huit réussites à
+  l'heure : 100).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

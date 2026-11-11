@@ -49,6 +49,15 @@ class Mastery:
         half_life = HALF_LIFE_FACTOR * REVIEW_INTERVAL_DAYS[self.box]
         return _round(self.score * 0.5 ** (self.days_since(now) / half_life))
 
+    def overdue_recall(self, now: datetime) -> int:
+        """Ce qu'il reste du score quand la révision arrive en retard : l'oubli ne compte qu'à
+        partir de la date prévue (`next_review_at`). Une révision faite à l'heure retrouve le
+        score entier : l'intervalle de la boîte est justement le temps d'oubli attendu, et un
+        enfant qui réussit tout à l'heure doit pouvoir atteindre « notion sue »."""
+        late_days = max(0.0, (now - self.next_review_at).total_seconds() / 86400)
+        half_life = HALF_LIFE_FACTOR * REVIEW_INTERVAL_DAYS[self.box]
+        return _round(self.score * 0.5 ** (late_days / half_life))
+
     def fading(self, now: datetime) -> bool:
         """Sans doute en partie oubliée depuis la dernière fois."""
         return self.score - self.recall(now) >= FADING_DROP
@@ -72,7 +81,8 @@ def update_mastery(
         score = _round(100 * rate)
         box, count = MIN_BOX, 1
     else:
-        score = _round(0.6 * 100 * rate + 0.4 * previous.recall(now))
+        # L'ancien score pèse moins s'il date : une maîtrise oubliée n'est pas réinjectée.
+        score = _round(0.6 * 100 * rate + 0.4 * previous.overdue_recall(now))
         box, count = previous.box, previous.sessions_count + 1
     levels = frozenset(validated) | (previous.levels if previous else frozenset())
 

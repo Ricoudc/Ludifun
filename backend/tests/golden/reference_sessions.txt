@@ -1,4 +1,4 @@
-# Séances de référence — moteur 1.19.0
+# Séances de référence — moteur 1.20.0
 
 ## french_cp_vowels — première séance
   durée estimée 7 min, express=False
