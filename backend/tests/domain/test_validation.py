@@ -304,5 +304,7 @@ def test_question_with_invented_passage_is_rejected(
     result = validate_material(item, raw, lesson_text=history.raw["ocr_text"])
 
     assert result.material.questions == []
-    assert any("passage à relire" in rejection.reason for rejection in result.rejected)
+    assert any(
+        "passage à relire" in rejection.reason for rejection in result.rejected
+    )
 
