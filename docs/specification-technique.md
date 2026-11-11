@@ -2380,6 +2380,15 @@ consigne obscure, une réponse « juste » fausse.
   `parent_flow_test` (essai, erreur notée, retour aux questions ; leçon changée).
 - **Non testé** : sur un vrai téléphone, avec une vraie leçon.
 
+### 5.85 Une séance ne se clôt pas avant la fin (novembre 2026)
+
+`POST /v1/sessions/{id}/complete` refuse (409 `session_not_finished`, « Termine d'abord toutes les
+activités de la séance. ») tant qu'une activité **notée** n'a pas de réponse : le bilan et la
+maîtrise ne se calculent pas sur une partie de la séance. La séance reste ouverte et jouable.
+Les blocs non notés (remédiation, reprise des erreurs, bonus) n'empêchent pas la clôture : une
+séance jouée sans Internet ne contient pas la remédiation que le serveur ajoute quand les
+réponses arrivent. Tests : `tests/api/test_sessions.py` (clôture trop tôt refusée puis réussie ;
+séance hors connexion avec erreurs clôturée).
 ### 5.86 Une maîtrise oubliée n'est pas réinjectée (novembre 2026, règles 1.20.0)
 
 Le score affiché baissait déjà entre deux séances (`Mastery.recall`), mais la mise à jour après

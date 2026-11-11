@@ -627,9 +627,16 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
     assert lesson_row is not None
     lesson = await load_units(session, lesson_row)
     items = {i.id: i for i in await session_items(session, revision)}
+    attempts = await attempts_by_item(session, revision)
+    # Toutes les activités notées doivent avoir une réponse : le bilan ne se calcule pas sur une
+    # partie de la séance. Les blocs non notés (remédiation, reprise, bonus) n'empêchent pas la
+    # clôture : une séance jouée sans Internet ne contient pas la remédiation que le serveur
+    # ajoute quand les réponses arrivent, et l'enfant ne l'a jamais vue.
+    if any(i.id not in attempts for i in items.values() if i.block not in UNGRADED_BLOCKS):
+        raise MainNotFinished
     main_scores = [
         float(a.score)
-        for item_id, a in (await attempts_by_item(session, revision)).items()
+        for item_id, a in attempts.items()
         if items[item_id].block not in UNGRADED_BLOCKS and a.response != {"skipped": True}
     ]
     evidences = await load_evidences(session, revision, lesson.id_to_key)
