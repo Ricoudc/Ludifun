@@ -320,3 +320,28 @@ async def test_answers_played_offline_keep_their_time(
         headers=auth(token),
     )
     assert naive.status_code == 422  # une heure sans fuseau est refusée
+
+async def test_session_cannot_be_completed_before_all_activities_are_answered(
+    client: AsyncClient,
+    db: AsyncSession,
+) -> None:
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    session = (
+        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
+    ).json()
+
+    await play(client, db, token, session["id"], session["items"][:1], lambda _: True)
+    premature = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert premature.status_code == 409
+    assert premature.json()["error"]["code"] == "session_not_finished"
+
+    await play(client, db, token, session["id"], session["items"][1:], lambda _: True)
+    replay = (
+        await client.post(f"/v1/sessions/{session['id']}/replay", headers=auth(token))
+    ).json()["items"]
+    if replay:
+        await play(client, db, token, session["id"], replay, lambda _: True)
+
+    completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert completed.status_code == 200, completed.text
