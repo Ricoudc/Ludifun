@@ -94,7 +94,7 @@ function afficher(d) {
   }
 
   remplir("stats", d.stats.map((s) =>
-    ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.max_s), dollars(s.cost_usd)])),
+    ligne([s.model, s.stage, s.ok + " / " + s.calls, duree(s.median_s), duree(s.p95_s), duree(s.max_s), dollars(s.cost_usd)])),
     "Aucun appel.", 6);
 
   remplir("erreurs", d.errors.map((e) =>
