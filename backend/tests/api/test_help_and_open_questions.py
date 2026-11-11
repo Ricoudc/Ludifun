@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.ports import AIError
-from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
+from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript, evaluation_output
 from app.db.models import AiRun, AttemptEvidence, KnowledgeItem, KnowledgeMastery, SessionItem
 from app.services import ai_budget, answer_evaluation
 from tests.api.helpers import auth, family_with_device, upload_lesson
@@ -196,6 +196,30 @@ async def test_open_question_graded_by_the_ai(
     assert "Classe de l'élève : CM2" in sent
     error = await db.scalar(select(AttemptEvidence.error_type))
     assert error == "knowledge"
+
+
+async def test_incomplete_ai_evaluation_without_error_type_uses_local_diagnosis(
+    client: AsyncClient,
+    db: AsyncSession,
+    fake_llm: FakeProvider,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    token, session, item = await open_question_session(client, db, fake_llm, now)
+    fake_llm.overrides["evaluation"] = lambda _attempt, input: evaluation_output(input).model_copy(
+        update={"error_type": None}
+    )
+
+    r = await client.post(
+        f"/v1/sessions/{session['id']}/attempts",
+        json={"item_id": item["id"], "response": {"text": "Je ne sais pas."}, "duration_ms": 30000},
+        headers=auth(token),
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["score"] == 0.0
+    assert await db.scalar(select(AttemptEvidence.error_type)) == "forgotten"
+    run = await db.scalar(select(AiRun).where(AiRun.stage == "evaluation"))
+    assert run is not None and run.status == "invalid_output"
 
 
 @pytest.mark.parametrize("failure", ["ai_error", "timeout", "budget"])
