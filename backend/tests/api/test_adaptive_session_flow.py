@@ -55,7 +55,7 @@ async def test_failed_answers_lower_the_next_session_difficulty(
     await db.flush()
 
     second_response = await client.post(url, json={}, headers=auth(token))
-    assert second_response.status_code == 201, second_response.text
+    assert second_response.status_code == 200, second_response.text
     second = second_response.json()
     assert second["kind"] == "review"
 
