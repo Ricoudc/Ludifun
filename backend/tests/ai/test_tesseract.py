@@ -228,11 +228,18 @@ def test_the_reader_follows_the_setting() -> None:
 async def test_vision_ocr_rejects_duplicate_and_out_of_range_page_indexes() -> None:
     class Reader:
         name = "vision"
-        
+
         def model_for(self, stage: str) -> str:
             return "vision-model"
 
-        async def structured(self, *, prompt: object, input: str, schema: object, images: tuple[PageImage, ...] = ()) -> LLMResult[OcrResult]:
+        async def structured(
+            self,
+            *,
+            prompt: object,
+            input: str,
+            schema: object,
+            images: tuple[PageImage, ...] = (),
+        ) -> LLMResult[OcrResult]:
             return LLMResult(
                 OcrResult(
                     pages=[
