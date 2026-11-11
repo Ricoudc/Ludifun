@@ -162,6 +162,7 @@ async def build_dashboard(
         select(db.RevisionSession.completed_at, db.RevisionSession.score_on_10).where(
             db.RevisionSession.child_id == child_id,
             db.RevisionSession.status == "completed",
+            db.RevisionSession.status == "completed",
             db.RevisionSession.completed_at >= since,
         )
     )
