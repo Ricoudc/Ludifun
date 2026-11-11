@@ -119,3 +119,29 @@ def test_fallback_monitoring_counts_only_recorded_fallbacks() -> None:
     assert _fallback_calls([run(), run(["notion écartée : source absente"])]) == 0
     assert _fallback_calls([run(["repli : ollama : indisponible"]), run()]) == 1
     assert _fallback_calls([run(["repli : ollama : indisponible"]), run(["repli : quota dépassé"])]) == 2
+
+
+def test_monitoring_groups_same_model_by_provider_and_stage() -> None:
+    from app.db.models import AiRun
+    from app.services.monitoring import _group_runs
+
+    def run(provider: str, stage: str = "analysis") -> AiRun:
+        return AiRun(
+            stage=stage,
+            provider=provider,
+            model="shared-model",
+            prompt_version="v1",
+            input_tokens=10,
+            output_tokens=5,
+            latency_ms=100,
+            status="ok",
+            warnings=[],
+        )
+
+    grouped = _group_runs([run("ollama"), run("gemini"), run("ollama", "material")])
+    assert set(grouped) == {
+        ("ollama", "shared-model", "analysis"),
+        ("gemini", "shared-model", "analysis"),
+        ("ollama", "shared-model", "material"),
+    }
+    assert all(len(group) == 1 for group in grouped.values())
