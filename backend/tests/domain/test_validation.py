@@ -305,4 +305,3 @@ def test_question_with_invented_passage_is_rejected(
 
     assert result.material.questions == []
     assert any("passage à relire" in rejection.reason for rejection in result.rejected)
-
