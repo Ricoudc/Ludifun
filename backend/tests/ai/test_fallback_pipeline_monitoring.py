@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel
 
-from app.ai.ports import LLMResult, Prompt, Usage
+from app.ai.ports import LLMResult, Usage
 from app.services.lesson_pipeline import AiRunRecord, LessonPipeline, PipelineResult
 
 
