@@ -263,7 +263,10 @@ def test_a_geometric_figure_is_not_a_picture() -> None:
     assert not needs_picture("Quelle figure a quatre côtés égaux ?")
     assert needs_picture("Regarde l'illustration.")
 
-def test_questions_with_same_stem_and_conflicting_answers_are_all_rejected(history: ReferenceLesson) -> None:
+
+def test_questions_with_same_stem_and_conflicting_answers_are_all_rejected(
+    history: ReferenceLesson,
+) -> None:
     """Une même consigne ne peut pas avoir deux réponses : la donnée manque."""
     item, raw = _material(history)
     first = copy.deepcopy(raw["questions"][0])
@@ -288,9 +291,7 @@ def test_duplicate_question_with_same_answer_keeps_only_one(history: ReferenceLe
     result = validate_material(item, raw)
 
     assert len(result.material.questions) == len(raw["questions"]) - 1
-    assert [(r.element, r.reason) for r in result.rejected] == [
-        ("questions", "question en double")
-    ]
+    assert [(r.element, r.reason) for r in result.rejected] == [("questions", "question en double")]
 
 
 def test_question_with_invented_passage_is_rejected(history: ReferenceLesson) -> None:
