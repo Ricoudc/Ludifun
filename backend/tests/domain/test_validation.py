@@ -287,7 +287,7 @@ def test_duplicate_question_with_same_answer_keeps_only_one(history: ReferenceLe
 
     result = validate_material(item, raw)
 
-    assert len(result.material.questions) == 1
+    assert len(result.material.questions) == len(raw["questions"]) - 1
     assert [(r.element, r.reason) for r in result.rejected] == [
         ("questions", "question en double")
     ]
