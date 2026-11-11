@@ -217,7 +217,10 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
     )
     assert skipped.json()["result"] == "skipped"
     wrong = {"choice_id": "a"} if second["type"] == "MCQ" else {"value": True}
-    await client.post(url, json={"item_id": second["id"], "response": wrong}, headers=auth(token))
+    wrong_response = await client.post(
+        url, json={"item_id": second["id"], "response": wrong}, headers=auth(token)
+    )
+    assert wrong_response.status_code == 200, wrong_response.text
     # Les autres activités sont explicitement sautées : elles ne contribuent ni à la note ni à la maîtrise.
     for item in session["items"][2:]:
         skipped_later = await client.post(
