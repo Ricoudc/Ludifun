@@ -56,6 +56,7 @@ async def _recurring(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
+            db.RevisionSession.status == "completed",
             db.AttemptEvidence.knowledge_id.in_(list(units.key_to_id.values())),
             db.AttemptEvidence.error_type.is_not(None),
             db.Attempt.created_at >= now - RECURRING_WINDOW,
