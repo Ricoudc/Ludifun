@@ -98,7 +98,6 @@ def test_cost_uses_public_prices_and_unknown_models_say_so() -> None:
     assert _rejected([run("fake", warnings=notes), run("fake", stage="analysis", warnings=notes)]) == 1
 
 
-
 def test_fallback_monitoring_counts_only_recorded_fallbacks() -> None:
     from app.db.models import AiRun
     from app.services.monitoring import _fallback_calls
