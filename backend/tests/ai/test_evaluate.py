@@ -79,7 +79,7 @@ def test_question_review_annotations_are_reapplied_only_to_same_pedagogical_cont
             "passage": "En 1789...",
             "review_status": "à annoter",
         },
-        {"review_id": "histoire:k6:1", "prompt": "Pourquoi ?", "review_status": "à annoter"},
+        {"review_id": "histoire:k6:1", "level": 3, "prompt": "Pourquoi ?", "review_status": "à annoter"},
     ]
     annotations = [
         {
