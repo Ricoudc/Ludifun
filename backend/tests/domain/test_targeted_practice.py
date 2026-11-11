@@ -78,6 +78,36 @@ def test_only_proved_answers_are_kept(history: ReferenceLesson) -> None:
     assert len(reasons) == 2
 
 
+def test_targeted_question_requires_its_declared_trap(history: ReferenceLesson) -> None:
+    target = Target(history.unit("k3"), ErrorType.CONFUSION)
+    proposed = ProposedTarget(
+        "En quelle année les États généraux sont-ils réunis ?",
+        "1789",
+        ["1792", "1799", "1815"],
+        1,
+        trap="1776",
+        why="1776 correspond à un autre événement.",
+    )
+    checked = check_targets(target, [proposed])
+    assert checked.questions == []
+    assert checked.rejected[0].reason == "le piège ciblé ne correspond à aucun distracteur"
+
+
+def test_targeted_question_requires_a_nonempty_trap_explanation(history: ReferenceLesson) -> None:
+    target = Target(history.unit("k3"), ErrorType.CONFUSION)
+    proposed = ProposedTarget(
+        "En quelle année les États généraux sont-ils réunis ?",
+        "1789",
+        ["1792", "1799", "1815"],
+        1,
+        trap="1792",
+        why="   ",
+    )
+    checked = check_targets(target, [proposed])
+    assert checked.questions == []
+    assert checked.rejected[0].reason == "explication du piège manquante"
+
+
 def test_a_calculation_is_redone_by_the_code(history: ReferenceLesson) -> None:
     target = Target(history.unit("k1"), ErrorType.CALCULATION)
     right = ProposedTarget("Combien font 47 + 38 ?", "85", ["75", "815", "84"], 1, trap="75")
