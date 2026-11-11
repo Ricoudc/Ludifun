@@ -277,12 +277,12 @@ def question_review_summary(reviews: list[dict[str, Any]]) -> dict[str, Any]:
     level_summary = {}
     for level, bucket in sorted(by_level.items(), key=lambda item: int(item[0])):
         level_summary[level] = bucket | {
-            "pertinent_rate": bucket["pertinent"] / bucket["annotated"]
-            if bucket["annotated"]
-            else None,
-            "off_topic_rate": bucket["hors sujet"] / bucket["annotated"]
-            if bucket["annotated"]
-            else None,
+            "pertinent_rate": (
+                bucket["pertinent"] / bucket["annotated"] if bucket["annotated"] else None
+            ),
+            "off_topic_rate": (
+                bucket["hors sujet"] / bucket["annotated"] if bucket["annotated"] else None
+            ),
         }
 
     return {
