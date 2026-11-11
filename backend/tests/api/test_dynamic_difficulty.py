@@ -53,4 +53,4 @@ async def test_abandoned_sessions_do_not_influence_adaptive_difficulty(
     assert row is not None
     units = await load_units(db, row)
     history = await recent_answers(db, uuid.UUID(family["child"]["id"]), units, default_registry())
-    assert history == {}
+    assert history == {}  # les réponses d’une séance abandonnée ne sont jamais réinjectées
