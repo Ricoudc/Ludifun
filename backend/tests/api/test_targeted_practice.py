@@ -68,7 +68,9 @@ async def test_a_recurring_error_gets_a_new_exercise(
     assert await runs(db) == 1
 
     # Une fois l'exercice prêt, la même erreur ne relance plus l'IA.
-    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    session = (
+        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
+    ).json()
     await play(client, db, token, session["id"], session["items"], lambda key: key != "k3")
     await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert await runs(db) == 1 and len(await targeted_questions(db, "k3")) == 1
@@ -93,8 +95,6 @@ async def test_an_ai_failure_changes_nothing_for_the_child(
     assert await targeted_questions(db, "k3") == []
     status = await db.scalar(select(AiRun.status).where(AiRun.stage == "targeted"))
     assert status == "error"
-
-
 
 async def test_abandoned_sessions_do_not_make_an_error_recurring(
     client: AsyncClient,
