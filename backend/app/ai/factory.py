@@ -164,6 +164,7 @@ def ocr_for(settings: Settings, llm: LLMProvider) -> OcrProvider:
     if settings.ocr_engine == "tesseract":
         return tesseract
     if isinstance(llm, FallbackLLM):
+
         async def any_provider_reads_images() -> bool:
             # Une IA locale texte seul ne doit pas empêcher le repli vers une IA vision du cloud.
             for provider in llm.chain:
