@@ -41,6 +41,7 @@ async def test_page_and_live_calls(client: AsyncClient, db: AsyncSession) -> Non
     exercises = recent["exercises"]
     assert exercises["notions"] == 8 and exercises["questions"] > 0 and exercises["reports"] == 0
     assert exercises["rejected"] >= 0 and all(s["cost_usd"] == 0 for s in data["stats"])
+    assert all(s["fallback_calls"] == 0 and s["fallback_rate_pct"] == 0 for s in data["stats"])
 
     # Une analyse en cours : l'appel à l'IA et sa durée apparaissent.
     lesson_id = uuid.UUID(lesson["id"])
@@ -111,3 +112,27 @@ def test_cost_uses_public_prices_and_unknown_models_say_so() -> None:
     assert _cost([run("claude-sonnet-5"), run("modele-inconnu")]) is None
     notes = ["k1.questions[0] : l'énoncé contient la réponse", "taux de rejet du matériel élevé : 40%"]
     assert _rejected([run("fake", warnings=notes), run("fake", stage="analysis", warnings=notes)]) == 1
+
+
+
+def test_fallback_monitoring_counts_only_recorded_fallbacks() -> None:
+    from app.db.models import AiRun
+    from app.services.monitoring import _fallback_calls
+
+    def run(warnings: list[str] | None = None) -> AiRun:
+        return AiRun(
+            stage="analysis",
+            provider="ollama",
+            model="ollama/qwen2.5vl:7b",
+            prompt_version="v1",
+            input_tokens=100,
+            output_tokens=50,
+            latency_ms=1000,
+            status="ok",
+            warnings=warnings or [],
+        )
+
+    assert _fallback_calls([]) == 0
+    assert _fallback_calls([run(), run(["notion écartée : source absente"])]) == 0
+    assert _fallback_calls([run(["repli : ollama : indisponible"]), run()]) == 1
+    assert _fallback_calls([run(["repli : ollama : indisponible"]), run(["repli : quota dépassé"])]) == 2
