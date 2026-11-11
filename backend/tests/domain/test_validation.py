@@ -24,7 +24,12 @@ def test_reference_lessons_are_fully_valid(lesson: ReferenceLesson) -> None:
     assert validation.analysis.warnings == []
     assert len(validation.analysis.knowledge) == len(lesson.raw["analysis"]["knowledge"])
     for item in validation.analysis.knowledge:
-        material = validate_material(item, lesson.raw["material"][item.id])
+        material = validate_material(
+            item,
+            lesson.raw["material"][item.id],
+            lesson_text=lesson.raw["ocr_text"],
+            subject=lesson.analysis.lesson.subject if lesson.analysis.lesson is not None else None,
+        )
         assert material.rejected == [], (item.id, material.rejected)
         assert material.rejection_rate == 0
 
