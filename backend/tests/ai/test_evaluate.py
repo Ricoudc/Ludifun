@@ -134,6 +134,9 @@ def test_question_review_summary_separates_levels_and_excludes_pending_from_rate
     "changed_field, changed_value",
     [
         ("level", 2),
+        ("review_dimensions", ["pertinence_par_rapport_a_la_notion"]),
+        ("prompt", "Une question reformulée."),
+        ("passage", "Un autre extrait source."),
         ("key_points", ["date", "conséquences nouvelles"]),
         ("model_answer", "Une réponse modèle différente."),
         ("notion", "Une notion renommée."),
@@ -150,6 +153,10 @@ def test_question_review_annotation_is_invalidated_when_pedagogical_content_chan
         "notion": "La Révolution française",
         "notion_statement": "La Révolution commence en 1789.",
         "importance": 4,
+        "review_dimensions": [
+            "pertinence_par_rapport_a_la_notion",
+            "niveau_cognitif_annonce",
+        ],
         "level": 3,
         "prompt": "Explique 1789.",
         "key_points": ["date", "causes"],
