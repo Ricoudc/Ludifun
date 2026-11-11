@@ -34,7 +34,10 @@ async def test_page_and_live_calls(client: AsyncClient, db: AsyncSession) -> Non
         for stat in data["stats"]
     )
     assert all(stat["input_tokens"] >= 0 and stat["output_tokens"] >= 0 for stat in data["stats"])
-    assert all(stat["output_tokens_per_s"] is None or stat["output_tokens_per_s"] >= 0 for stat in data["stats"])
+    assert all(
+        stat["output_tokens_per_s"] is None or stat["output_tokens_per_s"] >= 0
+        for stat in data["stats"]
+    )
     # Coût et qualité des exercices (§5.80) : l'IA factice ne coûte rien ; des chiffres seulement.
     assert recent["cost_usd"] == 0 and data["cost"] == {"week_usd": 0, "lessons": 1, "per_lesson_usd": 0}
     exercises = recent["exercises"]
