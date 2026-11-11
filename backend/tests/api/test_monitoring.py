@@ -29,6 +29,7 @@ async def test_page_and_live_calls(client: AsyncClient, db: AsyncSession) -> Non
     assert recent["lesson"] == lesson["id"][:8] and recent["state"] == "ready" and recent["status"] == "prête"
     assert [s["status"] for s in recent["steps"]] and all(s["status"] == "ok" for s in recent["steps"])
     assert data["stats"] and data["errors"] == []
+    assert all({"median_s", "p95_s", "max_s"} <= set(stat) for stat in data["stats"])
     # Coût et qualité des exercices (§5.80) : l'IA factice ne coûte rien ; des chiffres seulement.
     assert recent["cost_usd"] == 0 and data["cost"] == {"week_usd": 0, "lessons": 1, "per_lesson_usd": 0}
     exercises = recent["exercises"]
@@ -72,6 +73,15 @@ def test_error_messages_drop_lesson_content() -> None:
     )
     assert "Louis" not in clean_message(message) and "input_value=…" in clean_message(message)
     assert len(clean_message("x" * 500)) == 200
+
+
+def test_p95_uses_nearest_rank_and_handles_small_samples() -> None:
+    from app.services.monitoring import _p95_ms
+
+    assert _p95_ms([]) == 0
+    assert _p95_ms([120]) == 120
+    assert _p95_ms(list(range(1, 21))) == 19
+    assert _p95_ms(list(range(1, 101))) == 95
 
 
 def test_cost_uses_public_prices_and_unknown_models_say_so() -> None:
