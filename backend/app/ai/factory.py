@@ -27,7 +27,7 @@ from app.ai.ports import LLMProvider, OcrProvider, Stage
 from app.ai.presets import PRESETS
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
-from app.ai.providers.ollama import OllamaProvider, reads_images
+from app.ai.providers.ollama import OllamaProvider
 from app.ai.providers.openai_compatible import OpenAICompatibleProvider
 from app.config import AiProviderName, Settings
 
