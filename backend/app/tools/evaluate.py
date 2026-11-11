@@ -165,7 +165,9 @@ def _question_review_signature(review: dict[str, Any]) -> str:
         key: review.get(key)
         for key in (
             "knowledge_id",
+            "notion",
             "notion_statement",
+            "importance",
             "level",
             "prompt",
             "key_points",
