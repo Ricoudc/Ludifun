@@ -78,6 +78,11 @@ def _rejected(runs: list[AiRun]) -> int:
     )
 
 
+def _fallback_calls(runs: list[AiRun]) -> int:
+    """Nombre d'appels réussis servis par un fournisseur de repli."""
+    return sum(1 for run in runs if any(str(w).startswith("repli : ") for w in run.warnings))
+
+
 async def _quality(db: AsyncSession, lesson_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
     """Par leçon : notions gardées, questions à choix, questions signalées par l'enfant (§5.80)."""
     found: dict[uuid.UUID, dict[str, int]] = {
@@ -203,6 +208,8 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 "stage": STAGE_LABELS.get(stage, stage),  # type: ignore[call-overload]
                 "calls": len(group),
                 "ok": sum(1 for r in group if r.status == "ok"),
+                "fallback_calls": _fallback_calls(group),
+                "fallback_rate_pct": round(_fallback_calls(group) * 100 / len(group), 1),
                 "median_s": round(statistics.median(r.latency_ms for r in group) / 1000),
                 "max_s": round(max(r.latency_ms for r in group) / 1000),
                 "cost_usd": _cost(group),
@@ -276,7 +283,9 @@ def as_text(data: dict[str, Any]) -> str:
     lines += ["", f"== Durées par modèle ({STATS_DAYS} derniers jours) =="]
     lines += [
         f"- {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "
-        f"médiane {s['median_s']} s, max {s['max_s']} s, coût {_dollars(s['cost_usd'])}"
+        f"médiane {s['median_s']} s, max {s['max_s']} s, "
+        f"replis {s['fallback_calls']}/{s['calls']} ({s['fallback_rate_pct']} %), "
+        f"coût {_dollars(s['cost_usd'])}"
         for s in data["stats"]
     ] or ["aucun appel"]
     cost = data["cost"]
