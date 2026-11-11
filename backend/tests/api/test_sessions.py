@@ -342,6 +342,7 @@ async def test_session_cannot_be_completed_before_all_activities_are_answered(
     premature = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert premature.status_code == 409
     assert premature.json()["error"]["code"] == "session_not_finished"
+    # Une tentative prématurée ne ferme pas la séance : les activités restantes restent jouables.
 
     await play(client, db, token, session["id"], session["items"][1:], lambda _: True)
     replay = (
