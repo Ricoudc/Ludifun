@@ -83,6 +83,14 @@ def _fallback_calls(runs: list[AiRun]) -> int:
     return sum(1 for run in runs if any(str(w).startswith("repli : ") for w in run.warnings))
 
 
+def _group_runs(runs: list[AiRun]) -> dict[tuple[str, str, str], list[AiRun]]:
+    """Sépare les statistiques par fournisseur, modèle et étape."""
+    grouped: dict[tuple[str, str, str], list[AiRun]] = defaultdict(list)
+    for run in runs:
+        grouped[(run.provider, run.model, run.stage)].append(run)
+    return grouped
+
+
 async def _quality(db: AsyncSession, lesson_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, int]]:
     """Par leçon : notions gardées, questions à choix, questions signalées par l'enfant (§5.80)."""
     found: dict[uuid.UUID, dict[str, int]] = {
@@ -141,9 +149,7 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
 
     since = now - timedelta(days=STATS_DAYS)
     week = (await db.scalars(select(AiRun).where(AiRun.created_at >= since))).all()
-    grouped: dict[tuple[str, str], list[AiRun]] = defaultdict(list)
-    for run in week:
-        grouped[(run.model, run.stage)].append(run)
+    grouped = _group_runs(list(week))
 
     quality = await _quality(db, [lesson.id for lesson in recent])
     analysed = {r.lesson_id for r in week if r.lesson_id is not None}
@@ -213,6 +219,7 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
         ],
         "stats": [
             {
+                "provider": provider,
                 "model": model,
                 "stage": STAGE_LABELS.get(stage, stage),  # type: ignore[call-overload]
                 "calls": len(group),
@@ -228,7 +235,7 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 "output_tokens_per_s": _output_tokens_per_s(group),
                 "cost_usd": _cost(group),
             }
-            for (model, stage), group in sorted(grouped.items())
+            for (provider, model, stage), group in sorted(grouped.items())
         ],
         "cost": {
             "week_usd": week_cost,
@@ -303,7 +310,7 @@ def as_text(data: dict[str, Any]) -> str:
             lines += [f"      · {note}" for note in s["notes"]]
     lines += ["", f"== Durées par modèle ({STATS_DAYS} derniers jours) =="]
     lines += [
-        f"- {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "
+        f"- {s['provider']} / {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "
         f"médiane {s['median_s']} s, p95 {s['p95_s']} s, max {s['max_s']} s, "
         f"replis {s['fallback_calls']}/{s['calls']} ({s['fallback_rate_pct']} %), "
         f"{s['output_tokens']} jetons sortants à {s['output_tokens_per_s'] or '?'} jetons/s (temps total), "
