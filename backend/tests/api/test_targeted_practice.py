@@ -137,6 +137,9 @@ async def test_abandoned_sessions_do_not_make_an_error_recurring(
     assert await runs(db) == 0
 
     board = (
-        await client.get(f"/v1/children/{family['child']['id']}/dashboard", headers=auth(family["parent"]))
+        await client.get(
+            f"/v1/children/{family['child']['id']}/dashboard",
+            headers=auth(family["parent"]),
+        )
     ).json()
     assert board["recurring_errors"] == []
