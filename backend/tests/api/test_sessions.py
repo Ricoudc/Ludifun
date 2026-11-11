@@ -227,9 +227,7 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
     report_response = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert report_response.status_code == 200, report_response.text
     assert report_response.json()["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
-    late = await client.post(
-        url, json={"item_id": first["id"], "response": {}}, headers=auth(token)
-    )
+    late = await client.post(url, json={"item_id": first["id"], "response": {}}, headers=auth(token))
     assert late.status_code == 409 and late.json()["error"]["code"] == "session_closed"
 
 
@@ -334,9 +332,7 @@ async def test_session_cannot_be_completed_before_all_activities_are_answered(
 ) -> None:
     token = (await family_with_device(client))["device"]
     lesson = await upload_lesson(client, token)
-    session = (
-        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
-    ).json()
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
 
     await play(client, db, token, session["id"], session["items"][:1], lambda _: True)
     premature = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
@@ -345,9 +341,7 @@ async def test_session_cannot_be_completed_before_all_activities_are_answered(
     # Une tentative prématurée ne ferme pas la séance : les activités restantes restent jouables.
 
     await play(client, db, token, session["id"], session["items"][1:], lambda _: True)
-    replay = (
-        await client.post(f"/v1/sessions/{session['id']}/replay", headers=auth(token))
-    ).json()["items"]
+    replay = (await client.post(f"/v1/sessions/{session['id']}/replay", headers=auth(token))).json()["items"]
     if replay:
         await play(client, db, token, session["id"], replay, lambda _: True)
 
