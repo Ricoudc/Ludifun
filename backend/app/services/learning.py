@@ -226,17 +226,29 @@ async def recent_answers(
     session: AsyncSession, child_id: uuid.UUID, lesson: LessonUnits, registry: ActivityRegistry
 ) -> dict[str, list[RecentAnswer]]:
     """Les dernières réponses de l'enfant sur chaque notion de la leçon, toutes séances
-    confondues, la plus récente en dernier (difficulté dynamique, §36)."""
+    confondues, la plus récente en dernier (difficulté dynamique, §36).
+
+    Le classement est fait par notion dans PostgreSQL : on ne transfère que les
+    `DIFFICULTY_WINDOW` réponses utiles par notion, même si l'historique grandit.
+    """
     keys = lesson.id_to_key
-    rows = await session.execute(
+    ranked = (
         select(
-            db.AttemptEvidence.knowledge_id,
-            db.AttemptEvidence.result,
-            db.AttemptEvidence.error_type,
-            db.SessionItem.activity_type,
-            db.SessionItem.difficulty,
-            db.SessionItem.help_level,
-            db.Attempt.duration_ms,
+            db.AttemptEvidence.knowledge_id.label("knowledge_id"),
+            db.AttemptEvidence.result.label("result"),
+            db.AttemptEvidence.error_type.label("error_type"),
+            db.SessionItem.activity_type.label("activity_type"),
+            db.SessionItem.difficulty.label("difficulty"),
+            db.SessionItem.help_level.label("help_level"),
+            db.Attempt.duration_ms.label("duration_ms"),
+            db.Attempt.created_at.label("created_at"),
+            db.Attempt.id.label("attempt_id"),
+            func.row_number()
+            .over(
+                partition_by=db.AttemptEvidence.knowledge_id,
+                order_by=(db.Attempt.created_at.desc(), db.Attempt.id.desc()),
+            )
+            .label("answer_rank"),
         )
         .join(db.Attempt, db.Attempt.id == db.AttemptEvidence.attempt_id)
         .join(db.SessionItem, db.SessionItem.id == db.Attempt.session_item_id)
@@ -245,13 +257,23 @@ async def recent_answers(
             db.RevisionSession.child_id == child_id,
             db.AttemptEvidence.knowledge_id.in_(list(keys)),
         )
-        .order_by(db.Attempt.created_at.desc())
+        .subquery()
+    )
+    rows = await session.execute(
+        select(
+            ranked.c.knowledge_id,
+            ranked.c.result,
+            ranked.c.error_type,
+            ranked.c.activity_type,
+            ranked.c.difficulty,
+            ranked.c.help_level,
+            ranked.c.duration_ms,
+        )
+        .where(ranked.c.answer_rank <= DIFFICULTY_WINDOW)
+        .order_by(ranked.c.knowledge_id, ranked.c.created_at, ranked.c.attempt_id)
     )
     found: dict[str, list[RecentAnswer]] = {}
     for knowledge_id, result, error_type, activity_type, difficulty, help_level, duration_ms in rows:
-        answers = found.setdefault(keys[knowledge_id], [])
-        if len(answers) >= DIFFICULTY_WINDOW:
-            continue
         try:
             expected_ms: float | None = registry.get(activity_type).base_duration_s * 1000
         except UnknownActivity:
@@ -259,7 +281,7 @@ async def recent_answers(
         quick = (
             duration_ms is not None and expected_ms is not None and duration_ms <= QUICK_SHARE * expected_ms
         )
-        answers.append(
+        found.setdefault(keys[knowledge_id], []).append(
             RecentAnswer(
                 difficulty=difficulty,
                 result=float(result),
@@ -268,7 +290,7 @@ async def recent_answers(
                 error_type=error_type,
             )
         )
-    return {key: list(reversed(answers)) for key, answers in found.items()}
+    return found
 
 
 def compose_with(
