@@ -162,3 +162,4 @@ def test_monitoring_groups_same_model_by_provider_and_stage() -> None:
         ("ollama", "shared-model", "material"),
     }
     assert all(len(group) == 1 for group in grouped.values())
+    assert all(provider == key[0] for key, provider in ((key, key[0]) for key in grouped))
