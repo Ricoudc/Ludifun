@@ -218,10 +218,17 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
     assert skipped.json()["result"] == "skipped"
     wrong = {"choice_id": "a"} if second["type"] == "MCQ" else {"value": True}
     await client.post(url, json={"item_id": second["id"], "response": wrong}, headers=auth(token))
-    report = (await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))).json()
-    assert report["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
+    # Les autres activités sont explicitement sautées : elles ne contribuent ni à la note ni à la maîtrise.
+    for item in session["items"][2:]:
+        skipped_later = await client.post(
+            url, json={"item_id": item["id"], "response": {"skipped": True}}, headers=auth(token)
+        )
+        assert skipped_later.status_code == 200, skipped_later.text
+    report_response = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert report_response.status_code == 200, report_response.text
+    assert report_response.json()["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
     late = await client.post(
-        url, json={"item_id": session["items"][2]["id"], "response": {}}, headers=auth(token)
+        url, json={"item_id": first["id"], "response": {}}, headers=auth(token)
     )
     assert late.status_code == 409 and late.json()["error"]["code"] == "session_closed"
 
