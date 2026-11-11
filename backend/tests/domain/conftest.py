@@ -28,7 +28,7 @@ def load_lesson(name: str) -> ReferenceLesson:
     raw = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
     analysis = validate_analysis(raw["analysis"], raw["ocr_text"]).analysis
     units = {
-        item.id: KnowledgeUnit(item=item, material=validate_material(item, raw["material"][item.id]).material)
+        item.id: KnowledgeUnit(item=item, material=validate_material(item, raw["material"][item.id], lesson_text=raw["ocr_text"], subject=analysis.lesson.subject).material)
         for item in analysis.knowledge
     }
     return ReferenceLesson(name, raw, analysis, units)
