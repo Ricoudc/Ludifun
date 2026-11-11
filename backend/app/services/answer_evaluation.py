@@ -125,8 +125,6 @@ class AnswerEvaluator:
             usage.output_tokens,
             usage.latency_ms,
             "ok" if evaluation else "invalid_output",
-            []
-            if evaluation
-            else ["sortie écartée (retour, score ou confiance invalide)"],
+            [] if evaluation else ["sortie écartée (retour, score ou confiance invalide)"],
         )
         return EvaluationRun(evaluation, run)
