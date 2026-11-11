@@ -136,7 +136,9 @@ def test_question_review_summary_separates_levels_and_excludes_pending_from_rate
         ("level", 2),
         ("key_points", ["date", "conséquences nouvelles"]),
         ("model_answer", "Une réponse modèle différente."),
+        ("notion", "Une notion renommée."),
         ("notion_statement", "Une notion reformulée."),
+        ("importance", 5),
     ],
 )
 def test_question_review_annotation_is_invalidated_when_pedagogical_content_changes(
@@ -145,7 +147,9 @@ def test_question_review_annotation_is_invalidated_when_pedagogical_content_chan
     review: dict[str, Any] = {
         "review_id": "histoire:k5:1",
         "knowledge_id": "k5",
+        "notion": "La Révolution française",
         "notion_statement": "La Révolution commence en 1789.",
+        "importance": 4,
         "level": 3,
         "prompt": "Explique 1789.",
         "key_points": ["date", "causes"],
