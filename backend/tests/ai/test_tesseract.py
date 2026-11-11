@@ -242,6 +242,21 @@ async def test_a_text_model_is_enough_when_tesseract_reads() -> None:
     assert mixed.ok and "Tesseract seul" in mixed.message
 
 
+async def test_auto_ocr_uses_vision_fallback_after_text_only_ollama() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/show"
+        return httpx.Response(200, json={"capabilities": ["completion"]})
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    local = OllamaProvider("http://pc:11434", {"ocr": "mistral:7b"}, client=client)
+    fallback = FallbackLLM([local, FakeProvider()])
+    reader = ocr_for(Settings(ocr_engine="auto"), fallback)
+
+    assert isinstance(reader, AutoOcr)
+    assert await reader._vision_ok()  # le fournisseur de repli sait traiter les images
+    await client.aclose()
+
+
 def test_tesseract_reads_then_groq_analyses_and_creates(monkeypatch: pytest.MonkeyPatch) -> None:
     """La combinaison voulue par la famille : Tesseract lit la photo sur le PC, Groq analyse la
     leçon et crée les questions ; seule la transcription part chez Groq, jamais la photo."""
