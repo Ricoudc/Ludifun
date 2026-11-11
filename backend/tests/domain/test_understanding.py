@@ -202,7 +202,10 @@ def test_five_successful_mcq_sessions_are_not_mastery(
     scores, evidences = play(registry, [first], recalls=True)
     outcome = summarize_session(scores, evidences, masteries, {"k2": 5}, later, required)
     assert outcome.results[0].previous_level.level is MasteryLevel.LEARNING
-    assert outcome.results[0].level.level is MasteryLevel.SOLID
+    # L'intervalle écoulé fait baisser le score rappelé : la notion reste maîtrisée,
+    # mais n'atteint plus le niveau « très bien maîtrisée » sans consolidation récente.
+    assert 80 <= outcome.results[0].mastery.score < 90
+    assert outcome.results[0].level.level is MasteryLevel.MASTERED
     assert outcome.lesson_mastered
 
 
