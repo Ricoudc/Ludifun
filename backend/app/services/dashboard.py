@@ -177,7 +177,7 @@ async def build_dashboard(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
-            db.RevisionSession.status == "completed",
+            db.RevisionSession.status != "abandoned",
             db.Attempt.created_at >= since,
         )
     )
@@ -241,7 +241,7 @@ async def build_dashboard(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
-            db.RevisionSession.status == "completed",
+            db.RevisionSession.status != "abandoned",
             db.HelpRequest.requested_at >= local_midnight(current, tz),
         )
     )
@@ -383,7 +383,7 @@ async def recent_facts(
         .join(db.RevisionSession, db.RevisionSession.id == db.SessionItem.session_id)
         .where(
             db.RevisionSession.child_id == child_id,
-            db.RevisionSession.status == "completed",
+            db.RevisionSession.status != "abandoned",
             db.Attempt.created_at >= since - RECENT,
         )
     ):
