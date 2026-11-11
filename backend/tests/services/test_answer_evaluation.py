@@ -42,3 +42,48 @@ def test_evaluation_rejects_confidence_outside_its_contract() -> None:
     )
 
     assert to_evaluation(output, ["A", "B"]) is None
+
+
+
+@pytest.mark.parametrize("invalid_score", [float("nan"), float("inf"), -0.1, 1.1])
+def test_evaluation_rejects_non_finite_or_out_of_range_scores(invalid_score: float) -> None:
+    output = EvaluationOutput(
+        score=invalid_score,
+        key_points_found=["A"],
+        missing=["B"],
+        error_type="knowledge",
+        confidence=0.9,
+        feedback="Bien joué, continue !",
+    )
+
+    assert to_evaluation(output, ["A", "B"]) is None
+
+
+@pytest.mark.parametrize("invalid_confidence", [float("nan"), float("inf"), -0.1])
+def test_evaluation_rejects_non_finite_or_negative_confidence(invalid_confidence: float) -> None:
+    output = EvaluationOutput(
+        score=0.5,
+        key_points_found=["A"],
+        missing=["B"],
+        error_type="knowledge",
+        confidence=invalid_confidence,
+        feedback="Bien joué, continue !",
+    )
+
+    assert to_evaluation(output, ["A", "B"]) is None
+
+
+def test_evaluation_without_key_points_preserves_validated_score() -> None:
+    output = EvaluationOutput(
+        score=0.5,
+        key_points_found=[],
+        missing=[],
+        error_type=None,
+        confidence=0.9,
+        feedback="Ta réponse mérite un retour.",
+    )
+
+    evaluation = to_evaluation(output, [])
+
+    assert evaluation is not None
+    assert evaluation.score == 0.5
