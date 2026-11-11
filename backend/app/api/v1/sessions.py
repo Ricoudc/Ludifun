@@ -388,6 +388,8 @@ async def complete(
         done = await learning.complete(db, revision, now)
     except learning.SessionClosed as exc:
         raise SESSION_CLOSED from exc
+    except learning.MainNotFinished as exc:
+        raise ApiError(409, "session_not_finished", "Termine d'abord toutes les activités de la séance.") from exc
     award = await rewards.award(db, revision, done, now, ZoneInfo(settings.family_timezone))
     await db.commit()
     await _targeted_later(db, settings, request, background, resolver, child, revision.lesson_id, now)
