@@ -143,7 +143,8 @@ def test_summarize_session() -> None:
         ("k1", "mastered"),
     ]
     k1 = outcome.results[-1].mastery
-    assert (k1.score, k1.box, k1.sessions_count) == (88, 3, 2)
+    # Révision un jour après la date prévue (boîte 2, demi-vie de 6 jours) : 70 pèse 62.
+    assert (k1.score, k1.box, k1.sessions_count) == (85, 3, 2)
     assert outcome.next_review_at == NOW + timedelta(days=1)
     assert not outcome.lesson_mastered  # k4 jamais travaillée
     assert outcome.count(KnowledgeStatus.NOT_MASTERED) == 2
@@ -172,3 +173,26 @@ def test_the_parent_reads_that_a_notion_may_be_forgotten() -> None:
     assert later.explanation.startswith("Pas revue depuis 30 jours : sans doute un peu oubliée")
     recent = Mastery(95, 5, NOW + timedelta(days=14), NOW - timedelta(days=1), levels=frozenset({1, 2, 3}))
     assert notion_level(recent, {1, 2}, NOW).level == MasteryLevel.SOLID
+
+
+def test_an_old_score_weighs_less_when_the_review_comes_late() -> None:
+    """Après une longue absence, la maîtrise d'avant n'est pas réinjectée telle quelle."""
+    due = NOW - timedelta(days=9)  # boîte 1 : demi-vie de 3 jours, révision prévue il y a 9 jours
+    previous = Mastery(90, 1, due, due - timedelta(days=1))
+    assert previous.overdue_recall(NOW) == 11  # 90 divisé trois fois par deux
+    m = update_mastery(previous, 0.5, NOW)
+    assert m.score == 34  # 0,6 × 50 + 0,4 × 11 (et non 0,4 × 90 = 66)
+    assert m.last_practiced_at == NOW
+
+
+def test_a_review_done_on_time_keeps_the_whole_score() -> None:
+    """L'intervalle de la boîte est le temps d'oubli attendu : à l'heure, rien n'est retiré, et
+    un enfant qui réussit tout atteint « notion sue » puis y reste."""
+    now, mastery = NOW, None
+    for _ in range(8):
+        mastery = update_mastery(mastery, 1.0, now)
+        now = mastery.next_review_at
+    assert mastery is not None and mastery.score == 100 and mastery.box == 5
+    # En avance ou le jour prévu : le score entier.
+    assert mastery.overdue_recall(mastery.next_review_at) == 100
+    assert mastery.overdue_recall(mastery.last_practiced_at) == 100

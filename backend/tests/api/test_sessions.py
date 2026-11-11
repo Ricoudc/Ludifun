@@ -197,7 +197,7 @@ async def test_nothing_to_review_when_everything_is_mastered(
     assert (await client.get("/v1/lessons", headers=auth(token))).json()[0]["mastered"]
 
 
-async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
+async def test_skipped_and_invalid_answers(client: AsyncClient, db: AsyncSession) -> None:
     token = (await family_with_device(client))["device"]
     lesson = await upload_lesson(client, token)
     session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
@@ -216,7 +216,10 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
         url, json={"item_id": first["id"], "response": {"skipped": True}}, headers=auth(token)
     )
     assert skipped.json()["result"] == "skipped"
-    wrong = {"choice_id": "a"} if second["type"] == "MCQ" else {"value": True}
+    # Une réponse fausse mais valide, quel que soit le jeu tiré (la séance change à chaque fois).
+    row = await db.get(SessionItem, uuid.UUID(second["id"]))
+    assert row is not None
+    wrong = respond(activity_of(row, await knowledge_keys(db)), lambda _: False)
     wrong_response = await client.post(
         url, json={"item_id": second["id"], "response": wrong}, headers=auth(token)
     )
@@ -229,7 +232,7 @@ async def test_skipped_and_invalid_answers(client: AsyncClient) -> None:
         assert skipped_later.status_code == 200, skipped_later.text
     report_response = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert report_response.status_code == 200, report_response.text
-    assert report_response.json()["score_on_10"] in (0.0, 10.0)  # une seule activité comptée
+    assert report_response.json()["score_on_10"] < 10.0  # seule la réponse fausse est comptée
     late = await client.post(url, json={"item_id": first["id"], "response": {}}, headers=auth(token))
     assert late.status_code == 409 and late.json()["error"]["code"] == "session_closed"
 
