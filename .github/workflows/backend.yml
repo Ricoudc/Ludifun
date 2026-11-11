@@ -35,23 +35,16 @@ jobs:
       LUDIFUN_TEST_DATABASE_URL: postgresql+asyncpg://ludifun:ludifun@localhost:5432/ludifun_test
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-      - name: Tesseract (lecture des photos sur le serveur, §5.65)
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng fonts-dejavu-core
-      - name: Dépendances (versions figées par uv.lock)
-        run: uv sync --frozen
-      - name: Ruff (lint)
-        run: uv run ruff check .
-      - name: Ruff (format)
-        run: uv run ruff format --check .
-      - name: Mypy
-        run: uv run mypy app tests
-      - name: Tests (PostgreSQL réel, migrations incluses)
-        run: uv run pytest -q
-      - name: Générer le rapport de référence (corpus synthétique)
-        run: uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai
+      # Same Debian image as production: Tesseract and language packs are
+      # installed by backend/Dockerfile, not from the runner's flaky Ubuntu APT mirror.
+      - name: Construire l'image de test (Tesseract inclus)
+        run: docker build --tag ludifun-backend-ci .
+      - name: Ruff, Mypy, tests et benchmark dans l'image du serveur
+        run: |
+          docker run --rm --user root --network host \
+            -e LUDIFUN_TEST_DATABASE_URL="$LUDIFUN_TEST_DATABASE_URL" \
+            -v "$GITHUB_WORKSPACE:/workspace" -w /workspace/backend ludifun-backend-ci \
+            sh -c 'uv sync --frozen && uv run ruff check . && uv run ruff format --check . && uv run mypy app tests && uv run pytest -q && uv run python -m app.tools.evaluate ../eval/example --provider fake --out ../artifacts/quality-ai'
       - name: Publier le rapport et les résultats détaillés
         uses: actions/upload-artifact@v4
         with:
