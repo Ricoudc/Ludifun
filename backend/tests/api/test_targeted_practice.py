@@ -38,7 +38,11 @@ async def three_sessions_with_the_same_error(
     lesson = await upload_lesson(client, token)
     k3 = await db.scalar(select(KnowledgeItem.id).where(KnowledgeItem.key == "k3"))
     for session_number in range(3):
-        session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+        session = (
+            await client.post(
+                f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token)
+            )
+        ).json()
         await play(client, db, token, session["id"], session["items"], lambda key: key != "k3")
         # La même erreur à chaque séance (le type précis dépend de la réponse de l'élève simulé).
         await db.execute(
