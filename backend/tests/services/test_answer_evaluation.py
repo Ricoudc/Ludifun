@@ -44,7 +44,6 @@ def test_evaluation_rejects_confidence_outside_its_contract() -> None:
     assert to_evaluation(output, ["A", "B"]) is None
 
 
-
 @pytest.mark.parametrize("invalid_score", [float("nan"), float("inf"), -0.1, 1.1])
 def test_evaluation_rejects_non_finite_or_out_of_range_scores(invalid_score: float) -> None:
     output = EvaluationOutput(
