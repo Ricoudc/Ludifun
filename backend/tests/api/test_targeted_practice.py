@@ -119,32 +119,24 @@ async def test_abandoned_sessions_do_not_make_an_error_recurring(
         )
         await db.commit()
         if session_number < 2:
-            completed = await client.post(
-                f"/v1/sessions/{session['id']}/complete", headers=auth(token)
-            )
+            completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
             assert completed.status_code == 200, completed.text
         else:
             await db.execute(
-                update(RevisionSession)
-                .where(RevisionSession.id == session["id"])
-                .values(status="abandoned")
+                update(RevisionSession).where(RevisionSession.id == session["id"]).values(status="abandoned")
             )
             await db.commit()
 
     # Une quatrième séance terminée déclenche le calcul : seules deux séances contiennent
     # une erreur de confusion terminée, la troisième occurrence est dans une séance abandonnée.
-    session = (
-        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
-    ).json()
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     await play(client, db, token, session["id"], session["items"], lambda _: True)
     completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert completed.status_code == 200, completed.text
     assert await targeted_questions(db, "k3") == []
     assert await runs(db) == 0
 
-    board = (
-        await client.get(
-            f"/v1/children/{family['child']['id']}/dashboard", headers=auth(family["parent"])
-        )
-    ).json()
+    board = (await client.get(
+        f"/v1/children/{family['child']['id']}/dashboard", headers=auth(family["parent"])
+    )).json()
     assert board["recurring_errors"] == []
