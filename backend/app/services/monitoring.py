@@ -105,6 +105,15 @@ def _seconds(delta: timedelta) -> int:
     return max(0, round(delta.total_seconds()))
 
 
+def _p95_ms(latencies: list[int]) -> int:
+    """Percentile 95 au rang le plus proche : stable même avec peu d'appels."""
+    if not latencies:
+        return 0
+    ordered = sorted(latencies)
+    rank = max(1, (95 * len(ordered) + 99) // 100)
+    return ordered[rank - 1]
+
+
 async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCalls) -> dict[str, Any]:
     running = (
         await db.scalars(select(Lesson).where(Lesson.status.in_(IN_PROGRESS)).order_by(Lesson.created_at))
@@ -204,6 +213,7 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 "calls": len(group),
                 "ok": sum(1 for r in group if r.status == "ok"),
                 "median_s": round(statistics.median(r.latency_ms for r in group) / 1000),
+                "p95_s": round(_p95_ms([r.latency_ms for r in group]) / 1000),
                 "max_s": round(max(r.latency_ms for r in group) / 1000),
                 "cost_usd": _cost(group),
             }
@@ -276,7 +286,8 @@ def as_text(data: dict[str, Any]) -> str:
     lines += ["", f"== Durées par modèle ({STATS_DAYS} derniers jours) =="]
     lines += [
         f"- {s['model']} · {s['stage']} : {s['ok']}/{s['calls']} réussis, "
-        f"médiane {s['median_s']} s, max {s['max_s']} s, coût {_dollars(s['cost_usd'])}"
+        f"médiane {s['median_s']} s, p95 {s['p95_s']} s, max {s['max_s']} s, "
+        f"coût {_dollars(s['cost_usd'])}"
         for s in data["stats"]
     ] or ["aucun appel"]
     cost = data["cost"]
