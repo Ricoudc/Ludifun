@@ -71,9 +71,7 @@ async def test_a_recurring_error_gets_a_new_exercise(
     assert await runs(db) == 1
 
     # Une fois l'exercice prêt, la même erreur ne relance plus l'IA.
-    session = (
-        await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))
-    ).json()
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
     await play(client, db, token, session["id"], session["items"], lambda key: key != "k3")
     await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert await runs(db) == 1 and len(await targeted_questions(db, "k3")) == 1
