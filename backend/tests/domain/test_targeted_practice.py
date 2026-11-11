@@ -115,7 +115,7 @@ def test_targeted_question_requires_a_nonempty_trap_explanation(history: Referen
 
 def test_a_calculation_is_redone_by_the_code(history: ReferenceLesson) -> None:
     target = Target(history.unit("k1"), ErrorType.CALCULATION)
-    right = ProposedTarget("Combien font 47 + 38 ?", "85", ["75", "815", "84"], 1, trap="75")
+    right = ProposedTarget("Combien font 47 + 38 ?", "85", ["75", "815", "84"], 1, trap="75", why="75 oublie de reporter les dizaines.")
     wrong = ProposedTarget("Combien font 47 + 38 ?", "86", ["75", "815", "84"], 1)
     two = ProposedTarget("Combien font 3 + 4 puis 5 + 6 ?", "11", ["7", "12", "10"], 1)
     checked = check_targets(target, [right, wrong, two], limit=5)
