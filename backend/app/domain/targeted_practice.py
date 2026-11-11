@@ -160,9 +160,5 @@ def check_targets(
         if question is None or reason:
             rejected.append(Rejection(label, reason))
             continue
-        kept.append(
-            question.model_copy(
-                update={"target_error": target.error.value, "target_why": why}
-            )
-        )
+        kept.append(question.model_copy(update={"target_error": target.error.value, "target_why": why}))
     return CheckedTargets(kept, rejected)
