@@ -604,9 +604,12 @@ async def complete(session: AsyncSession, revision: db.RevisionSession, now: dat
     assert lesson_row is not None
     lesson = await load_units(session, lesson_row)
     items = {i.id: i for i in await session_items(session, revision)}
+    attempts = await attempts_by_item(session, revision)
+    if any(item_id not in attempts for item_id in items):
+        raise MainNotFinished
     main_scores = [
         float(a.score)
-        for item_id, a in (await attempts_by_item(session, revision)).items()
+        for item_id, a in attempts.items()
         if items[item_id].block not in UNGRADED_BLOCKS and a.response != {"skipped": True}
     ]
     evidences = await load_evidences(session, revision, lesson.id_to_key)
