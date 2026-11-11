@@ -8,11 +8,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript
-from app.db.models import KnowledgeItem, KnowledgeMastery, Lesson
+from app.db.models import KnowledgeItem, KnowledgeMastery, Lesson, RevisionSession
 from app.domain.simulated_pupil import Knows
 from app.domain.understanding import notion_level
 from app.services.lesson_store import to_mastery
@@ -254,3 +254,74 @@ async def test_the_subject_that_slips_is_in_the_week_plan(
     plan = board["week_plan"]
     assert plan[0]["kind"] == "subject" and plan[0]["title"].startswith("Reprendre l'histoire")
     assert "Note moyenne en baisse" in plan[0]["why"]
+
+
+
+async def test_abandoned_sessions_do_not_count_in_dashboard_activity(
+    client: AsyncClient,
+    db: AsyncSession,
+    now: list[datetime],  # noqa: F811
+) -> None:
+    family = await family_with_device(client)
+    lesson = await upload_lesson(client, family["device"])
+    session = (
+        await client.post(
+            f"/v1/lessons/{lesson['id']}/sessions",
+            json={},
+            headers=auth(family["device"]),
+        )
+    ).json()
+    await play(client, db, family["device"], session["id"], session["items"], lambda _: True)
+    await db.execute(
+        update(RevisionSession)
+        .where(RevisionSession.id == session["id"])
+        .values(status="abandoned")
+    )
+    await db.commit()
+
+    board = (
+        await client.get(
+            f"/v1/children/{family['child']['id']}/dashboard",
+            headers=auth(family["parent"]),
+        )
+    ).json()
+    assert board["this_week"]["sessions"] == 0
+    assert board["this_week"]["minutes"] == 0
+    assert board["activities_this_week"] == {}
+    assert board["help_this_week"] == 0
+
+
+async def test_skipped_attempts_do_not_count_as_dashboard_activity(
+    client: AsyncClient,
+    db: AsyncSession,
+) -> None:
+    family = await family_with_device(client)
+    lesson = await upload_lesson(client, family["device"])
+    session = (
+        await client.post(
+            f"/v1/lessons/{lesson['id']}/sessions",
+            json={},
+            headers=auth(family["device"]),
+        )
+    ).json()
+    for item in session["items"]:
+        skipped = await client.post(
+            f"/v1/sessions/{session['id']}/attempts",
+            json={"item_id": item["id"], "response": {"skipped": True}},
+            headers=auth(family["device"]),
+        )
+        assert skipped.status_code == 200, skipped.text
+    completed = await client.post(
+        f"/v1/sessions/{session['id']}/complete",
+        headers=auth(family["device"]),
+    )
+    assert completed.status_code == 200, completed.text
+
+    board = (
+        await client.get(
+            f"/v1/children/{family['child']['id']}/dashboard",
+            headers=auth(family["parent"]),
+        )
+    ).json()
+    assert board["this_week"]["minutes"] == 0
+    assert board["activities_this_week"] == {}
