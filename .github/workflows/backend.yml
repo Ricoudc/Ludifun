@@ -1,7 +1,10 @@
 name: Backend
 
 on:
+  # Les branches de travail sont contrôlées via pull_request pour éviter
+  # de lancer deux fois la même CI (push + pull_request) sur chaque PR.
   push:
+    branches: [main]
     paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
   pull_request:
     paths: ["backend/**", "eval/**", "docker-compose.yml", ".github/workflows/backend.yml"]
