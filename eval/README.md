@@ -149,7 +149,8 @@ suffit pas à prouver la pertinence pédagogique. Un adulte renseigne `review_st
 `pertinent`, `à corriger` ou `hors sujet`, puis conserve le fichier annoté séparément.
 Les identifiants `review_id` permettent de rattacher les labels à la même notion et au même
 rang de question. Chaque entrée contient aussi une `review_signature` calculée à partir du
-contenu pédagogique (notion, niveau, énoncé, points clés, réponse modèle et passage source).
+contexte pédagogique complet (identifiant, libellé et énoncé de la notion, importance, niveau,
+énoncé de la question, points clés, réponse modèle et passage source).
 Conservez cette signature avec le label humain : elle permet de détecter une question qui a
 conservé son énoncé mais dont les points clés ou la réponse ont changé. À la prochaine
 évaluation, réappliquer les labels et calculer les taux :
