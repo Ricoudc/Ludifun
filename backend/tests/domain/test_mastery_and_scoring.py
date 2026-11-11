@@ -55,6 +55,7 @@ def test_score_blends_with_recalled_mastery_after_a_long_gap() -> None:
     m = update_mastery(previous, 0.5, NOW)
     assert previous.recall(NOW) == 11
     assert m.score == 34  # 0,6 × 50 + 0,4 × 11
+    assert m.last_practiced_at == NOW
 
 
 def test_score_blends_session_and_history() -> None:
