@@ -326,6 +326,7 @@ async def test_answers_played_offline_keep_their_time(
     )
     assert naive.status_code == 422  # une heure sans fuseau est refusée
 
+
 async def test_session_cannot_be_completed_before_all_activities_are_answered(
     client: AsyncClient,
     db: AsyncSession,
