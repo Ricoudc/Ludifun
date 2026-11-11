@@ -351,3 +351,31 @@ async def test_session_cannot_be_completed_before_all_activities_are_answered(
 
     completed = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
     assert completed.status_code == 200, completed.text
+
+
+async def test_a_session_played_offline_completes_without_the_remediation_it_never_saw(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    """Sans Internet, l'application joue la séance téléchargée ; au retour du réseau, chaque
+    erreur envoyée fait ajouter une remédiation par le serveur. L'enfant ne l'a jamais vue :
+    la séance se clôt quand même, sinon son bilan et sa progression seraient perdus."""
+    token = (await family_with_device(client))["device"]
+    lesson = await upload_lesson(client, token)
+    session = (await client.post(f"/v1/lessons/{lesson['id']}/sessions", json={}, headers=auth(token))).json()
+    keys = await knowledge_keys(db)
+    inserted = 0
+    for item in session["items"]:  # la séance téléchargée, et rien d'autre
+        row = await db.get(SessionItem, uuid.UUID(item["id"]))
+        assert row is not None
+        r = await client.post(
+            f"/v1/sessions/{session['id']}/attempts",
+            json={"item_id": item["id"], "response": respond(activity_of(row, keys), lambda _: False)},
+            headers=auth(token),
+        )
+        assert r.status_code == 200, r.text
+        inserted += len(r.json()["inserted_items"])
+    assert inserted > 0  # le serveur a bien ajouté de la remédiation, restée sans réponse
+
+    done = await client.post(f"/v1/sessions/{session['id']}/complete", headers=auth(token))
+    assert done.status_code == 200, done.text
+    assert done.json()["score_on_10"] == 0.0
