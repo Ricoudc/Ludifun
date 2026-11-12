@@ -2431,6 +2431,18 @@ raison du rejet est renvoyée à l'IA au nouvel essai (« mets le mot, la phrase
 la question »). Les leçons déjà enregistrées ne sont pas reprises. Tests :
 `tests/domain/test_question_context.py` (aucune question des leçons de référence n'est rejetée).
 
+### 5.88 Le parent supprime une leçon là où il la voit (novembre 2026)
+
+Le serveur le permettait déjà (`DELETE /v1/lessons/{id}?child_id=…`, réservé au parent ; l'enfant
+ne retire qu'une leçon ratée), mais l'application ne le proposait que dans « Compétences » : la
+famille ne le trouvait pas. Une corbeille « Supprimer la leçon » est maintenant sur chaque leçon
+du tableau de bord de l'enfant (prête, en préparation ou en échec) et en haut de « Questions de
+la leçon ». Confirmation avant d'effacer (« La leçon, ses jeux et les résultats obtenus dessus
+seront effacés ») ; les listes se rechargent, et depuis les questions on revient au tableau de
+bord. Une seule fonction (`lessons_panel.deleteLessonAsParent`), reprise par « Compétences ».
+Test : `parent_flow_test` (annuler, supprimer depuis la liste, leçon en échec, depuis les
+questions). Aucun changement côté serveur.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
