@@ -166,12 +166,16 @@ class _ListenButtonState extends State<ListenButton> {
   }
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: _speaking ? 'Arrêter' : 'Écouter',
-    iconSize: 30,
-    color: _noVoice ? Colors.black26 : LudiColors.primary,
-    onPressed: _listen,
-    icon: Icon(_speaking ? Icons.stop_circle_outlined : Icons.record_voice_over_outlined),
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: _speaking ? 'Arrêter la lecture de la consigne' : 'Écouter la consigne',
+    child: IconButton(
+      tooltip: _speaking ? 'Arrêter' : 'Écouter',
+      iconSize: 30,
+      color: _noVoice ? Colors.black26 : LudiColors.primary,
+      onPressed: _listen,
+      icon: Icon(_speaking ? Icons.stop_circle_outlined : Icons.record_voice_over_outlined),
+    ),
   );
 }
 

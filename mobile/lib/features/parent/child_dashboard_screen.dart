@@ -157,8 +157,29 @@ class ChildDashboardScreen extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final week = board.thisWeek;
     Widget section(String title) => Padding(
-      padding: const EdgeInsets.only(top: 24, bottom: 8),
-      child: Text(title, style: theme.titleLarge),
+      padding: const EdgeInsets.only(top: 24, bottom: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 5,
+            height: 25,
+            decoration: BoxDecoration(
+              color: LudiColors.primary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: theme.titleLarge?.copyWith(
+                color: const Color(0xFF20304A),
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
     return [
       if (board.summary.isNotEmpty) ...[
@@ -193,7 +214,7 @@ class ChildDashboardScreen extends ConsumerWidget {
         WeekPlanCard(board.weekPlan, name: name),
         const SizedBox(height: 20),
       ],
-      Text('Cette semaine', style: theme.titleLarge),
+      section('Cette semaine'),
       const SizedBox(height: 12),
       Row(
         children: [
@@ -266,7 +287,12 @@ class ChildDashboardScreen extends ConsumerWidget {
         _ => 'Note moyenne par semaine',
       }, style: const TextStyle(fontSize: 15, color: Colors.black54)),
       const SizedBox(height: 12),
-      ProgressChart(weeks: board.weeks),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+          child: ProgressChart(weeks: board.weeks),
+        ),
+      ),
       if (board.activities.isNotEmpty) ...[
         section('Activités de la semaine'),
         Wrap(
