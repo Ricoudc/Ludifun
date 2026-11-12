@@ -65,11 +65,17 @@ class Prompt extends StatelessWidget {
           decoration: BoxDecoration(
             color: LudiColors.primary.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border(left: BorderSide(color: LudiColors.primary, width: 4)),
+            border: Border(
+              left: BorderSide(color: LudiColors.primary, width: 4),
+            ),
           ),
           child: Text(
             '📖 $passage',
-            style: const TextStyle(fontSize: 18, height: 1.4, fontStyle: FontStyle.italic),
+            style: const TextStyle(
+              fontSize: 18,
+              height: 1.4,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -81,7 +87,10 @@ class Prompt extends StatelessWidget {
             child: Text(
               text,
               style: Theme.of(context).textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.w700, height: 1.3),
+                  ?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.3,
+                  ),
             ),
           ),
           if (listen)
