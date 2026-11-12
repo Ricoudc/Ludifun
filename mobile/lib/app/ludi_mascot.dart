@@ -31,8 +31,11 @@ class _LudiMascotPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    canvas.drawCircle(Offset(w * 0.5, h * 0.52), w * 0.48,
-        fill..color = const Color(0xFFBDEBE2));
+    canvas.drawCircle(
+      Offset(w * 0.5, h * 0.52),
+      w * 0.48,
+      fill..color = const Color(0xFFBDEBE2),
+    );
 
     final ears = Path()
       ..moveTo(w * 0.16, h * 0.39)
@@ -63,10 +66,16 @@ class _LudiMascotPainter extends CustomPainter {
       fill..color = const Color(0xFFF39A5B),
     );
 
-    canvas.drawCircle(Offset(w * 0.37, h * 0.59), w * 0.085,
-        fill..color = const Color(0xFFF7B7A8));
-    canvas.drawCircle(Offset(w * 0.63, h * 0.59), w * 0.085,
-        fill..color = const Color(0xFFF7B7A8));
+    canvas.drawCircle(
+      Offset(w * 0.37, h * 0.59),
+      w * 0.085,
+      fill..color = const Color(0xFFF7B7A8),
+    );
+    canvas.drawCircle(
+      Offset(w * 0.63, h * 0.59),
+      w * 0.085,
+      fill..color = const Color(0xFFF7B7A8),
+    );
 
     canvas.drawOval(
       Rect.fromCenter(center: Offset(w * 0.5, h * 0.68), width: w * 0.43, height: h * 0.25),

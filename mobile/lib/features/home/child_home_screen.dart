@@ -183,7 +183,10 @@ class _HomeActionTile extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(13)),
+                decoration: BoxDecoration(
+                  color: tint,
+                  borderRadius: BorderRadius.circular(13),
+                ),
                 alignment: Alignment.center,
                 child: Icon(icon, color: LudiColors.primary, size: 22),
               ),
