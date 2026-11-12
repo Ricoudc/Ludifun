@@ -288,6 +288,7 @@ class ChildDashboardScreen extends ConsumerWidget {
       }, style: const TextStyle(fontSize: 15, color: Colors.black54)),
       const SizedBox(height: 12),
       Card(
+        semanticContainer: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
           child: ProgressChart(weeks: board.weeks),
