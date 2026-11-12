@@ -2,7 +2,9 @@ import copy
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
+from app.ai.schemas import DistractorOut
 from app.domain.knowledge import KnowledgeItem
 from app.domain.validation import (
     PICTURE_REASON,
@@ -160,6 +162,16 @@ def test_question_without_three_valid_distractors_is_rejected(
     raw["questions"][0]["distractors"] = distractors
     assert "3 distracteurs" in _reasons(item, raw)["questions[0]"]
 
+
+
+def test_distractor_schema_rejects_a_missing_error_category() -> None:
+    with pytest.raises(ValidationError):
+        DistractorOut.model_validate({"text": "réponse plausible", "misconception": None})
+
+
+def test_distractor_schema_accepts_a_pedagogical_error_category() -> None:
+    distractor = DistractorOut.model_validate({"text": "réponse plausible", "misconception": "calculation"})
+    assert distractor.misconception.value == "calculation"
 
 def test_structured_distractors_require_a_pedagogical_error(history: ReferenceLesson) -> None:
     item, raw = _material(history)
