@@ -178,11 +178,7 @@ class ParentHomeScreen extends ConsumerWidget {
 }
 
 class _ParentSectionLabel extends StatelessWidget {
-  const _ParentSectionLabel({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  const _ParentSectionLabel({required this.icon, required this.title, required this.subtitle});
 
   final IconData icon;
   final String title;
