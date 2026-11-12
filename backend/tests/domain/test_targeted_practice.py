@@ -77,7 +77,7 @@ def test_only_proved_answers_are_kept(history: ReferenceLesson) -> None:
     assert len(checked.questions) == 1
     kept = checked.questions[0]
     assert kept.target_error == "confusion" and kept.target_why is not None
-    assert kept.misconception_of("1792") == "confusion" and kept.misconception_of("1815") is None
+    assert kept.misconception_of("1792") == "confusion" and kept.misconception_of("1815") == "knowledge"
     reasons = [r.reason for r in checked.rejected]
     assert "bonne réponse ni dans la leçon ni dans un calcul vérifié" in reasons  # Necker : mémoire de l'IA
     assert len(reasons) == 2
