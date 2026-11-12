@@ -25,17 +25,20 @@
 8. États système : vérifier visuellement chargement, erreur réseau, mode hors ligne, attente de validation adulte et reprise de séance.
 
 ## Tranche mise en œuvre dans cette branche
-- Remplacer l'emoji provisoire de l'accueil enfant par une mascotte vectorielle locale, sans dépendance ni téléchargement.
-- Donner à l'accueil une hiérarchie distincte : accueil/compagnon, mission claire sur fond doux, puis actions rapides en grille deux colonnes.
-- Conserver routes, providers, API et logique métier.
-- Aucune modification de notation, progression, synchronisation ou données.
+- Accueil enfant : mascotte vectorielle locale, accueil hiérarchisé, mission sur fond doux et trois raccourcis en grille.
+- Accueil parent : bannière moins encombrante, identité visuelle plus sobre et introduction explicite à la liste des profils.
+- Tableau de bord parent : titres de sections hiérarchisés et graphique encadré pour distinguer les blocs de lecture.
+- Parcours de séance : progression annoncée avec une valeur accessible (« question x sur y »), carte de question plus respirante.
+- Lecture audio des consignes : nom accessible explicite pour TalkBack.
+- Bilan : accueil de fin de séance avec Ludi, texte de félicitation et synthèse plus facile à parcourir.
+- Routes, providers, API, règles pédagogiques et données métier conservés.
+- Aucune modification de notation, maîtrise, synchronisation ou stockage.
 
 ## Suite de la feuille de route UX/UI
-- P0 : faire relire et valider l'accueil enfant sur Android (petit téléphone, téléphone standard, grande police).
-- P0 : auditer l'écran de question, chaque famille de jeu, l'aide, la correction et le bilan.
-- P1 : refondre l'accueil parent et le tableau de bord en conservant tous les indicateurs existants.
-- P1 : auditer le flux photo → analyse → relecture parent → séance → bilan.
-- P1 : tests TalkBack, contrastes, 200 % de taille de police, mode paysage et réseau instable.
+- P0 : tests visuels sur appareil Android réel (petit téléphone, téléphone standard, grande police).
+- P0 : compléter l'audit visuel par famille de jeu (QCM, vrai/faux, réponse libre, association, ordre, dictée, calcul, géométrie, mémoire, cartes, etc.).
+- P1 : harmoniser les écrans photo → analyse → relecture parent → séance → bilan.
+- P1 : vérifier les contrastes, 200 % de taille de police, mode paysage, réseau instable et TalkBack sur appareil.
 - P2 : bibliothèque complète d'expressions de Ludi et animations facultatives, après validation de la direction artistique.
 - P2 : captures de référence automatisées pour les tailles Android courantes.
 
@@ -46,3 +49,9 @@
 - Les trois actions principales sont visibles sans défilement horizontal.
 - Les libellés restent compréhensibles sans couleur ni emoji.
 - Le parcours enfant reste utilisable au TalkBack.
+
+
+## État de validation au 12 novembre 2026
+- Modifications de cette tranche poussées dans la PR #47, sans fusion dans main.
+- Les workflows GitHub Actions ont été déclenchés sur le commit de la tranche ; leur résultat doit être vérifié avant de déclarer la PR prête.
+- Aucun appareil Android physique n'est accessible depuis ce travail : TalkBack, débordements visuels réels et rendu sur les tailles de police du téléphone restent à confirmer sur l'appareil de test.
