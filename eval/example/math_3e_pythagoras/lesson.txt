@@ -1,6 +1,0 @@
-Le théorème de Pythagore
-Dans un triangle rectangle, le côté opposé à l'angle droit s'appelle l'hypoténuse. C'est le plus long côté.
-Théorème de Pythagore : si le triangle ABC est rectangle en A, alors BC² = AB² + AC².
-Réciproque : si BC² = AB² + AC², alors le triangle ABC est rectangle en A.
-Méthode pour calculer l'hypoténuse : repérer l'angle droit, écrire l'égalité de Pythagore, remplacer par les longueurs connues, calculer puis prendre la racine carrée.
-Exemple : si AB = 3 cm et AC = 4 cm, alors BC² = 9 + 16 = 25, donc BC = 5 cm.
