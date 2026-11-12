@@ -26,6 +26,7 @@ from app.tools.evaluate import (
     open_question_review,
     question_review_summary,
     render_report,
+    configuration,
     resume_after_review,
     score,
 )
@@ -482,3 +483,13 @@ def test_lessons_get_their_subject_games_in_the_report(tmp_path: Path) -> None:
     [run_dir] = list(tmp_path.iterdir())
     games = (run_dir / "math_cm2_fractions.txt").read_text(encoding="utf-8").split("══ Jeux possibles")[1]
     assert "FRACTION_BAR" in games or "NUMBER_LINE" in games
+
+
+def test_benchmark_configuration_keeps_the_ocr_model() -> None:
+    models = {
+        "ocr": "qwen3.5:4b",
+        "analysis": "qwen3:8b",
+        "material": "qwen3:8b",
+        "evaluation": "qwen3:4b",
+    }
+    assert configuration("ollama", models)["models"] == models
