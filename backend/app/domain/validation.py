@@ -104,12 +104,52 @@ def needs_support(text: str) -> bool:
     return bool(_ABSENT_SUPPORT.search(text))
 
 
-def _absent(text: str) -> str | None:
-    """Raison du rejet d'un texte montré seul à l'enfant, ou None s'il se suffit à lui-même."""
+# Le contexte de la question : « Quel est le pluriel de ce mot ? », « Conjugue le verbe souligné »,
+# « Complète la phrase suivante » sans le mot, le verbe ni la phrase. L'IA a gardé la consigne de
+# la fiche et oublié la donnée : l'enfant ne peut pas répondre. Au singulier seulement : au
+# pluriel (« Lequel de ces mots… ? »), ce sont les choix ou les étiquettes du jeu.
+_THING = (
+    r"mot|phrase|nombre|verbe|nom|adjectif|groupe|calcul|opération|figure|lettre|son|syllabe|"
+    r"fraction|personnage|animal|objet|texte|date|pays|ville|expression|définition"
+)
+_DANGLING = re.compile(
+    rf"\b(?:ce|cet|cette)\s+(?:{_THING})\b|\b(?:le|la|l['’])\s*(?:{_THING})\s+(?:suivante?|ci-dessous)\b",
+    re.IGNORECASE,
+)
+# Mise en forme de la fiche, perdue à la lecture : rien n'est souligné ni entouré à l'écran.
+_LOST_MARK = re.compile(
+    r"\b(?:souligné|entouré|encadré|surligné|colorié|barré)e?s?\b|\ben\s+(?:gras|couleur|rouge|bleu|vert)\b",
+    re.IGNORECASE,
+)
+_QUOTED_DATA = re.compile(r"«[^»]+»|“[^”]+”|\"[^\"]+\"|:\s*\S|_{3,}")
+_SENTENCE_END = re.compile(r"[.!?;…]\s")
+CONTEXT_REASON = (
+    "il manque ce dont la question parle (« ce mot », « la phrase suivante », « le verbe souligné » "
+    "sans le donner) : mets le mot, la phrase ou le nombre dans la question"
+)
+
+
+def lacks_context(text: str) -> bool:
+    """La question parle d'une chose qu'elle ne donne pas. Une donnée entre guillemets, après
+    deux-points, ou une phrase à trous, suffit ; de même une phrase qui précède le renvoi
+    (« Un carré a 4 côtés égaux. Cette figure a combien d'angles droits ? »)."""
+    if _LOST_MARK.search(text):
+        return True
+    found = _DANGLING.search(text)
+    if found is None or _QUOTED_DATA.search(text):
+        return False
+    return _SENTENCE_END.search(text[: found.start()]) is None
+
+
+def _absent(text: str, own_data: bool = False) -> str | None:
+    """Raison du rejet d'un texte montré seul à l'enfant, ou None s'il se suffit à lui-même.
+    `own_data` : le jeu montre lui-même ses données (étiquettes à ranger, paires)."""
     if needs_picture(text):
         return PICTURE_REASON
     if needs_support(text):
         return SUPPORT_REASON
+    if not own_data and lacks_context(text):
+        return CONTEXT_REASON
     return None
 
 
@@ -495,6 +535,8 @@ def validate_material(
                 question, reason = None, PICTURE_REASON
             elif passage is None and needs_support(question.stem):
                 question, reason = None, SUPPORT_REASON
+            elif passage is None and lacks_context(question.stem):
+                question, reason = None, CONTEXT_REASON
         if question is None:
             rejected.append(Rejection(f"questions[{i}]", reason))
         else:
@@ -565,7 +607,7 @@ def validate_material(
     if raw.get("pair") is not None:
         try:
             pair = Pair.model_validate(raw["pair"])
-            if (absent := _absent(f"{pair.left} {pair.right}")) is not None:
+            if (absent := _absent(f"{pair.left} {pair.right}", own_data=True)) is not None:
                 pair = None
                 rejected.append(Rejection("pair", absent))
             elif gives_away(pair.left, pair.right):
@@ -612,6 +654,7 @@ def validate_material(
                 passage_reason
                 or (PICTURE_REASON if needs_picture(open_question.prompt) else None)
                 or (SUPPORT_REASON if passage is None and needs_support(open_question.prompt) else None)
+                or (CONTEXT_REASON if passage is None and lacks_context(open_question.prompt) else None)
             )
             if refused:
                 rejected.append(Rejection(f"open_questions[{i}]", refused))
@@ -658,7 +701,7 @@ def _check_sorting(raw: Any, rejected: list[Rejection]) -> Sorting | None:
     except ValidationError as exc:
         rejected.append(Rejection("sorting", _first_error(exc)))
         return None
-    if (absent := _absent(sorting.prompt)) is not None:
+    if (absent := _absent(sorting.prompt, own_data=True)) is not None:
         rejected.append(Rejection("sorting", absent))
         return None
     boxes = sorting.categories
@@ -692,7 +735,7 @@ def _check_sequence(raw: Any, rejected: list[Rejection]) -> Sequence | None:
     except ValidationError as exc:
         rejected.append(Rejection("sequence", _first_error(exc)))
         return None
-    if (absent := _absent(sequence.prompt)) is not None:
+    if (absent := _absent(sequence.prompt, own_data=True)) is not None:
         rejected.append(Rejection("sequence", absent))
         return None
     items = [normalize(i) for i in sequence.items]

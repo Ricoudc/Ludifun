@@ -2408,6 +2408,29 @@ révision, une maîtrise oubliée revenait dans le score durable.
   `tests/domain/test_mastery_and_scoring.py` (retard, révision à l'heure, huit réussites à
   l'heure : 100).
 
+### 5.87 Une question garde son contexte (novembre 2026)
+
+Demande de la famille : « garder le contexte des questions, l'IA ne doit pas l'oublier dans la
+question ». Le prompt le demande déjà (`material.v10` : les données de l'exercice passent dans
+la question) ; un petit modèle l'oublie parfois et recopie la consigne de la fiche sans sa
+donnée. Le code l'écarte maintenant (`validation.lacks_context`, raison `CONTEXT_REASON`) :
+
+- **renvoi au singulier sans la donnée** : « ce mot », « cette phrase », « ce nombre », « la
+  phrase suivante », « le verbe ci-dessous »… sans rien entre guillemets, après deux-points, ni
+  phrase à trous, et sans phrase qui précède le renvoi ;
+- **mise en forme perdue** : « souligné », « entouré », « encadré », « en gras », « en couleur »
+  (rien n'est souligné à l'écran) ;
+- **gardé** : « Quel est le pluriel du mot « cheval » ? », « Complète la phrase suivante : Le
+  chat ___ », « Lequel de ces mots est un verbe ? » (au pluriel, ce sont les choix), « Un carré a
+  4 côtés égaux. Combien d'angles droits a cette figure ? ».
+
+Appliqué aux questions à choix et rédigées (sauf avec un passage à relire), aux affirmations
+vrai / faux, aux textes à trous, aux cartes, aux exercices ciblés (§5.74), sourcés et des sites
+de confiance ; pas aux consignes de tri, d'ordre et de paires, qui montrent leurs étiquettes. La
+raison du rejet est renvoyée à l'IA au nouvel essai (« mets le mot, la phrase ou le nombre dans
+la question »). Les leçons déjà enregistrées ne sont pas reprises. Tests :
+`tests/domain/test_question_context.py` (aucune question des leçons de référence n'est rejetée).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

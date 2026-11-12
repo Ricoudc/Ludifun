@@ -25,10 +25,12 @@ from app.domain.rules import RULES
 from app.domain.sources import MIN_QUOTE, Excerpt, keywords
 from app.domain.text import contains_words, fuzzy_contains
 from app.domain.validation import (
+    CONTEXT_REASON,
     PICTURE_REASON,
     SUPPORT_REASON,
     Rejection,
     check_question,
+    lacks_context,
     needs_picture,
     needs_support,
 )
@@ -83,6 +85,8 @@ def check_practice(
                 reason = PICTURE_REASON
             elif needs_support(question.stem):
                 reason = SUPPORT_REASON
+            elif lacks_context(question.stem):
+                reason = CONTEXT_REASON
             elif excerpt is None or len(quote) < MIN_QUOTE or not fuzzy_contains(excerpt.text, quote):
                 reason = "citation absente de l'extrait cité"
             elif not (contains_words(quote, question.answer) or fuzzy_contains(quote, question.answer)):
