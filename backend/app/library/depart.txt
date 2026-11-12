@@ -1,0 +1,48 @@
+# Premier lot de la bibliothèque Ludifun (étape 24d) : pages Vikidia, l'encyclopédie des 8-13 ans.
+# Une adresse par ligne ; les lignes qui commencent par # sont ignorées.
+# Histoire
+https://fr.vikidia.org/wiki/Préhistoire
+https://fr.vikidia.org/wiki/Égypte_antique
+https://fr.vikidia.org/wiki/Gaule
+https://fr.vikidia.org/wiki/Rome_antique
+https://fr.vikidia.org/wiki/Moyen_Âge
+https://fr.vikidia.org/wiki/Charlemagne
+https://fr.vikidia.org/wiki/Guerre_de_Cent_Ans
+https://fr.vikidia.org/wiki/Jeanne_d'Arc
+https://fr.vikidia.org/wiki/Renaissance
+https://fr.vikidia.org/wiki/Grandes_découvertes
+https://fr.vikidia.org/wiki/Louis_XIV
+https://fr.vikidia.org/wiki/Révolution_française
+https://fr.vikidia.org/wiki/États_généraux
+https://fr.vikidia.org/wiki/Déclaration_des_droits_de_l'homme_et_du_citoyen
+https://fr.vikidia.org/wiki/Napoléon_Ier
+https://fr.vikidia.org/wiki/Révolution_industrielle
+https://fr.vikidia.org/wiki/Première_Guerre_mondiale
+https://fr.vikidia.org/wiki/Seconde_Guerre_mondiale
+# Géographie
+https://fr.vikidia.org/wiki/France
+https://fr.vikidia.org/wiki/Europe
+https://fr.vikidia.org/wiki/Continent
+https://fr.vikidia.org/wiki/Océan
+# Sciences
+https://fr.vikidia.org/wiki/Système_solaire
+https://fr.vikidia.org/wiki/Terre
+https://fr.vikidia.org/wiki/Lune
+https://fr.vikidia.org/wiki/Soleil
+https://fr.vikidia.org/wiki/Volcan
+https://fr.vikidia.org/wiki/Cycle_de_l'eau
+https://fr.vikidia.org/wiki/Photosynthèse
+https://fr.vikidia.org/wiki/Squelette
+https://fr.vikidia.org/wiki/Digestion
+https://fr.vikidia.org/wiki/Respiration
+https://fr.vikidia.org/wiki/Électricité
+# Mathématiques
+https://fr.vikidia.org/wiki/Fraction
+https://fr.vikidia.org/wiki/Théorème_de_Pythagore
+# Français
+https://fr.vikidia.org/wiki/Verbe
+https://fr.vikidia.org/wiki/Conjugaison
+https://fr.vikidia.org/wiki/Adjectif
+# Éducation civique
+https://fr.vikidia.org/wiki/Démocratie
+https://fr.vikidia.org/wiki/République

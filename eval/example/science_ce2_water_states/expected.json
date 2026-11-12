@@ -1,0 +1,20 @@
+{
+  "subject": "science",
+  "grade": "CE2",
+  "support": "photocopie",
+  "essential": [
+    {
+      "label": "Les trois états de l'eau"
+    },
+    {
+      "label": "Ébullition"
+    },
+    {
+      "label": "Solidification"
+    },
+    {
+      "label": "Fusion"
+    }
+  ],
+  "notes": "Exemple construit à partir d'une leçon de référence."
+}

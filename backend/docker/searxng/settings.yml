@@ -1,0 +1,19 @@
+# Moteur de recherche de Ludifun (étape 24) : SearXNG, sans compte, sans publicité, sans pistage.
+# Ludifun l'interroge au format json ; seule la question part vers les moteurs publics.
+use_default_settings: true
+
+general:
+  instance_name: "Ludifun recherche"
+
+search:
+  safe_search: 2          # filtre strict : public d'enfants
+  default_lang: "fr"
+  formats:
+    - html
+    - json                # indispensable : Ludifun lit les résultats en json
+
+server:
+  # Remplacé par SEARXNG_SECRET (docker-compose.yml) ; le serveur refuse la valeur par défaut.
+  secret_key: "ludifun-searxng-a-remplacer"
+  limiter: false          # utilisé par Ludifun seul, sur ce PC
+  image_proxy: false

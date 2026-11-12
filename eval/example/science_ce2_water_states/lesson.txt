@@ -1,0 +1,6 @@
+Les états de l'eau
+L'eau peut exister sous trois états : solide, liquide et gazeux.
+La glace est de l'eau à l'état solide. La vapeur d'eau est de l'eau à l'état gazeux.
+Quand l'eau est chauffée, elle bout à 100 degrés et devient de la vapeur : c'est l'ébullition.
+Quand on refroidit l'eau, elle gèle à 0 degré et devient de la glace : c'est la solidification.
+Quand la glace se réchauffe, elle fond : c'est la fusion.

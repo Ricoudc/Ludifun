@@ -1,0 +1,392 @@
+{
+ "ocr_text": "Le théorème de Pythagore\nDans un triangle rectangle, le côté opposé à l'angle droit s'appelle l'hypoténuse. C'est le plus long côté.\nThéorème de Pythagore : si le triangle ABC est rectangle en A, alors BC² = AB² + AC².\nRéciproque : si BC² = AB² + AC², alors le triangle ABC est rectangle en A.\nMéthode pour calculer l'hypoténuse : repérer l'angle droit, écrire l'égalité de Pythagore, remplacer par les longueurs connues, calculer puis prendre la racine carrée.\nExemple : si AB = 3 cm et AC = 4 cm, alors BC² = 9 + 16 = 25, donc BC = 5 cm.",
+ "analysis": {
+  "schema_version": "2.0",
+  "is_lesson": true,
+  "lesson": {
+   "subject": "math",
+   "grade": "3e",
+   "grade_confidence": 0.7,
+   "title": "Le théorème de Pythagore",
+   "objective": "Calculer une longueur dans un triangle rectangle et démontrer qu'un triangle est rectangle",
+   "summary": "Dans un triangle rectangle, le carré de l'hypoténuse est égal à la somme des carrés des deux autres côtés ; la réciproque permet de prouver qu'un triangle est rectangle."
+  },
+  "knowledge": [
+   {
+    "id": "k1",
+    "type": "formula",
+    "label": "Théorème de Pythagore",
+    "statement": "Si le triangle ABC est rectangle en A, alors BC² = AB² + AC².",
+    "importance": 5,
+    "attributes": {
+     "expression": "BC² = AB² + AC²",
+     "variables": {
+      "BC": "l'hypoténuse",
+      "AB": "un côté de l'angle droit",
+      "AC": "l'autre côté de l'angle droit"
+     }
+    },
+    "source_excerpt": "si le triangle ABC est rectangle en A, alors BC² = AB² + AC²",
+    "relations": []
+   },
+   {
+    "id": "k2",
+    "type": "term",
+    "label": "Hypoténuse",
+    "statement": "L'hypoténuse est le côté opposé à l'angle droit ; c'est le plus long côté.",
+    "importance": 5,
+    "attributes": {
+     "definition": "le côté opposé à l'angle droit, le plus long côté du triangle rectangle"
+    },
+    "source_excerpt": "le côté opposé à l'angle droit s'appelle l'hypoténuse",
+    "relations": [
+     {
+      "type": "part_of",
+      "target": "k1"
+     }
+    ]
+   },
+   {
+    "id": "k3",
+    "type": "rule",
+    "label": "Réciproque du théorème de Pythagore",
+    "statement": "Si BC² = AB² + AC², alors le triangle ABC est rectangle en A.",
+    "importance": 4,
+    "attributes": {
+     "statement": "Si BC² = AB² + AC², alors le triangle ABC est rectangle en A.",
+     "example": "6² = 36 et 3,6² + 4,8² = 36 : le triangle est rectangle."
+    },
+    "source_excerpt": "si BC² = AB² + AC², alors le triangle ABC est rectangle en A",
+    "relations": []
+   },
+   {
+    "id": "k4",
+    "type": "process",
+    "label": "Calculer l'hypoténuse",
+    "statement": "Repérer l'angle droit, écrire l'égalité de Pythagore, remplacer, calculer puis prendre la racine carrée.",
+    "importance": 5,
+    "attributes": {
+     "steps": [
+      "Repérer l'angle droit",
+      "Écrire l'égalité de Pythagore",
+      "Remplacer par les longueurs connues",
+      "Calculer puis prendre la racine carrée"
+     ]
+    },
+    "source_excerpt": "repérer l'angle droit, écrire l'égalité de Pythagore, remplacer par les longueurs connues",
+    "relations": [
+     {
+      "type": "example_of",
+      "target": "k1"
+     }
+    ]
+   },
+   {
+    "id": "k5",
+    "type": "fact",
+    "label": "Le triangle 3-4-5",
+    "statement": "Si AB = 3 cm et AC = 4 cm, alors BC = 5 cm.",
+    "importance": 3,
+    "attributes": {},
+    "source_excerpt": "si AB = 3 cm et AC = 4 cm, alors BC² = 9 + 16 = 25, donc BC = 5 cm",
+    "relations": [
+     {
+      "type": "example_of",
+      "target": "k1"
+     }
+    ]
+   },
+   {
+    "id": "k6",
+    "type": "term",
+    "label": "Triangle rectangle",
+    "statement": "Un triangle rectangle a un angle droit.",
+    "importance": 3,
+    "attributes": {
+     "definition": "un triangle qui a un angle droit"
+    },
+    "source_excerpt": "Dans un triangle rectangle, le côté opposé à l'angle droit",
+    "relations": []
+   }
+  ],
+  "skills": [
+   {
+    "id": "s1",
+    "label": "Calculer une longueur dans un triangle rectangle",
+    "verb": "apply",
+    "importance": 5,
+    "knowledge_ids": [
+     "k1",
+     "k2",
+     "k4"
+    ],
+    "source_excerpt": "Méthode pour calculer l'hypoténuse"
+   },
+   {
+    "id": "s2",
+    "label": "Démontrer qu'un triangle est rectangle",
+    "verb": "apply",
+    "importance": 4,
+    "knowledge_ids": [
+     "k3"
+    ],
+    "source_excerpt": "Réciproque : si BC² = AB² + AC²"
+   }
+  ],
+  "warnings": []
+ },
+ "material": {
+  "k1": {
+   "knowledge_id": "k1",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Le triangle ABC est rectangle en A. Que vaut BC² ?",
+     "answer": "AB² + AC²",
+     "distractors": [
+      "AB + AC",
+      "2 × AB × AC",
+      "AB² ÷ 2"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Le triangle EFG est rectangle en E. Quelle égalité est juste ?",
+     "answer": "FG² = EF² + EG²",
+     "distractors": [
+      "EF² = FG² + EG²",
+      "EG² = EF² + FG²",
+      "FG = EF + EG"
+     ]
+    },
+    {
+     "difficulty": 3,
+     "stem": "ABC est rectangle en A, AB = 6 cm et AC = 8 cm. Combien mesure BC ?",
+     "answer": "10 cm",
+     "distractors": [
+      "14 cm",
+      "12 cm",
+      "100 cm"
+     ]
+    }
+   ],
+   "true_statements": [
+    "Dans un triangle rectangle en A, BC² = AB² + AC²."
+   ],
+   "false_statements": [
+    "Dans un triangle rectangle en A, BC = AB + AC."
+   ],
+   "flashcard": {
+    "front": "Théorème de Pythagore (ABC rectangle en A)",
+    "back": "BC² = AB² + AC²"
+   },
+   "explanation": "Le carré de l'hypoténuse est égal à la somme des carrés des deux côtés de l'angle droit.",
+   "pair": {
+    "left": "Pythagore",
+    "right": "BC² = AB² + AC²"
+   }
+  },
+  "k2": {
+   "knowledge_id": "k2",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Comment s'appelle le côté opposé à l'angle droit ?",
+     "answer": "L'hypoténuse",
+     "distractors": [
+      "La médiane",
+      "La hauteur",
+      "La bissectrice"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Dans un triangle rectangle, quel est le plus long côté ?",
+     "answer": "L'hypoténuse",
+     "distractors": [
+      "La hauteur",
+      "La médiane",
+      "Le petit côté"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'hypoténuse est le plus long côté du triangle rectangle."
+   ],
+   "false_statements": [
+    "L'hypoténuse est le plus court côté du triangle rectangle."
+   ],
+   "pair": {
+    "left": "Hypoténuse",
+    "right": "côté opposé à l'angle droit"
+   },
+   "flashcard": {
+    "front": "Hypoténuse",
+    "back": "Le côté opposé à l'angle droit, le plus long"
+   },
+   "cloze": {
+    "text": "Le côté opposé à l'angle droit s'appelle l'___.",
+    "answers": [
+     "hypoténuse"
+    ]
+   },
+   "explanation": "L'hypoténuse fait face à l'angle droit ; c'est toujours le plus long côté."
+  },
+  "k3": {
+   "knowledge_id": "k3",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Si BC² = AB² + AC², que peut-on dire du triangle ABC ?",
+     "answer": "Il est rectangle en A",
+     "distractors": [
+      "Il est équilatéral",
+      "Il est isocèle en B",
+      "Il est rectangle en B"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "À quoi sert la réciproque du théorème de Pythagore ?",
+     "answer": "À prouver qu'un triangle est rectangle",
+     "distractors": [
+      "À calculer un angle",
+      "À calculer une aire",
+      "À prouver qu'un triangle est isocèle"
+     ]
+    }
+   ],
+   "true_statements": [
+    "La réciproque permet de prouver qu'un triangle est rectangle."
+   ],
+   "false_statements": [
+    "La réciproque permet de calculer l'aire d'un triangle."
+   ],
+   "pair": {
+    "left": "Réciproque",
+    "right": "prouver qu'il est rectangle"
+   },
+   "explanation": "Si l'égalité de Pythagore est vraie, le triangle est rectangle : c'est la réciproque.",
+   "flashcard": {
+    "front": "Réciproque de Pythagore",
+    "back": "Si BC² = AB² + AC², le triangle est rectangle en A"
+   }
+  },
+  "k4": {
+   "knowledge_id": "k4",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quelle est la première étape pour calculer l'hypoténuse ?",
+     "answer": "Repérer l'angle droit",
+     "distractors": [
+      "Prendre la racine carrée",
+      "Additionner les côtés",
+      "Mesurer les angles"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Quelle est la dernière étape du calcul de l'hypoténuse ?",
+     "answer": "Prendre la racine carrée",
+     "distractors": [
+      "Repérer l'angle droit",
+      "Écrire l'égalité",
+      "Mesurer les angles"
+     ]
+    }
+   ],
+   "true_statements": [
+    "Pour trouver l'hypoténuse, on termine par une racine carrée."
+   ],
+   "false_statements": [
+    "Pour trouver l'hypoténuse, on commence par la racine carrée."
+   ],
+   "explanation": "On repère l'angle droit, on écrit l'égalité, on remplace, on calcule, puis on prend la racine carrée.",
+   "flashcard": {
+    "front": "Les étapes pour calculer l'hypoténuse",
+    "back": "Angle droit, égalité, remplacer, calculer, racine carrée"
+   }
+  },
+  "k5": {
+   "knowledge_id": "k5",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Si AB = 3 cm et AC = 4 cm (rectangle en A), combien mesure BC ?",
+     "answer": "5 cm",
+     "distractors": [
+      "7 cm",
+      "6 cm",
+      "25 cm"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Avec AB = 3 cm et AC = 4 cm, que vaut BC² ?",
+     "answer": "25",
+     "distractors": [
+      "7",
+      "12",
+      "49"
+     ]
+    }
+   ],
+   "true_statements": [
+    "Un triangle de côtés 3 cm, 4 cm et 5 cm est rectangle."
+   ],
+   "false_statements": [
+    "Un triangle de côtés 3 cm, 4 cm et 5 cm est équilatéral."
+   ],
+   "pair": {
+    "left": "3 cm et 4 cm",
+    "right": "hypoténuse de 5 cm"
+   },
+   "explanation": "9 + 16 = 25 et la racine carrée de 25 est 5 : l'hypoténuse mesure 5 cm.",
+   "flashcard": {
+    "front": "Côtés de l'angle droit : 3 cm et 4 cm",
+    "back": "Hypoténuse : 5 cm"
+   }
+  },
+  "k6": {
+   "knowledge_id": "k6",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Qu'a de particulier un triangle rectangle ?",
+     "answer": "Un angle droit",
+     "distractors": [
+      "Trois côtés égaux",
+      "Deux angles droits",
+      "Aucun angle aigu"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Comment appelle-t-on un triangle qui a un angle droit ?",
+     "answer": "Un triangle rectangle",
+     "distractors": [
+      "Un triangle équilatéral",
+      "Un triangle isocèle",
+      "Un triangle obtus"
+     ]
+    }
+   ],
+   "true_statements": [
+    "Un triangle rectangle a un angle droit."
+   ],
+   "false_statements": [
+    "Un triangle rectangle a deux angles droits."
+   ],
+   "pair": {
+    "left": "Triangle rectangle",
+    "right": "un angle droit"
+   },
+   "explanation": "Un triangle est rectangle quand l'un de ses angles est droit.",
+   "flashcard": {
+    "front": "Triangle rectangle",
+    "back": "Un triangle qui a un angle droit"
+   }
+  }
+ }
+}

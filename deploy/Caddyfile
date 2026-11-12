@@ -1,0 +1,36 @@
+# HTTPS automatique (Let's Encrypt) pour l'API et les pages publiques (§16.1).
+{
+	email {$ACME_EMAIL}
+}
+
+{$LUDIFUN_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Photos d'une leçon : 6 × 8 Mo, plus l'enveloppe (l'API vérifie aussi).
+	request_body {
+		max_size 50MB
+	}
+
+	# Journal d'accès sans paramètres de requête (les liens contiennent des jetons).
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>uri query {
+					delete jeton
+				}
+				request>headers>Authorization delete
+			}
+		}
+	}
+
+	reverse_proxy api:8000
+}

@@ -1,0 +1,390 @@
+{
+ "ocr_text": "Les continents et les océans\nLa Terre est recouverte d'eau aux trois quarts.\nIl y a six continents habités : l'Afrique, l'Amérique du Nord, l'Amérique du Sud, l'Asie, l'Europe et l'Océanie. L'Antarctique est un continent glacé presque inhabité.\nLes cinq océans sont l'océan Pacifique, l'océan Atlantique, l'océan Indien, l'océan Arctique et l'océan Austral.\nL'océan Pacifique est le plus grand océan.\nL'Asie est le continent le plus peuplé.\nLa France se trouve en Europe, au bord de l'océan Atlantique.",
+ "analysis": {
+  "schema_version": "2.0",
+  "is_lesson": true,
+  "lesson": {
+   "subject": "geography",
+   "grade": "6e",
+   "grade_confidence": 0.7,
+   "title": "Les continents et les océans",
+   "objective": "Nommer et situer les continents et les océans",
+   "summary": "La Terre compte sept continents, dont six habités, et cinq océans ; le Pacifique est le plus grand."
+  },
+  "knowledge": [
+   {
+    "id": "k1",
+    "type": "classification",
+    "label": "Continents et océans",
+    "statement": "Sur la carte du monde, on distingue les continents et les océans.",
+    "importance": 5,
+    "attributes": {
+     "categories": [
+      {
+       "name": "continents",
+       "members": [
+        "Afrique",
+        "Asie",
+        "Europe",
+        "Océanie"
+       ]
+      },
+      {
+       "name": "océans",
+       "members": [
+        "océan Pacifique",
+        "océan Atlantique",
+        "océan Indien"
+       ]
+      }
+     ]
+    },
+    "source_excerpt": "Les cinq océans sont l'océan Pacifique, l'océan Atlantique, l'océan Indien",
+    "relations": []
+   },
+   {
+    "id": "k2",
+    "type": "place",
+    "label": "Asie",
+    "statement": "L'Asie est le continent le plus peuplé.",
+    "importance": 5,
+    "attributes": {
+     "description": "le continent le plus peuplé"
+    },
+    "source_excerpt": "L'Asie est le continent le plus peuplé",
+    "relations": []
+   },
+   {
+    "id": "k3",
+    "type": "place",
+    "label": "océan Pacifique",
+    "statement": "L'océan Pacifique est le plus grand océan.",
+    "importance": 5,
+    "attributes": {
+     "description": "le plus grand océan"
+    },
+    "source_excerpt": "L'océan Pacifique est le plus grand océan",
+    "relations": []
+   },
+   {
+    "id": "k4",
+    "type": "place",
+    "label": "Antarctique",
+    "statement": "L'Antarctique est un continent glacé presque inhabité.",
+    "importance": 4,
+    "attributes": {
+     "description": "continent glacé presque inhabité"
+    },
+    "source_excerpt": "L'Antarctique est un continent glacé presque inhabité",
+    "relations": []
+   },
+   {
+    "id": "k5",
+    "type": "place",
+    "label": "Europe",
+    "statement": "La France se trouve en Europe, au bord de l'océan Atlantique.",
+    "importance": 4,
+    "attributes": {
+     "description": "le continent de la France"
+    },
+    "source_excerpt": "La France se trouve en Europe",
+    "relations": []
+   },
+   {
+    "id": "k6",
+    "type": "fact",
+    "label": "L'eau sur la Terre",
+    "statement": "La Terre est recouverte d'eau aux trois quarts.",
+    "importance": 3,
+    "attributes": {},
+    "source_excerpt": "La Terre est recouverte d'eau aux trois quarts",
+    "relations": []
+   }
+  ],
+  "skills": [
+   {
+    "id": "s1",
+    "label": "Situer les continents et les océans sur une carte",
+    "verb": "recognize",
+    "importance": 5,
+    "knowledge_ids": [
+     "k1",
+     "k2",
+     "k3",
+     "k4",
+     "k5"
+    ],
+    "source_excerpt": "Il y a six continents habités"
+   },
+   {
+    "id": "s2",
+    "label": "Connaître les records : plus grand océan, continent le plus peuplé",
+    "verb": "recall",
+    "importance": 4,
+    "knowledge_ids": [
+     "k2",
+     "k3"
+    ],
+    "source_excerpt": "L'océan Pacifique est le plus grand océan"
+   }
+  ],
+  "warnings": []
+ },
+ "material": {
+  "k1": {
+   "knowledge_id": "k1",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Lequel de ces noms désigne un océan ?",
+     "answer": "Atlantique",
+     "distractors": [
+      "Europe",
+      "Asie",
+      "Afrique"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Combien y a-t-il d'océans ?",
+     "answer": "5",
+     "distractors": [
+      "3",
+      "6",
+      "7"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'océan Indien est un océan.",
+    "L'Océanie est un continent."
+   ],
+   "false_statements": [
+    "L'Afrique est un océan."
+   ],
+   "pair": {
+    "left": "Océanie",
+    "right": "un continent"
+   },
+   "explanation": "Les continents sont des terres ; les océans sont de grandes étendues d'eau salée.",
+   "flashcard": {
+    "front": "Les cinq océans",
+    "back": "Pacifique, Atlantique, Indien, Arctique, Austral"
+   }
+  },
+  "k2": {
+   "knowledge_id": "k2",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quel est le continent le plus peuplé ?",
+     "answer": "L'Asie",
+     "distractors": [
+      "L'Europe",
+      "L'Afrique",
+      "L'Océanie"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Que sait-on de la population de l'Asie ?",
+     "answer": "C'est le continent le plus peuplé",
+     "distractors": [
+      "C'est un continent inhabité",
+      "C'est le continent le moins peuplé",
+      "C'est un océan"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'Asie est le continent le plus peuplé."
+   ],
+   "false_statements": [
+    "L'Océanie est le continent le plus peuplé."
+   ],
+   "pair": {
+    "left": "Asie",
+    "right": "le plus peuplé"
+   },
+   "flashcard": {
+    "front": "Le continent le plus peuplé ?",
+    "back": "L'Asie"
+   },
+   "explanation": "Plus de la moitié des habitants de la Terre vivent en Asie.",
+   "cloze": {
+    "text": "L'___ est le continent le plus peuplé.",
+    "answers": [
+     "Asie"
+    ]
+   }
+  },
+  "k3": {
+   "knowledge_id": "k3",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quel est le plus grand océan ?",
+     "answer": "Le Pacifique",
+     "distractors": [
+      "L'Atlantique",
+      "L'océan Indien",
+      "L'Arctique"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Quel record détient l'océan Pacifique ?",
+     "answer": "Le plus grand océan",
+     "distractors": [
+      "Le plus petit océan",
+      "L'océan le plus froid",
+      "Le plus peuplé"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'océan Pacifique est le plus grand océan."
+   ],
+   "false_statements": [
+    "L'océan Arctique est le plus grand océan."
+   ],
+   "pair": {
+    "left": "Pacifique",
+    "right": "le plus grand océan"
+   },
+   "flashcard": {
+    "front": "Le plus grand océan ?",
+    "back": "L'océan Pacifique"
+   },
+   "explanation": "Le Pacifique est si grand qu'il pourrait contenir tous les continents.",
+   "cloze": {
+    "text": "Le plus grand océan est l'océan ___.",
+    "answers": [
+     "Pacifique"
+    ]
+   }
+  },
+  "k4": {
+   "knowledge_id": "k4",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quel continent est glacé et presque inhabité ?",
+     "answer": "L'Antarctique",
+     "distractors": [
+      "L'Asie",
+      "L'Europe",
+      "L'Afrique"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Comment est l'Antarctique ?",
+     "answer": "Glacé et presque inhabité",
+     "distractors": [
+      "Très peuplé",
+      "Désertique et chaud",
+      "Couvert de forêts"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'Antarctique est presque inhabité."
+   ],
+   "false_statements": [
+    "L'Antarctique est le continent le plus peuplé."
+   ],
+   "pair": {
+    "left": "Antarctique",
+    "right": "continent glacé"
+   },
+   "explanation": "L'Antarctique, au pôle Sud, est couvert de glace : presque personne n'y vit.",
+   "flashcard": {
+    "front": "Le continent glacé",
+    "back": "L'Antarctique"
+   }
+  },
+  "k5": {
+   "knowledge_id": "k5",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Sur quel continent se trouve la France ?",
+     "answer": "L'Europe",
+     "distractors": [
+      "L'Asie",
+      "L'Afrique",
+      "L'Océanie"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Au bord de quel océan se trouve la France ?",
+     "answer": "L'Atlantique",
+     "distractors": [
+      "Le Pacifique",
+      "L'océan Indien",
+      "L'Arctique"
+     ]
+    }
+   ],
+   "true_statements": [
+    "La France se trouve en Europe."
+   ],
+   "false_statements": [
+    "La France se trouve en Asie."
+   ],
+   "pair": {
+    "left": "Europe",
+    "right": "le continent de la France"
+   },
+   "flashcard": {
+    "front": "Sur quel continent est la France ?",
+    "back": "L'Europe"
+   },
+   "explanation": "La France est en Europe, avec une longue côte sur l'océan Atlantique."
+  },
+  "k6": {
+   "knowledge_id": "k6",
+   "questions": [
+    {
+     "difficulty": 1,
+     "stem": "Quelle part de la Terre est recouverte d'eau ?",
+     "answer": "Les trois quarts",
+     "distractors": [
+      "La moitié",
+      "Un quart",
+      "Un dixième"
+     ]
+    },
+    {
+     "difficulty": 2,
+     "stem": "Qu'est-ce qui recouvre la plus grande partie de la Terre ?",
+     "answer": "L'eau",
+     "distractors": [
+      "Les forêts",
+      "Les déserts",
+      "Les villes"
+     ]
+    }
+   ],
+   "true_statements": [
+    "L'eau recouvre les trois quarts de la Terre."
+   ],
+   "false_statements": [
+    "L'eau recouvre un quart de la Terre."
+   ],
+   "explanation": "Vue de l'espace, la Terre est surtout bleue : l'eau en recouvre les trois quarts.",
+   "flashcard": {
+    "front": "Quelle part de la Terre est couverte d'eau ?",
+    "back": "Les trois quarts"
+   },
+   "cloze": {
+    "text": "La Terre est recouverte d'eau aux trois ___.",
+    "answers": [
+     "quarts"
+    ]
+   }
+  }
+ }
+}

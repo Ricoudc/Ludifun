@@ -1,0 +1,72 @@
+# Analyse d'impact relative à la protection des données (AIPD)
+
+> **Brouillon (étape 19).** Une AIPD est requise : Ludifun traite des données d'enfants, qui
+> sont des personnes vulnérables, et utilise l'intelligence artificielle (critères de la CNIL).
+> Ce document décrit ce que fait le code aujourd'hui. Il doit être relu et validé par le
+> responsable du traitement, qui peut s'aider de l'outil PIA de la CNIL, avant la bêta.
+
+## 1. Description
+
+Un enfant, sous le contrôle de son parent, photographie ou colle une leçon. Un modèle d'IA
+(celui du serveur, Claude par défaut, ou celui que la famille a choisi : un autre service en
+ligne avec sa propre clé, ou Ollama sur son PC) en extrait le texte, les notions et des
+exercices ; le parent relit et corrige la leçon avant l'enfant (§5.69). L'application compose des
+séances de révision et suit la maîtrise de chaque notion. Le parent consulte un tableau de bord.
+
+Flux de données :
+1. téléphone → API : photos (au plus 6 × 8 Mo), réponses, temps ;
+2. API → IA choisie (Anthropic par défaut ; OpenAI, Google, Mistral, Groq, xAI, Azure si la
+   famille le choisit ; rien ne sort avec Ollama ou Tesseract) : photos, texte de la leçon,
+   réponses rédigées, explications d'« Enseigne-moi », énoncés du mode devoirs, notion et type
+   d'erreur pour un exercice neuf, niveau scolaire ; jamais le prénom ;
+3. API → base de données (UE) : texte de la leçon, notions, résultats ; les photos sont
+   effacées dès la lecture ;
+4. API → fournisseur d'e-mails (UE) : adresse du parent et message de service ;
+5. facultatif : API → service d'images (Pollinations, Cloudflare) : une description en anglais
+   d'une chose concrète, contrôlée par le code ; ni prénom, ni texte de leçon.
+
+Réponse dite à voix haute (§5.78) : la voix de l'enfant est reconnue **sur le téléphone**
+(reconnaissance hors ligne imposée) et n'est ni envoyée au serveur ni enregistrée ; seul le texte
+reconnu, que l'enfant peut corriger, part comme une réponse écrite. Sans reconnaissance hors
+ligne en français, le micro n'est pas proposé.
+
+## 2. Nécessité et proportionnalité
+
+| Principe | Mise en œuvre |
+|---|---|
+| Minimisation | enfant : prénom ou pseudo, classe, avatar ; ni nom, ni date de naissance, ni e-mail. Parent : e-mail, et prénom s'il le souhaite (arbitrages A1 et A2 de la spécification technique, validés). |
+| Limitation des finalités | révision et suivi par le parent ; aucune publicité, aucun profilage commercial, aucun classement entre enfants |
+| Conservation | photos non stockées ; comptes inactifs supprimés au bout de 12 mois (outil `app.tools.retention`) ; sauvegardes 30 jours |
+| Consentement | case à cocher horodatée pour chaque profil d'enfant, en plus de la politique de confidentialité |
+| Information | politique de confidentialité en langage clair (`/confidentialite`), lisible avant l'inscription |
+| Droits | export JSON et suppression immédiate dans l'application ; page `/suppression-compte` ; contact |
+| Sous-traitants | DPA avec chaque sous-traitant ; hébergement dans l'UE ; transfert vers Anthropic encadré |
+
+## 3. Risques
+
+| Risque | Origine | Gravité | Vraisemblance | Mesures | Risque résiduel |
+|---|---|---|---|---|---|
+| Accès illégitime aux résultats d'un enfant | vol d'un téléphone, d'un jeton ou d'un compte parent | importante | limitée | séparation parent/enfant et entre familles testée sur chaque route ; jetons hachés ; déliaison à distance ; rotation des jetons avec détection de réutilisation ; limites de débit | limité |
+| Données personnelles dans la photo (nom sur le cahier, visage) | photo prise par l'enfant | importante | importante | photos jamais stockées ; la transcription exclut les en-têtes personnels ; conseil affiché avant la photo | limité, **à mesurer à l'étape 18** |
+| Réutilisation des données par le fournisseur d'IA | transfert vers l'IA choisie | importante | négligeable (IA du serveur), **limitée** (IA choisie par la famille) | IA du serveur : offre commerciale sans entraînement, DPA ; IA de la famille : avertissement au moment du choix (Gemini gratuit), Ollama proposé pour que rien ne sorte ; aucun prénom transmis ; contrôles du code sur tout ce qui revient | limité, **à revoir avec la liste définitive des fournisseurs proposés** |
+| Contenu faux ou inadapté produit par l'IA | erreur du modèle | modérée | limitée | validations (citations obligatoires, règles), évaluation humaine (étape 18), avis des parents | limité |
+| Perte de données | panne du serveur | modérée | limitée | sauvegardes chiffrées quotidiennes, restauration testée | limité |
+| Conservation excessive | compte abandonné | modérée | importante | suppression automatique après 12 mois et prévenance | négligeable |
+| Voix de l'enfant envoyée à un service en ligne | reconnaissance vocale du téléphone | importante | négligeable | reconnaissance sur l'appareil imposée (`onDevice`), sinon pas de micro ; rien n'est enregistré ; micro seulement au toucher de « Dire ma réponse » | négligeable, **à vérifier sur de vrais téléphones** |
+| Pression sur l'enfant | suivi trop détaillé par le parent | modérée | limitée | pas de classement ni de comparaison ; messages bienveillants ; pas de notifications insistantes | limité |
+
+## 4. Plan d'action avant la bêta
+
+- [ ] Signer les DPA (hébergeur, e-mails, Anthropic) et compléter le registre.
+- [ ] Décider quels fournisseurs d'IA la famille peut choisir dans la version publique, vérifier
+      pour chacun le lieu de traitement, l'absence d'entraînement sur les données et le DPA ;
+      retirer ceux qui ne conviennent pas (registre, « Fournisseurs d'IA »).
+- [ ] Si un service d'images en ligne est utilisé : vérifier ses conditions (ou s'en tenir aux
+      images dessinées sur le PC).
+- [ ] Mesurer, sur les 30 leçons de l'étape 5, combien de transcriptions contiennent encore un
+      nom de l'élève, de l'école ou de l'enseignant (champ `personal` de `expected.json`, mesure
+      « Noms personnels dans le texte lu » du rapport, seuil 0). Si le seuil n'est pas atteint,
+      renforcer la consigne du prompt de lecture.
+- [ ] Faire valider cette AIPD et la politique de confidentialité par le responsable du
+      traitement (conseil juridique ou DPO).
+- [ ] Réexaminer l'AIPD avant la bêta publique ou tout nouveau traitement (oral, V4).
