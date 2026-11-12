@@ -9,7 +9,11 @@ import '../../../core/speech.dart';
 /// Comment jouer, dit au niveau de la classe de l'enfant (envoyé par le serveur, étape 25).
 /// Absent (serveur plus ancien) : chaque jeu garde sa consigne habituelle.
 class ActivityInstruction extends InheritedWidget {
-  const ActivityInstruction({required this.text, required super.child, super.key});
+  const ActivityInstruction({
+    required this.text,
+    required super.child,
+    super.key,
+  });
 
   final String? text;
 
