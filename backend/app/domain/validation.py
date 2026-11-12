@@ -419,6 +419,15 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
         # Matériel v2 : {"text", "misconception"} ; v1 : le texte seul.
         text = str(d.get("text", "") if isinstance(d, dict) else d).strip()
         kind = d.get("misconception") if isinstance(d, dict) else None
+        # Le format structuré v11 doit expliquer l'erreur révélée par chacun des trois choix.
+        # Les anciennes sorties en chaînes restent acceptées pour la compatibilité des données.
+        if isinstance(d, dict):
+            try:
+                error_kind = ErrorType(kind)
+            except (TypeError, ValueError):
+                return None, "un distracteur ne précise pas l'erreur pédagogique qu'il révèle"
+        else:
+            error_kind = None
         # « 8 + 7 » pour la réponse « 7 + 8 » : deux bonnes réponses, le distracteur est écarté.
         if (
             text
@@ -426,7 +435,7 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
             and compatible_natures(answer, text)
         ):
             distractors.append(text)
-            misconceptions.append(kind if kind in ErrorType else None)
+            misconceptions.append(error_kind.value if error_kind is not None else None)
     if answer and stem and contains_words(stem, answer):
         return None, "l'énoncé contient la réponse"
     if len(distractors) < 3:
@@ -638,8 +647,15 @@ def validate_material(
             tip = raw["tip"].strip()
 
     explanation = raw.get("explanation")
+    generic_praise = re.compile(
+        r"^(tu as raison|tu as compris|bravo|bien joué|c'est bien|c’est bien|exactement)\b",
+        re.IGNORECASE,
+    )
     if not isinstance(explanation, str) or not explanation.strip():
         rejected.append(Rejection("explanation", "absente : la phrase « à retenir » est utilisée"))
+        explanation = item.statement
+    elif generic_praise.match(explanation.strip()):
+        rejected.append(Rejection("explanation", "suppose une réponse juste de l'enfant sans l'avoir vue"))
         explanation = item.statement
 
     help_ladder = _check_help(raw.get("help"), item, rejected)
