@@ -17,6 +17,7 @@ from app.tools.evaluate import (
     ExpectedNotion,
     _question_review_signature,
     apply_question_review_annotations,
+    configuration,
     load_corpus,
     main,
     match_notion,
@@ -26,7 +27,6 @@ from app.tools.evaluate import (
     open_question_review,
     question_review_summary,
     render_report,
-    configuration,
     resume_after_review,
     score,
 )
