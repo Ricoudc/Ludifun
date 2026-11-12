@@ -126,7 +126,7 @@ class _WelcomeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Bonjour $name !',
+                  'Bonjour $name ! 👋',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -240,7 +240,7 @@ class _MissionCard extends ConsumerWidget {
                 const Icon(Icons.flag_rounded, color: LudiColors.primary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'MISSION DU JOUR',
+                  '🎯 Ta mission du jour',
                   style: Theme.of(context).textTheme.labelLarge?.copyWith(
                     color: LudiColors.primary,
                     fontWeight: FontWeight.w900,
