@@ -31,7 +31,9 @@ jobs:
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
       - name: Format
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: |
+          dart format --output=show lib/features/session/activities/common.dart
+          dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
         run: flutter analyze
       - name: Tests
