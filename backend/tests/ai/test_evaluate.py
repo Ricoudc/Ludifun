@@ -13,6 +13,7 @@ from app.domain.activities.registry import default_registry
 from app.domain.knowledge import Grade, KnowledgeMaterial, KnowledgeUnit, OpenQuestion, Subject
 from app.services.lesson_pipeline import LessonPipeline, PipelineResult
 from app.tools.evaluate import (
+    configuration,
     Expected,
     ExpectedNotion,
     _question_review_signature,
