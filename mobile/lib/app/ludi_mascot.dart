@@ -31,11 +31,7 @@ class _LudiMascotPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    canvas.drawCircle(
-      Offset(w * 0.5, h * 0.52),
-      w * 0.48,
-      fill..color = const Color(0xFFBDEBE2),
-    );
+    canvas.drawCircle(Offset(w * 0.5, h * 0.52), w * 0.48, fill..color = const Color(0xFFBDEBE2));
 
     final ears = Path()
       ..moveTo(w * 0.16, h * 0.39)
@@ -62,31 +58,15 @@ class _LudiMascotPainter extends CustomPainter {
     canvas.drawPath(innerEars, fill..color = const Color(0xFFFFC4A4));
 
     canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.5, h * 0.55),
-        width: w * 0.72,
-        height: h * 0.67,
-      ),
+      Rect.fromCenter(center: Offset(w * 0.5, h * 0.55), width: w * 0.72, height: h * 0.67),
       fill..color = const Color(0xFFF39A5B),
     );
 
-    canvas.drawCircle(
-      Offset(w * 0.37, h * 0.59),
-      w * 0.085,
-      fill..color = const Color(0xFFF7B7A8),
-    );
-    canvas.drawCircle(
-      Offset(w * 0.63, h * 0.59),
-      w * 0.085,
-      fill..color = const Color(0xFFF7B7A8),
-    );
+    canvas.drawCircle(Offset(w * 0.37, h * 0.59), w * 0.085, fill..color = const Color(0xFFF7B7A8));
+    canvas.drawCircle(Offset(w * 0.63, h * 0.59), w * 0.085, fill..color = const Color(0xFFF7B7A8));
 
     canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.5, h * 0.68),
-        width: w * 0.43,
-        height: h * 0.25,
-      ),
+      Rect.fromCenter(center: Offset(w * 0.5, h * 0.68), width: w * 0.43, height: h * 0.25),
       fill..color = const Color(0xFFFFF7E9),
     );
 
@@ -94,11 +74,7 @@ class _LudiMascotPainter extends CustomPainter {
     canvas.drawCircle(Offset(w * 0.39, h * 0.47), w * 0.035, fill);
     canvas.drawCircle(Offset(w * 0.61, h * 0.47), w * 0.035, fill);
     canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(w * 0.5, h * 0.64),
-        width: w * 0.105,
-        height: h * 0.07,
-      ),
+      Rect.fromCenter(center: Offset(w * 0.5, h * 0.64), width: w * 0.105, height: h * 0.07),
       fill,
     );
 
