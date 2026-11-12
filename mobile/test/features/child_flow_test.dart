@@ -421,13 +421,14 @@ void main() {
       )
       ..on('DELETE /v1/lessons/l4', (_) => (204, null));
     await launch(tester, MemoryCredentialStore(child));
-    expect(find.text('📐 Les fractions · ⏱️ 6 min'), findsOneWidget);
+    expect(find.text('📐 Les fractions'), findsOneWidget);
+    expect(find.text('Environ 6 minutes'), findsOneWidget);
     expect(find.text('à revoir aujourd\'hui 🔄'), findsOneWidget);
     expect(find.text('à revoir vendredi'), findsOneWidget);
     expect(find.text('maîtrisée ✓'), findsOneWidget);
     expect(find.text('Réessayer'), findsOneWidget);
-    expect(find.text('Prends ton cahier en photo pour apprendre.'), findsOneWidget);
-    expect(find.text('Avance pas à pas avec un coup de main.'), findsOneWidget);
+    expect(find.text('Photographie ton cahier'), findsOneWidget);
+    expect(find.text('Avance pas à pas'), findsOneWidget);
     expect(find.text('Retrouve tes leçons et tes découvertes.'), findsOneWidget);
 
     await shot(tester, 'e10_accueil_mission', height: 1300);
@@ -773,7 +774,8 @@ void main() {
     await launch(tester, MemoryCredentialStore(child));
     expect(find.text('📅 Contrôle de fractions vendredi'), findsOneWidget);
     expect(find.text('Exercices ciblés sur ce qui est fragile'), findsOneWidget);
-    expect(find.text('📐 Les fractions · ⏱️ 12 min'), findsOneWidget);
+    expect(find.text('📐 Les fractions'), findsOneWidget);
+    expect(find.text('Environ 12 minutes'), findsOneWidget);
     await shot(tester, 'e11_accueil_controle');
   });
 
