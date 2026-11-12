@@ -9,8 +9,7 @@ import '../../core/api/api_exception.dart';
 import '../../models/level.dart';
 import '../../models/parent.dart';
 import '../../models/subject.dart';
-import '../../core/session.dart';
-import 'parent_home_screen.dart';
+import 'lessons_panel.dart';
 import 'parent_providers.dart';
 
 const _levels = '''
@@ -85,28 +84,13 @@ class _LessonCard extends ConsumerWidget {
   final String childId;
 
   /// Supprimer une leçon est réservé au parent (l'enfant ne peut pas le faire).
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final title = lesson.title ?? 'cette leçon';
-    final confirmed = await confirmDanger(
-      context,
-      title: 'Supprimer « $title » ?',
-      message:
-          'La leçon, ses jeux et les résultats obtenus dessus seront effacés. '
-          'Cette action est définitive.',
-      action: 'Supprimer',
-    );
-    if (!confirmed || !context.mounted) return;
-    try {
-      await ref.read(apiProvider).deleteLesson(lesson.lessonId, childId: childId);
-    } on ApiException catch (error) {
-      if (context.mounted) showError(context, error);
-      return;
-    }
-    ref
-      ..invalidate(childSkillsProvider(childId))
-      ..invalidate(dashboardProvider(childId))
-      ..invalidate(childLessonsProvider(childId));
-  }
+  Future<void> _delete(BuildContext context, WidgetRef ref) => deleteLessonAsParent(
+    context,
+    ref,
+    childId: childId,
+    lessonId: lesson.lessonId,
+    title: lesson.title,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
