@@ -30,6 +30,8 @@ jobs:
           cache: true
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
+      - name: Aperçu formatteur (temporaire)
+        run: dart format --output=show lib/app/ludi_mascot.dart lib/features/home/child_home_screen.dart
       - name: Format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
