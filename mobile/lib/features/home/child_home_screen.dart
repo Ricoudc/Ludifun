@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/format.dart';
+import '../../app/ludi_mascot.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
@@ -37,29 +38,7 @@ class ChildHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
-            Card(
-              color: LudiColors.primary,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Color(0x33FFFFFF),
-                      child: Text('🦊', style: TextStyle(fontSize: 22)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Bonjour $name ! 👋',
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _WelcomeCard(name: name),
             const SizedBox(height: 12),
             if (ref.watch(progressProvider).value case final progress?) ...[
               ProgressStrip(progress, onBadges: () => context.go(Routes.badges)),
@@ -70,26 +49,42 @@ class ChildHomeScreen extends ConsumerWidget {
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
-            _HomeActionTile(
-              title: 'Nouvelle leçon',
-              description: 'Prends ton cahier en photo pour apprendre.',
-              icon: Icons.add_a_photo_outlined,
-              route: Routes.capture,
-              primary: true,
-            ),
-            const SizedBox(height: 8),
-            _HomeActionTile(
-              title: 'Aide aux devoirs',
-              description: 'Avance pas à pas avec un coup de main.',
-              icon: Icons.edit_note,
-              route: Routes.homeworkStart,
-            ),
-            const SizedBox(height: 8),
-            _HomeActionTile(
-              title: 'Mon cahier',
-              description: 'Retrouve tes leçons et tes découvertes.',
-              icon: Icons.menu_book_outlined,
-              route: Routes.notebook,
+            Text('À toi de choisir', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final tileWidth = (constraints.maxWidth - 12) / 2;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _HomeActionTile(
+                      width: tileWidth,
+                      title: 'Nouvelle leçon',
+                      description: 'Photographie ton cahier',
+                      icon: Icons.add_a_photo_outlined,
+                      route: Routes.capture,
+                      tint: const Color(0xFFE5F2FF),
+                    ),
+                    _HomeActionTile(
+                      width: tileWidth,
+                      title: 'Aide aux devoirs',
+                      description: 'Avance pas à pas',
+                      icon: Icons.edit_note,
+                      route: Routes.homeworkStart,
+                      tint: const Color(0xFFE5F6F1),
+                    ),
+                    _HomeActionTile(
+                      width: tileWidth,
+                      title: 'Mon cahier',
+                      description: 'Retrouve tes leçons',
+                      icon: Icons.menu_book_outlined,
+                      route: Routes.notebook,
+                      tint: const Color(0xFFFFF3D9),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 28),
             ...switch (lessons) {
@@ -112,55 +107,111 @@ class ChildHomeScreen extends ConsumerWidget {
   }
 }
 
-/// Tuile d'accès rapide : un intitulé, une explication et une grande zone tactile.
+/// En-tête enfant : identité de Ludi et message positif, sans détourner l'attention.
+class _WelcomeCard extends StatelessWidget {
+  const _WelcomeCard({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    color: LudiColors.primary,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(18, 14, 12, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Bonjour $name ! 👋',
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 5),
+                const Text(
+                  'Prêt·e pour une nouvelle aventure ?',
+                  style: TextStyle(color: Colors.white, fontSize: 14, height: 1.3),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const LudiMascot(size: 88),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Tuile compacte en grille : les trois chemins principaux sont visibles sans longue liste.
 class _HomeActionTile extends StatelessWidget {
   const _HomeActionTile({
+    required this.width,
     required this.title,
     required this.description,
     required this.icon,
     required this.route,
-    this.primary = false,
+    required this.tint,
   });
 
+  final double width;
   final String title;
   final String description;
   final IconData icon;
   final String route;
-  final bool primary;
+  final Color tint;
 
   @override
-  Widget build(BuildContext context) {
-    final iconBackground = primary
-        ? const Color(0x33FFFFFF)
-        : LudiColors.primary.withValues(alpha: 0.1);
-    return Card(
-      color: primary ? LudiColors.primary : Colors.white,
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    height: 146,
+    child: Card(
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
         onTap: () => context.go(route),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          leading: CircleAvatar(
-            backgroundColor: iconBackground,
-            child: Icon(icon, color: primary ? Colors.white : LudiColors.primary),
+        child: Padding(
+          padding: const EdgeInsets.all(13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(13)),
+                alignment: Alignment.center,
+                child: Icon(icon, color: LudiColors.primary, size: 22),
+              ),
+              const Spacer(),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, height: 1.15, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF59677D)),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_rounded, size: 16, color: LudiColors.primary),
+                ],
+              ),
+            ],
           ),
-          title: Text(
-            title,
-            style: TextStyle(
-              color: primary ? Colors.white : null,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          subtitle: Text(
-            description,
-            style: TextStyle(color: primary ? Colors.white : null, height: 1.25),
-          ),
-          trailing: Icon(Icons.chevron_right, color: primary ? Colors.white : LudiColors.primary),
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _MissionCard extends ConsumerWidget {
@@ -168,61 +219,75 @@ class _MissionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final white = Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white);
     final state = ref.watch(missionProvider);
     final mission = state.value;
     final lessonId = mission?.lessonId;
+    const ink = Color(0xFF20304A);
     return Card(
-      color: LudiColors.primary,
+      color: const Color(0xFFEAF2FF),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('🎯 Ta mission du jour', style: white),
+            Row(
+              children: [
+                const Icon(Icons.flag_rounded, color: LudiColors.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  '🎯 Ta mission du jour',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: LudiColors.primary,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
             if (state.hasError && mission == null)
               const Text(
                 'Photographie une leçon pour commencer.',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: ink, fontSize: 16, height: 1.35),
               )
             else if (mission == null)
-              const LinearProgressIndicator(color: Colors.white)
+              const LinearProgressIndicator(color: LudiColors.primary)
             else if (lessonId == null)
               const Text(
                 '🎉 Tout est à jour ! Photographie une nouvelle leçon.',
-                style: TextStyle(color: Colors.white, fontSize: 18),
+                style: TextStyle(color: ink, fontSize: 16, height: 1.35),
               )
             else ...[
               if (mission.examTitle != null && mission.examDate != null) ...[
                 Text(
                   '📅 ${mission.examTitle} ${dayLabel(mission.examDate!, ref.watch(nowProvider)())}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w700),
                 ),
                 if (mission.focusLabel != null)
-                  Text(
-                    mission.focusLabel!,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+                  Text(mission.focusLabel!, style: const TextStyle(color: ink, fontSize: 14)),
                 const SizedBox(height: 8),
               ],
               Text(
-                '${Subjects.emoji(mission.subject)} ${mission.title ?? 'Ta leçon'}'
-                '${mission.estimatedMinutes == null ? '' : ' · ⏱️ ${mission.estimatedMinutes} min'}',
-                style: const TextStyle(color: Colors.white, fontSize: 18),
+                '${Subjects.emoji(mission.subject)} ${mission.title ?? 'Ta leçon'}',
+                style: const TextStyle(color: ink, fontSize: 19, fontWeight: FontWeight.w800),
               ),
+              if (mission.estimatedMinutes != null) ...[
+                const SizedBox(height: 5),
+                Text(
+                  'Environ ${mission.estimatedMinutes} minutes',
+                  style: const TextStyle(color: Color(0xFF59677D), fontSize: 13),
+                ),
+              ],
               const SizedBox(height: 14),
-              FilledButton(
+              FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  backgroundColor: LudiColors.accent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: LudiColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
                 ),
                 onPressed: () => context.go(Routes.lesson(lessonId)),
-                child: const Text('Commencer'),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Commencer ma mission'),
               ),
             ],
           ],

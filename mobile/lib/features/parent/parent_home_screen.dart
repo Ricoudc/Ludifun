@@ -86,22 +86,57 @@ class ParentHomeScreen extends ConsumerWidget {
           top: true,
           children: [
             Card(
+              clipBehavior: Clip.antiAlias,
               color: LudiColors.primary,
-              child: const ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                leading: CircleAvatar(
-                  backgroundColor: Color(0x33FFFFFF),
-                  child: Text('🌱', style: TextStyle(fontSize: 28)),
-                ),
-                title: Text(
-                  'Les progrès se construisent ensemble.',
-                  style: TextStyle(color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  'Suivez les apprentissages et accompagnez chaque étape.',
-                  style: TextStyle(color: Colors.white),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(17),
+                      ),
+                      child: const Icon(
+                        Icons.family_restroom_rounded,
+                        color: Colors.white,
+                        size: 29,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chaque progrès compte.',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              height: 1.2,
+                            ),
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Suivez les apprentissages et accompagnez chaque étape.',
+                            style: TextStyle(color: Colors.white, height: 1.35),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
+            ),
+            const SizedBox(height: 8),
+            const _ParentSectionLabel(
+              icon: Icons.people_alt_outlined,
+              title: 'Les profils de la famille',
+              subtitle: 'Retrouvez le suivi de chaque enfant.',
             ),
             const AppUpdateBanner(),
             const EmailVerificationBanner(),
@@ -140,6 +175,35 @@ class ParentHomeScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _ParentSectionLabel extends StatelessWidget {
+  const _ParentSectionLabel({required this.icon, required this.title, required this.subtitle});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(4, 8, 4, 12),
+    child: Row(
+      children: [
+        Icon(icon, color: LudiColors.primary, size: 22),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 2),
+              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ChildTile extends StatelessWidget {
