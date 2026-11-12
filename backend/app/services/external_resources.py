@@ -47,7 +47,7 @@ from app.domain.resources import (
     vikidia_page_url,
 )
 from app.domain.sources import keywords
-from app.domain.validation import check_question, needs_picture, needs_support
+from app.domain.validation import check_question, lacks_context, needs_picture, needs_support
 from app.services.lesson_store import add_questions, load_units
 from app.services.web_sources import SearchUnavailable, WebSources
 
@@ -184,6 +184,7 @@ async def prepare(
                             or reason
                             or needs_picture(question.stem)
                             or needs_support(question.stem)
+                            or lacks_context(question.stem)
                         ):
                             continue
                         added.setdefault(material.knowledge_id, []).append(

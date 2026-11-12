@@ -29,10 +29,12 @@ from app.domain.knowledge import KnowledgeUnit, MaterialQuestion
 from app.domain.rules import RULES
 from app.domain.text import contains_words, fuzzy_contains
 from app.domain.validation import (
+    CONTEXT_REASON,
     PICTURE_REASON,
     SUPPORT_REASON,
     Rejection,
     check_question,
+    lacks_context,
     needs_picture,
     needs_support,
 )
@@ -149,6 +151,8 @@ def check_targets(
                 reason = PICTURE_REASON
             elif needs_support(question.stem):
                 reason = SUPPORT_REASON
+            elif lacks_context(question.stem):
+                reason = CONTEXT_REASON
             elif not _proved(question, target.unit):
                 reason = "bonne réponse ni dans la leçon ni dans un calcul vérifié"
             elif unsafe := unsafe_reason(
