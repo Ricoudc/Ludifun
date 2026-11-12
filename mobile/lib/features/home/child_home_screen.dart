@@ -49,7 +49,10 @@ class ChildHomeScreen extends ConsumerWidget {
             const OfflineSessionsCard(),
             const _MissionCard(),
             const SizedBox(height: 16),
-            Text('À toi de choisir', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'À toi de choisir',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
@@ -135,7 +138,11 @@ class _WelcomeCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 const Text(
                   'Prêt·e pour une nouvelle aventure ?',
-                  style: TextStyle(color: Colors.white, fontSize: 14, height: 1.3),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.3,
+                  ),
                 ),
               ],
             ),
@@ -195,7 +202,11 @@ class _HomeActionTile extends StatelessWidget {
                 title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, height: 1.15, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 15,
+                  height: 1.15,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 3),
               Row(
@@ -205,10 +216,17 @@ class _HomeActionTile extends StatelessWidget {
                       description,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF59677D)),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF59677D),
+                      ),
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_rounded, size: 16, color: LudiColors.primary),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 16,
+                    color: LudiColors.primary,
+                  ),
                 ],
               ),
             ],
@@ -237,7 +255,11 @@ class _MissionCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.flag_rounded, color: LudiColors.primary, size: 20),
+                const Icon(
+                  Icons.flag_rounded,
+                  color: LudiColors.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   '🎯 Ta mission du jour',
@@ -266,21 +288,35 @@ class _MissionCard extends ConsumerWidget {
               if (mission.examTitle != null && mission.examDate != null) ...[
                 Text(
                   '📅 ${mission.examTitle} ${dayLabel(mission.examDate!, ref.watch(nowProvider)())}',
-                  style: const TextStyle(color: ink, fontSize: 14, fontWeight: FontWeight.w700),
+                  style: const TextStyle(
+                    color: ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 if (mission.focusLabel != null)
-                  Text(mission.focusLabel!, style: const TextStyle(color: ink, fontSize: 14)),
+                  Text(
+                    mission.focusLabel!,
+                    style: const TextStyle(color: ink, fontSize: 14),
+                  ),
                 const SizedBox(height: 8),
               ],
               Text(
                 '${Subjects.emoji(mission.subject)} ${mission.title ?? 'Ta leçon'}',
-                style: const TextStyle(color: ink, fontSize: 19, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  color: ink,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               if (mission.estimatedMinutes != null) ...[
                 const SizedBox(height: 5),
                 Text(
                   'Environ ${mission.estimatedMinutes} minutes',
-                  style: const TextStyle(color: Color(0xFF59677D), fontSize: 13),
+                  style: const TextStyle(
+                    color: Color(0xFF59677D),
+                    fontSize: 13,
+                  ),
                 ),
               ],
               const SizedBox(height: 14),
