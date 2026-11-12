@@ -54,10 +54,8 @@ class Prompt extends StatelessWidget {
       if (label != null) ...[
         Text(
           label!,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: LudiColors.primary,
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(context).textTheme.labelLarge
+              ?.copyWith(color: LudiColors.primary, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
       ],
@@ -67,17 +65,11 @@ class Prompt extends StatelessWidget {
           decoration: BoxDecoration(
             color: LudiColors.primary.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(12),
-            border: Border(
-              left: BorderSide(color: LudiColors.primary, width: 4),
-            ),
+            border: Border(left: BorderSide(color: LudiColors.primary, width: 4)),
           ),
           child: Text(
             '📖 $passage',
-            style: const TextStyle(
-              fontSize: 18,
-              height: 1.4,
-              fontStyle: FontStyle.italic,
-            ),
+            style: const TextStyle(fontSize: 18, height: 1.4, fontStyle: FontStyle.italic),
           ),
         ),
         const SizedBox(height: 12),
@@ -88,10 +80,8 @@ class Prompt extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                height: 1.3,
-              ),
+              style: Theme.of(context).textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w700, height: 1.3),
             ),
           ),
           if (listen)
@@ -357,3 +347,4 @@ class _SpeakAnswerButtonState extends State<SpeakAnswerButton> {
     );
   }
 }
+
