@@ -179,10 +179,16 @@ class SessionScreen extends ConsumerWidget {
                   preferredSize: const Size.fromHeight(8),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: LinearProgressIndicator(
-                      value: state.progress,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(4),
+                    child: Semantics(
+                      label: 'Question $index sur $total',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: state.progress,
+                          minHeight: 8,
+                          backgroundColor: LudiColors.primary.withValues(alpha: 0.12),
+                        ),
+                      ),
                     ),
                   ),
                 )
@@ -238,8 +244,9 @@ class SessionScreen extends ConsumerWidget {
                     child: KeyedSubtree(
                       key: ValueKey(item.id),
                       child: Card(
+                        clipBehavior: Clip.antiAlias,
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           child: ActivityInstruction(
                             text: item.instruction,
                             child: activityRegistry[item.type]!(item.payload, controller.submit),

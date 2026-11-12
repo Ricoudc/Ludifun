@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/format.dart';
+import '../../app/ludi_mascot.dart';
 import '../../app/level_stars.dart';
 import '../../app/theme.dart';
 import '../../models/level.dart';
@@ -37,16 +38,42 @@ class ReportView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          report.lessonMastered ? '🏆 Leçon maîtrisée !' : '🎉 Révision terminée !',
-          textAlign: TextAlign.center,
-          style: theme.headlineMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          report.lessonMastered ? 'Toutes les notions sont maîtrisées. Bravo pour ton travail !' : 'Chaque réponse t’aide à apprendre. Regarde ce que tu as déjà réussi et ce que tu peux revoir.',
-          textAlign: TextAlign.center,
-          style: theme.bodyLarge?.copyWith(color: LudiColors.primary, height: 1.35),
+        Card(
+          color: const Color(0xFFEAF2FF),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const LudiMascot(size: 76),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        report.lessonMastered ? 'Leçon maîtrisée !' : 'Révision terminée !',
+                        style: theme.headlineSmall?.copyWith(
+                          color: const Color(0xFF20304A),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        report.lessonMastered
+                            ? 'Toutes les notions sont maîtrisées. Bravo pour ton travail !'
+                            : 'Chaque réponse t’aide à apprendre. Voici tes réussites et les notions à revoir.',
+                        style: theme.bodyMedium?.copyWith(
+                          color: const Color(0xFF34445C),
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 20),
         Card(
