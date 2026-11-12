@@ -170,9 +170,9 @@ class AnalysisOutput(BaseModel):
 
 class DistractorOut(BaseModel):
     text: str
-    misconception: ErrorType | None = Field(
-        description="L'erreur que révèle ce choix : confusion (avec une autre notion), calculation, "
-        "method, reading, imprecision (presque juste), knowledge (ne sait pas) ; null si aucune."
+    misconception: ErrorType = Field(
+        description="Erreur pédagogique révélée par ce choix, obligatoire et non nulle : confusion, "
+        "calculation, method, reading, imprecision ou knowledge. Choisir la catégorie la plus précise."
     )
 
 
