@@ -30,10 +30,6 @@ jobs:
           cache: true
       - name: Dépendances (versions figées par pubspec.lock)
         run: flutter pub get --enforce-lockfile
-      - name: Diagnostic format temporaire
-        run: |
-          dart format lib/features/session/activities/common.dart
-          git diff -- lib/features/session/activities/common.dart
       - name: Format
         run: dart format --output=none --set-exit-if-changed lib test
       - name: Analyse
