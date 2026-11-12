@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/app.dart';
+import 'package:ludifun/app/ludi_mascot.dart';
 import 'package:ludifun/app/router.dart';
 import 'package:ludifun/core/offline.dart';
 import 'package:ludifun/core/sounds.dart';
