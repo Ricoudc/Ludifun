@@ -106,9 +106,7 @@ def material_output(material: dict[str, dict[str, Any]], ids: list[str]) -> Mate
                 else:
                     text = distractor
                     misconception = kinds[i] if i < len(kinds) else None
-                distractors.append(
-                    {"text": text, "misconception": misconception or "confusion"}
-                )
+                distractors.append({"text": text, "misconception": misconception or "confusion"})
             questions.append({**q, "distractors": distractors})
         help_ = raw.get("help")
         if help_ is not None:
