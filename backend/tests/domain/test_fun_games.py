@@ -117,7 +117,7 @@ def test_every_game_has_an_instruction_for_every_cycle() -> None:
         # Au CP, des phrases courtes.
         assert all(len(sentence.split()) <= 10 for sentence in str(texts[0]).split(". ")), code
     assert instruction("JEU_INCONNU", "CP") is None
-    assert "12 mots" in writing_rules("CE1") and "cycle 4" in writing_rules("3e")
+    assert "10 mots" in writing_rules("CE1") and "cycle 4" in writing_rules("3e")
 
 
 def test_the_parent_sees_every_question_with_its_answer(lesson: ReferenceLesson) -> None:
