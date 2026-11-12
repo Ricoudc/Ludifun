@@ -1,11 +1,12 @@
 """Consignes adaptées à la classe de l'enfant (étape 25).
 
-Trois registres, un par cycle : cycle 2 (CP, CE1, CE2) des phrases très courtes et concrètes, à
-lire seul ; cycle 3 (CM1, CM2, 6e) un peu plus de précision ; cycle 4 (5e, 4e, 3e) un ton plus
-scolaire. La consigne dit comment jouer ; la question, elle, vient du matériel de la leçon.
+Les consignes des jeux suivent trois registres, un par cycle : cycle 2 (CP, CE1, CE2), cycle 3
+(CM1, CM2, 6e) et cycle 4 (5e, 4e, 3e). Les règles d'écriture du matériel pédagogique sont, elles,
+différenciées pour chacune des neuf classes. La consigne dit comment jouer ; la question vient
+du matériel de la leçon.
 
-Les règles d'écriture (`writing_rules`) sont données à l'IA qui prépare le matériel : elle écrit
-les questions au niveau de l'enfant. Le code, lui, ne dépend pas de ce qu'elle en fait.
+Les règles d'écriture (`writing_rules`) sont données à l'IA qui prépare le matériel. Le code
+d'assemblage des activités ne dépend pas de la formulation qu'elle choisit.
 """
 
 from app.domain.activities.base import ActivityCode
