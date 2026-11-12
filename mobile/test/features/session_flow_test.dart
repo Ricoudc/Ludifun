@@ -109,7 +109,7 @@ void main() {
 
     // Écran 7 : bilan.
     expect(backend.completed, 1);
-    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Révision terminée !'), findsOneWidget);
     expect(find.text('Ton résultat'), findsOneWidget);
     expect(find.text('7,5 / 10'), findsOneWidget);
     expect(find.text('✅ 2 notions maîtrisées'), findsOneWidget);
@@ -312,7 +312,7 @@ void main() {
     expect(buttonRect.bottom, lessThanOrEqualTo(screenHeight));
 
     await tapAndSettle(tester, 'Continuer');
-    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Révision terminée !'), findsOneWidget);
   });
 
   testWidgets('le bilan garde ses actions visibles et « Terminer » revient à l’accueil', (
@@ -324,13 +324,13 @@ void main() {
     await tapAndSettle(tester, '1789');
     await tapAndSettle(tester, 'Continuer');
 
-    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Révision terminée !'), findsOneWidget);
     expect(find.text('Revoir mes erreurs'), findsOneWidget);
     expect(find.text('Terminer'), findsOneWidget);
 
     await tapAndSettle(tester, 'Terminer');
     expect(find.text('Bonjour Emma ! 👋'), findsOneWidget);
-    expect(find.text('🎉 Révision terminée !'), findsNothing);
+    expect(find.text('Révision terminée !'), findsNothing);
   });
 
   testWidgets('le bilan masque la reprise quand aucune erreur n’est disponible', (tester) async {
@@ -344,7 +344,7 @@ void main() {
     await tapAndSettle(tester, '1789');
     await tapAndSettle(tester, 'Continuer');
 
-    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Révision terminée !'), findsOneWidget);
     expect(find.text('Revoir mes erreurs'), findsNothing);
     expect(find.text('Terminer'), findsOneWidget);
   });
@@ -360,7 +360,7 @@ void main() {
     await tapAndSettle(tester, 'Continuer');
     await tapAndSettle(tester, 'Revoir mes erreurs');
     expect(find.text('Aucune erreur à revoir : bravo !'), findsOneWidget);
-    expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+    expect(find.text('Révision terminée !'), findsOneWidget);
   });
 
   testWidgets('🚩 l\'enfant signale une question après la correction', (tester) async {
@@ -609,7 +609,7 @@ void main() {
         expect(server.routes, isNot(contains('POST /v1/sessions/s1/extend')));
       }
       expect(backend.completed, 1);
-      expect(find.text('🎉 Révision terminée !'), findsOneWidget);
+      expect(find.text('Révision terminée !'), findsOneWidget);
     });
   }
 
