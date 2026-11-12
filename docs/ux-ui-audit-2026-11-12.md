@@ -30,6 +30,8 @@
 - Tableau de bord parent : titres de sections hiérarchisés et graphique encadré pour distinguer les blocs de lecture.
 - Parcours de séance : progression annoncée avec une valeur accessible (« question x sur y »), carte de question plus respirante.
 - Lecture audio des consignes : nom accessible explicite pour TalkBack.
+- Toutes les familles de jeux qui réutilisent le composant commun `Prompt` bénéficient désormais d'un repère visuel compact pour la consigne.
+- Correction : Ludi est également présent dans la bulle d'encouragement, avec son illustration vectorielle commune.
 - Bilan : accueil de fin de séance avec Ludi, texte de félicitation et synthèse plus facile à parcourir.
 - Routes, providers, API, règles pédagogiques et données métier conservés.
 - Aucune modification de notation, maîtrise, synchronisation ou stockage.
