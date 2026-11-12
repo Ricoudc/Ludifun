@@ -542,11 +542,11 @@ void main() {
       await open(tester, 's1');
       await tapAndSettle(tester, '1492');
       expect(find.text('🤔 Tu y es presque ! Refais le calcul étape par étape.'), findsOneWidget);
-      expect(find.text('🧑‍🎓'), findsOneWidget);
+      expect(find.byType(LudiMascot), findsOneWidget);
       await shot(tester, 's08b_ludi');
       await tapAndSettle(tester, 'Continuer');
       await tapAndSettle(tester, '1492');
-      expect(find.text('🧑‍🎓'), findsNothing);
+      expect(find.byType(LudiMascot), findsNothing);
     },
   );
 
