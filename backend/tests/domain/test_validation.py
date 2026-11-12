@@ -161,7 +161,6 @@ def test_question_without_three_valid_distractors_is_rejected(
     assert "3 distracteurs" in _reasons(item, raw)["questions[0]"]
 
 
-
 def test_structured_distractors_require_a_pedagogical_error(history: ReferenceLesson) -> None:
     item, raw = _material(history)
     question = raw["questions"][0]
