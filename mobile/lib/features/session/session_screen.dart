@@ -180,16 +180,13 @@ class SessionScreen extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Semantics(
-                      label: 'Progression de la séance',
-                      value: 'Question $index sur $total',
+                      label: 'Question $index sur $total',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
                           value: state.progress,
                           minHeight: 8,
                           backgroundColor: LudiColors.primary.withValues(alpha: 0.12),
-                          semanticsLabel: 'Progression',
-                          semanticsValue: '$index sur $total',
                         ),
                       ),
                     ),
