@@ -101,7 +101,7 @@ def material_output(material: dict[str, dict[str, Any]], ids: list[str]) -> Mate
                 if isinstance(distractor, dict):
                     # Les anciennes leçons de référence ne renseignaient pas toujours
                     # la catégorie : le fournisseur factice doit rester conforme au schéma v2.
-                    misconception = distractor.get("misconception")
+                    misconception = distractor.get("misconception") or (kinds[i] if i < len(kinds) else None)
                     text = distractor["text"]
                 else:
                     text = distractor
