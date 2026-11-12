@@ -422,9 +422,11 @@ def _check_question(raw: Any) -> tuple[MaterialQuestion | None, str]:
         # Le format structuré v11 doit expliquer l'erreur révélée par chacun des trois choix.
         # Les anciennes sorties en chaînes restent acceptées pour la compatibilité des données.
         if isinstance(d, dict):
+            if not isinstance(kind, str):
+                return None, "un distracteur ne précise pas l'erreur pédagogique qu'il révèle"
             try:
                 error_kind = ErrorType(kind)
-            except (TypeError, ValueError):
+            except ValueError:
                 return None, "un distracteur ne précise pas l'erreur pédagogique qu'il révèle"
         else:
             error_kind = None
