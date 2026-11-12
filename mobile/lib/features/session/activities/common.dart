@@ -64,10 +64,8 @@ class Prompt extends StatelessWidget {
               header: true,
               child: Text(
                 label!,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: LudiColors.primary,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: Theme.of(context).textTheme.labelLarge
+                    ?.copyWith(color: LudiColors.primary, fontWeight: FontWeight.w800),
               ),
             ),
           ),
