@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/api_image.dart';
+import '../../app/ludi_mascot.dart';
 import '../../app/theme.dart';
 import '../../models/account.dart';
 import '../../models/figure.dart';
@@ -391,7 +392,7 @@ class LudiBubble extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('🧑‍🎓', style: TextStyle(fontSize: 34)),
+        const LudiMascot(size: 42),
         const SizedBox(width: 8),
         Expanded(
           child: Container(

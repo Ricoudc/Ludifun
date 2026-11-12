@@ -52,11 +52,27 @@ class Prompt extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       if (label != null) ...[
-        Text(
-          label!,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(color: LudiColors.primary),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEAF2FF),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Semantics(
+              header: true,
+              child: Text(
+                label!,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: LudiColors.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
       ],
       if (passage != null && passage!.isNotEmpty) ...[
         Container(
