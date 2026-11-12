@@ -305,4 +305,6 @@ def writing_rules(grade: str | None) -> str:
         parsed = Grade(grade) if grade else None
     except ValueError:
         parsed = None
-    return _WRITING.get(parsed, _WRITING[Grade.SIXIEME])
+    if parsed is None:
+        return _WRITING[Grade.SIXIEME]
+    return _WRITING[parsed]
