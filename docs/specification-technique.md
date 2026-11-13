@@ -2544,6 +2544,16 @@ Tests : `test/core/display_test.dart`, `child_flow_test` (l'enfant agrandit le t
 lecture facile, sans débordement de l'accueil). Non vérifié : tous les écrans et tous les jeux
 en très grand, sur un vrai téléphone ; une police pensée pour la dyslexie.
 
+### 5.95 Erreurs du serveur dans le suivi (novembre 2026)
+
+Une erreur inattendue ne se voyait que dans le journal du conteneur. Elle est maintenant comptée
+en mémoire (`app/services/server_errors.py`, les 50 dernières depuis le démarrage) et montrée sur
+`/suivi` et dans le rapport texte (« Erreurs du serveur ») : méthode, chemin avec les
+identifiants remplacés par « {id} », type d'erreur, nombre de fois. Jamais le message ni les
+paramètres : ils peuvent citer une valeur venue de l'enfant. Test : `tests/api/test_monitoring.py`.
+Pas d'outil de supervision extérieur (il faudrait un compte chez un fournisseur et un accord sur
+les données envoyées).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

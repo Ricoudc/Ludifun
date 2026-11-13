@@ -100,6 +100,12 @@ function afficher(d) {
       dollars(s.cost_usd)])),
     "Aucun appel.", 13);
 
+  const serveur = d.server_errors || { by_route: [], since: null };
+  document.getElementById("erreurs-serveur-depuis").textContent =
+    serveur.since ? "(depuis le démarrage, " + quand(serveur.since) + ")" : "";
+  remplir("erreurs-serveur", serveur.by_route.map((e) => ligne([e.what, e.count])),
+    "Aucune erreur inattendue.", 2);
+
   remplir("erreurs", d.errors.map((e) =>
     ligne([quand(e.at), e.lesson, e.stage, e.model, el("span", e.status, "bad"), e.message])), "Aucune erreur.", 6);
 }

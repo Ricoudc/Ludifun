@@ -38,6 +38,9 @@ Fait :
 - ✅ Le parent relit, corrige et valide chaque leçon avant l'enfant (§5.69).
 - ✅ Le parent essaie la leçon comme son enfant, sans rien compter pour lui, et note les erreurs
   à corriger (§5.84).
+- ✅ Les erreurs notées pendant l'essai sont gardées sur la notion jusqu'à « C'est corrigé » ;
+  essai de toute la leçon (§5.90) ; « Revérifier la leçon » avec les contrôles d'aujourd'hui (§5.91).
+- ✅ Une question garde son contexte (§5.87) ; un texte en anglais hors leçon d'anglais est écarté.
 - ✅ Outil d'évaluation sur les vraies leçons de la famille (`Ludifun.bat`, choix 12, §5.55).
 
 À faire :
@@ -97,6 +100,17 @@ assistant parent.
 - ✅ Y ajouter la matière qui décroche (moyenne en baisse sur plusieurs semaines), §5.75.
 - ✅ Temps passé à apprendre, par semaine (écrit sous le graphique « Progrès », §5.75).
 
+## 4 bis. Espace parent (novembre 2026)
+
+- ✅ État de l'installation dit au parent : IA, clé, carte graphique et modèles qui tiendraient,
+  dernières leçons (§5.89).
+- ✅ Un second parent dans la famille (§5.92).
+- ✅ Bilan de la semaine par e-mail, au choix du parent (§5.93) ; reste à brancher un fournisseur
+  d'e-mails et une tâche planifiée sur le PC de la famille.
+- ⬜ Notifications sur le téléphone (« ta leçon est prête », « c'est l'heure de réviser ») :
+  demandent un service de notifications (Firebase) ou une extension native, à essayer sur un
+  vrai téléphone.
+
 ## 5. Expérience de l'enfant
 
 Fait : « Enseigne-moi », aides progressives, voix (dictées, sons, anglais), jeux visuels, jeu du
@@ -108,6 +122,9 @@ jour, missions du jour.
 - ✅ Réponses à voix haute (reconnaissance vocale sur le téléphone), pour les plus jeunes (§5.78) ;
   reste à essayer sur de vrais téléphones.
 - ✅ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage (§5.77).
+- ✅ Affichage : taille du texte, lecture facile, contraste renforcé (§5.94) ; reste une police
+  pensée pour la dyslexie et la vérification de tous les jeux en très grand sur un téléphone.
+- ⬜ Séance comme machine à états explicite (§124) : à décider avec les séances de référence.
 
 ## 6. Distribution
 
@@ -119,7 +136,9 @@ jour, missions du jour.
 - 🟡 Finaliser les documents RGPD et valider l'analyse d'impact : brouillons remis à jour d'après le
   code (IA au choix, images, voix, §5.82) ; restent les DPA, la liste des fournisseurs proposés et la
   validation par un juriste ou un DPO.
-- ⬜ Contrats avec les fournisseurs d'IA, supervision et gestion des incidents.
+- 🟡 Contrats avec les fournisseurs d'IA, supervision et gestion des incidents : erreurs du
+  serveur comptées dans le suivi (§5.95) ; restent les contrats et un outil de supervision.
+- ⬜ Version iPhone : le projet `ios` existe, rien n'est construit ni testé (il faut un Mac).
 - ⬜ Bêta fermée sur Google Play (`play-store.md`).
 
 ## Suivi technique

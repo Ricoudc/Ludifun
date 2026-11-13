@@ -19,6 +19,8 @@ from sqlalchemy.exc import OperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from app.services.server_errors import ERRORS
+
 logger = logging.getLogger("ludifun.errors")
 
 
@@ -170,6 +172,7 @@ class CatchUnexpected:
             if started:  # réponse déjà partie (tâche de fond) : rien à remplacer
                 raise
             logger.exception("Erreur inattendue : %s %s", scope.get("method"), scope.get("path"))
+            ERRORS.record(str(scope.get("method")), str(scope.get("path")), exc)
             if isinstance(exc, OperationalError | ConnectionRefusedError):
                 status, body = 503, error_body("database_unavailable", DATABASE_MESSAGE, status_code=503)
             else:
