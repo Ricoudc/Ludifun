@@ -105,7 +105,12 @@ def page_of(index: int, words: list[Word]) -> OcrPage:
     doubtful: list[tuple[float, UncertainOut]] = []
     for line in lines:
         for k, word in enumerate(line):
-            if word.confidence >= DOUBT_BELOW or sum(c.isalpha() for c in word.text) < 3:
+            # Les nombres, fractions et symboles mathématiques sont importants même sans
+            # trois lettres : une seule confusion (« 1989 » → « 1980 ») change le sens.
+            important = sum(c.isalpha() for c in word.text) >= 3 or any(
+                c.isdigit() or c in "=+-×÷/%²³°<>√π∑∫≈≠≤≥" for c in word.text
+            )
+            if word.confidence >= DOUBT_BELOW or not important:
                 continue
             context = " ".join(w.text for w in line[max(0, k - CONTEXT_WORDS) : k + CONTEXT_WORDS + 1])
             doubtful.append((word.confidence, UncertainOut(text=word.text, context=context)))
@@ -203,7 +208,10 @@ class AutoOcr:
             first = await self.primary.extract(pages)
         except AIError:
             return await self.vision.extract(pages)
-        weak = [p.index for p in first.output.pages if p.quality != "good"]
+        # Une page peut avoir une confiance moyenne élevée tout en contenant un nombre,
+        # une date ou un mot important très incertain. Ces passages doivent aussi déclencher
+        # la relecture vision, avant de demander à l’enfant de vérifier manuellement.
+        weak = [p.index for p in first.output.pages if p.quality != "good" or p.uncertain]
         if not weak:
             return first
         if not await self._vision_ok():
@@ -216,9 +224,12 @@ class AutoOcr:
         reread = min(len(second.output.pages), len(weak))
         for k, index in enumerate(weak[:reread]):
             again = second.output.pages[k].model_copy(update={"index": index})
-            if _RANK[again.quality] >= _RANK[merged[index].quality]:
+            if _page_quality_key(again) > _page_quality_key(merged[index]):
                 merged[index] = again
-        warnings = [f"{reread}/{len(weak)} page(s) relue(s) par l'IA après Tesseract."]
+        warnings = [
+            *first.output.warnings,
+            f"{reread}/{len(weak)} page(s) relue(s) par l'IA après Tesseract.",
+        ]
         if reread < len(weak):
             warnings.append(
                 f"Relecture incomplète : {len(weak) - reread} page(s) sans réponse de l'IA ; "
@@ -232,6 +243,15 @@ class AutoOcr:
         )
         usage = replace(second.usage, latency_ms=first.usage.latency_ms + second.usage.latency_ms)
         return LLMResult(output, usage)
+
+
+def _page_quality_key(page: OcrPage) -> tuple[int, int, int]:
+    """Compare les relectures sans remplacer une page par une transcription moins sûre.
+
+    À qualité égale, moins de passages douteux est préférable ; le texte non vide départage
+    enfin une page vide. La longueur seule n’est jamais considérée comme une preuve de qualité.
+    """
+    return (_RANK[page.quality], -len(page.uncertain), int(bool(page.text.strip())))
 
 
 def _noted(result: LLMResult[OcrResult], warning: str) -> LLMResult[OcrResult]:
