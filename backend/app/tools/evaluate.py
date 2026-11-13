@@ -657,7 +657,7 @@ async def evaluate(
             return lesson, result, duration
 
     results = list(await asyncio.gather(*(one(lesson) for lesson in lessons)))
-    models = {stage: llm.model_for(stage) for stage in ("analysis", "material", "evaluation")}
+    models = {stage: llm.model_for(stage) for stage in ("ocr", "analysis", "material", "evaluation")}
     return results, models
 
 

@@ -128,7 +128,7 @@ async def test_error_types_are_recorded(
         r = await client.post(f"/v1/sessions/{session['id']}/attempts", json=body, headers=auth(token))
         assert r.status_code == 200, r.text
     errors = [e.error_type or "" for e in await db.scalars(select(AttemptEvidence))]
-    assert sorted(errors) == ["knowledge", "random"]  # la réponse en 0,6 s : au hasard
+    assert sorted(errors) == ["confusion", "random"]  # distracteur catégorisé ; réponse en 0,6 s : au hasard
 
 
 # --------------------------------------------------------------------------- #

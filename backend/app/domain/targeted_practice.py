@@ -140,7 +140,7 @@ def check_targets(
                 "distractors": [
                     {
                         "text": d,
-                        "misconception": target.error.value if trap and same_answer(d, trap) else None,
+                        "misconception": target.error.value if same_answer(d, trap) else "knowledge",
                     }
                     for d in p.distractors
                 ],

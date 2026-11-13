@@ -63,7 +63,7 @@ async def test_reference_lessons_go_through_the_pipeline(lesson: Path) -> None:
     assert [r.stage for r in result.runs] == ["ocr", "analysis"] + ["material"] * batches
     assert all(r.status == "ok" for r in result.runs)
     assert [r.prompt_version for r in result.runs[:2]] == ["v2", "v8"]
-    assert result.prompt_versions == {"ocr": "v2", "analysis": "v8", "material": "v10"}
+    assert result.prompt_versions == {"ocr": "v2", "analysis": "v8", "material": "v11"}
     # Compétences reliées aux notions, et niveaux de compréhension exigés pour chaque notion.
     expected_skills = LessonScript.from_file(lesson).analysis["skills"]
     assert len(result.analysis.skills) == len(expected_skills) >= 2
@@ -292,7 +292,7 @@ async def test_the_analysis_is_written_for_the_class_set_by_the_parent() -> None
     llm = FakeProvider(LessonScript.from_file(HISTORY))
     await LessonPipeline(VisionLLMOcr(llm), llm, default_registry(), pupil_grade="CE1").run((PAGE,))
     (analysis,) = [text for stage, text in llm.calls if stage == "analysis"]
-    assert analysis.startswith("Classe de l'élève : CE1\nÉcriture : Élève de cycle 2")
+    assert analysis.startswith("Classe de l'élève : CE1\nÉcriture : CE1 :")
     assert "<lecon>" in analysis
 
 

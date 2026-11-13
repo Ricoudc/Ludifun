@@ -1,11 +1,12 @@
 """Consignes adaptées à la classe de l'enfant (étape 25).
 
-Trois registres, un par cycle : cycle 2 (CP, CE1, CE2) des phrases très courtes et concrètes, à
-lire seul ; cycle 3 (CM1, CM2, 6e) un peu plus de précision ; cycle 4 (5e, 4e, 3e) un ton plus
-scolaire. La consigne dit comment jouer ; la question, elle, vient du matériel de la leçon.
+Les consignes des jeux suivent trois registres, un par cycle : cycle 2 (CP, CE1, CE2), cycle 3
+(CM1, CM2, 6e) et cycle 4 (5e, 4e, 3e). Les règles d'écriture du matériel pédagogique sont, elles,
+différenciées pour chacune des neuf classes. La consigne dit comment jouer ; la question vient
+du matériel de la leçon.
 
-Les règles d'écriture (`writing_rules`) sont données à l'IA qui prépare le matériel : elle écrit
-les questions au niveau de l'enfant. Le code, lui, ne dépend pas de ce qu'elle en fait.
+Les règles d'écriture (`writing_rules`) sont données à l'IA qui prépare le matériel. Le code
+d'assemblage des activités ne dépend pas de la formulation qu'elle choisit.
 """
 
 from app.domain.activities.base import ActivityCode
@@ -237,21 +238,46 @@ _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
     ),
 }
 
-_WRITING: dict[int, str] = {
-    2: (
-        "Élève de cycle 2 (CP à CE2), qui apprend à lire : phrases de 12 mots au plus, "
-        "mots simples et concrets, une seule idée par phrase, pas de négation dans les "
-        "questions, pas de mot savant sans l'expliquer. Chaque consigne commence par un verbe "
-        "(Touche, Range, Écris, Choisis) et dit ce qu'il faut faire, comme à un enfant de 6 ans."
+_WRITING: dict[Grade, str] = {
+    Grade.CP: (
+        "CP : enfant qui débute la lecture. Phrases très courtes (8 mots au plus), mots connus et "
+        "concrets, une seule idée. Évite les phrases complexes et les négations. Consignes avec "
+        "un verbe simple : lis, compte, touche, range, écris."
     ),
-    3: (
-        "Élève de cycle 3 (CM1 à 6e) : phrases de 20 mots au plus, vocabulaire de la leçon, "
-        "une seule question à la fois, pas de double négation. Chaque consigne commence par "
-        "un verbe et dit ce qu'il faut faire et selon quel critère."
+    Grade.CE1: (
+        "CE1 : enfant qui lit des phrases simples seul. Phrases courtes (10 mots au plus), "
+        "vocabulaire courant ou repris de la leçon, une seule action par consigne. Évite les "
+        "pronoms ambigus et les doubles négations."
     ),
-    4: (
-        "Élève de cycle 4 (5e à 3e) : phrases claires et précises, vocabulaire disciplinaire "
-        "de la leçon, pas de tournure ambiguë."
+    Grade.CE2: (
+        "CE2 : enfant autonome sur de courts énoncés. Phrases de 12 mots au plus, une idée par "
+        "phrase, vocabulaire de la leçon. Les consignes précisent l'objet et le critère attendu."
+    ),
+    Grade.CM1: (
+        "CM1 : phrases de 16 mots au plus. Introduis le vocabulaire scolaire de la leçon, avec "
+        "une formulation concrète si le concept est nouveau. Une seule question à la fois."
+    ),
+    Grade.CM2: (
+        "CM2 : phrases de 18 mots au plus. L'élève peut lire des consignes en plusieurs étapes "
+        "courtes et expliquer une méthode simple. Garde les termes précis de la leçon."
+    ),
+    Grade.SIXIEME: (
+        "6e : phrases de 20 mots au plus. Utilise le vocabulaire disciplinaire de la leçon et "
+        "des consignes autonomes. Demande une justification courte lorsque la notion s'y prête."
+    ),
+    Grade.CINQUIEME: (
+        "5e : phrases de 22 mots au plus. L'élève peut manipuler des notions abstraites si elles "
+        "sont définies dans la leçon. Distingue clairement règle, calcul et justification."
+    ),
+    Grade.QUATRIEME: (
+        "4e : phrases de 24 mots au plus. Utilise les termes mathématiques et disciplinaires "
+        "précis de la leçon. Propose des applications et raisonnements en plusieurs étapes "
+        "courtes, sans implicite."
+    ),
+    Grade.TROISIEME: (
+        "3e : phrases de 26 mots au plus. Adopte un registre scolaire précis, sans infantiliser. "
+        "Les questions peuvent demander un raisonnement, une justification ou un transfert "
+        "vers une situation nouvelle, avec toutes les données nécessaires."
     ),
 }
 
@@ -274,4 +300,11 @@ def instruction(code: str, grade: str | None) -> str | None:
 
 
 def writing_rules(grade: str | None) -> str:
-    return _WRITING[cycle(grade)]
+    """Consignes rédactionnelles propres à chacune des neuf classes, du CP à la 3e."""
+    try:
+        parsed = Grade(grade) if grade else None
+    except ValueError:
+        parsed = None
+    if parsed is None:
+        return _WRITING[Grade.SIXIEME]
+    return _WRITING[parsed]
