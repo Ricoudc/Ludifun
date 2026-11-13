@@ -975,3 +975,52 @@ class LessonImages {
 
   bool get pending => (image?.pending ?? false) || pictures.any((p) => p.pending);
 }
+
+/// Un point de l'état de l'installation (§5.89) : `level` vaut ok, warning ou error.
+class InstallationCheck {
+  const InstallationCheck({
+    required this.code,
+    required this.level,
+    required this.title,
+    required this.message,
+    this.action,
+  });
+
+  factory InstallationCheck.fromJson(Json json) => InstallationCheck(
+    code: json['code'] as String,
+    level: json['level'] as String? ?? 'ok',
+    title: json['title'] as String,
+    message: json['message'] as String,
+    action: json['action'] as String?,
+  );
+
+  final String code;
+  final String level;
+  final String title;
+  final String message;
+
+  /// Ce que le parent peut faire, s'il y a quelque chose à faire.
+  final String? action;
+}
+
+/// « Tout va bien ? » : l'état de l'installation, dit au parent.
+class InstallationReport {
+  const InstallationReport({required this.level, required this.checks});
+
+  factory InstallationReport.fromJson(Json json) => InstallationReport(
+    level: json['level'] as String? ?? 'ok',
+    checks: [
+      for (final c in json['checks'] as List<dynamic>? ?? const [])
+        InstallationCheck.fromJson(c as Json),
+    ],
+  );
+
+  final String level;
+  final List<InstallationCheck> checks;
+
+  /// Les points à regarder, les plus graves d'abord.
+  List<InstallationCheck> get problems => [
+    ...checks.where((c) => c.level == 'error'),
+    ...checks.where((c) => c.level == 'warning'),
+  ];
+}

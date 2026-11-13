@@ -19,6 +19,7 @@ EDIT = {"kind": "question", "index": 0, "before": "a", "text": "b"}
 PARENT_ROUTES = [
     ("GET", "/v1/parent", None),
     ("GET", "/v1/parent/reminders", None),
+    ("GET", "/v1/parent/installation", None),
     ("DELETE", "/v1/parent", None),
     ("GET", "/v1/children", None),
     ("POST", "/v1/children", {"display_name": "X", "grade": "CP", "parental_consent": True}),

@@ -2443,6 +2443,28 @@ bord. Une seule fonction (`lessons_panel.deleteLessonAsParent`), reprise par « 
 Test : `parent_flow_test` (annuler, supprimer depuis la liste, leçon en échec, depuis les
 questions). Aucun changement côté serveur.
 
+### 5.89 État de l'installation, dit au parent (novembre 2026)
+
+Sur le PC d'essai, une clé d'IA devenue illisible et un modèle qui débordait de la carte graphique
+ne se voyaient que dans le rapport de `Ludifun.bat`. `GET /v1/parent/installation` les dit au
+parent, sans appel payant à l'IA (le service est seulement interrogé sur sa présence et ses
+modèles) :
+
+- **IA** : celle de la famille ou du serveur répond-elle, la clé est-elle acceptée ; une clé
+  enregistrée qui n'est plus lisible (secret du serveur changé) est une erreur, avec quoi faire ;
+- **carte graphique** (Ollama) : part du modèle chargé sur la carte (`/api/ps`) ; s'il déborde,
+  les modèles installés (`/api/tags`) qui tiendraient, avec une marge pour le contexte et l'image
+  (`app/domain/installation.py`, domaine pur) ;
+- **IA de secours** réglée mais pas activée ; **dernières leçons** en échec ; **plafond du jour**
+  atteint ; **leçons à relire** quand la famille relit.
+
+Chaque point a un niveau (ok, warning, error), un message et, s'il y a lieu, l'action à faire.
+Application : une carte sur l'accueil du parent quand quelque chose ne va pas (le point le plus
+grave, rien sinon ; rien non plus avec un serveur plus ancien), l'écran « État de
+l'installation » (menu Mon compte). Jamais la clé ni une donnée d'enfant dans la réponse. Tests :
+`tests/domain/test_installation.py`, `tests/api/test_installation.py` (IA du serveur, Ollama qui
+déborde, clé illisible et leçon à relire), route dans `test_separation.py` ; `parent_flow_test`.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

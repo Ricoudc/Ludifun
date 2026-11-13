@@ -28,6 +28,7 @@ import '../features/parent/child_programme_screen.dart';
 import '../features/parent/child_reports_screen.dart';
 import '../features/parent/child_mistakes_screen.dart';
 import '../features/parent/child_skills_screen.dart';
+import '../features/parent/installation_screen.dart';
 import '../features/parent/lesson_content_screen.dart';
 import '../features/parent/lesson_trial_screen.dart';
 import '../features/parent/email_verification_screen.dart';
@@ -56,6 +57,7 @@ abstract final class Routes {
   static const verifyEmail = '/parent/verifier-email';
   static const addChild = '/parent/enfants/nouveau';
   static const aiSettings = '/parent/ia';
+  static const installation = '/parent/installation';
   static String childDashboard(String childId) => '/parent/enfants/$childId';
   static String childLink(String childId) => '/parent/enfants/$childId/lier';
   static String childSettings(String childId) => '/parent/enfants/$childId/reglages';
@@ -152,6 +154,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'enfants/nouveau', builder: (_, _) => const ChildFormScreen()),
           GoRoute(path: 'ia', builder: (_, _) => const AiSettingsScreen()),
+          GoRoute(path: 'installation', builder: (_, _) => const InstallationScreen()),
           GoRoute(
             path: 'enfants/:id',
             builder: (_, state) => ChildDashboardScreen(childId: state.pathParameters['id']!),

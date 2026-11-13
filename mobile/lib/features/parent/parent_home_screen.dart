@@ -14,6 +14,7 @@ import '../../models/account.dart';
 import 'email_banner.dart';
 import 'feedback_dialog.dart';
 import 'parent_providers.dart';
+import 'installation_screen.dart';
 import 'reminders_card.dart';
 
 /// Écran P2 : les enfants de la famille.
@@ -56,12 +57,14 @@ class ParentHomeScreen extends ConsumerWidget {
               'logout' => ref.read(sessionProvider.notifier).signOut(),
               'feedback' => showFeedbackDialog(context),
               'ai' => context.go(Routes.aiSettings),
+              'installation' => context.go(Routes.installation),
               'privacy' => openPublicPage(ref, '/confidentialite'),
               _ => _deleteAccount(context, ref),
             },
             itemBuilder: (_) => [
               PopupMenuItem(enabled: false, child: Text(email)),
               const PopupMenuItem(value: 'ai', child: Text('Intelligence artificielle')),
+              const PopupMenuItem(value: 'installation', child: Text('État de l\'installation')),
               const PopupMenuItem(value: 'feedback', child: Text('Donner mon avis')),
               const PopupMenuItem(value: 'privacy', child: Text('Confidentialité')),
               const PopupMenuItem(value: 'logout', child: Text('Me déconnecter')),
@@ -80,6 +83,7 @@ class ParentHomeScreen extends ConsumerWidget {
         onRefresh: () {
           ref.invalidate(parentProfileProvider);
           ref.invalidate(remindersProvider);
+          ref.invalidate(installationProvider);
           return ref.refresh(childrenProvider.future);
         },
         child: CenteredBody(
@@ -140,6 +144,7 @@ class ParentHomeScreen extends ConsumerWidget {
             ),
             const AppUpdateBanner(),
             const EmailVerificationBanner(),
+            const InstallationCard(),
             const RemindersCard(),
             ...switch (children) {
               AsyncData(value: final list) when list.isEmpty => [

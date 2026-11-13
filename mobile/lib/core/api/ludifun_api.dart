@@ -771,6 +771,13 @@ class LudifunApi {
     return [for (final item in r.data!) ParentReminder.fromJson(item as Json)];
   });
 
+  /// « Tout va bien ? » : l'IA répond-elle, la clé est-elle lisible, le modèle tient-il dans la
+  /// carte graphique, les dernières leçons ont-elles abouti (§5.89) ?
+  Future<InstallationReport> installation() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/installation');
+    return InstallationReport.fromJson(r.data!);
+  });
+
   /// Assistant parent : les questions et leurs réponses, calculées à partir des données réelles.
   Future<List<AssistantAnswer>> assistant(String childId) => _call(() async {
     final r = await _dio.get<Json>('/v1/children/$childId/assistant');

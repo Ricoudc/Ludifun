@@ -467,6 +467,54 @@ void main() {
     expect(find.text('La leçon, telle que l\'IA l\'a lue'), findsOneWidget);
   });
 
+  testWidgets('§5.89 : l\'accueil signale un souci d\'installation, l\'écran dit quoi faire', (
+    tester,
+  ) async {
+    server.on(
+      'GET /v1/parent/installation',
+      (_) => (
+        200,
+        {
+          'level': 'error',
+          'checks': [
+            {
+              'code': 'gpu',
+              'level': 'warning',
+              'title': 'Carte graphique',
+              'message': 'Le modèle qwen3-vl:8b (6,4 Go) déborde de la carte graphique.',
+              'action': 'Choisissez un modèle plus petit : qwen3.5:4b (3,3 Go).',
+            },
+            {
+              'code': 'ai',
+              'level': 'error',
+              'title': 'Intelligence artificielle',
+              'message': 'La clé de votre IA n\'est plus lisible.',
+              'action': 'Mon compte → Intelligence artificielle : collez de nouveau la clé.',
+            },
+            {
+              'code': 'budget',
+              'level': 'ok',
+              'title': 'Plafond de dépense du jour',
+              'message': 'Le plafond du jour n\'est pas atteint.',
+              'action': null,
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    // L'accueil : le point le plus grave d'abord, et le nombre de points.
+    expect(find.text('2 points à regarder'), findsOneWidget);
+    expect(find.text('La clé de votre IA n\'est plus lisible.'), findsOneWidget);
+    await tap(tester, find.text('2 points à regarder'));
+    expect(find.text('Quelque chose bloque'), findsOneWidget);
+    expect(find.text('Carte graphique'), findsOneWidget);
+    expect(find.text('👉 Choisissez un modèle plus petit : qwen3.5:4b (3,3 Go).'), findsOneWidget);
+    expect(find.text('Plafond de dépense du jour'), findsOneWidget);
+    await tap(tester, find.text('Régler l\'intelligence artificielle'));
+    expect(server.routes, contains('GET /v1/parent/ai'));
+  });
+
   testWidgets('le parent supprime une leçon : depuis la liste, puis depuis ses questions', (
     tester,
   ) async {
