@@ -215,6 +215,36 @@ async def test_auto_rereads_a_good_page_when_a_critical_token_is_uncertain() -> 
     assert vision.received == [PAGES[:1]]
     assert result.output.pages[0].text.endswith("1789.")
     assert "1 page(s) relue(s)" in result.output.warnings[0]
+    # Les deux lectures ne sont pas d'accord sur la date : le doute reste, sur ce que l'IA a lu.
+    kept = result.output.pages[0].uncertain
+    assert [u.text for u in kept] == ["1789"] and "commence en 1789" in kept[0].context
+
+
+async def test_auto_drops_the_doubt_when_both_readers_agree() -> None:
+    doubtful = OcrPage(
+        index=0,
+        quality="good",
+        text="La Révolution commence en 1789.",
+        uncertain=[UncertainOut(text="1789", context="commence en 1789.")],
+    )
+    same = OcrPage(index=0, quality="good", text="La Révolution commence en 1789.")
+    result = await auto(FakeReader("tesseract", [doubtful]), FakeReader("vision", [same])).extract(PAGES[:1])
+    assert result.output.pages[0].uncertain == []
+
+
+async def test_auto_keeps_a_doubt_where_the_ai_dropped_the_doubtful_word() -> None:
+    doubtful = OcrPage(
+        index=0,
+        quality="good",
+        text="Le mur mesure 12 m de long.",
+        uncertain=[UncertainOut(text="12", context="mur mesure 12 m de")],
+    )
+    shorter = OcrPage(index=0, quality="good", text="Le mur mesure m de long.")
+    result = await auto(FakeReader("tesseract", [doubtful]), FakeReader("vision", [shorter])).extract(
+        PAGES[:1]
+    )
+    kept = result.output.pages[0].uncertain
+    assert len(kept) == 1 and "mesure" in kept[0].context
 
 
 async def test_auto_accepts_equal_quality_vision_when_it_resolves_uncertainty() -> None:
@@ -230,7 +260,8 @@ async def test_auto_accepts_equal_quality_vision_when_it_resolves_uncertainty() 
     )
 
     assert result.output.pages[0].text.endswith("10.")
-    assert result.output.pages[0].uncertain == []
+    # « 1O » ou « 10 » : les deux lectures diffèrent, le parent vérifie le nombre retenu.
+    assert [u.text for u in result.output.pages[0].uncertain] == ["10"]
 
 
 async def test_auto_reports_an_incomplete_vision_reread() -> None:

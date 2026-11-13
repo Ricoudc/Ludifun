@@ -13,6 +13,7 @@ La photo passe par l'entrée standard du programme : aucun fichier n'est écrit.
 """
 
 import asyncio
+import difflib
 import io
 import time
 from collections.abc import Awaitable, Callable
@@ -224,7 +225,11 @@ class AutoOcr:
         reread = min(len(second.output.pages), len(weak))
         for k, index in enumerate(weak[:reread]):
             again = second.output.pages[k].model_copy(update={"index": index})
-            if _page_quality_key(again) > _page_quality_key(merged[index]):
+            # Là où Tesseract doutait et où l'IA lit autre chose, personne ne sait qui a raison :
+            # le doute reste, sur ce que l'IA a lu, et le parent vérifie (« Peux-tu vérifier ? »).
+            kept = [*again.uncertain, *_disagreements(merged[index], again)][:MAX_UNCERTAIN]
+            again = again.model_copy(update={"uncertain": kept})
+            if _page_quality_key(again) >= _page_quality_key(merged[index]):
                 merged[index] = again
         warnings = [
             *first.output.warnings,
@@ -243,6 +248,37 @@ class AutoOcr:
         )
         usage = replace(second.usage, latency_ms=first.usage.latency_ms + second.usage.latency_ms)
         return LLMResult(output, usage)
+
+
+MAX_UNCERTAIN = 5  # passages douteux gardés par page (schéma de la lecture)
+_EDGE = ".,;:!?…«»\"'()"
+
+
+def _bare(word: str) -> str:
+    return word.strip(_EDGE).casefold()
+
+
+def _disagreements(tesseract: OcrPage, vision: OcrPage) -> list[UncertainOut]:
+    """Les passages dont Tesseract doutait et que l'IA de vision a lus autrement. Quand les deux
+    lectures sont d'accord (« 1789 » des deux côtés), le doute tombe ; sinon il porte sur ce que
+    l'IA a écrit à cet endroit, avec quelques mots autour. Une IA de vision ne dit pas ses
+    propres doutes : sans cela, sa lecture remplacerait en silence un nombre incertain."""
+    doubted = {_bare(u.text) for u in tesseract.uncertain} - {""}
+    if not doubted:
+        return []
+    before, after = tesseract.text.split(), vision.text.split()
+    found: list[UncertainOut] = []
+    matcher = difflib.SequenceMatcher(None, [_bare(w) for w in before], [_bare(w) for w in after])
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        if tag == "equal" or not doubted & {_bare(w) for w in before[i1:i2]}:
+            continue
+        # Mot remplacé : ce que l'IA a lu ; mot disparu : le mot qui précède l'endroit.
+        start, end = (j1, j2) if j2 > j1 else (max(0, j1 - 1), min(len(after), max(1, j1)))
+        if not after[start:end]:
+            continue
+        context = " ".join(after[max(0, start - CONTEXT_WORDS) : end + CONTEXT_WORDS])
+        found.append(UncertainOut(text=" ".join(after[start:end]).strip(_EDGE), context=context))
+    return found
 
 
 def _page_quality_key(page: OcrPage) -> tuple[int, int, int]:
