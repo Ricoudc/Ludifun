@@ -801,3 +801,30 @@ async def test_migration_0034_trial_notes(engine: AsyncEngine, db: AsyncSession)
         await conn.execute(insert, {"id": uuid.uuid4(), "lesson": lesson, "knowledge": knowledge})
         await conn.execute(text("DELETE FROM lessons"))
         assert (await conn.execute(text("SELECT count(*) FROM trial_notes"))).scalar() == 0
+
+
+async def test_migration_0035_family_invites(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Invitations d'un second parent (§5.92) : une empreinte unique ; supprimer la famille les
+    supprime ; retour arrière : la table disparaît, la famille reste."""
+    await create_full_lesson(db)
+    await db.commit()
+    family = await db.scalar(select(Family.id).limit(1))
+    await db.commit()
+    insert = text(
+        "INSERT INTO family_invites (id, family_id, code_hash, expires_at) "
+        "VALUES (:id, :family, :hash, now() + interval '7 days')"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "family": family, "hash": b"abc"})
+    with pytest.raises(IntegrityError):
+        async with engine.begin() as conn:
+            await conn.execute(insert, {"id": uuid.uuid4(), "family": family, "hash": b"abc"})
+    await run_alembic("downgrade", "0034")
+    async with engine.connect() as conn:
+        assert (await conn.execute(text("SELECT to_regclass('family_invites')"))).scalar() is None
+        assert (await conn.execute(text("SELECT count(*) FROM families"))).scalar() == 1
+    await run_alembic("upgrade", "head")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "family": family, "hash": b"def"})
+        await conn.execute(text("DELETE FROM families"))
+        assert (await conn.execute(text("SELECT count(*) FROM family_invites"))).scalar() == 0

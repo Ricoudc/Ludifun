@@ -811,6 +811,31 @@ class LudifunApi {
     return [for (final item in r.data!) ParentReminder.fromJson(item as Json)];
   });
 
+  /// Les parents de la famille (§5.92).
+  Future<FamilyMembers> familyMembers() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/members');
+    return FamilyMembers.fromJson(r.data!);
+  });
+
+  /// Inviter un second parent : le code à lui donner (7 jours, une seule fois).
+  Future<({String code, DateTime expiresAt})> inviteParent() => _call(() async {
+    final r = await _dio.post<Json>('/v1/parent/invites');
+    return (
+      code: r.data!['code'] as String,
+      expiresAt: DateTime.parse(r.data!['expires_at'] as String),
+    );
+  });
+
+  /// Rejoindre la famille d'un autre parent avec son code.
+  Future<FamilyMembers> joinFamily(String code) => _call(() async {
+    final r = await _dio.post<Json>('/v1/parent/join', data: {'code': code});
+    return FamilyMembers.fromJson(r.data!);
+  });
+
+  /// Retirer le second parent, ou quitter la famille (son propre identifiant).
+  Future<void> removeFamilyMember(String parentId) =>
+      _call(() => _dio.delete<void>('/v1/parent/members/$parentId'));
+
   /// « Tout va bien ? » : l'IA répond-elle, la clé est-elle lisible, le modèle tient-il dans la
   /// carte graphique, les dernières leçons ont-elles abouti (§5.89) ?
   Future<InstallationReport> installation() => _call(() async {

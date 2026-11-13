@@ -282,12 +282,11 @@ async def child_of_parent(db: AsyncSession, parent_id: uuid.UUID, child_id: uuid
 async def create_child(
     db: AsyncSession, parent_id: uuid.UUID, display_name: str, grade: str, avatar: str | None, now: datetime
 ) -> Child:
-    family_id = await db.scalar(
-        select(FamilyMember.family_id).where(
-            FamilyMember.parent_id == parent_id, FamilyMember.role == "owner"
-        )
+    # La famille du parent : la sienne, ou celle qu'il a rejointe comme second parent (§5.92).
+    roles = await db.execute(
+        select(FamilyMember.family_id, FamilyMember.role).where(FamilyMember.parent_id == parent_id)
     )
-    assert family_id is not None
+    family_id = min(roles.all(), key=lambda row: row.role != "owner").family_id
     child = Child(
         family_id=family_id, display_name=display_name, grade=grade, avatar=avatar, parental_consent_at=now
     )

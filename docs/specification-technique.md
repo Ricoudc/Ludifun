@@ -2491,6 +2491,25 @@ corriger vous-même »), pour que la notion reste jouable. Aucune IA, aucune pho
 de l'enfant n'est pas touchée. Une leçon analysée aujourd'hui ne perd rien (test). Réponse : ce
 qui a été retiré ou gardé, notion par notion, et le contenu à jour.
 
+### 5.92 Un second parent dans la famille (novembre 2026, schéma 0035)
+
+Le schéma prévoyait le rôle `member` dans `family_members` ; il manquait la façon d'entrer.
+
+- **Inviter** : le parent qui a créé la famille (`owner`) obtient un code (`POST
+  /v1/parent/invites`) : 8 caractères sans lettre ambiguë (« ABCD-EFGH »), valable 7 jours, une
+  seule fois ; seule son empreinte est gardée (`family_invites`, migration 0035). Une nouvelle
+  invitation annule la précédente ; deux parents au plus.
+- **Rejoindre** (`POST /v1/parent/join`) : le code tapé en minuscules ou sans tiret est accepté.
+  Le compte qui rejoint ne doit pas avoir d'enfant (409 `own_family_not_empty`) : sa famille
+  vide est supprimée, il devient `member` et voit les mêmes enfants, leçons et réglages (IA,
+  relecture), avec son propre compte ; un enfant qu'il ajoute arrive dans la même famille.
+- **Partir** (`DELETE /v1/parent/members/{id}`) : le propriétaire retire le second parent, ou
+  celui-ci quitte la famille ; il retrouve une famille à lui, vide. Supprimer son compte ne
+  touche ni la famille ni les enfants (seul le propriétaire efface la famille en partant).
+- **Application** : Mon compte → « Second parent » (membres, inviter, retirer, quitter, rejoindre).
+- **Tests** : `tests/api/test_family.py`, `tests/db/test_schema.py` (0035), routes dans
+  `test_separation.py` ; `parent_flow_test`. Non testé : deux vrais téléphones.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

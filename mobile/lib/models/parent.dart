@@ -1073,3 +1073,46 @@ class RecheckFinding {
   /// Gardé (dernière question de la notion) : à corriger soi-même.
   final bool kept;
 }
+
+/// Un parent de la famille (§5.92) : `owner` l'a créée, `member` l'a rejointe.
+class FamilyMemberInfo {
+  const FamilyMemberInfo({
+    required this.parentId,
+    required this.email,
+    required this.role,
+    required this.me,
+    this.firstName,
+  });
+
+  factory FamilyMemberInfo.fromJson(Json json) => FamilyMemberInfo(
+    parentId: json['parent_id'] as String,
+    email: json['email'] as String,
+    firstName: json['first_name'] as String?,
+    role: json['role'] as String,
+    me: json['me'] as bool? ?? false,
+  );
+
+  final String parentId;
+  final String email;
+  final String? firstName;
+  final String role;
+  final bool me;
+
+  bool get owner => role == 'owner';
+}
+
+class FamilyMembers {
+  const FamilyMembers({required this.members, required this.canInvite});
+
+  factory FamilyMembers.fromJson(Json json) => FamilyMembers(
+    members: [
+      for (final m in json['members'] as List<dynamic>) FamilyMemberInfo.fromJson(m as Json),
+    ],
+    canInvite: json['can_invite'] as bool? ?? false,
+  );
+
+  final List<FamilyMemberInfo> members;
+  final bool canInvite;
+
+  FamilyMemberInfo get me => members.firstWhere((m) => m.me);
+}

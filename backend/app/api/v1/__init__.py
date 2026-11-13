@@ -5,6 +5,7 @@ from app.api.v1 import (
     auth,
     children,
     dashboard,
+    family,
     feedback,
     figures,
     goals,
@@ -26,6 +27,7 @@ router.include_router(ai_settings.router)
 router.include_router(auth.router)
 router.include_router(children.router)
 router.include_router(dashboard.router)
+router.include_router(family.router)
 router.include_router(feedback.router)
 router.include_router(figures.router)
 router.include_router(goals.router)

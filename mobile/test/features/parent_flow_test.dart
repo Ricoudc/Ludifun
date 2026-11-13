@@ -467,6 +467,75 @@ void main() {
     expect(find.text('La leçon, telle que l\'IA l\'a lue'), findsOneWidget);
   });
 
+  testWidgets('§5.92 : inviter un second parent, puis le retirer', (tester) async {
+    var joined = true;
+    Map<String, Object?> members() => {
+      'members': [
+        {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'owner', 'me': true},
+        if (joined) {'parent_id': 'p2', 'email': 'papa@example.fr', 'role': 'member', 'me': false},
+      ],
+      'can_invite': !joined,
+    };
+    server
+      ..on('GET /v1/parent/members', (_) => (200, members()))
+      ..on(
+        'POST /v1/parent/invites',
+        (_) => (201, {'code': 'ABCD-EFGH', 'expires_at': '2026-11-20T10:00:00Z'}),
+      )
+      ..on('DELETE /v1/parent/members/p2', (_) {
+        joined = false;
+        return (204, null);
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.family);
+    expect(find.text('papa@example.fr'), findsOneWidget);
+    expect(find.text('Inviter un second parent'), findsNothing);
+    await tap(tester, find.byTooltip('Retirer ce parent'));
+    await tap(tester, find.text('Retirer'));
+    expect(find.text('papa@example.fr'), findsNothing);
+    await tap(tester, find.text('Inviter un second parent'));
+    expect(find.text('ABCD-EFGH'), findsOneWidget);
+    await tap(tester, find.text('OK'));
+    expect(find.text('Rejoindre une famille'), findsOneWidget);
+  });
+
+  testWidgets('§5.92 : rejoindre la famille d\'un autre parent avec son code', (tester) async {
+    var joined = false;
+    server
+      ..on(
+        'GET /v1/parent/members',
+        (_) => (
+          200,
+          {
+            'members': [
+              {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'owner', 'me': true},
+            ],
+            'can_invite': true,
+          },
+        ),
+      )
+      ..on('POST /v1/parent/join', (r) {
+        expect(r.data, {'code': 'abcd-efgh'});
+        joined = true;
+        return (
+          200,
+          {
+            'members': [
+              {'parent_id': 'p9', 'email': 'maman@example.fr', 'role': 'owner', 'me': false},
+              {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'member', 'me': true},
+            ],
+            'can_invite': false,
+          },
+        );
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.family);
+    await tester.enterText(find.widgetWithText(TextField, 'Code d\'invitation'), 'abcd-efgh');
+    await tap(tester, find.text('Rejoindre'));
+    expect(joined, isTrue);
+    expect(find.text('Vous avez rejoint la famille.'), findsOneWidget);
+  });
+
   testWidgets('§5.89 : l\'accueil signale un souci d\'installation, l\'écran dit quoi faire', (
     tester,
   ) async {
