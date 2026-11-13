@@ -27,7 +27,7 @@ PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 PROMPT_VERSIONS: dict[Stage, str] = {
     "ocr": "v2",
     "analysis": "v8",
-    "material": "v10",
+    "material": "v11",
     "evaluation": "v1",
     "sources": "v1",
     "illustration": "v3",

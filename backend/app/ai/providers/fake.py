@@ -96,12 +96,17 @@ def material_output(material: dict[str, dict[str, Any]], ids: list[str]) -> Mate
         questions = []
         for q in raw.get("questions", []):
             kinds = q.get("misconceptions", [])
-            distractors = [
-                d
-                if isinstance(d, dict)
-                else {"text": d, "misconception": kinds[i] if i < len(kinds) else None}
-                for i, d in enumerate(q["distractors"])
-            ]
+            distractors = []
+            for i, distractor in enumerate(q["distractors"]):
+                if isinstance(distractor, dict):
+                    # Les anciennes leçons de référence ne renseignaient pas toujours
+                    # la catégorie : le fournisseur factice doit rester conforme au schéma v2.
+                    misconception = distractor.get("misconception") or (kinds[i] if i < len(kinds) else None)
+                    text = distractor["text"]
+                else:
+                    text = distractor
+                    misconception = kinds[i] if i < len(kinds) else None
+                distractors.append({"text": text, "misconception": misconception or "confusion"})
             questions.append({**q, "distractors": distractors})
         help_ = raw.get("help")
         if help_ is not None:

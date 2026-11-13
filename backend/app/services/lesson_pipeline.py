@@ -301,11 +301,20 @@ class LessonPipeline:
         # notions dont des éléments ont été refusés (fréquent avec un petit modèle local). L'IA
         # reçoit les raisons des refus ; ce qui avait passé les contrôles est gardé, la
         # nouvelle version ne fait que compléter (`merge_material`).
+        # Les refus de fond (QCM, cloze, questions ouvertes, aides structurantes…) justifient
+        # une relance ciblée. Une astuce ou un indice trop long est simplement écarté : refaire
+        # toute la génération pour un champ décoratif coûte cher et répète souvent le défaut.
         weak = [
             i
             for i in items
             if (i.importance >= IMPORTANT and self._options(i, validated) < MIN_OPTIONS_IMPORTANT)
-            or (i.id in validated and validated[i.id].rejected)
+            or (
+                i.id in validated
+                and any(
+                    rejection.element not in {"tip", "help.hint", "help.reminder"}
+                    for rejection in validated[i.id].rejected
+                )
+            )
         ]
         retry_batches = [weak[i : i + size] for i in range(0, len(weak), size)]
         for batch in retry_batches:
