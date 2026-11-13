@@ -106,7 +106,7 @@ def test_low_confidence_numbers_fractions_and_math_are_flagged() -> None:
             Word("vrai.", 95, (1, 1, 1)),
         ],
     )
-    assert [u.text for u in page.uncertain] == ["3/4", "1789", "5×8", "40"]
+    assert [u.text for u in page.uncertain] == ["=", "3/4", "1789", "5×8", "40"]
     assert all("3/4" in u.context or "1789" in u.context or "5×8" in u.context for u in page.uncertain)
 
 
