@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
+import '../../core/display.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/app_update.dart';
 import '../../core/link_opener.dart';
@@ -59,6 +60,7 @@ class ParentHomeScreen extends ConsumerWidget {
               'ai' => context.go(Routes.aiSettings),
               'installation' => context.go(Routes.installation),
               'family' => context.go(Routes.family),
+              'display' => showDisplaySheet(context),
               'privacy' => openPublicPage(ref, '/confidentialite'),
               _ => _deleteAccount(context, ref),
             },
@@ -67,6 +69,7 @@ class ParentHomeScreen extends ConsumerWidget {
               const PopupMenuItem(value: 'ai', child: Text('Intelligence artificielle')),
               const PopupMenuItem(value: 'installation', child: Text('État de l\'installation')),
               const PopupMenuItem(value: 'family', child: Text('Second parent')),
+              const PopupMenuItem(value: 'display', child: Text('Affichage')),
               const PopupMenuItem(value: 'feedback', child: Text('Donner mon avis')),
               const PopupMenuItem(value: 'privacy', child: Text('Confidentialité')),
               const PopupMenuItem(value: 'logout', child: Text('Me déconnecter')),

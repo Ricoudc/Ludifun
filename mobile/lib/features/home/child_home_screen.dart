@@ -7,6 +7,7 @@ import '../../app/ludi_mascot.dart';
 import '../../app/router.dart';
 import '../../app/theme.dart';
 import '../../app/widgets.dart';
+import '../../core/display.dart';
 import '../../core/api/api_exception.dart';
 import '../../core/app_update.dart';
 import '../../core/offline.dart';
@@ -38,6 +39,14 @@ class ChildHomeScreen extends ConsumerWidget {
         child: CenteredBody(
           top: true,
           children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => showDisplaySheet(context),
+                icon: const Icon(Icons.text_fields),
+                label: const Text('Affichage'),
+              ),
+            ),
             _WelcomeCard(name: name),
             const SizedBox(height: 12),
             if (ref.watch(progressProvider).value case final progress?) ...[
@@ -234,12 +243,15 @@ class _MissionCard extends ConsumerWidget {
               children: [
                 const Icon(Icons.flag_rounded, color: LudiColors.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  '🎯 Ta mission du jour',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: LudiColors.primary,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.7,
+                // Texte agrandi (§5.94) : passe à la ligne plutôt que de déborder.
+                Expanded(
+                  child: Text(
+                    '🎯 Ta mission du jour',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: LudiColors.primary,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.7,
+                    ),
                   ),
                 ),
               ],

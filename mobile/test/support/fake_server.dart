@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:ludifun/core/display.dart';
 import 'package:ludifun/core/offline.dart';
 import 'package:ludifun/core/api/ludifun_api.dart';
 import 'package:ludifun/core/link_opener.dart';
@@ -125,6 +126,7 @@ List<Override> overridesFor(
 ]) => [
   soundPlayerProvider.overrideWithValue(sounds ?? FakeSoundPlayer()),
   soundSettingStoreProvider.overrideWithValue(MemorySoundSettingStore()),
+  displaySettingStoreProvider.overrideWithValue(MemoryDisplaySettingStore()),
   credentialStoreProvider.overrideWithValue(store),
   linkOpenerProvider.overrideWithValue(links ?? FakeLinkOpener()),
   bareDioProvider.overrideWithValue(buildDio('http://api.test')..httpClientAdapter = server),

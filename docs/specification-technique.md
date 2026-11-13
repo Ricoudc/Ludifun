@@ -2528,6 +2528,22 @@ l'application pour les lire.
   lance l'envoi ; il faut un fournisseur d'e-mails (`LUDIFUN_SMTP_HOST`). Non testé avec un vrai
   serveur d'e-mails.
 
+### 5.94 Affichage : taille du texte, lecture facile, contraste (novembre 2026)
+
+Réglage gardé sur le téléphone (`lib/core/display.dart`, comme le son), ouvert par
+« Affichage » sur l'accueil de l'enfant et dans le menu Mon compte du parent :
+
+- **taille du texte** : normal, grand (×1,2), très grand (×1,4), en plus de la taille choisie
+  dans les réglages du téléphone ;
+- **lecture facile** : lettres et mots plus espacés, lignes plus hautes, jamais d'italique (ce qui
+  aide un lecteur dyslexique) ; la police ne change pas (aucune police ajoutée à l'application) ;
+- **contraste renforcé** : texte noir sur fond blanc.
+
+En « très grand », le titre « Ta mission du jour » débordait : il passe maintenant à la ligne.
+Tests : `test/core/display_test.dart`, `child_flow_test` (l'enfant agrandit le texte et passe en
+lecture facile, sans débordement de l'accueil). Non vérifié : tous les écrans et tous les jeux
+en très grand, sur un vrai téléphone ; une police pensée pour la dyslexie.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
