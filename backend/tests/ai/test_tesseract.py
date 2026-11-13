@@ -25,7 +25,7 @@ from app.ai.ports import AIError, LLMResult, PageImage, Usage
 from app.ai.pricing import run_cost
 from app.ai.providers.fake import FakeProvider
 from app.ai.providers.ollama import OllamaProvider, reads_images
-from app.ai.schemas import OcrPage, OcrResult
+from app.ai.schemas import OcrPage, OcrResult, UncertainOut
 from app.config import Settings
 from app.domain.ocr_review import select_uncertain
 
@@ -90,6 +90,24 @@ def test_doubtful_words_are_checkable_by_the_child() -> None:
     assert page.uncertain[0].context == "Le docteur travaille à l'hôpita1 de Lyon."
     review = select_uncertain([(0, page.text, [(u.text, u.context) for u in page.uncertain])])
     assert [r.text for r in review] == ["l'hôpita1", "Lyon."]
+
+
+def test_low_confidence_numbers_fractions_and_math_are_flagged() -> None:
+    page = page_of(
+        0,
+        [
+            Word("En", 95, (1, 1, 1)),
+            Word("1789", 42, (1, 1, 1)),
+            Word("3/4", 38, (1, 1, 1)),
+            Word("5×8", 45, (1, 1, 1)),
+            Word("=", 30, (1, 1, 1)),
+            Word("40", 50, (1, 1, 1)),
+            Word("est", 95, (1, 1, 1)),
+            Word("vrai.", 95, (1, 1, 1)),
+        ],
+    )
+    assert [u.text for u in page.uncertain] == ["=", "3/4", "1789", "5×8", "40"]
+    assert all("3/4" in u.context or "1789" in u.context or "5×8" in u.context for u in page.uncertain)
 
 
 def test_photo_is_prepared_in_memory() -> None:
@@ -180,6 +198,70 @@ async def test_auto_sends_only_the_weak_pages_to_the_vision_model() -> None:
     ]
     assert result.usage.provider == "vision" and result.usage.latency_ms == 60  # tokens de l'IA
     assert "2 page(s) relue(s)" in result.output.warnings[0]
+
+
+async def test_auto_rereads_a_good_page_when_a_critical_token_is_uncertain() -> None:
+    uncertain = OcrPage(
+        index=0,
+        quality="good",
+        text="La Révolution commence en 1780.",
+        uncertain=[UncertainOut(text="1780", context="commence en 1780.")],
+    )
+    corrected = OcrPage(index=0, quality="good", text="La Révolution commence en 1789.")
+    vision = FakeReader("vision", [corrected])
+    primary = FakeReader("tesseract", [uncertain])
+    result = await auto(primary, vision).extract(PAGES[:1])
+
+    assert vision.received == [PAGES[:1]]
+    assert result.output.pages[0].text.endswith("1789.")
+    assert "1 page(s) relue(s)" in result.output.warnings[0]
+    # Les deux lectures ne sont pas d'accord sur la date : le doute reste, sur ce que l'IA a lu.
+    kept = result.output.pages[0].uncertain
+    assert [u.text for u in kept] == ["1789"] and "commence en 1789" in kept[0].context
+
+
+async def test_auto_drops_the_doubt_when_both_readers_agree() -> None:
+    doubtful = OcrPage(
+        index=0,
+        quality="good",
+        text="La Révolution commence en 1789.",
+        uncertain=[UncertainOut(text="1789", context="commence en 1789.")],
+    )
+    same = OcrPage(index=0, quality="good", text="La Révolution commence en 1789.")
+    result = await auto(FakeReader("tesseract", [doubtful]), FakeReader("vision", [same])).extract(PAGES[:1])
+    assert result.output.pages[0].uncertain == []
+
+
+async def test_auto_keeps_a_doubt_where_the_ai_dropped_the_doubtful_word() -> None:
+    doubtful = OcrPage(
+        index=0,
+        quality="good",
+        text="Le mur mesure 12 m de long.",
+        uncertain=[UncertainOut(text="12", context="mur mesure 12 m de")],
+    )
+    shorter = OcrPage(index=0, quality="good", text="Le mur mesure m de long.")
+    result = await auto(FakeReader("tesseract", [doubtful]), FakeReader("vision", [shorter])).extract(
+        PAGES[:1]
+    )
+    kept = result.output.pages[0].uncertain
+    assert len(kept) == 1 and "mesure" in kept[0].context
+
+
+async def test_auto_accepts_equal_quality_vision_when_it_resolves_uncertainty() -> None:
+    uncertain = OcrPage(
+        index=0,
+        quality="partial",
+        text="Le nombre est 1O.",
+        uncertain=[UncertainOut(text="1O", context="nombre est 1O.")],
+    )
+    corrected = OcrPage(index=0, quality="partial", text="Le nombre est 10.")
+    result = await auto(FakeReader("tesseract", [uncertain]), FakeReader("vision", [corrected])).extract(
+        PAGES[:1]
+    )
+
+    assert result.output.pages[0].text.endswith("10.")
+    # « 1O » ou « 10 » : les deux lectures diffèrent, le parent vérifie le nombre retenu.
+    assert [u.text for u in result.output.pages[0].uncertain] == ["10"]
 
 
 async def test_auto_reports_an_incomplete_vision_reread() -> None:
