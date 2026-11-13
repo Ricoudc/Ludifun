@@ -34,7 +34,7 @@ IMAGE_TYPES = {
     ".gif": "image/gif",
 }
 CRITICAL_TOKEN = re.compile(
-    r"°c|%|\b(?:km|cm|mm|kg|mg|ml|cl|g|l|m|h|min|s)\b|\d+(?:[.,]\d+)?|[=+\-×÷<>≤≥≠≈√]"
+    r"°c|%|\b(?:km|cm|mm|kg|mg|ml|cl|g|l|m|h|min|s)\b|\d+(?:[.,]\d+)?|[=+\-×÷/<>≤≥≠≈√]"
 )
 
 
