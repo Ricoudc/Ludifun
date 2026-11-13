@@ -828,3 +828,22 @@ async def test_migration_0035_family_invites(engine: AsyncEngine, db: AsyncSessi
         await conn.execute(insert, {"id": uuid.uuid4(), "family": family, "hash": b"def"})
         await conn.execute(text("DELETE FROM families"))
         assert (await conn.execute(text("SELECT count(*) FROM family_invites"))).scalar() == 0
+
+
+async def test_migration_0036_weekly_email(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Bilan de la semaine (§5.93) : les comptes existants ne reçoivent rien sans l'avoir demandé ;
+    retour arrière : les colonnes disparaissent, le compte reste."""
+    await create_full_lesson(db)
+    await db.commit()
+    async with engine.connect() as conn:
+        row = (await conn.execute(text("SELECT weekly_email, weekly_email_sent_at FROM parents"))).one()
+    assert row.weekly_email is False and row.weekly_email_sent_at is None
+    await db.commit()
+    await run_alembic("downgrade", "0035")
+    async with engine.connect() as conn:
+        columns = await conn.execute(
+            text("SELECT column_name FROM information_schema.columns WHERE table_name = 'parents'")
+        )
+        assert "weekly_email" not in {c for (c,) in columns}
+        assert (await conn.execute(text("SELECT count(*) FROM parents"))).scalar() == 1
+    await run_alembic("upgrade", "head")

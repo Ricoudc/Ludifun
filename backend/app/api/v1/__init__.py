@@ -20,6 +20,7 @@ from app.api.v1 import (
     rewards,
     sessions,
     teach,
+    weekly_email,
 )
 
 router = APIRouter(prefix="/v1")
@@ -42,3 +43,4 @@ router.include_router(phone_app.router)
 router.include_router(rewards.router)
 router.include_router(sessions.router)
 router.include_router(teach.router)
+router.include_router(weekly_email.router)

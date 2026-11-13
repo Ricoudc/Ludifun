@@ -2510,6 +2510,24 @@ Le schéma prévoyait le rôle `member` dans `family_members` ; il manquait la f
 - **Tests** : `tests/api/test_family.py`, `tests/db/test_schema.py` (0035), routes dans
   `test_separation.py` ; `parent_flow_test`. Non testé : deux vrais téléphones.
 
+### 5.93 Bilan de la semaine par e-mail (novembre 2026, schéma 0036)
+
+Le résumé « En bref » et « Cette semaine » existaient dans le tableau de bord ; il fallait ouvrir
+l'application pour les lire.
+
+- **Au choix du parent**, désactivé par défaut (`parents.weekly_email`, migration 0036 ; les
+  comptes existants ne reçoivent rien) : `GET/PUT /v1/parent/weekly-email`. Chaque parent choisit
+  pour lui (le second parent aussi). Rien ne part sans adresse vérifiée.
+- **Envoi** : `app.tools.weekly_email`, lancé chaque jour (service `weekly-email` de
+  `deploy/docker-compose.prod.yml`), n'envoie que le dimanche (heure de la famille) et jamais
+  deux fois la même semaine (`weekly_email_sent_at`). Un e-mail par parent, chaque enfant de la
+  famille : ses phrases « En bref » et jusqu'à trois actions « Cette semaine »
+  (`app/domain/weekly_email.py`, domaine pur). Le journal ne contient ni adresse ni prénom.
+- **Application** : « Bilan de la semaine par e-mail » dans Objectifs et contrôles.
+- **Non fait** : sur le PC de la famille (`docker-compose.yml` local), aucune tâche planifiée ne
+  lance l'envoi ; il faut un fournisseur d'e-mails (`LUDIFUN_SMTP_HOST`). Non testé avec un vrai
+  serveur d'e-mails.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

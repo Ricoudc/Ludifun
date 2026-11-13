@@ -115,6 +115,9 @@ class Parent(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Conservation (§16.2) : e-mail de prévenance envoyé avant la suppression d'un compte inactif.
     inactivity_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Bilan de la semaine par e-mail (§5.93), au choix du parent : désactivé par défaut.
+    weekly_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    weekly_email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Family(Base):

@@ -21,6 +21,8 @@ PARENT_ROUTES = [
     ("GET", "/v1/parent/reminders", None),
     ("GET", "/v1/parent/installation", None),
     ("GET", "/v1/parent/members", None),
+    ("GET", "/v1/parent/weekly-email", None),
+    ("PUT", "/v1/parent/weekly-email", {"enabled": True}),
     ("POST", "/v1/parent/invites", None),
     ("POST", "/v1/parent/join", {"code": "ABCD-EFGH"}),
     ("DELETE", "/v1/parent/members/" + LESSON, None),

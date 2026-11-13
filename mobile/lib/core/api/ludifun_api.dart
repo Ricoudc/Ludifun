@@ -434,6 +434,18 @@ class LudifunApi {
     return r.data!['enabled'] as bool;
   });
 
+  /// Bilan de la semaine par e-mail (§5.93) : (activé, adresse vérifiée).
+  Future<({bool enabled, bool verified})> weeklyEmail() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/weekly-email');
+    return (
+      enabled: r.data!['enabled'] as bool,
+      verified: r.data!['email_verified'] as bool? ?? true,
+    );
+  });
+
+  Future<void> setWeeklyEmail({required bool enabled}) =>
+      _call(() => _dio.put<void>('/v1/parent/weekly-email', data: {'enabled': enabled}));
+
   /// « C'est bien ce qui est écrit » : le parent confirme une notion lue avec peu de confiance.
   Future<NotionContent> confirmNotion(String childId, String lessonId, String knowledgeId) =>
       _call(() async {

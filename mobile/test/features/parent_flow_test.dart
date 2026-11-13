@@ -1768,6 +1768,29 @@ void main() {
     expect(find.textContaining('ouvertes à l\'enfant dès qu\'elles sont prêtes'), findsOneWidget);
   });
 
+  testWidgets('§5.93 : le bilan de la semaine par e-mail se demande, désactivé par défaut', (
+    tester,
+  ) async {
+    var enabled = false;
+    server
+      ..on(
+        'GET /v1/parent/weekly-email',
+        (_) => (200, {'enabled': enabled, 'email_verified': false}),
+      )
+      ..on('PUT /v1/parent/weekly-email', (r) {
+        enabled = (r.data as Map<String, Object?>)['enabled']! as bool;
+        return (200, {'enabled': enabled, 'email_verified': false});
+      })
+      ..on('GET /v1/children/c1/exams', (_) => (200, <Object>[]));
+    final container = await launch(tester);
+    await go(tester, container, Routes.childGoals('c1'));
+    final box = find.widgetWithText(SwitchListTile, 'Bilan de la semaine par e-mail');
+    expect(tester.widget<SwitchListTile>(box).value, isFalse);
+    await tap(tester, box);
+    expect(enabled, isTrue);
+    expect(find.textContaining('pas encore vérifiée'), findsOneWidget);
+  });
+
   testWidgets('§5.61 : une figure exacte dessinée par Ludifun est signalée au parent', (
     tester,
   ) async {

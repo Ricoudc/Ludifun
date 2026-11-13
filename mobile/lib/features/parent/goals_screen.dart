@@ -53,6 +53,44 @@ class ReviewLessonsSwitch extends ConsumerWidget {
   }
 }
 
+final weeklyEmailProvider = FutureProvider.autoDispose<({bool enabled, bool verified})>(
+  (ref) => ref.watch(apiProvider).weeklyEmail(),
+);
+
+/// Bilan de la semaine par e-mail (§5.93), chaque dimanche : désactivé par défaut. Réglage du
+/// parent connecté (le second parent choisit pour lui).
+class WeeklyEmailSwitch extends ConsumerWidget {
+  const WeeklyEmailSwitch({super.key});
+
+  Future<void> _set(BuildContext context, WidgetRef ref, bool enabled) async {
+    try {
+      await ref.read(apiProvider).setWeeklyEmail(enabled: enabled);
+      ref.invalidate(weeklyEmailProvider);
+    } on ApiException catch (error) {
+      if (context.mounted) showSnack(context, error.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(weeklyEmailProvider).value;
+    if (state == null) return const SizedBox.shrink(); // serveur plus ancien
+    return Card(
+      child: SwitchListTile(
+        value: state.enabled,
+        onChanged: (value) => _set(context, ref, value),
+        title: const Text('Bilan de la semaine par e-mail'),
+        subtitle: Text(
+          state.enabled && !state.verified
+              ? 'Votre adresse n\'est pas encore vérifiée : le bilan partira une fois le lien de '
+                    'vérification ouvert.'
+              : 'Chaque dimanche : ce que chaque enfant a fait, et quoi travailler cette semaine.',
+        ),
+      ),
+    );
+  }
+}
+
 /// Objectifs du parent (étape 16) : temps de révision par jour, matière à privilégier, et
 /// contrôles à venir avec leur plan de révision, recalculé chaque jour.
 class GoalsScreen extends ConsumerWidget {
@@ -104,6 +142,7 @@ class GoalsScreen extends ConsumerWidget {
             const Center(child: CircularProgressIndicator())
           else ...[
             const ReviewLessonsSwitch(),
+            const WeeklyEmailSwitch(),
             const SizedBox(height: 16),
             Text('Temps de révision par jour', style: theme.titleLarge),
             const SizedBox(height: 4),
