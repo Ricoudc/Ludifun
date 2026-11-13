@@ -23,10 +23,10 @@ from typing import Any
 from app.ai.factory import build_providers
 from app.ai.ocr.tesseract import TesseractOcr
 from app.ai.ocr.vision_llm import VisionLLMOcr
-from app.ai.ports import AIError, OcrProvider, PageImage
+from app.ai.ports import AIError, MediaType, OcrProvider, PageImage
 from app.config import Settings
 
-IMAGE_TYPES = {
+IMAGE_TYPES: dict[str, MediaType] = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
@@ -62,10 +62,16 @@ def edit_distance(reference: Sequence[str], actual: Sequence[str]) -> int:
     return previous[-1]
 
 
+def _words(text: str) -> list[str]:
+    """Les mots, sans la ponctuation collée : « 12. » et « 12 » sont le même mot (le taux de
+    caractères, lui, compte la ponctuation)."""
+    return [w for w in (word.strip(".,;:!?…«»\"'()") for word in text.split()) if w]
+
+
 def metrics(reference: str, actual: str) -> dict[str, int]:
     expected = normalize_text(reference)
     observed = normalize_text(actual)
-    expected_words, observed_words = expected.split(), observed.split()
+    expected_words, observed_words = _words(expected), _words(observed)
     expected_critical = CRITICAL_TOKEN.findall(expected)
     observed_critical = CRITICAL_TOKEN.findall(observed)
     return {
@@ -115,16 +121,8 @@ def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-async def evaluate(corpus: Path, output: Path, allow_remote: bool) -> dict[str, Any]:
-    settings = Settings()
-    if settings.ai_provider != "ollama" and not allow_remote:
-        raise SystemExit(
-            "Par défaut, ce benchmark n'envoie aucune photo à un fournisseur distant. "
-            "Configurez LUDIFUN_AI_PROVIDER=ollama ou ajoutez explicitement --allow-remote."
-        )
-    if settings.ai_provider == "fake":
-        raise SystemExit("Le fournisseur fake ne peut pas lire les photos : configurez Ollama.")
-
+def read_corpus(corpus: Path) -> list[tuple[PageImage, str]]:
+    """Les photos du corpus et leur transcription de référence (.txt de même nom)."""
     images = sorted(
         path for path in corpus.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_TYPES
     )
@@ -135,6 +133,21 @@ async def evaluate(corpus: Path, output: Path, allow_remote: bool) -> dict[str, 
             "Corpus vide ou transcriptions manquantes (.txt de même nom) : "
             + (", ".join(missing[:10]) if missing else str(corpus))
         )
+    return [
+        (PageImage(image.read_bytes(), IMAGE_TYPES[image.suffix.lower()]), truth.read_text(encoding="utf-8"))
+        for image, truth in pairs
+    ]
+
+
+async def evaluate(pages: list[tuple[PageImage, str]], allow_remote: bool) -> dict[str, Any]:
+    settings = Settings()
+    if settings.ai_provider != "ollama" and not allow_remote:
+        raise SystemExit(
+            "Par défaut, ce benchmark n'envoie aucune photo à un fournisseur distant. "
+            "Configurez LUDIFUN_AI_PROVIDER=ollama ou ajoutez explicitement --allow-remote."
+        )
+    if settings.ai_provider == "fake":
+        raise SystemExit("Le fournisseur fake ne peut pas lire les photos : configurez Ollama.")
 
     auto_settings = settings.model_copy(update={"ocr_engine": "auto"})
     auto_reader, llm = build_providers(auto_settings)
@@ -145,9 +158,7 @@ async def evaluate(corpus: Path, output: Path, allow_remote: bool) -> dict[str, 
     }
     rows: dict[str, list[dict[str, Any]]] = {name: [] for name in readers}
     try:
-        for index, (image_path, truth_path) in enumerate(pairs, start=1):
-            page = PageImage(image_path.read_bytes(), IMAGE_TYPES[image_path.suffix.lower()])
-            reference = truth_path.read_text(encoding="utf-8")
+        for index, (page, reference) in enumerate(pages, start=1):
             for name, reader in readers.items():
                 try:
                     result = await reader.extract((page,))
@@ -183,14 +194,10 @@ async def evaluate(corpus: Path, output: Path, allow_remote: bool) -> dict[str, 
             name: next((row["model"] for row in values if row["model"]), "unknown")
             for name, values in rows.items()
         },
-        "corpus_pages": len(images),
+        "corpus_pages": len(pages),
         "privacy": "Aucune image, transcription ou nom de fichier dans ce rapport.",
-        "results": {
-            name: {"summary": _summary(values), "pages": values} for name, values in rows.items()
-        },
+        "results": {name: {"summary": _summary(values), "pages": values} for name, values in rows.items()},
     }
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     return report
 
 
@@ -204,7 +211,9 @@ def main() -> None:
         help="Autorise explicitement l'envoi des photos au fournisseur configuré hors Ollama.",
     )
     args = parser.parse_args()
-    report = asyncio.run(evaluate(args.corpus, args.output, args.allow_remote))
+    report = asyncio.run(evaluate(read_corpus(args.corpus), args.allow_remote))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Rapport agrégé écrit dans : {args.output}")
     for name, result in report["results"].items():
         summary = result["summary"]
