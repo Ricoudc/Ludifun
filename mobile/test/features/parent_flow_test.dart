@@ -467,6 +467,70 @@ void main() {
     expect(find.text('La leçon, telle que l\'IA l\'a lue'), findsOneWidget);
   });
 
+  testWidgets('le parent supprime une leçon : depuis la liste, puis depuis ses questions', (
+    tester,
+  ) async {
+    final lessons = {'l9': null, 'l2': 'Les fractions', 'l3': 'Le présent'};
+    server
+      ..on(
+        'GET /v1/lessons',
+        (_) => (
+          200,
+          [
+            for (final e in lessons.entries)
+              {
+                'id': e.key,
+                'status': e.value == null ? 'failed' : 'ready',
+                'failure_reason': null,
+                'subject': 'math',
+                'title': e.value,
+                'created_at': '2026-09-23T15:00:00Z',
+              },
+          ],
+        ),
+      )
+      ..on(
+        'GET /v1/children/c1/lessons/l3/content',
+        (_) => (
+          200,
+          {'lesson_id': 'l3', 'title': 'Le présent', 'grade': 'CM1', 'notions': <Object>[]},
+        ),
+      );
+    for (final id in ['l9', 'l2', 'l3']) {
+      server.on('DELETE /v1/lessons/$id', (r) {
+        expect(r.queryParameters['child_id'], 'c1');
+        lessons.remove(id);
+        return (204, null);
+      });
+    }
+    final container = await launch(tester);
+    await go(tester, container, Routes.childDashboard('c1'));
+    expect(find.byTooltip('Supprimer la leçon'), findsNWidgets(3));
+
+    // Depuis la liste : annuler ne supprime rien, confirmer supprime.
+    await tap(tester, find.byTooltip('Supprimer la leçon').at(1));
+    expect(find.text('Supprimer « Les fractions » ?'), findsOneWidget);
+    await tap(tester, find.text('Annuler'));
+    expect(lessons.containsKey('l2'), isTrue);
+    await tap(tester, find.byTooltip('Supprimer la leçon').at(1));
+    await tap(tester, find.text('Supprimer'));
+    expect(lessons.containsKey('l2'), isFalse);
+    expect(find.text('Les fractions'), findsNothing);
+
+    // Une leçon en échec se supprime aussi.
+    await tap(tester, find.byTooltip('Supprimer la leçon').first);
+    await tap(tester, find.text('Supprimer'));
+    expect(lessons.containsKey('l9'), isFalse);
+
+    // Depuis « Questions de la leçon » : retour au tableau de bord, la leçon n'y est plus.
+    await tap(tester, find.text('Le présent'));
+    await tap(tester, find.byTooltip('Supprimer la leçon'));
+    await tap(tester, find.text('Supprimer'));
+    expect(lessons, isEmpty);
+    expect(find.textContaining('Voici tout ce que l\'enfant verra'), findsNothing);
+    expect(find.text('Le présent'), findsNothing);
+  });
+
   testWidgets('tableau de bord : les leçons, prêtes ou en préparation', (tester) async {
     Map<String, Object?> lesson(String id, String status, String? title) => {
       'id': id,

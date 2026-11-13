@@ -12,6 +12,7 @@ import '../../core/session.dart';
 import '../../models/parent.dart';
 import 'lesson_image_card.dart';
 import 'lesson_resources_card.dart';
+import 'lessons_panel.dart';
 import 'material_edit_sheet.dart';
 
 final lessonContentProvider = FutureProvider.autoDispose.family<LessonContent, (String, String)>(
@@ -57,6 +58,22 @@ class LessonContentScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.go(Routes.childDashboard(childId))),
         title: Text(content.value?.title ?? 'Questions de la leçon'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            tooltip: 'Supprimer la leçon',
+            onPressed: () async {
+              final deleted = await deleteLessonAsParent(
+                context,
+                ref,
+                childId: childId,
+                lessonId: lessonId,
+                title: content.value?.title,
+              );
+              if (deleted && context.mounted) context.go(Routes.childDashboard(childId));
+            },
+          ),
+        ],
       ),
       // Tout se sélectionne et se copie : la leçon lue par l'IA comme ses questions.
       body: SelectionArea(
