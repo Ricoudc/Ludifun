@@ -816,9 +816,14 @@ class NotionContent {
     this.confirmed = false,
     this.editable = const [],
     this.removed = false,
+    this.trialNotes = const [],
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
+    trialNotes: [
+      for (final n in json['trial_notes'] as List<dynamic>? ?? const [])
+        TrialNote.fromJson(n as Json),
+    ],
     knowledgeId: json['knowledge_id'] as String,
     label: json['label'] as String,
     statement: json['statement'] as String,
@@ -851,6 +856,9 @@ class NotionContent {
 
   /// Retirée par le parent (§5.69) : plus proposée à l'enfant.
   final bool removed;
+
+  /// Questions jugées fausses pendant l'essai, pas encore corrigées (§5.90).
+  final List<TrialNote> trialNotes;
 }
 
 class LessonContent {
@@ -1023,4 +1031,45 @@ class InstallationReport {
     ...checks.where((c) => c.level == 'error'),
     ...checks.where((c) => c.level == 'warning'),
   ];
+}
+
+/// Une question que le parent a jugée fausse en essayant la leçon (§5.90).
+class TrialNote {
+  const TrialNote({
+    required this.id,
+    required this.knowledgeId,
+    required this.question,
+    this.answer,
+  });
+
+  factory TrialNote.fromJson(Json json) => TrialNote(
+    id: json['id'] as String,
+    knowledgeId: json['knowledge_id'] as String,
+    question: json['question'] as String,
+    answer: json['answer'] as String?,
+  );
+
+  final String id;
+  final String knowledgeId;
+  final String question;
+
+  /// La réponse donnée pour juste.
+  final String? answer;
+}
+
+/// Ce que « Revérifier la leçon » a trouvé (§5.91).
+class RecheckFinding {
+  const RecheckFinding({required this.label, required this.reason, required this.kept});
+
+  factory RecheckFinding.fromJson(Json json) => RecheckFinding(
+    label: json['label'] as String,
+    reason: json['reason'] as String,
+    kept: json['kept'] as bool? ?? false,
+  );
+
+  final String label;
+  final String reason;
+
+  /// Gardé (dernière question de la notion) : à corriger soi-même.
+  final bool kept;
 }

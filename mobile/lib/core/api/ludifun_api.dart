@@ -319,9 +319,43 @@ class LudifunApi {
   });
 
   /// « Essayer la leçon » : la séance que l'enfant aura, sans rien enregistrer (§5.84).
-  Future<LessonTrial> startTrial(String childId, String lessonId) => _call(() async {
-    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/trial');
-    return LessonTrial.fromJson(r.data!);
+  /// `full` : toute la leçon, chaque notion au moins une fois (§5.90).
+  Future<LessonTrial> startTrial(String childId, String lessonId, {bool full = false}) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children/$childId/lessons/$lessonId/trial',
+          queryParameters: full ? {'full': true} : null,
+        );
+        return LessonTrial.fromJson(r.data!);
+      });
+
+  /// « Il y a une erreur dans cette question » : gardé pour être corrigé ensuite (§5.90).
+  Future<TrialNote> noteTrial(String childId, String lessonId, LessonTrial trial, int position) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children/$childId/lessons/$lessonId/trial/notes',
+          data: {'seed': trial.seed, 'plan': trial.plan, 'position': position, 'full': trial.full},
+        );
+        return TrialNote.fromJson(r.data!);
+      });
+
+  /// « C'est corrigé » (ou note retirée) : la note n'est plus montrée.
+  Future<void> resolveTrialNote(String childId, String lessonId, String noteId) => _call(
+    () => _dio.post<void>('/v1/children/$childId/lessons/$lessonId/trial-notes/$noteId/resolve'),
+  );
+
+  /// « Revérifier la leçon » : les contrôles d'aujourd'hui, sans IA (§5.91).
+  Future<({List<RecheckFinding> findings, LessonContent content})> recheckLesson(
+    String childId,
+    String lessonId,
+  ) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/recheck');
+    return (
+      findings: [
+        for (final f in r.data!['removed'] as List<dynamic>) RecheckFinding.fromJson(f as Json),
+      ],
+      content: LessonContent.fromJson(r.data!['content'] as Json),
+    );
   });
 
   /// La correction d'une réponse de l'essai, telle que l'enfant la verrait.
@@ -335,7 +369,13 @@ class LudifunApi {
   ) => _call(() async {
     final r = await _dio.post<Json>(
       '/v1/children/$childId/lessons/$lessonId/trial/check',
-      data: {'seed': trial.seed, 'plan': trial.plan, 'position': position, 'response': response},
+      data: {
+        'seed': trial.seed,
+        'plan': trial.plan,
+        'position': position,
+        'response': response,
+        'full': trial.full,
+      },
     );
     return Correction.fromJson(r.data!);
   });

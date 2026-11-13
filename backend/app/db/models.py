@@ -665,6 +665,25 @@ class QuestionReport(Base):
     __table_args__ = (CheckConstraint(_in("reason", REPORT_REASONS), name="reason"),)
 
 
+class TrialNote(Base):
+    """Une question que le parent a jugée fausse en essayant la leçon (§5.90) : gardée pour qu'il
+    la corrige ensuite dans « Questions de la leçon ». Ce que l'essai a montré, pas ce que
+    l'enfant a fait : l'essai n'enregistre ni séance ni réponse."""
+
+    __tablename__ = "trial_notes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = _fk("knowledge_items.id")
+    activity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class AttemptEvidence(Base):
     """Une ligne par notion couverte par une tentative (§9.3)."""
 

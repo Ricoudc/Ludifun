@@ -1427,6 +1427,7 @@ void main() {
       },
     };
     final checks = <Map<String, Object?>>[];
+    final notes = <Map<String, Object?>>[];
     server
       ..on(
         'GET /v1/children/c1/lessons/l2/content',
@@ -1448,11 +1449,29 @@ void main() {
                 'statement': 'Le numérateur est en haut.',
                 'blocks': <Object>[],
                 'removed': false,
+                'trial_notes': [...notes],
               },
             ],
           },
         ),
       )
+      ..on('POST /v1/children/c1/lessons/l2/trial/notes', (r) {
+        final body = r.data as Map<String, Object?>;
+        expect(body, {'seed': '42', 'plan': 'empreinte', 'position': 2, 'full': false});
+        final note = {
+          'id': 'note1',
+          'knowledge_id': 'n1',
+          'activity_type': 'MCQ',
+          'question': 'Combien font 1/2 + 1/2 ?',
+          'answer': 'Deux',
+        };
+        notes.add(note);
+        return (200, note);
+      })
+      ..on('POST /v1/children/c1/lessons/l2/trial-notes/note1/resolve', (_) {
+        notes.clear();
+        return (204, null);
+      })
       ..on(
         'POST /v1/children/c1/lessons/l2/trial',
         (_) => (
@@ -1499,6 +1518,7 @@ void main() {
       'plan': 'empreinte',
       'position': 1,
       'response': {'choice_id': 'a'},
+      'full': false,
     });
     expect(find.text('✅ Bravo !'), findsOneWidget);
     await tap(tester, find.text('Continuer'));
@@ -1519,6 +1539,91 @@ void main() {
     expect(server.routes.where((r) => r.contains('/sessions')), isEmpty);
     await tap(tester, find.text('Corriger les questions'));
     expect(find.text('🔒 L\'enfant n\'a pas encore accès à cette leçon'), findsOneWidget);
+
+    // La note est gardée sur la notion, jusqu'à « C'est corrigé ».
+    expect(find.text('🚩 Numérateur'), findsOneWidget);
+    expect(find.text('« Combien font 1/2 + 1/2 ? »'), findsOneWidget);
+    await tap(tester, find.text('C\'est corrigé'));
+    expect(notes, isEmpty);
+    expect(find.text('🚩 Numérateur'), findsNothing);
+  });
+
+  testWidgets('§5.91 : revérifier la leçon dit ce qui a été retiré et ce qui est à corriger', (
+    tester,
+  ) async {
+    Map<String, Object?> content() => {
+      'lesson_id': 'l2',
+      'title': 'Les fractions',
+      'grade': 'CM1',
+      'text': null,
+      'notions': [
+        {
+          'knowledge_id': 'n1',
+          'label': 'Numérateur',
+          'statement': 'Le numérateur est en haut.',
+          'blocks': <Object>[],
+        },
+      ],
+    };
+    server
+      ..on('GET /v1/children/c1/lessons/l2/content', (_) => (200, content()))
+      ..on(
+        'POST /v1/children/c1/lessons/l2/recheck',
+        (_) => (
+          200,
+          {
+            'removed': [
+              {
+                'knowledge_id': 'n1',
+                'label': 'Numérateur',
+                'element': 'questions[0]',
+                'reason': 'il manque ce dont la question parle',
+                'kept': false,
+              },
+              {
+                'knowledge_id': 'n1',
+                'label': 'Numérateur',
+                'element': 'questions[1]',
+                'reason': 'écrit en anglais',
+                'kept': true,
+              },
+            ],
+            'content': content(),
+          },
+        ),
+      );
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    await tap(tester, find.text('Revérifier la leçon (sans IA)'));
+    expect(find.text('Leçon revérifiée'), findsOneWidget);
+    expect(find.text('1 élément(s) retiré(s) :'), findsOneWidget);
+    expect(find.text('• Numérateur : il manque ce dont la question parle'), findsOneWidget);
+    expect(find.textContaining('1 question(s) gardée(s)'), findsOneWidget);
+    await tap(tester, find.text('OK'));
+    expect(find.text('Leçon revérifiée'), findsNothing);
+  });
+
+  testWidgets('§5.90 : essayer toute la leçon demande une séance complète', (tester) async {
+    server.on('POST /v1/children/c1/lessons/l2/trial', (r) {
+      expect(r.queryParameters['full'], true);
+      return (
+        200,
+        {
+          'seed': '1',
+          'plan': 'p',
+          'full': true,
+          'total_notions': 1,
+          'never_shown': ['Une notion secondaire'],
+          'notions': <String, Object>{},
+          'items': <Object>[],
+        },
+      );
+    });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonTrial('c1', 'l2', full: true));
+    expect(find.text('Essai terminé'), findsOneWidget);
+    expect(find.textContaining('Une notion secondaire'), findsOneWidget);
+    expect(find.text('Essayer toute la leçon (chaque notion)'), findsNothing);
   });
 
   testWidgets('§5.84 : la leçon a changé pendant l\'essai, il se relance', (tester) async {

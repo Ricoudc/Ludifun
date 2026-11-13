@@ -69,8 +69,8 @@ abstract final class Routes {
   static String childReports(String childId) => '/parent/enfants/$childId/signalements';
   static String lessonContent(String childId, String lessonId) =>
       '/parent/enfants/$childId/lecons/$lessonId';
-  static String lessonTrial(String childId, String lessonId) =>
-      '/parent/enfants/$childId/lecons/$lessonId/essai';
+  static String lessonTrial(String childId, String lessonId, {bool full = false}) =>
+      '/parent/enfants/$childId/lecons/$lessonId/essai${full ? '?tout=1' : ''}';
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static String childPaste(String childId) => '/parent/enfants/$childId/texte';
@@ -183,6 +183,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => LessonTrialScreen(
                   childId: state.pathParameters['id']!,
                   lessonId: state.pathParameters['lesson']!,
+                  full: state.uri.queryParameters['tout'] == '1',
                 ),
               ),
               GoRoute(

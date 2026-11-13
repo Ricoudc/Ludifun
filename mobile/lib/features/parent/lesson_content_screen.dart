@@ -95,6 +95,14 @@ class LessonContentScreen extends ConsumerWidget {
                   icon: const Icon(Icons.play_circle_outline),
                   label: const Text('Essayer la leçon comme mon enfant'),
                 ),
+                const SizedBox(height: 4),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(Routes.lessonTrial(childId, lessonId, full: true)),
+                  icon: const Icon(Icons.playlist_play),
+                  label: const Text('Essayer toute la leçon (chaque notion)'),
+                ),
+                const SizedBox(height: 4),
+                _RecheckButton(childId: childId, lessonId: lessonId),
               ],
               if (value.notions.isNotEmpty)
                 Align(
@@ -233,8 +241,9 @@ class _NotionCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: ExpansionTile(
         shape: const Border(),
-        initiallyExpanded: notion.toCheck,
+        initiallyExpanded: notion.toCheck || notion.trialNotes.isNotEmpty,
         title: Text(
+          '${notion.trialNotes.isNotEmpty ? '🚩 ' : ''}'
           '${notion.toCheck && !notion.removed ? '⚠️ ' : ''}${notion.label}'
           '${notion.removed ? ' (retirée)' : ''}',
           style: theme.titleMedium?.copyWith(
@@ -247,6 +256,8 @@ class _NotionCard extends ConsumerWidget {
         expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (notion.toCheck) _ToCheck(notion, childId: childId, lessonId: lessonId),
+          for (final note in notion.trialNotes)
+            _TrialNoteTile(note, childId: childId, lessonId: lessonId),
           for (final block in notion.blocks) ...[
             const SizedBox(height: 8),
             Text(block.title, style: const TextStyle(fontWeight: FontWeight.w700)),
@@ -733,5 +744,129 @@ class _ToCheck extends ConsumerWidget {
         ),
       ],
     ),
+  );
+}
+
+/// Une erreur notée pendant l'essai (§5.90) : à corriger ci-dessous, puis « C'est corrigé ».
+class _TrialNoteTile extends ConsumerWidget {
+  const _TrialNoteTile(this.note, {required this.childId, required this.lessonId});
+
+  final TrialNote note;
+  final String childId;
+  final String lessonId;
+
+  Future<void> _resolve(BuildContext context, WidgetRef ref) async {
+    try {
+      await ref.read(apiProvider).resolveTrialNote(childId, lessonId, note.id);
+      ref.invalidate(lessonContentProvider((childId, lessonId)));
+    } on ApiException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Container(
+    margin: const EdgeInsets.only(top: 4, bottom: 8),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.red.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '🚩 Noté pendant l\'essai : il y a une erreur',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 4),
+        Text('« ${note.question} »', style: const TextStyle(fontSize: 15)),
+        if (note.answer case final answer?)
+          Text(
+            'Réponse donnée pour juste : $answer',
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
+        const SizedBox(height: 4),
+        const Text(
+          'Corrigez la question ci-dessous (ou faites-la refaire par l\'IA), puis :',
+          style: TextStyle(fontSize: 14, color: Colors.black54),
+        ),
+        TextButton.icon(
+          onPressed: () => _resolve(context, ref),
+          icon: const Icon(Icons.check),
+          label: const Text('C\'est corrigé'),
+        ),
+      ],
+    ),
+  );
+}
+
+/// « Revérifier la leçon » (§5.91) : les contrôles d'aujourd'hui sur une leçon analysée avant.
+class _RecheckButton extends ConsumerStatefulWidget {
+  const _RecheckButton({required this.childId, required this.lessonId});
+
+  final String childId;
+  final String lessonId;
+
+  @override
+  ConsumerState<_RecheckButton> createState() => _RecheckButtonState();
+}
+
+class _RecheckButtonState extends ConsumerState<_RecheckButton> {
+  bool _busy = false;
+
+  Future<void> _recheck() async {
+    setState(() => _busy = true);
+    try {
+      final result = await ref.read(apiProvider).recheckLesson(widget.childId, widget.lessonId);
+      ref.invalidate(lessonContentProvider((widget.childId, widget.lessonId)));
+      if (!mounted) return;
+      final removed = result.findings.where((f) => !f.kept).toList();
+      final kept = result.findings.where((f) => f.kept).toList();
+      await showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Leçon revérifiée'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (result.findings.isEmpty)
+                  const Text('Tout passe les contrôles d\'aujourd\'hui : rien n\'a changé.'),
+                if (removed.isNotEmpty) Text('${removed.length} élément(s) retiré(s) :'),
+                for (final f in removed) Text('• ${f.label} : ${f.reason}'),
+                if (kept.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${kept.length} question(s) gardée(s), car ce sont les dernières de leur '
+                    'notion : à corriger vous-même.',
+                  ),
+                  for (final f in kept) Text('• ${f.label} : ${f.reason}'),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          ],
+        ),
+      );
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton.icon(
+    onPressed: _busy ? null : _recheck,
+    icon: const Icon(Icons.fact_check_outlined),
+    label: const Text('Revérifier la leçon (sans IA)'),
   );
 }

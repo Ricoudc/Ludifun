@@ -773,3 +773,31 @@ async def test_migration_0032_targeted_stage(engine: AsyncEngine, db: AsyncSessi
         lessons = (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar()
     assert "targeted" not in stages and "analysis" in stages and lessons
     await run_alembic("upgrade", "head")
+
+
+async def test_migration_0034_trial_notes(engine: AsyncEngine, db: AsyncSession) -> None:
+    """Notes du parent pendant l'essai (§5.90) : liées à une leçon et à une notion ; supprimer la
+    leçon les supprime ; retour arrière : la table disparaît, la leçon reste."""
+    await create_full_lesson(db)
+    await db.commit()
+    lesson = await db.scalar(select(Lesson.id).limit(1))
+    knowledge = await db.scalar(select(KnowledgeItem.id).limit(1))
+    await db.commit()
+    insert = text(
+        "INSERT INTO trial_notes (id, lesson_id, knowledge_id, activity_type, question) "
+        "VALUES (:id, :lesson, :knowledge, 'MCQ', 'Quelle est la capitale ?')"
+    )
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "lesson": lesson, "knowledge": knowledge})
+    async with engine.connect() as conn:
+        row = (await conn.execute(text("SELECT created_at, resolved_at, answer FROM trial_notes"))).one()
+    assert row.created_at is not None and row.resolved_at is None and row.answer is None
+    await run_alembic("downgrade", "0033")
+    async with engine.connect() as conn:
+        assert (await conn.execute(text("SELECT to_regclass('trial_notes')"))).scalar() is None
+        assert (await conn.execute(text("SELECT count(*) FROM lessons"))).scalar() == 1
+    await run_alembic("upgrade", "head")
+    async with engine.begin() as conn:
+        await conn.execute(insert, {"id": uuid.uuid4(), "lesson": lesson, "knowledge": knowledge})
+        await conn.execute(text("DELETE FROM lessons"))
+        assert (await conn.execute(text("SELECT count(*) FROM trial_notes"))).scalar() == 0

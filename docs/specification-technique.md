@@ -2465,6 +2465,32 @@ l'installation » (menu Mon compte). Jamais la clé ni une donnée d'enfant dans
 `tests/domain/test_installation.py`, `tests/api/test_installation.py` (IA du serveur, Ollama qui
 déborde, clé illisible et leçon à relire), route dans `test_separation.py` ; `parent_flow_test`.
 
+### 5.90 Essai : erreurs notées gardées, toute la leçon (novembre 2026, schéma 0034)
+
+- **Erreurs notées gardées** : « Il y a une erreur dans cette question » pendant l'essai (§5.84)
+  enregistre une note (`trial_notes`, migration 0034 : leçon, notion, type de jeu, ce que l'essai
+  a montré, la réponse donnée pour juste) ; `POST …/lessons/{l}/trial/notes` (`seed`, `plan`,
+  `position`, `full`), la même question notée deux fois ne fait qu'une note ; appuyer de
+  nouveau la retire. Dans « Questions de la leçon », chaque notion montre ses notes (🚩) jusqu'à
+  « C'est corrigé » (`POST …/trial-notes/{id}/resolve`). Toujours rien de compté pour l'enfant.
+- **Toute la leçon** : `POST …/trial?full=true` compose une séance assez longue pour que chaque
+  notion que l'enfant peut travailler y passe ; `total_notions` et `never_shown` (notions
+  secondaires que les séances ne travaillent pas quand la leçon a assez de notions importantes).
+  Chaque correction et note renvoie `full`, pour recomposer la même séance.
+- **Tests** : `tests/api/test_lesson_trial.py`, `tests/db/test_schema.py` (0034), routes dans
+  `test_separation.py` ; application : `parent_flow_test`.
+
+### 5.91 Revérifier une leçon déjà enregistrée (novembre 2026)
+
+Les contrôles ajoutés après coup (question sans son contexte §5.87, texte en anglais, renvoi à la
+fiche ou à une image) ne touchaient que les nouvelles analyses. « Revérifier la leçon (sans IA) »
+(`POST …/lessons/{l}/recheck`, `validation.recheck_material`, domaine pur) les repasse sur le
+matériel enregistré : ce qui ne passe plus est retiré (questions, affirmations, texte à trous,
+carte, questions ouvertes) ; la dernière question d'une notion est gardée et signalée (« à
+corriger vous-même »), pour que la notion reste jouable. Aucune IA, aucune photo ; la progression
+de l'enfant n'est pas touchée. Une leçon analysée aujourd'hui ne perd rien (test). Réponse : ce
+qui a été retiré ou gardé, notion par notion, et le contenu à jour.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

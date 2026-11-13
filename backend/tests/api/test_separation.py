@@ -64,6 +64,13 @@ PARENT_ROUTES = [
         {"seed": "1", "plan": "x", "position": 1, "response": {}},
     ),
     (
+        "POST",
+        "/v1/children/{child}/lessons/" + LESSON + "/trial/notes",
+        {"seed": "1", "plan": "x", "position": 1},
+    ),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/trial-notes/" + LESSON + "/resolve", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/recheck", None),
+    (
         "PUT",
         "/v1/children/{child}/lessons/" + LESSON + "/info",
         {"title": "T", "objective": "O", "summary": "S"},
