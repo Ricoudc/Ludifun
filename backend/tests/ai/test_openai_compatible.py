@@ -11,7 +11,16 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from app.ai.factory import AiConfigError, build_llm, stage_models
-from app.ai.ports import AIError, AIInvalidOutput, AIRefused, PageImage, Prompt, Stage, schema_error
+from app.ai.ports import (
+    AIContextFull,
+    AIError,
+    AIInvalidOutput,
+    AIRefused,
+    PageImage,
+    Prompt,
+    Stage,
+    schema_error,
+)
 from app.ai.providers.claude import ClaudeProvider
 from app.ai.providers.fake import FakeProvider
 from app.ai.providers.openai_compatible import MAX_RATE_RETRIES, OpenAICompatibleProvider, rate_limit_wait
@@ -285,3 +294,36 @@ def test_an_out_of_schema_answer_is_described_without_its_text() -> None:
     assert str(schema_error(json.JSONDecodeError("Louis XVI", "Louis XVI", 0))) == (
         "réponse hors schéma : JSON illisible"
     )
+
+
+async def test_a_truncated_answer_asks_for_less_at_a_time() -> None:
+    """Offre gratuite à longueur de réponse courte (FreeLLMAPI) : la préparation découpe (§5.97)."""
+    llm, _ = provider(
+        lambda body, n: httpx.Response(
+            200, json={"choices": [{"message": {"content": '{"title": "Les'}, "finish_reason": "length"}]}
+        )
+    )
+    with pytest.raises(AIContextFull, match="tronquée"):
+        await llm.structured(prompt=PROMPT, input="texte", schema=Answer)
+
+
+async def test_waiting_on_rate_limits_has_a_total_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un relais qui fait patienter (60 s annoncées, 4 minutes par réponse) : au-delà de 5 minutes
+    pour un appel, on n'attend plus (l'IA de secours prend le relais)."""
+    now = [0.0]
+    waits: list[float] = []
+
+    async def wait(seconds: float) -> None:
+        waits.append(seconds)
+        now[0] += seconds
+
+    def slow(body: dict[str, Any], n: int) -> httpx.Response:
+        now[0] += 240  # le relais a cherché plusieurs minutes avant de répondre « trop de demandes »
+        return limited("Please try again in 60s.")
+
+    monkeypatch.setattr("app.ai.providers.openai_compatible._sleep", wait)
+    monkeypatch.setattr("app.ai.providers.openai_compatible._clock", lambda: now[0])
+    llm, sent = provider(slow)
+    with pytest.raises(AIError, match="429"):
+        await llm.structured(prompt=PROMPT, input="texte", schema=Answer)
+    assert len(sent) == 2 and len(waits) == 1  # 240 s + 60,5 s d'attente, puis 240 s : stop

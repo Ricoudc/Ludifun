@@ -23,6 +23,7 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 from app.ai.ports import (
+    AIContextFull,
     AIError,
     AIInvalidOutput,
     AIRefused,
@@ -37,6 +38,10 @@ from app.ai.ports import (
 TIMEOUT_S = 180.0
 MAX_RATE_RETRIES = 3  # nouveaux essais après un refus « trop de demandes par minute »
 MAX_RATE_WAIT_S = 65.0  # au-delà (quota du jour), on n'attend pas
+# Attente totale d'un appel au-delà de laquelle on ne réessaie plus : un relais comme FreeLLMAPI
+# réessaie déjà de son côté (plusieurs minutes), et l'IA de secours prend alors le relais (§5.97).
+MAX_TOTAL_S = 300.0
+_clock = time.monotonic  # remplacé dans les tests
 _TRY_AGAIN = re.compile(r"try again in (?:(\d+)m)?(\d+(?:\.\d+)?)(ms|s)\b", re.IGNORECASE)
 _sleep = asyncio.sleep  # remplacé dans les tests
 
@@ -139,6 +144,7 @@ class OpenAICompatibleProvider:
         ]
 
     async def _post(self, body: dict[str, Any]) -> dict[str, Any]:
+        started = _clock()
         for attempt in range(MAX_RATE_RETRIES + 1):
             try:
                 response = await self._client.post(
@@ -153,6 +159,8 @@ class OpenAICompatibleProvider:
             wait = rate_limit_wait(response)
             if wait is None or wait > MAX_RATE_WAIT_S:
                 break  # quota du jour, ou pas de délai annoncé : inutile d'attendre
+            if _clock() - started + wait > MAX_TOTAL_S:
+                break  # assez attendu pour cet appel : l'IA de secours, s'il y en a une, prend le relais
             await _sleep(wait + 0.5)
         if response.status_code >= 400:
             detail = error_detail(response)
@@ -191,7 +199,9 @@ class OpenAICompatibleProvider:
         if message.get("refusal"):
             raise AIRefused("le modèle a refusé la demande")
         if choice.get("finish_reason") == "length":
-            raise AIInvalidOutput("réponse tronquée (longueur maximale)")
+            # Le modèle s'est arrêté à sa longueur maximale (souvent courte sur une offre gratuite) :
+            # redemander la même chose échouerait encore ; la préparation demande alors moins à la fois.
+            raise AIContextFull("réponse tronquée (longueur maximale) : demande découpée")
         content = message.get("content")
         if not isinstance(content, str) or not content.strip():
             raise AIInvalidOutput("réponse vide")
