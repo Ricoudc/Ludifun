@@ -2554,6 +2554,26 @@ paramètres : ils peuvent citer une valeur venue de l'enfant. Test : `tests/api/
 Pas d'outil de supervision extérieur (il faudrait un compte chez un fournisseur et un accord sur
 les données envoyées).
 
+### 5.96 Images par un service compatible OpenAI (FreeLLMAPI…) (novembre 2026)
+
+Demande de la famille : faire dessiner les images des leçons par FreeLLMAPI, lancé sur le PC, qui
+répartit entre des offres gratuites et expose `POST /v1/images/generations` au format OpenAI.
+
+- **Moteur `openai`** (`app/ai/imagegen/openai_images.py`) : `LUDIFUN_IMAGE_ENGINE=openai`,
+  `LUDIFUN_IMAGE_URL` (par exemple `http://host.docker.internal:31415/v1`), clé dans
+  `LUDIFUN_IMAGE_API_KEY` (en-tête, jamais dans l'adresse), modèle facultatif
+  (`LUDIFUN_IMAGE_MODEL`). Image reçue en base64 (`b64_json`) ou par une adresse (téléchargée,
+  8 Mo au plus), type vérifié par ses premiers octets. Ollama n'est pas déchargé (le dessin ne se
+  fait pas sur la carte du PC). Les messages d'erreur ne recopient jamais le prompt.
+- **`Ludifun.bat`** : choix des images, « 4. Un service compatible OpenAI » ; une adresse en
+  `127.0.0.1` ou `localhost` est remplacée par `host.docker.internal`.
+- **« Tester » l'IA** : une adresse `127.0.0.1` injoignable explique que, dans Docker, elle désigne
+  le serveur lui-même (cas du PC d'essai).
+- **Lire les photos par FreeLLMAPI** : déjà possible avec « Autre service (compatible OpenAI) » ;
+  il faut un modèle qui lit les images (d'après la documentation de FreeLLMAPI, les modèles Gemini).
+- **Tests** : `tests/ai/test_imagegen.py`, `tests/ai/test_ollama.py`. Non testé avec un vrai
+  FreeLLMAPI : le nom du modèle d'images et le format exact de sa réponse sont à vérifier sur le PC.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

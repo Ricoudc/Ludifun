@@ -76,6 +76,8 @@ services:
       # LUDIFUN_IMAGE_API_KEY=sk_… (clé secrète créée sur https://enter.pollinations.ai/keys).
       # Ou Cloudflare Workers AI, gratuit chaque jour : LUDIFUN_IMAGE_ENGINE=cloudflare,
       # LUDIFUN_IMAGE_ACCOUNT_ID=… et LUDIFUN_IMAGE_API_KEY=… (jeton « Workers AI »).
+      # Ou un service compatible OpenAI (FreeLLMAPI sur ce PC…) : LUDIFUN_IMAGE_ENGINE=openai,
+      # LUDIFUN_IMAGE_URL=http://host.docker.internal:31415/v1 et LUDIFUN_IMAGE_API_KEY=… (§5.96).
       LUDIFUN_IMAGE_ENGINE: ${LUDIFUN_IMAGE_ENGINE:-none}
       LUDIFUN_IMAGE_URL: ${LUDIFUN_IMAGE_URL:-}
       LUDIFUN_IMAGE_MODEL: ${LUDIFUN_IMAGE_MODEL:-}

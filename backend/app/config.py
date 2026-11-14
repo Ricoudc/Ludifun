@@ -60,7 +60,8 @@ class Settings(BaseSettings):
     # en ligne (pollinations, avec image_api_key ; cloudflare, avec image_api_key et
     # image_account_id), « fake » pour les tests, « none » sans images.
     # Les images attendent la validation du parent.
-    image_engine: Literal["none", "fake", "sdcpp", "comfyui", "pollinations", "cloudflare"] = "none"
+    # « openai » : service compatible OpenAI (FreeLLMAPI sur le PC, OpenAI…), avec image_url (§5.96).
+    image_engine: Literal["none", "fake", "sdcpp", "comfyui", "pollinations", "cloudflare", "openai"] = "none"
     image_url: str | None = None  # par exemple http://host.docker.internal:7860
     image_model: str | None = None
     image_api_key: SecretStr | None = None  # service en ligne (Pollinations : clé sk_… ; Cloudflare : jeton)

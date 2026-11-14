@@ -16,6 +16,7 @@ from app.ai.imagegen.cloudflare import CloudflareEngine
 from app.ai.imagegen.comfyui import ComfyUiEngine
 from app.ai.imagegen.factory import image_engine_for
 from app.ai.imagegen.fake import FakeImageEngine
+from app.ai.imagegen.openai_images import OpenAiImagesEngine
 from app.ai.imagegen.pollinations import PollinationsEngine
 from app.ai.imagegen.ports import ImageEngineError, ImageRequest
 from app.ai.imagegen.sdcpp import SdCppEngine
@@ -273,3 +274,78 @@ async def test_cloudflare_offline() -> None:
 
     with pytest.raises(ImageEngineError, match="Internet"):
         await CloudflareEngine("cf_x", "abc", client=client(handler)).generate(REQUEST)
+
+
+def test_openai_compatible_needs_an_address() -> None:
+    assert image_engine_for(Settings(image_engine="openai")) is None  # sans adresse : pas d'images
+    engine = image_engine_for(
+        Settings(
+            image_engine="openai",
+            image_url="http://host.docker.internal:31415/v1/",
+            image_api_key=SecretStr("freellmapi-x"),
+        )
+    )
+    assert isinstance(engine, OpenAiImagesEngine)
+    assert engine.api_url == "http://host.docker.internal:31415/v1"
+    assert engine.base_url is None  # dessin hors de la carte du PC : Ollama n'est pas déchargé
+
+
+async def test_openai_compatible_generation_in_base64() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(
+            200, json={"created": 1, "data": [{"b64_json": base64.b64encode(png()).decode()}]}
+        )
+
+    engine = OpenAiImagesEngine("http://pc:31415/v1", "freellmapi-secret", client=client(handler))
+    image = await engine.generate(ImageRequest("A dog", "text", 1024, 768, seed=1))
+    assert image.media_type == "image/png" and image.engine == "openai"
+    request = seen[0]
+    assert request.url.path == "/v1/images/generations"
+    assert request.headers["Authorization"] == "Bearer freellmapi-secret"
+    assert "freellmapi-secret" not in str(request.url)
+    body = json.loads(request.content)
+    assert body == {"prompt": "A dog", "n": 1, "size": "1536x1024", "response_format": "b64_json"}
+
+
+async def test_openai_compatible_generation_by_address_with_a_model() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/img.png":
+            return httpx.Response(200, content=png())
+        assert json.loads(request.content)["model"] == "flux"
+        return httpx.Response(200, json={"data": [{"url": "https://cdn.example/img.png"}]})
+
+    engine = OpenAiImagesEngine("https://api.example/v1", None, "flux", client=client(handler))
+    image = await engine.generate(REQUEST)
+    assert image.media_type == "image/png" and image.model == "flux"
+
+
+@pytest.mark.parametrize(
+    ("response", "message"),
+    [
+        (httpx.Response(401), "clé refusée"),
+        (httpx.Response(404), "pas de génération d'images"),
+        (httpx.Response(429), "quota atteint"),
+        (httpx.Response(500, text="le prompt : A dog"), "erreur 500"),
+        (httpx.Response(200, json={"data": []}), "sans image"),
+        (
+            httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(b"pas une image").decode()}]}),
+            "PNG",
+        ),
+    ],
+)
+async def test_openai_compatible_errors(response: httpx.Response, message: str) -> None:
+    engine = OpenAiImagesEngine("http://pc:31415/v1", "k", client=client(lambda request: response))
+    with pytest.raises(ImageEngineError, match=message) as caught:
+        await engine.generate(REQUEST)
+    assert "A dog" not in str(caught.value)  # jamais le prompt dans le message
+
+
+async def test_openai_compatible_unreachable_explains_docker() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refusé")
+
+    with pytest.raises(ImageEngineError, match=r"host\.docker\.internal plutôt que 127\.0\.0\.1"):
+        await OpenAiImagesEngine("http://127.0.0.1:31415/v1", client=client(handler)).generate(REQUEST)
