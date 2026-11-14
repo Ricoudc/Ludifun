@@ -28,6 +28,8 @@ import '../features/parent/child_programme_screen.dart';
 import '../features/parent/child_reports_screen.dart';
 import '../features/parent/child_mistakes_screen.dart';
 import '../features/parent/child_skills_screen.dart';
+import '../features/parent/family_screen.dart';
+import '../features/parent/installation_screen.dart';
 import '../features/parent/lesson_content_screen.dart';
 import '../features/parent/lesson_trial_screen.dart';
 import '../features/parent/email_verification_screen.dart';
@@ -56,6 +58,8 @@ abstract final class Routes {
   static const verifyEmail = '/parent/verifier-email';
   static const addChild = '/parent/enfants/nouveau';
   static const aiSettings = '/parent/ia';
+  static const installation = '/parent/installation';
+  static const family = '/parent/famille';
   static String childDashboard(String childId) => '/parent/enfants/$childId';
   static String childLink(String childId) => '/parent/enfants/$childId/lier';
   static String childSettings(String childId) => '/parent/enfants/$childId/reglages';
@@ -67,8 +71,8 @@ abstract final class Routes {
   static String childReports(String childId) => '/parent/enfants/$childId/signalements';
   static String lessonContent(String childId, String lessonId) =>
       '/parent/enfants/$childId/lecons/$lessonId';
-  static String lessonTrial(String childId, String lessonId) =>
-      '/parent/enfants/$childId/lecons/$lessonId/essai';
+  static String lessonTrial(String childId, String lessonId, {bool full = false}) =>
+      '/parent/enfants/$childId/lecons/$lessonId/essai${full ? '?tout=1' : ''}';
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static String childPaste(String childId) => '/parent/enfants/$childId/texte';
@@ -152,6 +156,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'enfants/nouveau', builder: (_, _) => const ChildFormScreen()),
           GoRoute(path: 'ia', builder: (_, _) => const AiSettingsScreen()),
+          GoRoute(path: 'installation', builder: (_, _) => const InstallationScreen()),
+          GoRoute(path: 'famille', builder: (_, _) => const FamilyScreen()),
           GoRoute(
             path: 'enfants/:id',
             builder: (_, state) => ChildDashboardScreen(childId: state.pathParameters['id']!),
@@ -180,6 +186,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => LessonTrialScreen(
                   childId: state.pathParameters['id']!,
                   lessonId: state.pathParameters['lesson']!,
+                  full: state.uri.queryParameters['tout'] == '1',
                 ),
               ),
               GoRoute(

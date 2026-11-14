@@ -418,9 +418,36 @@ function Regler-Cloudflare($valeurs) {
     $valeurs.Remove('LUDIFUN_IMAGE_MODEL')  # modèle d'un autre moteur
 }
 
+function Regler-Compatible($valeurs) {
+    Write-Host 'Un service compatible OpenAI dessine les images : FreeLLMAPI lancé sur ce PC (il répartit entre des'
+    Write-Host 'offres gratuites), ou un autre service. Seule une description écrite par Ludifun part (le sujet de la'
+    Write-Host 'notion, jamais de photo ni de prénom).'
+    Write-Host 'Adresse vue depuis Ludifun (dans Docker) : host.docker.internal à la place de 127.0.0.1 ou localhost.'
+    $adresse = $valeurs['LUDIFUN_IMAGE_URL']
+    if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -ne 'openai' -or -not $adresse) { $adresse = 'http://host.docker.internal:31415/v1' }
+    $saisie = (Read-Host "Adresse de l'API (Entrée seule = $adresse)").Trim()
+    if ($saisie) { $adresse = $saisie }
+    $adresse = $adresse -replace '://(127\.0\.0\.1|localhost)([:/])', '://host.docker.internal$2'
+    $actuelle = if ($valeurs['LUDIFUN_IMAGE_ENGINE'] -eq 'openai') { $valeurs['LUDIFUN_IMAGE_API_KEY'] } else { '' }
+    if ($actuelle) {
+        $fin = $actuelle.Substring([Math]::Max(0, $actuelle.Length - 4))
+        $garder = Read-Host "Une clé est déjà enregistrée (…$fin). La garder ? (O/N)"
+        if ($garder -match '^[nN]') { $actuelle = '' }
+    }
+    $cle = $actuelle
+    if (-not $cle) { $cle = (Read-Host 'Colle la clé (par exemple freellmapi-…, Entrée seule = aucune)').Trim() }
+    $modele = (Read-Host 'Modèle d''images (Entrée seule = celui du service)').Trim()
+    $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'openai'
+    $valeurs['LUDIFUN_IMAGE_URL'] = $adresse
+    if ($cle) { $valeurs['LUDIFUN_IMAGE_API_KEY'] = $cle } else { $valeurs.Remove('LUDIFUN_IMAGE_API_KEY') }
+    if ($modele) { $valeurs['LUDIFUN_IMAGE_MODEL'] = $modele } else { $valeurs.Remove('LUDIFUN_IMAGE_MODEL') }
+    $valeurs.Remove('LUDIFUN_IMAGE_ACCOUNT_ID')  # compte Cloudflare, s'il y en avait un
+}
+
 $NomsImages = @{
     'none' = 'pas d''images'; 'sdcpp' = 'sur ce PC'; 'comfyui' = 'ComfyUI sur ce PC'
     'pollinations' = 'en ligne avec Pollinations'; 'cloudflare' = 'en ligne avec Cloudflare (gratuit)'
+    'openai' = 'service compatible OpenAI (FreeLLMAPI…)'
 }
 
 function Choisir-Images {
@@ -433,6 +460,7 @@ function Choisir-Images {
     Write-Host "  1. Sur ce PC (gratuit, tout reste à la maison ; s'installe une fois avec $(Choix 8))"
     Write-Host '  2. En ligne avec Pollinations (sans carte graphique ; clé à créer sur leur site)'
     Write-Host '  3. En ligne avec Cloudflare (sans carte graphique ; gratuit, environ 170 images par jour)'
+    Write-Host '  4. Un service compatible OpenAI, par exemple FreeLLMAPI lancé sur ce PC'
     $num = (Read-Host "Tape le numéro puis Entrée (Entrée seule = garder : $($NomsImages[$actuel]))").Trim()
     switch ($num) {
         '0' { $valeurs['LUDIFUN_IMAGE_ENGINE'] = 'none' }
@@ -446,6 +474,7 @@ function Choisir-Images {
         }
         '2' { Regler-Pollinations $valeurs }
         '3' { Regler-Cloudflare $valeurs }
+        '4' { Regler-Compatible $valeurs }
         default { return }
     }
     Ecrire-Env $valeurs

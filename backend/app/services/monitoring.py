@@ -28,6 +28,7 @@ from app.db.models import (
 from app.services.lesson_pipeline import STAGE_LABELS
 from app.services.lesson_processing import IN_PROGRESS
 from app.services.live_calls import LiveCall, LiveCalls
+from app.services.server_errors import ERRORS
 
 # Étapes qui produisent des exercices : leurs avertissements « élément : raison » sont des
 # éléments écartés par les contrôles du code (§5.80).
@@ -244,6 +245,14 @@ async def snapshot(db: AsyncSession, now: datetime, server_ai: str, live: LiveCa
                 round(week_cost / len(analysed), 4) if week_cost is not None and analysed else None
             ),
         },
+        "server_errors": {
+            "since": ERRORS.since.isoformat(timespec="seconds"),
+            "recent": [
+                {"at": e.at.isoformat(timespec="seconds"), "route": f"{e.method} {e.path}", "kind": e.kind}
+                for e in ERRORS.recent()[:20]
+            ],
+            "by_route": [{"what": what, "count": n} for what, n in ERRORS.by_route()[:10]],
+        },
         "errors": [
             {
                 "at": run.created_at.isoformat(timespec="seconds"),
@@ -322,6 +331,9 @@ def as_text(data: dict[str, Any]) -> str:
         f"Coût sur {STATS_DAYS} jours : {_dollars(cost['week_usd'])} pour {cost['lessons']} leçon(s), "
         f"soit {_dollars(cost['per_lesson_usd'])} par leçon"
     )
+    server = data.get("server_errors") or {}
+    lines += ["", f"== Erreurs du serveur (depuis {server.get('since', '?')}) =="]
+    lines += [f"- {e['what']} : {e['count']} fois" for e in server.get("by_route", [])] or ["aucune"]
     lines += ["", "== Dernières erreurs de l'IA =="]
     lines += [
         f"- {e['at']} · {e['lesson']} · {e['stage']} ({e['model']}) · {e['status']} : {e['message']}"

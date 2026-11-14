@@ -5,7 +5,7 @@ seul le matériel change."""
 import uuid
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
@@ -20,11 +20,19 @@ from app.db import models as db_models
 from app.domain.confidence import Confidence
 from app.domain.duplicates import deduplicate
 from app.domain.instructions import instruction
-from app.domain.knowledge import KnowledgeItem, KnowledgeMaterial, KnowledgeUnit, LessonAnalysis, Theme
+from app.domain.knowledge import (
+    KnowledgeItem,
+    KnowledgeMaterial,
+    KnowledgeUnit,
+    LessonAnalysis,
+    Subject,
+    Theme,
+)
 from app.domain.material_edit import Edit, EditError, Kind, editables
 from app.domain.material_edit import apply_edit as apply_material_edit
 from app.domain.material_view import material_blocks
 from app.domain.text import clean_markup
+from app.domain.validation import KEPT_PREFIX, recheck_material
 from app.services import ai_settings
 from app.services.ai_settings import AiResolver
 from app.services.lesson_pipeline import LessonPipeline
@@ -74,6 +82,16 @@ class EditIn(BaseModel):
     true: bool | None = None
 
 
+class TrialNoteOut(BaseModel):
+    """Une question que le parent a jugée fausse en essayant la leçon (§5.90)."""
+
+    id: uuid.UUID
+    knowledge_id: uuid.UUID
+    activity_type: str
+    question: str = Field(description="Ce que l'essai a montré.")
+    answer: str | None = Field(None, description="La réponse donnée pour juste.")
+
+
 class NotionContentOut(BaseModel):
     knowledge_id: uuid.UUID
     label: str
@@ -87,6 +105,9 @@ class NotionContentOut(BaseModel):
     confirmed: bool = Field(False, description="Le parent a confirmé la notion.")
     editable: list[EditableOut] = Field([], description="Ce que le parent peut corriger lui-même.")
     removed: bool = Field(False, description="Retirée par le parent : plus proposée à l'enfant (§5.69).")
+    trial_notes: list[TrialNoteOut] = Field(
+        [], description="Erreurs notées par le parent pendant l'essai, pas encore corrigées (§5.90)."
+    )
 
 
 class LessonContentOut(BaseModel):
@@ -126,8 +147,21 @@ class ReworkIn(BaseModel):
     comment: str | None = Field(None, max_length=500)
 
 
+def note_out(note: db_models.TrialNote) -> TrialNoteOut:
+    return TrialNoteOut(
+        id=note.id,
+        knowledge_id=note.knowledge_id,
+        activity_type=note.activity_type,
+        question=note.question,
+        answer=note.answer,
+    )
+
+
 def notion_out(
-    item: db_models.KnowledgeItem, material: db_models.KnowledgeMaterial, grade: str
+    item: db_models.KnowledgeItem,
+    material: db_models.KnowledgeMaterial,
+    grade: str,
+    notes: list[db_models.TrialNote] | None = None,
 ) -> NotionContentOut:
     # Sans balises (« 3<sup>e</sup> ») enregistrées avant le nettoyage du matériel.
     validated = KnowledgeMaterial.model_validate(clean_markup(material.material))
@@ -142,6 +176,7 @@ def notion_out(
         doubts=item.doubts,
         confirmed=item.confirmed_at is not None,
         removed=item.removed_at is not None,
+        trial_notes=[note_out(n) for n in notes or []],
         editable=[
             EditableOut(
                 kind=e.kind,
@@ -207,12 +242,21 @@ async def content_out(db: DbSession, child: db_models.Child, lesson: db_models.L
         .where(db_models.KnowledgeItem.lesson_id == lesson.id)
         .order_by(db_models.KnowledgeItem.position)
     )
+    notes: dict[uuid.UUID, list[db_models.TrialNote]] = {}
+    for note in await db.scalars(
+        select(db_models.TrialNote)
+        .where(db_models.TrialNote.lesson_id == lesson.id, db_models.TrialNote.resolved_at.is_(None))
+        .order_by(db_models.TrialNote.created_at)
+    ):
+        notes.setdefault(note.knowledge_id, []).append(note)
     return LessonContentOut(
         lesson_id=lesson.id,
         title=lesson.title,
         grade=child.grade,
         text=await lesson_text(db, lesson) or None,
-        notions=[notion_out(item, material, child.grade) for item, material in rows.all()],
+        notions=[
+            notion_out(item, material, child.grade, notes.get(item.id)) for item, material in rows.all()
+        ],
         objective=lesson.objective,
         summary=lesson.summary,
         approved=lesson.parent_approved_at is not None,
@@ -540,3 +584,87 @@ async def edit_material(
     material_row.material = corrected.model_dump(mode="json")
     await db.commit()
     return notion_out(row, material_row, child.grade)
+
+
+# --------------------------------------------------------------------------- #
+# Erreurs notées pendant l'essai (§5.90) et revérification d'une leçon (§5.91)
+# --------------------------------------------------------------------------- #
+
+
+@router.post(
+    "/children/{child_id}/lessons/{lesson_id}/trial-notes/{note_id}/resolve",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def resolve_trial_note(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, note_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> Response:
+    """« C'est corrigé » (ou l'erreur notée par erreur) : la note n'est plus montrée."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    note = await db.scalar(
+        select(db_models.TrialNote).where(
+            db_models.TrialNote.id == note_id, db_models.TrialNote.lesson_id == lesson.id
+        )
+    )
+    if note is None:
+        raise ApiError(404, "note_not_found", "Note introuvable.")
+    note.resolved_at = note.resolved_at or clock.now()
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+class RecheckRemovedOut(BaseModel):
+    knowledge_id: uuid.UUID
+    label: str
+    element: str = Field(description="Ce qui est en cause : questions[0], true_statements[1], cloze…")
+    reason: str
+    kept: bool = Field(False, description="Gardé (dernière question de la notion) : à corriger soi-même.")
+
+
+class RecheckOut(BaseModel):
+    removed: list[RecheckRemovedOut]
+    content: LessonContentOut
+
+
+@router.post("/children/{child_id}/lessons/{lesson_id}/recheck")
+async def recheck_lesson(
+    child_id: uuid.UUID, lesson_id: uuid.UUID, parent: CurrentParent, db: DbSession
+) -> RecheckOut:
+    """« Revérifier la leçon » : les contrôles d'aujourd'hui sur une leçon analysée avant eux
+    (question sans son contexte, texte en anglais, renvoi à la fiche), sans IA ni nouvelle photo.
+    Ce qui ne passe plus est retiré ; la progression de l'enfant n'est pas touchée."""
+    child = await own_child(db, parent, child_id)
+    lesson = await _lesson(db, child, lesson_id)
+    source = await lesson_text(db, lesson)
+    subject = Subject(lesson.subject) if lesson.subject in list(Subject) else None
+    rows = await db.execute(
+        select(db_models.KnowledgeItem, db_models.KnowledgeMaterial)
+        .join(
+            db_models.KnowledgeMaterial,
+            db_models.KnowledgeMaterial.knowledge_id == db_models.KnowledgeItem.id,
+        )
+        .where(db_models.KnowledgeItem.lesson_id == lesson.id)
+        .order_by(db_models.KnowledgeItem.position)
+        .with_for_update(of=db_models.KnowledgeMaterial)
+    )
+    removed: list[RecheckRemovedOut] = []
+    for item, material_row in rows.all():
+        checked, rejected = recheck_material(
+            KnowledgeMaterial.model_validate(material_row.material), source, subject
+        )
+        if not rejected:
+            continue
+        removed += [
+            RecheckRemovedOut(
+                knowledge_id=item.id,
+                label=item.label,
+                element=r.element,
+                reason=r.reason.removeprefix(KEPT_PREFIX),
+                kept=r.reason.startswith(KEPT_PREFIX),
+            )
+            for r in rejected
+        ]
+        if any(not r.reason.startswith(KEPT_PREFIX) for r in rejected):
+            material_row.material = checked.model_dump(mode="json")
+    await db.commit()
+    return RecheckOut(removed=removed, content=await content_out(db, child, lesson))

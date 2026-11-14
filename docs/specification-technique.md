@@ -2443,6 +2443,137 @@ bord. Une seule fonction (`lessons_panel.deleteLessonAsParent`), reprise par « 
 Test : `parent_flow_test` (annuler, supprimer depuis la liste, leçon en échec, depuis les
 questions). Aucun changement côté serveur.
 
+### 5.89 État de l'installation, dit au parent (novembre 2026)
+
+Sur le PC d'essai, une clé d'IA devenue illisible et un modèle qui débordait de la carte graphique
+ne se voyaient que dans le rapport de `Ludifun.bat`. `GET /v1/parent/installation` les dit au
+parent, sans appel payant à l'IA (le service est seulement interrogé sur sa présence et ses
+modèles) :
+
+- **IA** : celle de la famille ou du serveur répond-elle, la clé est-elle acceptée ; une clé
+  enregistrée qui n'est plus lisible (secret du serveur changé) est une erreur, avec quoi faire ;
+- **carte graphique** (Ollama) : part du modèle chargé sur la carte (`/api/ps`) ; s'il déborde,
+  les modèles installés (`/api/tags`) qui tiendraient, avec une marge pour le contexte et l'image
+  (`app/domain/installation.py`, domaine pur) ;
+- **IA de secours** réglée mais pas activée ; **dernières leçons** en échec ; **plafond du jour**
+  atteint ; **leçons à relire** quand la famille relit.
+
+Chaque point a un niveau (ok, warning, error), un message et, s'il y a lieu, l'action à faire.
+Application : une carte sur l'accueil du parent quand quelque chose ne va pas (le point le plus
+grave, rien sinon ; rien non plus avec un serveur plus ancien), l'écran « État de
+l'installation » (menu Mon compte). Jamais la clé ni une donnée d'enfant dans la réponse. Tests :
+`tests/domain/test_installation.py`, `tests/api/test_installation.py` (IA du serveur, Ollama qui
+déborde, clé illisible et leçon à relire), route dans `test_separation.py` ; `parent_flow_test`.
+
+### 5.90 Essai : erreurs notées gardées, toute la leçon (novembre 2026, schéma 0034)
+
+- **Erreurs notées gardées** : « Il y a une erreur dans cette question » pendant l'essai (§5.84)
+  enregistre une note (`trial_notes`, migration 0034 : leçon, notion, type de jeu, ce que l'essai
+  a montré, la réponse donnée pour juste) ; `POST …/lessons/{l}/trial/notes` (`seed`, `plan`,
+  `position`, `full`), la même question notée deux fois ne fait qu'une note ; appuyer de
+  nouveau la retire. Dans « Questions de la leçon », chaque notion montre ses notes (🚩) jusqu'à
+  « C'est corrigé » (`POST …/trial-notes/{id}/resolve`). Toujours rien de compté pour l'enfant.
+- **Toute la leçon** : `POST …/trial?full=true` compose une séance assez longue pour que chaque
+  notion que l'enfant peut travailler y passe ; `total_notions` et `never_shown` (notions
+  secondaires que les séances ne travaillent pas quand la leçon a assez de notions importantes).
+  Chaque correction et note renvoie `full`, pour recomposer la même séance.
+- **Tests** : `tests/api/test_lesson_trial.py`, `tests/db/test_schema.py` (0034), routes dans
+  `test_separation.py` ; application : `parent_flow_test`.
+
+### 5.91 Revérifier une leçon déjà enregistrée (novembre 2026)
+
+Les contrôles ajoutés après coup (question sans son contexte §5.87, texte en anglais, renvoi à la
+fiche ou à une image) ne touchaient que les nouvelles analyses. « Revérifier la leçon (sans IA) »
+(`POST …/lessons/{l}/recheck`, `validation.recheck_material`, domaine pur) les repasse sur le
+matériel enregistré : ce qui ne passe plus est retiré (questions, affirmations, texte à trous,
+carte, questions ouvertes) ; la dernière question d'une notion est gardée et signalée (« à
+corriger vous-même »), pour que la notion reste jouable. Aucune IA, aucune photo ; la progression
+de l'enfant n'est pas touchée. Une leçon analysée aujourd'hui ne perd rien (test). Réponse : ce
+qui a été retiré ou gardé, notion par notion, et le contenu à jour.
+
+### 5.92 Un second parent dans la famille (novembre 2026, schéma 0035)
+
+Le schéma prévoyait le rôle `member` dans `family_members` ; il manquait la façon d'entrer.
+
+- **Inviter** : le parent qui a créé la famille (`owner`) obtient un code (`POST
+  /v1/parent/invites`) : 8 caractères sans lettre ambiguë (« ABCD-EFGH »), valable 7 jours, une
+  seule fois ; seule son empreinte est gardée (`family_invites`, migration 0035). Une nouvelle
+  invitation annule la précédente ; deux parents au plus.
+- **Rejoindre** (`POST /v1/parent/join`) : le code tapé en minuscules ou sans tiret est accepté.
+  Le compte qui rejoint ne doit pas avoir d'enfant (409 `own_family_not_empty`) : sa famille
+  vide est supprimée, il devient `member` et voit les mêmes enfants, leçons et réglages (IA,
+  relecture), avec son propre compte ; un enfant qu'il ajoute arrive dans la même famille.
+- **Partir** (`DELETE /v1/parent/members/{id}`) : le propriétaire retire le second parent, ou
+  celui-ci quitte la famille ; il retrouve une famille à lui, vide. Supprimer son compte ne
+  touche ni la famille ni les enfants (seul le propriétaire efface la famille en partant).
+- **Application** : Mon compte → « Second parent » (membres, inviter, retirer, quitter, rejoindre).
+- **Tests** : `tests/api/test_family.py`, `tests/db/test_schema.py` (0035), routes dans
+  `test_separation.py` ; `parent_flow_test`. Non testé : deux vrais téléphones.
+
+### 5.93 Bilan de la semaine par e-mail (novembre 2026, schéma 0036)
+
+Le résumé « En bref » et « Cette semaine » existaient dans le tableau de bord ; il fallait ouvrir
+l'application pour les lire.
+
+- **Au choix du parent**, désactivé par défaut (`parents.weekly_email`, migration 0036 ; les
+  comptes existants ne reçoivent rien) : `GET/PUT /v1/parent/weekly-email`. Chaque parent choisit
+  pour lui (le second parent aussi). Rien ne part sans adresse vérifiée.
+- **Envoi** : `app.tools.weekly_email`, lancé chaque jour (service `weekly-email` de
+  `deploy/docker-compose.prod.yml`), n'envoie que le dimanche (heure de la famille) et jamais
+  deux fois la même semaine (`weekly_email_sent_at`). Un e-mail par parent, chaque enfant de la
+  famille : ses phrases « En bref » et jusqu'à trois actions « Cette semaine »
+  (`app/domain/weekly_email.py`, domaine pur). Le journal ne contient ni adresse ni prénom.
+- **Application** : « Bilan de la semaine par e-mail » dans Objectifs et contrôles.
+- **Non fait** : sur le PC de la famille (`docker-compose.yml` local), aucune tâche planifiée ne
+  lance l'envoi ; il faut un fournisseur d'e-mails (`LUDIFUN_SMTP_HOST`). Non testé avec un vrai
+  serveur d'e-mails.
+
+### 5.94 Affichage : taille du texte, lecture facile, contraste (novembre 2026)
+
+Réglage gardé sur le téléphone (`lib/core/display.dart`, comme le son), ouvert par
+« Affichage » sur l'accueil de l'enfant et dans le menu Mon compte du parent :
+
+- **taille du texte** : normal, grand (×1,2), très grand (×1,4), en plus de la taille choisie
+  dans les réglages du téléphone ;
+- **lecture facile** : lettres et mots plus espacés, lignes plus hautes, jamais d'italique (ce qui
+  aide un lecteur dyslexique) ; la police ne change pas (aucune police ajoutée à l'application) ;
+- **contraste renforcé** : texte noir sur fond blanc.
+
+En « très grand », le titre « Ta mission du jour » débordait : il passe maintenant à la ligne.
+Tests : `test/core/display_test.dart`, `child_flow_test` (l'enfant agrandit le texte et passe en
+lecture facile, sans débordement de l'accueil). Non vérifié : tous les écrans et tous les jeux
+en très grand, sur un vrai téléphone ; une police pensée pour la dyslexie.
+
+### 5.95 Erreurs du serveur dans le suivi (novembre 2026)
+
+Une erreur inattendue ne se voyait que dans le journal du conteneur. Elle est maintenant comptée
+en mémoire (`app/services/server_errors.py`, les 50 dernières depuis le démarrage) et montrée sur
+`/suivi` et dans le rapport texte (« Erreurs du serveur ») : méthode, chemin avec les
+identifiants remplacés par « {id} », type d'erreur, nombre de fois. Jamais le message ni les
+paramètres : ils peuvent citer une valeur venue de l'enfant. Test : `tests/api/test_monitoring.py`.
+Pas d'outil de supervision extérieur (il faudrait un compte chez un fournisseur et un accord sur
+les données envoyées).
+
+### 5.96 Images par un service compatible OpenAI (FreeLLMAPI…) (novembre 2026)
+
+Demande de la famille : faire dessiner les images des leçons par FreeLLMAPI, lancé sur le PC, qui
+répartit entre des offres gratuites et expose `POST /v1/images/generations` au format OpenAI.
+
+- **Moteur `openai`** (`app/ai/imagegen/openai_images.py`) : `LUDIFUN_IMAGE_ENGINE=openai`,
+  `LUDIFUN_IMAGE_URL` (par exemple `http://host.docker.internal:31415/v1`), clé dans
+  `LUDIFUN_IMAGE_API_KEY` (en-tête, jamais dans l'adresse), modèle facultatif
+  (`LUDIFUN_IMAGE_MODEL`). Image reçue en base64 (`b64_json`) ou par une adresse (téléchargée,
+  8 Mo au plus), type vérifié par ses premiers octets. Ollama n'est pas déchargé (le dessin ne se
+  fait pas sur la carte du PC). Les messages d'erreur ne recopient jamais le prompt.
+- **`Ludifun.bat`** : choix des images, « 4. Un service compatible OpenAI » ; une adresse en
+  `127.0.0.1` ou `localhost` est remplacée par `host.docker.internal`.
+- **« Tester » l'IA** : une adresse `127.0.0.1` injoignable explique que, dans Docker, elle désigne
+  le serveur lui-même (cas du PC d'essai).
+- **Lire les photos par FreeLLMAPI** : déjà possible avec « Autre service (compatible OpenAI) » ;
+  il faut un modèle qui lit les images (d'après la documentation de FreeLLMAPI, les modèles Gemini).
+- **Tests** : `tests/ai/test_imagegen.py`, `tests/ai/test_ollama.py`. Non testé avec un vrai
+  FreeLLMAPI : le nom du modèle d'images et le format exact de sa réponse sont à vérifier sur le PC.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

@@ -319,9 +319,43 @@ class LudifunApi {
   });
 
   /// « Essayer la leçon » : la séance que l'enfant aura, sans rien enregistrer (§5.84).
-  Future<LessonTrial> startTrial(String childId, String lessonId) => _call(() async {
-    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/trial');
-    return LessonTrial.fromJson(r.data!);
+  /// `full` : toute la leçon, chaque notion au moins une fois (§5.90).
+  Future<LessonTrial> startTrial(String childId, String lessonId, {bool full = false}) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children/$childId/lessons/$lessonId/trial',
+          queryParameters: full ? {'full': true} : null,
+        );
+        return LessonTrial.fromJson(r.data!);
+      });
+
+  /// « Il y a une erreur dans cette question » : gardé pour être corrigé ensuite (§5.90).
+  Future<TrialNote> noteTrial(String childId, String lessonId, LessonTrial trial, int position) =>
+      _call(() async {
+        final r = await _dio.post<Json>(
+          '/v1/children/$childId/lessons/$lessonId/trial/notes',
+          data: {'seed': trial.seed, 'plan': trial.plan, 'position': position, 'full': trial.full},
+        );
+        return TrialNote.fromJson(r.data!);
+      });
+
+  /// « C'est corrigé » (ou note retirée) : la note n'est plus montrée.
+  Future<void> resolveTrialNote(String childId, String lessonId, String noteId) => _call(
+    () => _dio.post<void>('/v1/children/$childId/lessons/$lessonId/trial-notes/$noteId/resolve'),
+  );
+
+  /// « Revérifier la leçon » : les contrôles d'aujourd'hui, sans IA (§5.91).
+  Future<({List<RecheckFinding> findings, LessonContent content})> recheckLesson(
+    String childId,
+    String lessonId,
+  ) => _call(() async {
+    final r = await _dio.post<Json>('/v1/children/$childId/lessons/$lessonId/recheck');
+    return (
+      findings: [
+        for (final f in r.data!['removed'] as List<dynamic>) RecheckFinding.fromJson(f as Json),
+      ],
+      content: LessonContent.fromJson(r.data!['content'] as Json),
+    );
   });
 
   /// La correction d'une réponse de l'essai, telle que l'enfant la verrait.
@@ -335,7 +369,13 @@ class LudifunApi {
   ) => _call(() async {
     final r = await _dio.post<Json>(
       '/v1/children/$childId/lessons/$lessonId/trial/check',
-      data: {'seed': trial.seed, 'plan': trial.plan, 'position': position, 'response': response},
+      data: {
+        'seed': trial.seed,
+        'plan': trial.plan,
+        'position': position,
+        'response': response,
+        'full': trial.full,
+      },
     );
     return Correction.fromJson(r.data!);
   });
@@ -393,6 +433,18 @@ class LudifunApi {
     final r = await _dio.put<Json>('/v1/parent/review-lessons', data: {'enabled': enabled});
     return r.data!['enabled'] as bool;
   });
+
+  /// Bilan de la semaine par e-mail (§5.93) : (activé, adresse vérifiée).
+  Future<({bool enabled, bool verified})> weeklyEmail() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/weekly-email');
+    return (
+      enabled: r.data!['enabled'] as bool,
+      verified: r.data!['email_verified'] as bool? ?? true,
+    );
+  });
+
+  Future<void> setWeeklyEmail({required bool enabled}) =>
+      _call(() => _dio.put<void>('/v1/parent/weekly-email', data: {'enabled': enabled}));
 
   /// « C'est bien ce qui est écrit » : le parent confirme une notion lue avec peu de confiance.
   Future<NotionContent> confirmNotion(String childId, String lessonId, String knowledgeId) =>
@@ -769,6 +821,38 @@ class LudifunApi {
   Future<List<ParentReminder>> reminders() => _call(() async {
     final r = await _dio.get<List<dynamic>>('/v1/parent/reminders');
     return [for (final item in r.data!) ParentReminder.fromJson(item as Json)];
+  });
+
+  /// Les parents de la famille (§5.92).
+  Future<FamilyMembers> familyMembers() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/members');
+    return FamilyMembers.fromJson(r.data!);
+  });
+
+  /// Inviter un second parent : le code à lui donner (7 jours, une seule fois).
+  Future<({String code, DateTime expiresAt})> inviteParent() => _call(() async {
+    final r = await _dio.post<Json>('/v1/parent/invites');
+    return (
+      code: r.data!['code'] as String,
+      expiresAt: DateTime.parse(r.data!['expires_at'] as String),
+    );
+  });
+
+  /// Rejoindre la famille d'un autre parent avec son code.
+  Future<FamilyMembers> joinFamily(String code) => _call(() async {
+    final r = await _dio.post<Json>('/v1/parent/join', data: {'code': code});
+    return FamilyMembers.fromJson(r.data!);
+  });
+
+  /// Retirer le second parent, ou quitter la famille (son propre identifiant).
+  Future<void> removeFamilyMember(String parentId) =>
+      _call(() => _dio.delete<void>('/v1/parent/members/$parentId'));
+
+  /// « Tout va bien ? » : l'IA répond-elle, la clé est-elle lisible, le modèle tient-il dans la
+  /// carte graphique, les dernières leçons ont-elles abouti (§5.89) ?
+  Future<InstallationReport> installation() => _call(() async {
+    final r = await _dio.get<Json>('/v1/parent/installation');
+    return InstallationReport.fromJson(r.data!);
   });
 
   /// Assistant parent : les questions et leurs réponses, calculées à partir des données réelles.

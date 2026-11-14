@@ -59,3 +59,18 @@ def decode_access_token(token: str, secret: str) -> uuid.UUID:
 
 def looks_like_jwt(token: str) -> bool:
     return token.count(".") == 2
+
+
+INVITE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"  # sans 0/O, 1/I/L : se dicte sans erreur
+
+
+def invite_code() -> str:
+    """Code d'invitation d'un second parent : 8 caractères, « ABCD-EFGH »."""
+    raw = "".join(secrets.choice(INVITE_ALPHABET) for _ in range(8))
+    return f"{raw[:4]}-{raw[4:]}"
+
+
+def normalize_invite_code(code: str) -> str:
+    """Tel que l'autre parent l'a tapé : minuscules, espaces ou sans tiret acceptés."""
+    raw = "".join(c for c in code.upper() if c.isalnum())
+    return f"{raw[:4]}-{raw[4:]}"

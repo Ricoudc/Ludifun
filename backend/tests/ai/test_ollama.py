@@ -557,3 +557,23 @@ async def test_reasoning_without_an_answer_is_named() -> None:
 
     with pytest.raises(AIInvalidOutput, match="réfléchi sans répondre"):
         await ollama(handler).structured(prompt=PROMPT, input="x", schema=Page)
+
+
+async def test_an_unreachable_local_address_explains_docker() -> None:
+    """Sur le PC, Ludifun tourne dans Docker : 127.0.0.1 y désigne le serveur, pas le PC (§5.96)."""
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("refusé")
+
+    result = await check(
+        AiChoice("compatible", "auto", "http://127.0.0.1:31415/v1", "freellmapi-x"),
+        Settings(),
+        httpx.AsyncClient(transport=httpx.MockTransport(refuse)),
+    )
+    assert not result.ok and "host.docker.internal" in result.message
+    other = await check(
+        AiChoice("compatible", "auto", "http://192.168.1.76:31415/v1", "k"),
+        Settings(),
+        httpx.AsyncClient(transport=httpx.MockTransport(refuse)),
+    )
+    assert "host.docker.internal" not in other.message and "vérifiez l'adresse" in other.message

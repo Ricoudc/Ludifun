@@ -115,10 +115,13 @@ class Parent(Base):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Conservation (§16.2) : e-mail de prévenance envoyé avant la suppression d'un compte inactif.
     inactivity_warned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Bilan de la semaine par e-mail (§5.93), au choix du parent : désactivé par défaut.
+    weekly_email: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    weekly_email_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Family(Base):
-    """Un parent en V1 ; un second parent pourra rejoindre la famille en V5."""
+    """Un parent propriétaire ; un second parent peut la rejoindre sur invitation (§5.92)."""
 
     __tablename__ = "families"
 
@@ -178,6 +181,22 @@ class FamilyMember(Base):
     role: Mapped[str] = mapped_column(Text, nullable=False)
 
     __table_args__ = (CheckConstraint(_in("role", FAMILY_ROLES), name="role"), Index(None, "parent_id"))
+
+
+class FamilyInvite(Base):
+    """Invitation d'un second parent (§5.92) : un code de 8 caractères, valable 7 jours, à usage
+    unique. Seule son empreinte est gardée."""
+
+    __tablename__ = "family_invites"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    family_id: Mapped[uuid.UUID] = _fk("families.id")
+    code_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    created_at: Mapped[datetime] = _created_at()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index(None, "family_id"),)
 
 
 class Child(Base):
@@ -663,6 +682,25 @@ class QuestionReport(Base):
     seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (CheckConstraint(_in("reason", REPORT_REASONS), name="reason"),)
+
+
+class TrialNote(Base):
+    """Une question que le parent a jugée fausse en essayant la leçon (§5.90) : gardée pour qu'il
+    la corrige ensuite dans « Questions de la leçon ». Ce que l'essai a montré, pas ce que
+    l'enfant a fait : l'essai n'enregistre ni séance ni réponse."""
+
+    __tablename__ = "trial_notes"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    lesson_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("lessons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    knowledge_id: Mapped[uuid.UUID] = _fk("knowledge_items.id")
+    activity_type: Mapped[str] = mapped_column(Text, nullable=False)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    answer: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _created_at()
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AttemptEvidence(Base):

@@ -816,9 +816,14 @@ class NotionContent {
     this.confirmed = false,
     this.editable = const [],
     this.removed = false,
+    this.trialNotes = const [],
   });
 
   factory NotionContent.fromJson(Json json) => NotionContent(
+    trialNotes: [
+      for (final n in json['trial_notes'] as List<dynamic>? ?? const [])
+        TrialNote.fromJson(n as Json),
+    ],
     knowledgeId: json['knowledge_id'] as String,
     label: json['label'] as String,
     statement: json['statement'] as String,
@@ -851,6 +856,9 @@ class NotionContent {
 
   /// Retirée par le parent (§5.69) : plus proposée à l'enfant.
   final bool removed;
+
+  /// Questions jugées fausses pendant l'essai, pas encore corrigées (§5.90).
+  final List<TrialNote> trialNotes;
 }
 
 class LessonContent {
@@ -974,4 +982,137 @@ class LessonImages {
   final List<LessonImage> pictures;
 
   bool get pending => (image?.pending ?? false) || pictures.any((p) => p.pending);
+}
+
+/// Un point de l'état de l'installation (§5.89) : `level` vaut ok, warning ou error.
+class InstallationCheck {
+  const InstallationCheck({
+    required this.code,
+    required this.level,
+    required this.title,
+    required this.message,
+    this.action,
+  });
+
+  factory InstallationCheck.fromJson(Json json) => InstallationCheck(
+    code: json['code'] as String,
+    level: json['level'] as String? ?? 'ok',
+    title: json['title'] as String,
+    message: json['message'] as String,
+    action: json['action'] as String?,
+  );
+
+  final String code;
+  final String level;
+  final String title;
+  final String message;
+
+  /// Ce que le parent peut faire, s'il y a quelque chose à faire.
+  final String? action;
+}
+
+/// « Tout va bien ? » : l'état de l'installation, dit au parent.
+class InstallationReport {
+  const InstallationReport({required this.level, required this.checks});
+
+  factory InstallationReport.fromJson(Json json) => InstallationReport(
+    level: json['level'] as String? ?? 'ok',
+    checks: [
+      for (final c in json['checks'] as List<dynamic>? ?? const [])
+        InstallationCheck.fromJson(c as Json),
+    ],
+  );
+
+  final String level;
+  final List<InstallationCheck> checks;
+
+  /// Les points à regarder, les plus graves d'abord.
+  List<InstallationCheck> get problems => [
+    ...checks.where((c) => c.level == 'error'),
+    ...checks.where((c) => c.level == 'warning'),
+  ];
+}
+
+/// Une question que le parent a jugée fausse en essayant la leçon (§5.90).
+class TrialNote {
+  const TrialNote({
+    required this.id,
+    required this.knowledgeId,
+    required this.question,
+    this.answer,
+  });
+
+  factory TrialNote.fromJson(Json json) => TrialNote(
+    id: json['id'] as String,
+    knowledgeId: json['knowledge_id'] as String,
+    question: json['question'] as String,
+    answer: json['answer'] as String?,
+  );
+
+  final String id;
+  final String knowledgeId;
+  final String question;
+
+  /// La réponse donnée pour juste.
+  final String? answer;
+}
+
+/// Ce que « Revérifier la leçon » a trouvé (§5.91).
+class RecheckFinding {
+  const RecheckFinding({required this.label, required this.reason, required this.kept});
+
+  factory RecheckFinding.fromJson(Json json) => RecheckFinding(
+    label: json['label'] as String,
+    reason: json['reason'] as String,
+    kept: json['kept'] as bool? ?? false,
+  );
+
+  final String label;
+  final String reason;
+
+  /// Gardé (dernière question de la notion) : à corriger soi-même.
+  final bool kept;
+}
+
+/// Un parent de la famille (§5.92) : `owner` l'a créée, `member` l'a rejointe.
+class FamilyMemberInfo {
+  const FamilyMemberInfo({
+    required this.parentId,
+    required this.email,
+    required this.role,
+    required this.me,
+    this.firstName,
+  });
+
+  factory FamilyMemberInfo.fromJson(Json json) => FamilyMemberInfo(
+    parentId: json['parent_id'] as String,
+    email: json['email'] as String,
+    firstName: json['first_name'] as String?,
+    role: json['role'] as String,
+    me: json['me'] as bool? ?? false,
+  );
+
+  final String parentId;
+  final String email;
+  final String? firstName;
+  final String role;
+  final bool me;
+
+  bool get owner => role == 'owner';
+}
+
+class FamilyMembers {
+  const FamilyMembers({required this.members, required this.canInvite});
+
+  factory FamilyMembers.fromJson(Json json) => FamilyMembers(
+    members: [
+      for (final m in json['members'] as List<dynamic>) FamilyMemberInfo.fromJson(m as Json),
+    ],
+    canInvite: json['can_invite'] as bool? ?? false,
+  );
+
+  final List<FamilyMemberInfo> members;
+  final bool canInvite;
+
+  FamilyMemberInfo get me => members.firstWhere((m) => m.me);
 }

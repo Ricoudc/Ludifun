@@ -858,3 +858,74 @@ def merge_material(first: MaterialValidation, second: MaterialValidation) -> Mat
         }
     )
     return MaterialValidation(merged, second.rejected)
+
+
+# --------------------------------------------------------------------------- #
+# Revérifier une leçon déjà enregistrée (§5.91)
+# --------------------------------------------------------------------------- #
+
+KEPT_PREFIX = "gardée, à corriger vous-même : "
+
+
+def recheck_material(
+    material: KnowledgeMaterial, source: str, subject: Subject | None = None
+) -> tuple[KnowledgeMaterial, list[Rejection]]:
+    """Repasse les contrôles de forme d'aujourd'hui (image ou fiche absente, question sans son
+    contexte, texte en anglais hors leçon d'anglais) sur un matériel déjà enregistré, sans IA.
+    Seul ce qui ne passe plus est retiré ; la dernière question d'une notion est gardée et
+    signalée au parent, pour que la notion reste jouable. `source` : le texte de la leçon."""
+    source = strip_markup(source)
+    rejected: list[Rejection] = []
+
+    def problem(text: str, passage: str | None = None) -> str | None:
+        reason = PICTURE_REASON if needs_picture(text) else None
+        if reason is None and passage is None:
+            reason = (
+                SUPPORT_REASON if needs_support(text) else CONTEXT_REASON if lacks_context(text) else None
+            )
+        if reason is None and _in_english(text, subject, source):
+            reason = ENGLISH_REASON
+        return reason
+
+    questions = []
+    dropped: list[tuple[int, str]] = []
+    for i, question in enumerate(material.questions):
+        reason = problem(question.stem, question.passage)
+        if reason is None:
+            questions.append(question)
+        else:
+            dropped.append((i, reason))
+    if dropped and not questions:
+        questions = list(material.questions)
+        rejected += [Rejection(f"questions[{i}]", KEPT_PREFIX + reason) for i, reason in dropped]
+    else:
+        rejected += [Rejection(f"questions[{i}]", reason) for i, reason in dropped]
+
+    def kept_statements(key: str, statements: list[str]) -> list[str]:
+        kept = []
+        for i, statement in enumerate(statements):
+            if (reason := problem(statement)) is None:
+                kept.append(statement)
+            else:
+                rejected.append(Rejection(f"{key}[{i}]", reason))
+        return kept
+
+    update: dict[str, object] = {
+        "questions": questions,
+        "true_statements": kept_statements("true_statements", material.true_statements),
+        "false_statements": kept_statements("false_statements", material.false_statements),
+    }
+    if material.cloze is not None and (reason := problem(material.cloze.text)) is not None:
+        rejected.append(Rejection("cloze", reason))
+        update["cloze"] = None
+    if material.flashcard is not None and (reason := problem(material.flashcard.front)) is not None:
+        rejected.append(Rejection("flashcard", reason))
+        update["flashcard"] = None
+    open_questions = []
+    for i, open_question in enumerate(material.open_questions):
+        if (reason := problem(open_question.prompt, open_question.passage)) is None:
+            open_questions.append(open_question)
+        else:
+            rejected.append(Rejection(f"open_questions[{i}]", reason))
+    update["open_questions"] = open_questions
+    return material.model_copy(update=update), rejected

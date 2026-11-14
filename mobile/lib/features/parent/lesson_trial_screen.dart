@@ -14,16 +14,25 @@ import '../session/activities/common.dart';
 import '../session/correction_view.dart';
 import 'lesson_content_screen.dart';
 
-/// Une erreur que le parent a notée pendant l'essai, pour la corriger ensuite.
-typedef _Noted = ({int number, String notions, String? answer});
+/// Une erreur que le parent a notée pendant l'essai : enregistrée sur le serveur (§5.90), pour
+/// être corrigée ensuite dans « Questions de la leçon ».
+typedef _Noted = ({int number, String notions, String? answer, String id});
 
 /// « Essayer la leçon » (§5.84) : le parent joue la séance que son enfant aura, voit chaque
 /// correction et note ce qui est faux. Rien n'est enregistré ni compté pour l'enfant.
 class LessonTrialScreen extends ConsumerStatefulWidget {
-  const LessonTrialScreen({required this.childId, required this.lessonId, super.key});
+  const LessonTrialScreen({
+    required this.childId,
+    required this.lessonId,
+    this.full = false,
+    super.key,
+  });
 
   final String childId;
   final String lessonId;
+
+  /// Toute la leçon : chaque notion au moins une fois.
+  final bool full;
 
   @override
   ConsumerState<LessonTrialScreen> createState() => _LessonTrialScreenState();
@@ -55,7 +64,9 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
       _noted.clear();
     });
     try {
-      final trial = await ref.read(apiProvider).startTrial(widget.childId, widget.lessonId);
+      final trial = await ref
+          .read(apiProvider)
+          .startTrial(widget.childId, widget.lessonId, full: widget.full);
       if (!mounted) return;
       setState(() {
         _trial = trial;
@@ -103,17 +114,42 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
 
   bool get _isNoted => _noted.any((n) => n.number == _index + 1);
 
-  void _toggleNote() => setState(() {
-    if (_isNoted) {
-      _noted.removeWhere((n) => n.number == _index + 1);
-    } else {
-      _noted.add((
-        number: _index + 1,
-        notions: _items[_index].notions.join(', '),
-        answer: _correction?.correctAnswer,
-      ));
+  Future<void> _toggleNote() async {
+    final trial = _trial;
+    if (trial == null || _busy) return;
+    final number = _index + 1;
+    final api = ref.read(apiProvider);
+    setState(() => _busy = true);
+    try {
+      if (_noted.where((n) => n.number == number).firstOrNull case final noted?) {
+        await api.resolveTrialNote(widget.childId, widget.lessonId, noted.id);
+        if (mounted) setState(() => _noted.remove(noted));
+      } else {
+        final note = await api.noteTrial(
+          widget.childId,
+          widget.lessonId,
+          trial,
+          _items[_index].item.position,
+        );
+        if (mounted) {
+          setState(
+            () => _noted.add((
+              number: number,
+              notions: _items[_index].notions.join(', '),
+              answer: note.answer ?? _correction?.correctAnswer,
+              id: note.id,
+            )),
+          );
+        }
+      }
+    } on ApiException catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-  });
+  }
 
   void _back() => context.go(Routes.lessonContent(widget.childId, widget.lessonId));
 
@@ -129,7 +165,7 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
         ),
         title: Text(
           _trial == null || done
-              ? 'Essai de la leçon'
+              ? (widget.full ? 'Essai de toute la leçon' : 'Essai de la leçon')
               : 'Essai · question ${_index + 1} / ${_items.length}',
         ),
       ),
@@ -211,7 +247,8 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
       )
     else ...[
       Text(
-        '🚩 ${_noted.length} erreur(s) notée(s), à corriger avant de valider :',
+        '🚩 ${_noted.length} erreur(s) notée(s), à corriger avant de valider. Elles vous '
+        'attendent dans « Questions de la leçon », sur chaque notion :',
         style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
       ),
       const SizedBox(height: 8),
@@ -230,6 +267,14 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
           ),
         ),
     ],
+    if (_trial case LessonTrial(full: true, :final neverShown) when neverShown.isNotEmpty) ...[
+      const SizedBox(height: 12),
+      Text(
+        'Pas dans l\'essai, ni dans les séances de l\'enfant (notions secondaires, la leçon en a '
+        'assez d\'importantes) : ${neverShown.join(', ')}.',
+        style: const TextStyle(fontSize: 15, color: Colors.black54),
+      ),
+    ],
     const SizedBox(height: 16),
     FilledButton.icon(
       onPressed: () {
@@ -245,5 +290,14 @@ class _LessonTrialScreenState extends ConsumerState<LessonTrialScreen> {
       icon: const Icon(Icons.refresh),
       label: const Text('Refaire un essai (autres exercices)'),
     ),
+    if (!widget.full) ...[
+      const SizedBox(height: 8),
+      OutlinedButton.icon(
+        onPressed: () =>
+            context.go(Routes.lessonTrial(widget.childId, widget.lessonId, full: true)),
+        icon: const Icon(Icons.playlist_play),
+        label: const Text('Essayer toute la leçon (chaque notion)'),
+      ),
+    ],
   ];
 }

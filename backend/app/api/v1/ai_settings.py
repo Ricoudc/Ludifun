@@ -1,9 +1,10 @@
 """Espace parent : l'IA qui lit les photos et crée les jeux de la famille."""
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
+import httpx
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from sqlalchemy import select
@@ -18,7 +19,8 @@ from app.api.deps import AppSettings, CurrentParent, DbSession, get_ai_resolver,
 from app.api.errors import ApiError
 from app.config import AiProviderName, Settings
 from app.db.models import Family
-from app.services import ai_settings
+from app.domain.installation import overall
+from app.services import ai_settings, installation
 from app.services.ai_settings import AiResolver
 
 router = APIRouter(tags=["compte parent"])
@@ -299,3 +301,45 @@ async def test_ai_settings(
 
     result = await check(choice, settings, getattr(request.app.state, "ai_check_client", None), probe)
     return CheckOut(ok=result.ok, message=result.message, models=result.models)
+
+
+class InstallationCheckOut(BaseModel):
+    code: str = Field(description="ai, gpu, fallback, lessons, budget, review.")
+    level: Literal["ok", "warning", "error"]
+    title: str
+    message: str
+    action: str | None = Field(None, description="Ce que le parent peut faire, s'il y a lieu.")
+
+
+class InstallationOut(BaseModel):
+    """État de l'installation, pour le parent (§5.89)."""
+
+    level: Literal["ok", "warning", "error"] = Field(description="Le plus grave des points relevés.")
+    checks: list[InstallationCheckOut]
+
+
+@router.get("/parent/installation")
+async def get_installation(
+    request: Request, parent: CurrentParent, db: DbSession, settings: AppSettings
+) -> InstallationOut:
+    """« Tout va bien ? » : l'IA répond-elle, sa clé est-elle lisible, le modèle tient-il dans la
+    carte graphique, les dernières leçons ont-elles abouti ? Aucun appel payant à l'IA."""
+    rate_limit(request, f"installation:{parent.parent_id}", limit=60, window_s=3600)
+    family_id = await _family(db, parent)
+    client = getattr(request.app.state, "ai_check_client", None)
+    own = client is None
+    http = client or httpx.AsyncClient(timeout=10)
+    try:
+        checks = await installation.report(db, family_id, settings, http, clock.now())
+    finally:
+        if own:
+            await http.aclose()
+    return InstallationOut(
+        level=overall(checks).value,
+        checks=[
+            InstallationCheckOut(
+                code=c.code, level=c.level.value, title=c.title, message=c.message, action=c.action
+            )
+            for c in checks
+        ],
+    )

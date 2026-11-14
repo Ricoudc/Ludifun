@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ludifun/app/app.dart';
 import 'package:ludifun/app/router.dart';
+import 'package:ludifun/core/display.dart';
 import 'package:ludifun/core/storage/credentials.dart';
 import 'package:ludifun/features/capture/capture_controller.dart';
 import 'package:ludifun/features/home/home_providers.dart';
@@ -373,6 +374,22 @@ void main() {
       find.text('Ce lien mène à un autre site (publicite.example.com) : il n\'est pas ouvert.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('§5.94 : l\'enfant agrandit le texte et passe en lecture facile', (tester) async {
+    final container = await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Affichage'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Très grand'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lecture facile'));
+    await tester.pumpAndSettle();
+    final display = container.read(displayProvider).value!;
+    expect(display.textSize, TextSize.larger);
+    expect(display.easyReading, isTrue);
+    final context = tester.element(find.text('Bonjour Emma ! 👋'));
+    expect(MediaQuery.textScalerOf(context).scale(10), closeTo(14, 0.001));
+    expect(Theme.of(context).textTheme.bodyLarge?.letterSpacing, 0.8);
   });
 
   testWidgets('« Ce n\'est pas moi » : l\'appareil rend son jeton', (tester) async {

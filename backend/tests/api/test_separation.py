@@ -19,6 +19,13 @@ EDIT = {"kind": "question", "index": 0, "before": "a", "text": "b"}
 PARENT_ROUTES = [
     ("GET", "/v1/parent", None),
     ("GET", "/v1/parent/reminders", None),
+    ("GET", "/v1/parent/installation", None),
+    ("GET", "/v1/parent/members", None),
+    ("GET", "/v1/parent/weekly-email", None),
+    ("PUT", "/v1/parent/weekly-email", {"enabled": True}),
+    ("POST", "/v1/parent/invites", None),
+    ("POST", "/v1/parent/join", {"code": "ABCD-EFGH"}),
+    ("DELETE", "/v1/parent/members/" + LESSON, None),
     ("DELETE", "/v1/parent", None),
     ("GET", "/v1/children", None),
     ("POST", "/v1/children", {"display_name": "X", "grade": "CP", "parental_consent": True}),
@@ -62,6 +69,13 @@ PARENT_ROUTES = [
         "/v1/children/{child}/lessons/" + LESSON + "/trial/check",
         {"seed": "1", "plan": "x", "position": 1, "response": {}},
     ),
+    (
+        "POST",
+        "/v1/children/{child}/lessons/" + LESSON + "/trial/notes",
+        {"seed": "1", "plan": "x", "position": 1},
+    ),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/trial-notes/" + LESSON + "/resolve", None),
+    ("POST", "/v1/children/{child}/lessons/" + LESSON + "/recheck", None),
     (
         "PUT",
         "/v1/children/{child}/lessons/" + LESSON + "/info",

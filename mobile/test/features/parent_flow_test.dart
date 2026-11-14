@@ -467,6 +467,123 @@ void main() {
     expect(find.text('La leçon, telle que l\'IA l\'a lue'), findsOneWidget);
   });
 
+  testWidgets('§5.92 : inviter un second parent, puis le retirer', (tester) async {
+    var joined = true;
+    Map<String, Object?> members() => {
+      'members': [
+        {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'owner', 'me': true},
+        if (joined) {'parent_id': 'p2', 'email': 'papa@example.fr', 'role': 'member', 'me': false},
+      ],
+      'can_invite': !joined,
+    };
+    server
+      ..on('GET /v1/parent/members', (_) => (200, members()))
+      ..on(
+        'POST /v1/parent/invites',
+        (_) => (201, {'code': 'ABCD-EFGH', 'expires_at': '2026-11-20T10:00:00Z'}),
+      )
+      ..on('DELETE /v1/parent/members/p2', (_) {
+        joined = false;
+        return (204, null);
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.family);
+    expect(find.text('papa@example.fr'), findsOneWidget);
+    expect(find.text('Inviter un second parent'), findsNothing);
+    await tap(tester, find.byTooltip('Retirer ce parent'));
+    await tap(tester, find.text('Retirer'));
+    expect(find.text('papa@example.fr'), findsNothing);
+    await tap(tester, find.text('Inviter un second parent'));
+    expect(find.text('ABCD-EFGH'), findsOneWidget);
+    await tap(tester, find.text('OK'));
+    expect(find.text('Rejoindre une famille'), findsOneWidget);
+  });
+
+  testWidgets('§5.92 : rejoindre la famille d\'un autre parent avec son code', (tester) async {
+    var joined = false;
+    server
+      ..on(
+        'GET /v1/parent/members',
+        (_) => (
+          200,
+          {
+            'members': [
+              {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'owner', 'me': true},
+            ],
+            'can_invite': true,
+          },
+        ),
+      )
+      ..on('POST /v1/parent/join', (r) {
+        expect(r.data, {'code': 'abcd-efgh'});
+        joined = true;
+        return (
+          200,
+          {
+            'members': [
+              {'parent_id': 'p9', 'email': 'maman@example.fr', 'role': 'owner', 'me': false},
+              {'parent_id': 'p1', 'email': 'parent@example.fr', 'role': 'member', 'me': true},
+            ],
+            'can_invite': false,
+          },
+        );
+      });
+    final container = await launch(tester);
+    await go(tester, container, Routes.family);
+    await tester.enterText(find.widgetWithText(TextField, 'Code d\'invitation'), 'abcd-efgh');
+    await tap(tester, find.text('Rejoindre'));
+    expect(joined, isTrue);
+    expect(find.text('Vous avez rejoint la famille.'), findsOneWidget);
+  });
+
+  testWidgets('§5.89 : l\'accueil signale un souci d\'installation, l\'écran dit quoi faire', (
+    tester,
+  ) async {
+    server.on(
+      'GET /v1/parent/installation',
+      (_) => (
+        200,
+        {
+          'level': 'error',
+          'checks': [
+            {
+              'code': 'gpu',
+              'level': 'warning',
+              'title': 'Carte graphique',
+              'message': 'Le modèle qwen3-vl:8b (6,4 Go) déborde de la carte graphique.',
+              'action': 'Choisissez un modèle plus petit : qwen3.5:4b (3,3 Go).',
+            },
+            {
+              'code': 'ai',
+              'level': 'error',
+              'title': 'Intelligence artificielle',
+              'message': 'La clé de votre IA n\'est plus lisible.',
+              'action': 'Mon compte → Intelligence artificielle : collez de nouveau la clé.',
+            },
+            {
+              'code': 'budget',
+              'level': 'ok',
+              'title': 'Plafond de dépense du jour',
+              'message': 'Le plafond du jour n\'est pas atteint.',
+              'action': null,
+            },
+          ],
+        },
+      ),
+    );
+    await launch(tester);
+    // L'accueil : le point le plus grave d'abord, et le nombre de points.
+    expect(find.text('2 points à regarder'), findsOneWidget);
+    expect(find.text('La clé de votre IA n\'est plus lisible.'), findsOneWidget);
+    await tap(tester, find.text('2 points à regarder'));
+    expect(find.text('Quelque chose bloque'), findsOneWidget);
+    expect(find.text('Carte graphique'), findsOneWidget);
+    expect(find.text('👉 Choisissez un modèle plus petit : qwen3.5:4b (3,3 Go).'), findsOneWidget);
+    expect(find.text('Plafond de dépense du jour'), findsOneWidget);
+    await tap(tester, find.text('Régler l\'intelligence artificielle'));
+    expect(server.routes, contains('GET /v1/parent/ai'));
+  });
+
   testWidgets('le parent supprime une leçon : depuis la liste, puis depuis ses questions', (
     tester,
   ) async {
@@ -1379,6 +1496,7 @@ void main() {
       },
     };
     final checks = <Map<String, Object?>>[];
+    final notes = <Map<String, Object?>>[];
     server
       ..on(
         'GET /v1/children/c1/lessons/l2/content',
@@ -1400,11 +1518,29 @@ void main() {
                 'statement': 'Le numérateur est en haut.',
                 'blocks': <Object>[],
                 'removed': false,
+                'trial_notes': [...notes],
               },
             ],
           },
         ),
       )
+      ..on('POST /v1/children/c1/lessons/l2/trial/notes', (r) {
+        final body = r.data as Map<String, Object?>;
+        expect(body, {'seed': '42', 'plan': 'empreinte', 'position': 2, 'full': false});
+        final note = {
+          'id': 'note1',
+          'knowledge_id': 'n1',
+          'activity_type': 'MCQ',
+          'question': 'Combien font 1/2 + 1/2 ?',
+          'answer': 'Deux',
+        };
+        notes.add(note);
+        return (200, note);
+      })
+      ..on('POST /v1/children/c1/lessons/l2/trial-notes/note1/resolve', (_) {
+        notes.clear();
+        return (204, null);
+      })
       ..on(
         'POST /v1/children/c1/lessons/l2/trial',
         (_) => (
@@ -1451,6 +1587,7 @@ void main() {
       'plan': 'empreinte',
       'position': 1,
       'response': {'choice_id': 'a'},
+      'full': false,
     });
     expect(find.text('✅ Bravo !'), findsOneWidget);
     await tap(tester, find.text('Continuer'));
@@ -1471,6 +1608,91 @@ void main() {
     expect(server.routes.where((r) => r.contains('/sessions')), isEmpty);
     await tap(tester, find.text('Corriger les questions'));
     expect(find.text('🔒 L\'enfant n\'a pas encore accès à cette leçon'), findsOneWidget);
+
+    // La note est gardée sur la notion, jusqu'à « C'est corrigé ».
+    expect(find.text('🚩 Numérateur'), findsOneWidget);
+    expect(find.text('« Combien font 1/2 + 1/2 ? »'), findsOneWidget);
+    await tap(tester, find.text('C\'est corrigé'));
+    expect(notes, isEmpty);
+    expect(find.text('🚩 Numérateur'), findsNothing);
+  });
+
+  testWidgets('§5.91 : revérifier la leçon dit ce qui a été retiré et ce qui est à corriger', (
+    tester,
+  ) async {
+    Map<String, Object?> content() => {
+      'lesson_id': 'l2',
+      'title': 'Les fractions',
+      'grade': 'CM1',
+      'text': null,
+      'notions': [
+        {
+          'knowledge_id': 'n1',
+          'label': 'Numérateur',
+          'statement': 'Le numérateur est en haut.',
+          'blocks': <Object>[],
+        },
+      ],
+    };
+    server
+      ..on('GET /v1/children/c1/lessons/l2/content', (_) => (200, content()))
+      ..on(
+        'POST /v1/children/c1/lessons/l2/recheck',
+        (_) => (
+          200,
+          {
+            'removed': [
+              {
+                'knowledge_id': 'n1',
+                'label': 'Numérateur',
+                'element': 'questions[0]',
+                'reason': 'il manque ce dont la question parle',
+                'kept': false,
+              },
+              {
+                'knowledge_id': 'n1',
+                'label': 'Numérateur',
+                'element': 'questions[1]',
+                'reason': 'écrit en anglais',
+                'kept': true,
+              },
+            ],
+            'content': content(),
+          },
+        ),
+      );
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonContent('c1', 'l2'));
+    await tap(tester, find.text('Revérifier la leçon (sans IA)'));
+    expect(find.text('Leçon revérifiée'), findsOneWidget);
+    expect(find.text('1 élément(s) retiré(s) :'), findsOneWidget);
+    expect(find.text('• Numérateur : il manque ce dont la question parle'), findsOneWidget);
+    expect(find.textContaining('1 question(s) gardée(s)'), findsOneWidget);
+    await tap(tester, find.text('OK'));
+    expect(find.text('Leçon revérifiée'), findsNothing);
+  });
+
+  testWidgets('§5.90 : essayer toute la leçon demande une séance complète', (tester) async {
+    server.on('POST /v1/children/c1/lessons/l2/trial', (r) {
+      expect(r.queryParameters['full'], true);
+      return (
+        200,
+        {
+          'seed': '1',
+          'plan': 'p',
+          'full': true,
+          'total_notions': 1,
+          'never_shown': ['Une notion secondaire'],
+          'notions': <String, Object>{},
+          'items': <Object>[],
+        },
+      );
+    });
+    final container = await launch(tester);
+    await go(tester, container, Routes.lessonTrial('c1', 'l2', full: true));
+    expect(find.text('Essai terminé'), findsOneWidget);
+    expect(find.textContaining('Une notion secondaire'), findsOneWidget);
+    expect(find.text('Essayer toute la leçon (chaque notion)'), findsNothing);
   });
 
   testWidgets('§5.84 : la leçon a changé pendant l\'essai, il se relance', (tester) async {
@@ -1544,6 +1766,29 @@ void main() {
     expect(enabled, isFalse);
     expect(tester.widget<SwitchListTile>(box).value, isFalse);
     expect(find.textContaining('ouvertes à l\'enfant dès qu\'elles sont prêtes'), findsOneWidget);
+  });
+
+  testWidgets('§5.93 : le bilan de la semaine par e-mail se demande, désactivé par défaut', (
+    tester,
+  ) async {
+    var enabled = false;
+    server
+      ..on(
+        'GET /v1/parent/weekly-email',
+        (_) => (200, {'enabled': enabled, 'email_verified': false}),
+      )
+      ..on('PUT /v1/parent/weekly-email', (r) {
+        enabled = (r.data as Map<String, Object?>)['enabled']! as bool;
+        return (200, {'enabled': enabled, 'email_verified': false});
+      })
+      ..on('GET /v1/children/c1/exams', (_) => (200, <Object>[]));
+    final container = await launch(tester);
+    await go(tester, container, Routes.childGoals('c1'));
+    final box = find.widgetWithText(SwitchListTile, 'Bilan de la semaine par e-mail');
+    expect(tester.widget<SwitchListTile>(box).value, isFalse);
+    await tap(tester, box);
+    expect(enabled, isTrue);
+    expect(find.textContaining('pas encore vérifiée'), findsOneWidget);
   });
 
   testWidgets('§5.61 : une figure exacte dessinée par Ludifun est signalée au parent', (

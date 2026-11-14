@@ -96,6 +96,16 @@ services:
       api: { condition: service_healthy }  # migrations appliquées
     logging: *logging
 
+  # Bilan de la semaine par e-mail (§5.93) : lancé chaque jour, n'envoie que le dimanche.
+  weekly-email:
+    build: ../backend
+    restart: unless-stopped
+    environment: *api-env
+    command: ["sh", "-c", "while true; do python -m app.tools.weekly_email; sleep 86400; done"]
+    depends_on:
+      api: { condition: service_healthy }
+    logging: *logging
+
   # Sauvegarde chiffrée chaque nuit (clé publique age), gardée 30 jours.
   backup:
     build: ./backup

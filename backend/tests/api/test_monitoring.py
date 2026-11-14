@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Lesson
 from app.services.live_calls import LIVE
 from app.services.monitoring import clean_message
+from app.services.server_errors import ERRORS
 from tests.api.helpers import family_with_device, upload_lesson
 
 
@@ -162,3 +163,27 @@ def test_monitoring_groups_same_model_by_provider_and_stage() -> None:
     }
     assert all(len(group) == 1 for group in grouped.values())
     assert all(run.provider == key[0] for key, group in grouped.items() for run in group)
+
+
+async def test_unexpected_server_errors_are_counted_without_their_details(
+    app: FastAPI, client: AsyncClient
+) -> None:
+    """§5.95 : une erreur inattendue est comptée pour /suivi : méthode, chemin sans identifiant,
+    type d'erreur ; jamais son message (il peut citer une valeur venue de l'enfant)."""
+    ERRORS.clear()
+
+    @app.get("/_test/bug/{lesson_id}")
+    async def _bug(lesson_id: str) -> None:
+        raise RuntimeError(f"réponse de l'enfant : {lesson_id} Emma")
+
+    lesson = "4f1c9a7e-2b3d-4c5e-8f9a-0b1c2d3e4f5a"
+    for _ in range(2):
+        assert (await client.get(f"/_test/bug/{lesson}?prenom=Emma")).status_code == 500
+    data = (await client.get("/suivi/donnees")).json()
+    server = data["server_errors"]
+    assert server["by_route"] == [{"what": "GET /_test/bug/{id} · RuntimeError", "count": 2}]
+    assert server["recent"][0]["route"] == "GET /_test/bug/{id}"
+    assert lesson not in str(server) and "Emma" not in str(server)
+    text = (await client.get("/suivi/rapport.txt")).text
+    assert "GET /_test/bug/{id} · RuntimeError : 2 fois" in text
+    ERRORS.clear()

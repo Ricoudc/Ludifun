@@ -10,6 +10,7 @@ import asyncio
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel
@@ -76,6 +77,12 @@ async def check(
         found = await _check(choice, settings, http)
     except httpx.HTTPError as exc:
         where = "Ollama est-il lancé sur le PC ?" if choice.provider == "ollama" else "vérifiez l'adresse."
+        if _loopback(choice.base_url):
+            # Le serveur Ludifun tourne dans Docker : 127.0.0.1 y désigne le conteneur, pas le PC.
+            where = (
+                "Ludifun tourne dans Docker, où 127.0.0.1 et localhost désignent le serveur lui-même : "
+                "mettez host.docker.internal (ou l'adresse du PC sur le réseau) à la place."
+            )
         return CheckResult(False, f"Service injoignable ({type(exc).__name__}) : {where}")
     finally:
         if own_client:
@@ -155,3 +162,8 @@ async def _check(choice: AiChoice, settings: Settings, http: httpx.AsyncClient) 
         return CheckResult(False, problem)
     models = sorted(str(m.get("id", "")).removeprefix("models/") for m in response.json().get("data", []))
     return CheckResult(True, f"Connexion réussie à {preset.label}.", [m for m in models if m])
+
+
+def _loopback(url: str | None) -> bool:
+    host = (urlsplit(url).hostname or "").lower() if url else ""
+    return host in ("localhost", "::1") or host.startswith("127.")
