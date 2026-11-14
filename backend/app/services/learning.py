@@ -26,6 +26,7 @@ from app.domain.composer import (
     NothingToReview,
     PlannedItem,
     SessionComposer,
+    SessionKind,
     SessionPlan,
     fingerprint,
 )
@@ -909,3 +910,29 @@ async def extend(
     revision.extended = True
     await session.flush()
     return [i for i in await session_items(session, revision) if i.block == Block.BONUS]
+
+
+_COMPARABLE = (SessionKind.FIRST.value, SessionKind.REVIEW.value)
+
+
+async def previous_score(session: AsyncSession, revision: db.RevisionSession) -> float | None:
+    """Duel contre soi (§5.98) : la note de la dernière séance terminée avant celle-ci sur la même
+    leçon, pour le même enfant. Seulement entre séances normales : une reprise des erreurs ne porte
+    que sur des questions ratées, la comparer serait injuste."""
+    if revision.kind not in _COMPARABLE or revision.completed_at is None:
+        return None
+    score = await session.scalar(
+        select(db.RevisionSession.score_on_10)
+        .where(
+            db.RevisionSession.child_id == revision.child_id,
+            db.RevisionSession.lesson_id == revision.lesson_id,
+            db.RevisionSession.id != revision.id,
+            db.RevisionSession.kind.in_(_COMPARABLE),
+            db.RevisionSession.score_on_10.is_not(None),
+            db.RevisionSession.completed_at.is_not(None),
+            db.RevisionSession.completed_at <= revision.completed_at,
+        )
+        .order_by(db.RevisionSession.completed_at.desc())
+        .limit(1)
+    )
+    return None if score is None else float(score)

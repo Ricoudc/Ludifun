@@ -70,6 +70,13 @@ DAILY_GAMES: dict[ActivityCode, str] = {
     ActivityCode.SCRAMBLE: "Lettres mélangées",
     ActivityCode.UNJUMBLE: "Démêler la phrase",
     ActivityCode.WORD_FLASH: "Mot éclair",
+    ActivityCode.SPOT_ERROR: "Chasse à l'erreur",
+    ActivityCode.FADING: "Phrase qui s'efface",
+    ActivityCode.STEP_ORDER: "Le bon ordre",
+    ActivityCode.CHECK_LUDI: "Le correcteur",
+    ActivityCode.STAIRS: "L'escalier",
+    ActivityCode.WORD_TRAIN: "Le train des mots",
+    ActivityCode.COUNT_TOUCH: "Compte et touche",
 }
 EXTRA_ROUNDS = 40  # tours essayés au plus pour compléter une séance trop courte
 MAX_ORDERS = 720  # ordres de notions essayés pour éviter deux formats identiques à la suite
@@ -99,6 +106,7 @@ EASY = frozenset(
         ActivityCode.WORD_FAMILY,
         ActivityCode.SOUNDS,
         ActivityCode.ENGLISH_WORDS,
+        ActivityCode.WORD_TRAIN,  # CP-CE1 (§5.98)
     }
 )
 # Une question ouverte n'est proposée que lorsqu'on vise son niveau (expliquer, transférer…) :
@@ -148,6 +156,14 @@ INTERMEDIATE = frozenset(
         ActivityCode.WORD_FAMILY,
         ActivityCode.SOUNDS,
         ActivityCode.ENGLISH_WORDS,
+        # Jeux d'apprentissage de novembre 2026 (§5.98)
+        ActivityCode.SPOT_ERROR,
+        ActivityCode.FADING,
+        ActivityCode.STEP_ORDER,
+        ActivityCode.CHECK_LUDI,
+        ActivityCode.STAIRS,
+        ActivityCode.WORD_TRAIN,
+        ActivityCode.COUNT_TOUCH,
     }
 )
 # 🧩 Jeu à plusieurs notions de fin de séance : à la première séance, la carte (étape 22) si les
@@ -165,6 +181,7 @@ PUZZLES = (
     (ActivityCode.BOX, 1),
     (ActivityCode.RANDOM_CARDS, 2),
     (ActivityCode.PICTURE_FIND, 2),
+    (ActivityCode.WHO_AM_I, 2),
 )
 # Première séance : la carte, sinon les images des notions validées par le parent (étape 28),
 # sinon l'association.
@@ -428,6 +445,10 @@ class SessionComposer:
                 and d == current.difficulty  # la difficulté choisie par le moteur ne change pas
             )
             rng.shuffle(options)
+            # Un format pas encore dans la séance d'abord (1.21.0) : sans cela, « Phrase qui
+            # s'efface », possible sur presque toute notion, revenait deux fois par séance.
+            present = {a.type for a in items}
+            options.sort(key=lambda option: option[0] in present)
             asked = {fingerprint(a) for a in items}
             for code, difficulty in options:
                 candidate = self._fresh(code, unit, difficulty, rng)
@@ -451,37 +472,40 @@ class SessionComposer:
         """Le jeu du jour : (position dans `items`, ajouté ou non). S'il est déjà dans
         l'échauffement ou l'approfondissement, il y est marqué ; sinon il est ajouté à la fin de
         l'approfondissement, sur la première notion qui le permet, s'il tient dans la durée
-        maximale. None : aucun jeu du jour possible pour cette leçon."""
+        maximale. Un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer cède sa place
+        au suivant de la rotation (1.21.0). None : aucun jeu du jour possible pour cette leçon."""
         offered = [code for code in DAILY_GAMES if any(self.registry.get(code).accepts(u) for u in units)]
         if not offered:
             return None
-        code = offered[now.date().toordinal() % len(offered)]
+        # Le jeu du jour, ou le suivant de la rotation si aucune notion ne permet de le fabriquer.
+        start = now.date().toordinal() % len(offered)
         main = [i for i, block in enumerate(blocks) if block in (Block.WARMUP, Block.CORE)]
-        for i in main:
-            if items[i].type == code:
-                return i, False
-        game = self.registry.get(code)
-        levels = sorted(game.difficulties)
-        difficulty = levels[0] if first else levels[len(levels) // 2]
-        for unit in units:
-            if not game.accepts(unit):
-                continue
-            try:
-                activity = game.build([unit], difficulty, rng)
-            except CannotBuild:
-                continue
-            if self.estimate_duration_s([*items, activity], with_replay=True) > MAX_SECONDS:
+        for code in offered[start:] + offered[:start]:
+            for i in main:
+                if items[i].type == code:
+                    return i, False
+            game = self.registry.get(code)
+            levels = sorted(game.difficulties)
+            difficulty = levels[0] if first else levels[len(levels) // 2]
+            for unit in units:
+                if not game.accepts(unit):
+                    continue
+                try:
+                    activity = game.build([unit], difficulty, rng)
+                except CannotBuild:
+                    continue
+                if self.estimate_duration_s([*items, activity], with_replay=True) > MAX_SECONDS:
+                    return None
+                # À la fin de l'approfondissement, ou plus tôt : jamais deux fois le même jeu de suite.
+                places = [i + 1 for i in reversed(main)] + ([0] if main else [])
+                for at in places:
+                    before = items[at - 1].type if at > 0 else None
+                    after = items[at].type if at < len(items) else None
+                    if code not in (before, after):
+                        items.insert(at, activity)
+                        blocks.insert(at, Block.CORE if at > 0 else Block.WARMUP)
+                        return at, True
                 return None
-            # À la fin de l'approfondissement, ou plus tôt : jamais deux fois le même jeu de suite.
-            places = [i + 1 for i in reversed(main)] + ([0] if main else [])
-            for at in places:
-                before = items[at - 1].type if at > 0 else None
-                after = items[at].type if at < len(items) else None
-                if code not in (before, after):
-                    items.insert(at, activity)
-                    blocks.insert(at, Block.CORE if at > 0 else Block.WARMUP)
-                    return at, True
-            return None
         return None
 
     def _extra(

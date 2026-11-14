@@ -124,6 +124,9 @@ jour, missions du jour.
 - ✅ Garde-fou : le jeu ne doit pas prendre le pas sur l'apprentissage (§5.77).
 - ✅ Affichage : taille du texte, lecture facile, contraste renforcé (§5.94) ; reste une police
   pensée pour la dyslexie et la vérification de tous les jeux en très grand sur un téléphone.
+- ✅ Neuf nouveaux jeux d'apprentissage : chasse à l'erreur, phrase qui s'efface, bon ordre,
+  correcteur, qui suis-je, escalier, train des mots, compte et touche, duel contre soi (§5.98) ;
+  « vrai, faux ou ça dépend » reporté (demande un nouveau champ à l'IA).
 - ⬜ Séance comme machine à états explicite (§124) : à décider avec les séances de référence.
 
 ## 6. Distribution

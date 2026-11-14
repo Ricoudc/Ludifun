@@ -41,6 +41,8 @@ APPLICABLE = frozenset({KnowledgeType.RULE, KnowledgeType.FORMULA, KnowledgeType
 
 RECALLED = frozenset(
     {
+        ActivityCode.FADING,  # retrouver les mots sans les voir (§5.98)
+        ActivityCode.STEP_ORDER,
         ActivityCode.FILL_BLANK,
         ActivityCode.FLASHCARD,
         ActivityCode.RANDOM_CARDS,
@@ -48,6 +50,24 @@ RECALLED = frozenset(
         ActivityCode.ALPHA_ORDER,
         ActivityCode.CLASSIFY,
         ActivityCode.COLORING,
+    }
+)
+
+
+# Jeux de novembre 2026 (§5.98, règles 1.21.0) : ils prouvent un niveau quand l'enfant y joue,
+# mais n'en ajoutent pas à ceux exigés pour « maîtrisée ». Sans cela, « Phrase qui s'efface »,
+# possible sur presque toute notion, rendait « se rappeler » obligatoire partout, et les révisions
+# ne proposaient plus qu'elle pour le valider.
+NOT_REQUIRED = frozenset(
+    {
+        ActivityCode.SPOT_ERROR,
+        ActivityCode.FADING,
+        ActivityCode.STEP_ORDER,
+        ActivityCode.CHECK_LUDI,
+        ActivityCode.WHO_AM_I,
+        ActivityCode.STAIRS,
+        ActivityCode.WORD_TRAIN,
+        ActivityCode.COUNT_TOUCH,
     }
 )
 
@@ -72,6 +92,7 @@ def cognitive_level(code: ActivityCode | str, difficulty: int) -> CognitiveLevel
         ActivityCode.RULER,
         ActivityCode.SYMMETRY,
         ActivityCode.SYLLABLES,
+        ActivityCode.COUNT_TOUCH,  # dénombrer (§5.98)
     ):
         # Poser et calculer, conjuguer, choisir le bon homophone, mesurer, compléter par
         # symétrie, couper en syllabes : une méthode à appliquer.
@@ -98,7 +119,11 @@ def required_levels(unit: KnowledgeUnit, registry: ActivityRegistry) -> frozense
     Ce sont les niveaux que le matériel de la leçon permet vraiment de travailler, jusqu'au
     plafond du type de notion : on n'exige jamais un niveau qu'aucune activité ne peut prouver.
     """
-    levels = {cognitive_level(code, difficulty) for code, difficulty in registry.single_options(unit)}
+    levels = {
+        cognitive_level(code, difficulty)
+        for code, difficulty in registry.single_options(unit)
+        if code not in NOT_REQUIRED
+    }
     if any(t.multi_knowledge and t.accepts(unit) for t in registry.all()):
         levels.add(CognitiveLevel.RECOGNIZE)
     top = ceiling(unit.type)

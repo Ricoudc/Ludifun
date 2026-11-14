@@ -15,6 +15,12 @@ from app.domain.activities.registry import ActivityRegistry, UnknownActivity
 MAX_LINES = 5  # éléments ratés montrés par jeu
 
 QUESTION_OF: dict[ActivityCode, str] = {
+    ActivityCode.SPOT_ERROR: "Chasse à l'erreur : trouver et corriger le mot faux",
+    ActivityCode.FADING: "Phrase qui s'efface : retrouver les mots cachés",
+    ActivityCode.STEP_ORDER: "Le bon ordre : ranger les étapes et écarter la fausse",
+    ActivityCode.WHO_AM_I: "Qui suis-je ? Retrouver la notion avec des indices",
+    ActivityCode.STAIRS: "L'escalier : des questions de plus en plus difficiles",
+    ActivityCode.WORD_TRAIN: "Le train des mots : accrocher les syllabes du mot entendu",
     ActivityCode.MATCH: "Relier chaque élément à sa réponse",
     ActivityCode.SPEED_CHALLENGE: "Défi rapide : vrai ou faux ?",
     ActivityCode.MEMORY: "Memory : retrouver les paires",
@@ -67,6 +73,33 @@ def describe(registry: ActivityRegistry, activity: BuiltActivity, response: dict
     match code:
         case ActivityCode.MCQ:
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.SPOT_ERROR:
+            words = _texts(payload.get("words"))
+            question = "Chasse à l'erreur : « " + " ".join(words.values()) + " »"
+            given = f"Mot touché : « {words.get(response.get('word_id', ''), '?')} »"
+            if response.get("choice_id"):
+                given += f", corrigé en « {_texts(payload.get('choices')).get(response['choice_id'], '?')} »"
+        case ActivityCode.FADING:
+            given = _lines([f"« {d['given'] or '…'} » au lieu de « {d['expected']} »" for d in wrong])
+        case ActivityCode.STEP_ORDER:
+            items = _texts(payload.get("items"))
+            given = " → ".join(items.get(i, "?") for i in response.get("order", []))
+            given += f" (écartée : « {items.get(response.get('intruder', ''), '?')} »)"
+        case ActivityCode.CHECK_LUDI:
+            question = f"{payload.get('question', '')} — Ludi a répondu « {payload.get('ludi_answer', '?')} »"
+            given = "« Ludi a raison »" if response.get("right") else "« Ludi se trompe »"
+            if response.get("reason_id"):
+                given += " : " + _texts(payload.get("reasons")).get(response["reason_id"], "?")
+        case ActivityCode.WHO_AM_I:
+            given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
+        case ActivityCode.STAIRS:
+            given = f"{len(wrong)} marche(s) ratée(s) sur {len(grade.details)}"
+        case ActivityCode.WORD_TRAIN:
+            wagons = _texts(payload.get("wagons"))
+            given = "-".join(wagons.get(i, "?") for i in response.get("order", [])) or "(rien accroché)"
+        case ActivityCode.COUNT_TOUCH:
+            question = f"Compte et touche : {payload.get('target', '?')} objets"
+            given = f"{len(response.get('selected', []))} objet(s) touché(s)"
         case ActivityCode.NUMBER_LINE | ActivityCode.FRACTION_BAR if "choices" in payload:
             given = _texts(payload.get("choices")).get(response.get("choice_id", ""), "?")
         case ActivityCode.NUMBER_LINE:

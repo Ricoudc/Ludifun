@@ -325,6 +325,11 @@ class ReportOut(BaseModel):
     lesson_mastered: bool
     can_review_errors: bool
     rewards: RewardsOut | None = Field(None, description="XP, badges et message (étape 20).")
+    previous_score_on_10: float | None = Field(
+        None,
+        description="Duel contre soi (§5.98) : note de la séance précédente sur la même leçon, "
+        "ou rien (première séance, reprise des erreurs).",
+    )
 
 
 class MissionLesson(BaseModel):

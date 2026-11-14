@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.ports import AIError
 from app.ai.providers.fake import REFERENCE_LESSONS, FakeProvider, LessonScript, evaluation_output
 from app.db.models import AiRun, AttemptEvidence, KnowledgeItem, KnowledgeMastery, SessionItem
+from app.domain.text import display_text
 from app.services import ai_budget, answer_evaluation
 from tests.api.helpers import auth, family_with_device, upload_lesson
 from tests.api.test_sessions import now, play  # noqa: F401  (fixture)
@@ -53,7 +54,8 @@ async def test_help_climbs_to_the_answer_then_counts_for_nothing(
     assert item["help_available"] and item["help_level"] == 0
     row = await db.get(SessionItem, uuid.UUID(item["id"]))
     assert row is not None
-    answer = row.solution["display"]
+    # Ce que voit l'enfant : avec la typographie française (« 8 ; 14 », « Ludi avait raison : »).
+    answer = display_text(row.solution["display"])
 
     url = f"/v1/sessions/{session['id']}/items/{item['id']}/help"
     steps: list[dict[str, Any]] = []

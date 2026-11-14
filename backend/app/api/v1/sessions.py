@@ -399,6 +399,7 @@ async def complete(
     await _targeted_later(db, settings, request, background, resolver, child, revision.lesson_id, now)
     outcome, lesson = done.outcome, done.lesson
     labels = {u.id: u.item.label for u in lesson.units}
+    previous = await learning.previous_score(db, revision)
     return ReportOut(
         session_id=revision.id,
         score_on_10=outcome.score_on_10,
@@ -418,6 +419,7 @@ async def complete(
         ],
         next_review_at=outcome.next_review_at,
         lesson_mastered=outcome.lesson_mastered,
+        previous_score_on_10=previous,
         can_review_errors=outcome.can_review_errors,
         rewards=rewards_out(award, now),
     )

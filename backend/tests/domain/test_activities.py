@@ -12,6 +12,14 @@ from tests.domain.conftest import ReferenceLesson
 
 # Clés autorisées dans le payload envoyé au téléphone : rien qui trahisse la solution.
 PAYLOAD_KEYS = {
+    ActivityCode.SPOT_ERROR: {"prompt", "words", "choices"},
+    ActivityCode.FADING: {"prompt", "words", "hidden", "memorize_s"},
+    ActivityCode.STEP_ORDER: {"prompt", "items"},
+    ActivityCode.CHECK_LUDI: {"question", "ludi_answer", "reasons"},
+    ActivityCode.WHO_AM_I: {"prompt", "clues", "choices"},
+    ActivityCode.STAIRS: {"prompt", "steps"},
+    ActivityCode.WORD_TRAIN: {"prompt", "say", "lang", "wagons", "length"},
+    ActivityCode.COUNT_TOUCH: {"prompt", "say", "target", "emoji", "objects"},
     ActivityCode.MCQ: {"prompt", "choices"},
     ActivityCode.TRUE_FALSE: {"statement"},
     ActivityCode.FILL_BLANK: {"text"},

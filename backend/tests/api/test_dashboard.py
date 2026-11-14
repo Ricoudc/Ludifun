@@ -128,6 +128,12 @@ async def test_dashboard_over_several_weeks(
         "BOX",
         "RANDOM_CARDS",
         "UNJUMBLE",
+        "SPOT_ERROR",  # §5.98 : jeux d'apprentissage
+        "FADING",
+        "STEP_ORDER",
+        "CHECK_LUDI",
+        "WHO_AM_I",
+        "STAIRS",
         "NUMBER_LINE",  # leçon de maths : jeux calculés par le code
         "FRACTION_BAR",
     }

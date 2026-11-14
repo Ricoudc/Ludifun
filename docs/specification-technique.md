@@ -2591,6 +2591,47 @@ préparation des exercices a duré plus de 25 minutes. Deux causes, dans le suiv
 L'identification des notions a été faite par Ollama en secours (13 min : modèle qui déborde de la
 carte graphique, voir « État de l'installation »). Tests : `tests/ai/test_openai_compatible.py`.
 
+### 5.98 Neuf nouveaux jeux d'apprentissage (novembre 2026, règles 1.21.0)
+
+Des jeux qui font réfléchir plutôt que reconnaître, construits avec le matériel déjà validé de la
+leçon (aucun appel à l'IA de plus). Code : `app/domain/activities/new_games.py` ; écrans :
+`mobile/lib/features/session/activities/learning_games_views.dart`.
+
+| Code | Jeu | Ce que l'enfant fait | Construit avec |
+|---|---|---|---|
+| `SPOT_ERROR` | Chasse à l'erreur | Touche le mot faux d'une phrase de la leçon, puis choisit la correction | une affirmation vraie ou la phrase à retenir, et une question dont la réponse y figure |
+| `FADING` | La phrase qui s'efface | Lit la phrase à retenir, qui s'efface ; écrit les mots cachés | la phrase à retenir (difficultés 2 et 3 seulement) |
+| `STEP_ORDER` | Le bon ordre | Range les étapes d'une méthode et écarte l'étape fausse | les étapes de l'aide (3 à 6) et une affirmation fausse |
+| `CHECK_LUDI` | Le correcteur | Dit si Ludi a raison ; sinon, pourquoi il s'est trompé | une question dont les mauvaises réponses portent leur type d'erreur (prompt matériel v11) |
+| `WHO_AM_I` | Qui suis-je ? | Devine la notion avec le moins d'indices possible | astuce, explication et phrase à retenir, sans le nom de la notion ; 3 ou 4 notions |
+| `STAIRS` | L'escalier | Répond à des questions de plus en plus difficiles, une marche après l'autre | au moins 3 questions sur au moins 2 difficultés |
+| `WORD_TRAIN` | Le train des mots | Écoute un mot et accroche ses syllabes dans l'ordre (CP-CE1) | leçon de français sur les syllabes |
+| `COUNT_TOUCH` | Compte et touche | Touche autant d'objets que le nombre entendu (CP-CE1) | leçon de maths sur les nombres ; hors leçon (`from_lesson: false`) |
+
+Règles :
+
+- Ces jeux ne sont pas exigés pour atteindre un niveau de compréhension (`NOT_REQUIRED` dans
+  `understanding.py`) ; la phrase qui s'efface et le bon ordre comptent comme rappel (`RECALLED`).
+- Le garde-fou du rappel (§5.77) choisit d'abord un format pas encore présent dans la séance :
+  sans cela, la phrase qui s'efface revenait dans presque toutes les séances.
+- Jeu du jour : un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer cède sa
+  place au suivant de la rotation (auparavant, la séance n'avait alors pas de jeu du jour).
+- **Duel contre soi** : le bilan (`ReportOut.previous_score_on_10`, champ facultatif) rappelle la
+  note de la séance précédente sur la même leçon, entre séances normales seulement (pas une
+  reprise des erreurs). L'application dit « 🏆 Tu as battu ta dernière note », « 🤝 Égalité » ou
+  « 🎯 Tu la battras la prochaine fois » : jamais de comparaison avec d'autres enfants.
+- Application publiée avant ces jeux : les types inconnus sont sautés, le champ du bilan ignoré.
+
+**Reporté : « Vrai, faux… ou ça dépend ».** Il faut savoir à quelle condition une phrase devient
+vraie, ce que l'analyse de la leçon ne fournit pas : il faudrait un nouveau champ demandé à l'IA
+(prompt matériel v12) et un contrôle qui prouve que la condition vient de la leçon. Une condition
+inventée enseignerait une erreur ; ce sera fait avec un essai sur de vraies leçons et une vraie IA.
+
+Tests : `tests/domain/test_new_games.py`, `tests/api/test_self_duel.py`,
+`mobile/test/activities/learning_games_test.dart`, `mobile/test/features/self_duel_test.dart` ;
+séances de référence mises à jour. Non essayé : sur un vrai téléphone (lecture du train des mots,
+taille des objets à toucher).
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée

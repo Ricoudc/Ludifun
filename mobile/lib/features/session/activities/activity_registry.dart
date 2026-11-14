@@ -8,6 +8,7 @@ import 'dictation_view.dart';
 import 'fill_blank_view.dart';
 import 'flashcard_view.dart';
 import 'fun_games_views.dart';
+import 'learning_games_views.dart';
 import 'map_view.dart';
 import 'match_view.dart';
 import 'math_games_views.dart';
@@ -85,6 +86,15 @@ final activityRegistry = <String, ActivityBuilder>{
   // Image et voix (§5.62) : le bon son (CP-CE1) et l'anglais en images.
   'SOUNDS': (payload, onSubmit) => PictureChoiceView(payload: payload, onSubmit: onSubmit),
   'ENGLISH_WORDS': (payload, onSubmit) => PictureChoiceView(payload: payload, onSubmit: onSubmit),
+  // Jeux d'apprentissage de novembre 2026 (§5.98)
+  'SPOT_ERROR': (payload, onSubmit) => SpotErrorView(payload: payload, onSubmit: onSubmit),
+  'FADING': (payload, onSubmit) => FadingView(payload: payload, onSubmit: onSubmit),
+  'STEP_ORDER': (payload, onSubmit) => StepOrderView(payload: payload, onSubmit: onSubmit),
+  'CHECK_LUDI': (payload, onSubmit) => CheckLudiView(payload: payload, onSubmit: onSubmit),
+  'WHO_AM_I': (payload, onSubmit) => WhoAmIView(payload: payload, onSubmit: onSubmit),
+  'STAIRS': (payload, onSubmit) => StairsView(payload: payload, onSubmit: onSubmit),
+  'WORD_TRAIN': (payload, onSubmit) => WordTrainView(payload: payload, onSubmit: onSubmit),
+  'COUNT_TOUCH': (payload, onSubmit) => CountTouchView(payload: payload, onSubmit: onSubmit),
 };
 
 /// Élément `{id, text}` d'une liste de la charge utile.
