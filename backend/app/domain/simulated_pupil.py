@@ -219,6 +219,49 @@ def respond(activity: BuiltActivity, knows: Knows) -> dict[str, Any]:
                     for zone, colour in s["expected"].items()
                 ]
             }
+        # Jeux d'apprentissage de novembre 2026 (§5.98)
+        case ActivityCode.SPOT_ERROR:
+            other = next(w["id"] for w in activity.payload["words"] if w["id"] != s["error_id"])
+            return (
+                {"word_id": s["error_id"], "choice_id": s["choice_id"]}
+                if single_ok
+                else {"word_id": other, "choice_id": None}
+            )
+        case ActivityCode.FADING:
+            return {"answers": [[int(i), w] for i, w in s["expected"].items()] if single_ok else []}
+        case ActivityCode.STEP_ORDER:
+            order, intruder = list(s["order"]), s["intruder"]
+            if single_ok:
+                return {"order": order, "intruder": intruder}
+            rest = [*order[1:], intruder]
+            return {"order": rest[1:] + rest[:1], "intruder": order[0]}
+        case ActivityCode.CHECK_LUDI:
+            if single_ok:
+                return {"right": s["ludi_right"], "reason_id": s["reason_id"]}
+            return {"right": not s["ludi_right"], "reason_id": None}
+        case ActivityCode.WHO_AM_I:
+            other = next(c["id"] for c in activity.payload["choices"] if c["id"] != s["choice_id"])
+            return {"choice_id": s["choice_id"] if single_ok else other, "clues_used": 1 if single_ok else 3}
+        case ActivityCode.STAIRS:
+            steps = activity.payload["steps"]
+            return {
+                "answers": [
+                    [
+                        step["id"],
+                        s["right"][step["id"]]
+                        if single_ok
+                        else next(c["id"] for c in step["choices"] if c["id"] != s["right"][step["id"]]),
+                    ]
+                    for step in steps
+                ]
+            }
+        case ActivityCode.WORD_TRAIN:
+            order = list(s["order"])
+            return {"order": order if single_ok else list(reversed(order))}
+        case ActivityCode.COUNT_TOUCH:
+            objects = activity.payload["objects"]
+            count = s["target"] if single_ok else s["target"] + 1
+            return {"selected": objects[:count]}
     raise ValueError(f"type d'activité inconnu : {activity.type}")
 
 

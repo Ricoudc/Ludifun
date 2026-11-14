@@ -110,7 +110,9 @@ def test_a_notion_never_loses_all_its_games(history: ReferenceLesson, registry: 
     )
 
     def usable(notion: str, material: KnowledgeMaterial) -> bool:
-        item = history.units[notion].item
+        # Une phrase à retenir trop courte pour « Phrase qui s'efface » (§5.98) : seules les
+        # questions dédoublées font jouer la notion.
+        item = history.units[notion].item.model_copy(update={"statement": "1789."})
         return bool(registry.single_options(KnowledgeUnit(item=item, material=material)))
 
     result = deduplicate([(first.id, first.material), (second.id, only)], usable)

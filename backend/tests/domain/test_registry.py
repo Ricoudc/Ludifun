@@ -55,6 +55,16 @@ VOCABULARY_CODES = {
     ActivityCode.WORD_FAMILY,
 }  # vraies leçons de CE1 : bon pronom, synonymes, familles de mots
 LANGUAGE_CODES = {ActivityCode.SOUNDS, ActivityCode.ENGLISH_WORDS}  # image et voix (§5.62)
+LEARNING_CODES = {  # jeux d'apprentissage de novembre 2026 (§5.98)
+    ActivityCode.SPOT_ERROR,
+    ActivityCode.FADING,
+    ActivityCode.STEP_ORDER,
+    ActivityCode.CHECK_LUDI,
+    ActivityCode.WHO_AM_I,
+    ActivityCode.STAIRS,
+    ActivityCode.WORD_TRAIN,
+    ActivityCode.COUNT_TOUCH,
+}
 
 
 def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
@@ -73,6 +83,7 @@ def test_registry_holds_every_activity(registry: ActivityRegistry) -> None:
         | MEASURE_CODES
         | VOCABULARY_CODES
         | LANGUAGE_CODES
+        | LEARNING_CODES
         == set(ActivityCode)
     )
     assert all(registry.get(code).code == code for code in registry.codes)

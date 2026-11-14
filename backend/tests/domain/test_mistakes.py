@@ -9,6 +9,7 @@ from tests.domain.conftest import LESSON_FILES, load_lesson
 from tests.domain.test_activities import wrong_response
 from tests.domain.test_alignment import unit as alignment_unit
 from tests.domain.test_language_games import unit as language_unit
+from tests.domain.test_new_games import learning_games
 from tests.domain.test_spelling_games import spelling_unit
 from tests.domain.test_word_games import unit as french_unit
 
@@ -76,6 +77,8 @@ def every_activity(registry: ActivityRegistry) -> list[BuiltActivity]:
         game = registry.get(code)
         for difficulty in sorted(game.difficulties):
             built.append(game.build([language_unit(sound_or_theme)], difficulty, random.Random(3)))
+    # Jeux d'apprentissage de novembre 2026 (§5.98) qu'aucune leçon de référence ne permet.
+    built += learning_games(registry)
     # Jeux en images : seulement avec des images validées par le parent (étape 28).
     units = list(load_lesson(LESSON_FILES[0]).units.values())[:3]
     with_pictures = [u.model_copy(update={"picture": f"/img/{i}"}) for i, u in enumerate(units)]

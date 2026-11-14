@@ -26,6 +26,47 @@ CYCLES: dict[Grade, int] = {
 
 # Pour chaque jeu : consigne du cycle 2, du cycle 3, du cycle 4.
 _TEXTS: dict[ActivityCode, tuple[str, str, str]] = {
+    # Jeux d'apprentissage de novembre 2026 (§5.98)
+    ActivityCode.SPOT_ERROR: (
+        "Un mot est faux. Touche-le, puis choisis le bon mot.",
+        "Trouve le mot faux dans la phrase, puis choisis la bonne correction.",
+        "Repère l'erreur dans la phrase et corrige-la.",
+    ),
+    ActivityCode.FADING: (
+        "Lis bien la phrase. Puis écris les mots qui ont disparu.",
+        "Mémorise la phrase : elle va s'effacer. Écris ensuite les mots qui manquent.",
+        "Mémorise l'énoncé, puis restitue les mots effacés.",
+    ),
+    ActivityCode.STEP_ORDER: (
+        "Range les étapes dans l'ordre. Une étape est fausse : mets-la de côté.",
+        "Remets les étapes dans l'ordre et écarte celle qui est fausse.",
+        "Ordonne les étapes de la méthode et écarte l'étape erronée.",
+    ),
+    ActivityCode.CHECK_LUDI: (
+        "Ludi a répondu. A-t-il raison ? S'il se trompe, dis pourquoi.",
+        "Corrige Ludi : sa réponse est-elle juste ? Sinon, choisis la raison de son erreur.",
+        "Évalue la réponse de Ludi et identifie la nature de son erreur.",
+    ),
+    ActivityCode.WHO_AM_I: (
+        "Lis l'indice. Tu as trouvé ? Touche la réponse. Sinon, demande un autre indice.",
+        "Devine la notion avec le moins d'indices possible.",
+        "Identifie la notion décrite, avec le moins d'indices possible.",
+    ),
+    ActivityCode.STAIRS: (
+        "Réponds à chaque marche. Elles sont de plus en plus dures !",
+        "Monte l'escalier : chaque question est un peu plus difficile que la précédente.",
+        "Réponds aux questions, de la plus simple à la plus exigeante.",
+    ),
+    ActivityCode.WORD_TRAIN: (
+        "Écoute le mot avec 🔊. Accroche les wagons dans l'ordre.",
+        "Écoute le mot, puis accroche ses syllabes dans l'ordre. Deux wagons sont en trop.",
+        "Reconstitue le mot entendu à partir de ses syllabes.",
+    ),
+    ActivityCode.COUNT_TOUCH: (
+        "Écoute le nombre. Touche autant d'objets.",
+        "Touche exactement le nombre d'objets demandé.",
+        "Sélectionne exactement le nombre d'objets demandé.",
+    ),
     ActivityCode.MCQ: (
         "Lis la question. Touche la bonne réponse.",
         "Lis la question, puis choisis la bonne réponse parmi les quatre.",

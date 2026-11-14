@@ -244,6 +244,7 @@ class Report {
     required this.canReviewErrors,
     this.nextReviewAt,
     this.rewards,
+    this.previousScoreOn10,
   });
 
   factory Report.fromJson(Json json) => Report(
@@ -261,9 +262,14 @@ class Report {
       final Json rewards => Rewards.fromJson(rewards),
       _ => null,
     },
+    previousScoreOn10: (json['previous_score_on_10'] as num?)?.toDouble(),
   );
 
   final double scoreOn10;
+
+  /// Duel contre soi (§5.98) : la note de la séance précédente sur la même leçon (serveur
+  /// d'avant : absente).
+  final double? previousScoreOn10;
   final List<KnowledgeResult> knowledge;
   final DateTime? nextReviewAt;
   final bool lessonMastered;

@@ -99,6 +99,15 @@ class ReportView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(7),
                   child: LinearProgressIndicator(value: report.scoreOn10 / 10, minHeight: 14),
                 ),
+                if (report.previousScoreOn10 case final previous?) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    selfDuel(report.scoreOn10, previous),
+                    key: const ValueKey('self-duel'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ],
             ),
           ),
@@ -260,4 +269,13 @@ class _Labels extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Duel contre soi (§5.98) : l'enfant face à sa dernière note sur cette leçon, jamais face aux
+/// autres ; une note plus basse n'est pas un échec, juste un défi pour la prochaine fois.
+String selfDuel(double now, double previous) {
+  final before = '${score(previous)} / 10';
+  if (now > previous) return '🏆 Tu as battu ta dernière note ($before) !';
+  if (now == previous) return '🤝 Égalité avec ta dernière fois ($before).';
+  return '🎯 La dernière fois : $before. Tu la battras la prochaine fois !';
 }

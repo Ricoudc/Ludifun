@@ -18,6 +18,16 @@ from app.domain.activities.math_games import Clock, ColumnOperation, FractionBar
 from app.domain.activities.mcq import Mcq
 from app.domain.activities.measure_games import Ruler, Symmetry
 from app.domain.activities.memory import Memory
+from app.domain.activities.new_games import (
+    CheckLudi,
+    CountTouch,
+    FadingSentence,
+    SpotError,
+    Stairs,
+    StepOrder,
+    WhoAmI,
+    WordTrain,
+)
 from app.domain.activities.open_question import OpenQuestionActivity
 from app.domain.activities.ordering import Order, Timeline
 from app.domain.activities.pictures import PictureFind, PictureMatch
@@ -135,5 +145,14 @@ def default_registry() -> ActivityRegistry:
             WordFamilyGame(),
             Sounds(),
             EnglishWords(),
+            # Jeux d'apprentissage de novembre 2026 (§5.98)
+            SpotError(),
+            FadingSentence(),
+            StepOrder(),
+            CheckLudi(),
+            WhoAmI(),
+            Stairs(),
+            WordTrain(),
+            CountTouch(),
         ]
     )

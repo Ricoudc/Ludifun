@@ -4,9 +4,11 @@
 # qui change une décision doit augmenter `version` (enregistrée avec chaque séance) et passer
 # les tests (uv run pytest). Autre fichier possible : variable LUDIFUN_ENGINE_RULES.
 
-version = "1.20.0"
+version = "1.21.0"
 # 1.20.0 : à la mise à jour de la maîtrise, l'ancien score pèse moins quand la révision arrive
 # après la date prévue (oubli compté sur le retard seulement, §5.86).
+# 1.21.0 : huit jeux d'apprentissage (§5.98) ; ils ne s'ajoutent pas aux niveaux exigés pour
+# « maîtrisée » ; le garde-fou du rappel préfère un format pas encore dans la séance.
 
 [session]
 block_size = 3              # activités dans l'échauffement et dans chaque tour d'approfondissement

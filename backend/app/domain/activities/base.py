@@ -73,6 +73,15 @@ class ActivityCode(StrEnum):
     ENGLISH_WORDS = "ENGLISH_WORDS"  # anglais en images
     # Dictée de phrases (§5.64)
     SENTENCE_DICTATION = "SENTENCE_DICTATION"  # le téléphone lit une phrase, l'enfant l'écrit
+    # Jeux d'apprentissage de novembre 2026 (§5.98)
+    SPOT_ERROR = "SPOT_ERROR"  # chasse à l'erreur : un mot faux dans une phrase de la leçon
+    FADING = "FADING"  # phrase qui s'efface : retrouver les mots cachés
+    STEP_ORDER = "STEP_ORDER"  # le bon ordre : étapes de la méthode et une étape fausse
+    CHECK_LUDI = "CHECK_LUDI"  # le correcteur : Ludi a-t-il raison, et sinon pourquoi
+    WHO_AM_I = "WHO_AM_I"  # qui suis-je : trois indices pour retrouver une notion
+    STAIRS = "STAIRS"  # l'escalier : des questions de plus en plus difficiles
+    WORD_TRAIN = "WORD_TRAIN"  # le train des mots : accrocher les syllabes dans l'ordre (CP-CE1)
+    COUNT_TOUCH = "COUNT_TOUCH"  # compte et touche : toucher autant d'objets que dit (CP-CE1)
 
 
 Result = Literal["correct", "partial", "incorrect"]
