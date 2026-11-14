@@ -2574,6 +2574,23 @@ répartit entre des offres gratuites et expose `POST /v1/images/generations` au 
 - **Tests** : `tests/ai/test_imagegen.py`, `tests/ai/test_ollama.py`. Non testé avec un vrai
   FreeLLMAPI : le nom du modèle d'images et le format exact de sa réponse sont à vérifier sur le PC.
 
+### 5.97 FreeLLMAPI : réponse tronquée découpée, attente plafonnée (novembre 2026)
+
+Premier essai de la famille avec FreeLLMAPI (« auto ») comme IA, Ollama en secours : la
+préparation des exercices a duré plus de 25 minutes. Deux causes, dans le suivi :
+
+- **Réponse tronquée** : le modèle gratuit choisi s'arrête à une longueur de réponse courte
+  (`finish_reason: length`). Ludifun redemandait la même chose (même échec, un quart d'heure
+  perdu). C'est maintenant `AIContextFull` : la préparation demande moins à la fois (lot coupé en
+  deux, comme avec Ollama) au lieu de répéter.
+- **Attente sans fin** : FreeLLMAPI réessaie déjà ses fournisseurs plusieurs minutes avant de
+  répondre « trop de demandes » ou 502 ; Ludifun réessayait encore jusqu'à trois fois. L'attente
+  totale d'un appel est plafonnée à 5 minutes (`MAX_TOTAL_S`) ; au-delà, l'IA de secours prend le
+  relais.
+
+L'identification des notions a été faite par Ollama en secours (13 min : modèle qui déborde de la
+carte graphique, voir « État de l'installation »). Tests : `tests/ai/test_openai_compatible.py`.
+
 ## 6. Contrats JSON de l'IA (versions 2)
 
 Tous les appels restent des sorties structurées validées par Pydantic, avec relance ciblée
