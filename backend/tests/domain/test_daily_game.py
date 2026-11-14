@@ -6,6 +6,7 @@ from itertools import pairwise
 
 import pytest
 
+from app.domain import composer as composer_module
 from app.domain.activities.base import ActivityCode
 from app.domain.activities.registry import ActivityRegistry
 from app.domain.composer import DAILY_GAMES, Block, SessionComposer, SessionPlan
@@ -80,3 +81,20 @@ def test_added_daily_game_has_its_own_reason(registry: ActivityRegistry) -> None
 def test_no_daily_game_when_the_rule_is_off(lesson: ReferenceLesson, registry: ActivityRegistry) -> None:
     plan = SessionComposer(registry, daily_game=False).compose(list(lesson.units.values()), {}, NOW, 1)
     assert daily(plan) == []
+
+
+@pytest.mark.parametrize("day", range(14))
+def test_a_game_that_does_not_fit_gives_way_to_the_next(
+    lesson: ReferenceLesson, registry: ActivityRegistry, day: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """1.21.0 : le jeu du jour trop long pour la séance, ou impossible à fabriquer, cède sa place
+    au suivant de la rotation. Ici rien ne tient (durée maximale nulle) : un jeu du jour déjà
+    dans la séance est alors marqué, au lieu de laisser la séance sans jeu du jour."""
+    monkeypatch.setattr(composer_module, "MAX_SECONDS", 0)
+    composer = SessionComposer(registry, daily_game=True)
+    for seed in range(5):
+        plan = composer.compose(list(lesson.units.values()), {}, NOW + timedelta(days=day), seed)
+        main = {i.activity.type for i in plan.items if i.block in (Block.WARMUP, Block.CORE)}
+        found = daily(plan)
+        assert bool(found) == bool(main & set(DAILY_GAMES)), (day, seed, sorted(main))
+        assert all(plan.items[i].reason["rule"] != Rule.DAILY_GAME for i, _ in found)  # rien d'ajouté

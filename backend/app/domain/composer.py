@@ -472,8 +472,9 @@ class SessionComposer:
         """Le jeu du jour : (position dans `items`, ajouté ou non). S'il est déjà dans
         l'échauffement ou l'approfondissement, il y est marqué ; sinon il est ajouté à la fin de
         l'approfondissement, sur la première notion qui le permet, s'il tient dans la durée
-        maximale. Un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer cède sa place
-        au suivant de la rotation (1.21.0). None : aucun jeu du jour possible pour cette leçon."""
+        maximale. Un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer, ou qui ne
+        tient pas dans la séance, cède sa place au suivant de la rotation (1.21.0). None : aucun
+        jeu du jour possible pour cette séance."""
         offered = [code for code in DAILY_GAMES if any(self.registry.get(code).accepts(u) for u in units)]
         if not offered:
             return None
@@ -495,7 +496,7 @@ class SessionComposer:
                 except CannotBuild:
                     continue
                 if self.estimate_duration_s([*items, activity], with_replay=True) > MAX_SECONDS:
-                    return None
+                    break  # trop long pour la séance : le suivant de la rotation
                 # À la fin de l'approfondissement, ou plus tôt : jamais deux fois le même jeu de suite.
                 places = [i + 1 for i in reversed(main)] + ([0] if main else [])
                 for at in places:
@@ -505,7 +506,7 @@ class SessionComposer:
                         items.insert(at, activity)
                         blocks.insert(at, Block.CORE if at > 0 else Block.WARMUP)
                         return at, True
-                return None
+                break
         return None
 
     def _extra(

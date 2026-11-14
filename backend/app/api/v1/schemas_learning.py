@@ -91,6 +91,18 @@ class LessonTextIn(BaseModel):
     text: str = Field(max_length=40_000)
 
 
+class WordListIn(BaseModel):
+    """Dictée à partir d'une liste de mots (§5.99) : un mot par ligne, « mot : phrase » pour la
+    dictée d'une phrase."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(max_length=10_000)
+    title: str | None = Field(
+        None, max_length=200, description="« Mots de la semaine 12 » ; sinon « Dictée »."
+    )
+
+
 class ReviewAnswerIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

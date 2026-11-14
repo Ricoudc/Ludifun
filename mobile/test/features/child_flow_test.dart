@@ -698,6 +698,62 @@ void main() {
     expect(find.text('La Révolution française'), findsOneWidget);
   });
 
+  testWidgets('§5.99 : une liste de mots devient une dictée, sans IA', (tester) async {
+    var refused = true;
+    server
+      ..on('POST /v1/lessons/words', (r) {
+        if (refused) {
+          refused = false;
+          return (
+            422,
+            {
+              'error': {
+                'code': 'word_list_invalid',
+                'message': 'Ligne 2 : la phrase ne contient pas le mot « lapin ».',
+              },
+            },
+          );
+        }
+        expect(r.data, {
+          'text': 'chaton\nmaison\nécole : Je vais à l\'école.',
+          'title': 'Semaine 12',
+        });
+        return (201, {'id': 'l1', 'status': 'ready'});
+      })
+      ..on('GET /v1/lessons/l1', (_) => (200, lessonJson('ready')))
+      ..on('POST /v1/lessons/l1/sessions', (_) => (200, session));
+    await launch(tester, MemoryCredentialStore(child));
+    await tester.tap(find.text('Nouvelle leçon'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('J\'ai une liste de mots (dictée)'));
+    await tester.pumpAndSettle();
+    expect(find.text('✏️ Liste de mots'), findsOneWidget);
+
+    final create = find.widgetWithText(FilledButton, 'Créer la dictée');
+    final words = find.byKey(const ValueKey('words'));
+    await tester.enterText(words, 'chaton\nmaison');
+    await tester.pump();
+    expect(find.text('Au moins 3 mots.'), findsOneWidget);
+    expect(tester.widget<FilledButton>(create).onPressed, isNull);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Titre (facultatif)'), 'Semaine 12');
+    await tester.enterText(words, 'chaton\nmaison\nécole : Je vais à l\'école.');
+    await tester.pump();
+    expect(find.text('3 mots dans la dictée.'), findsOneWidget);
+    await tester.ensureVisible(create);
+    await tester.tap(create);
+    await tester.pumpAndSettle();
+    expect(find.text('Ligne 2 : la phrase ne contient pas le mot « lapin ».'), findsOneWidget);
+
+    await tester.ensureVisible(create);
+    await tester.pumpAndSettle();
+    await tester.tap(create);
+    await advanceUntil(tester, find.text('C\'est prêt ! 🎉'));
+    await advance(tester, const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('La Révolution française'), findsOneWidget);
+  });
+
   testWidgets('« Peux-tu vérifier ? » : un mot mal lu, un mot illisible, puis l\'analyse reprend', (
     tester,
   ) async {
