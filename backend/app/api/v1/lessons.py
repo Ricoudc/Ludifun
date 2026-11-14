@@ -41,6 +41,7 @@ from app.api.v1.schemas_learning import (
     ReviewIn,
     ReviewItemOut,
     SkillOut,
+    WordListIn,
 )
 from app.db.models import AiRun, Child, KnowledgeItem, Lesson, LessonImage, LessonPage, LessonReviewItem
 from app.domain.confidence import HIGH as HIGH_CONFIDENCE
@@ -48,12 +49,14 @@ from app.domain.knowledge import SkillVerb
 from app.domain.ocr_review import Answer, ReviewStatus, apply_answers
 from app.domain.planning import core_size
 from app.domain.text import fuzzy_contains
+from app.domain.word_dictation import parse_word_list
 from app.services import ai_budget, goals, illustration, learning, lesson_diagnostics
 from app.services.documents import DocumentError, read_document
 from app.services.lesson_processing import process_lesson
 from app.services.lesson_review import awaiting_parent
 from app.services.lesson_store import load_masteries, load_skills, load_units, notion_levels, review_state
 from app.services.live_calls import LIVE
+from app.services.word_dictation import create_dictation
 
 router = APIRouter(tags=["leçons"])
 
@@ -232,6 +235,30 @@ async def create_lesson_from_text(
 ) -> LessonAccepted:
     """Leçon collée ou tapée : même analyse que pour une photo, sans l'étape de lecture."""
     return await _start_from_text(request, child, db, settings, ai, registry, background, body.text)
+
+
+@router.post("/lessons/words", status_code=status.HTTP_201_CREATED)
+async def create_dictation_from_words(
+    body: WordListIn,
+    request: Request,
+    child: ChildInScope,
+    principal: Annotated[Principal, Depends(current_principal)],
+    db: DbSession,
+    settings: AppSettings,
+    registry: Registry,
+) -> LessonAccepted:
+    """Dictée à partir d'une liste de mots (§5.99) : prête tout de suite, sans IA. Tapée par le
+    parent, elle n'attend pas sa validation."""
+    words = parse_word_list(body.text)
+    if words.problems:
+        raise ApiError(422, "word_list_invalid", " ".join(words.problems[:3]))
+    rate_limit(request, f"lessons:{child.id}", limit=settings.lessons_per_day, window_s=86400)
+    by_parent = not isinstance(principal, DevicePrincipal)
+    lesson = await create_dictation(
+        db, child, words.entries, body.title, registry, clock.now(), by_parent=by_parent
+    )
+    await db.commit()
+    return LessonAccepted(id=lesson.id, status=lesson.status)
 
 
 async def _start_from_text(

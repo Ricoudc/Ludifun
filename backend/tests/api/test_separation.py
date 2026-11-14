@@ -224,6 +224,7 @@ CHILD_SPACE = [
     ("GET", "/v1/me/progress", None),
     ("GET", "/v1/lessons", None),
     ("POST", "/v1/lessons/text", {"text": "La Révolution française commence en 1789."}),
+    ("POST", "/v1/lessons/words", {"text": "chaton\nmaison\nécole"}),
     ("GET", "/v1/homework", None),
     ("POST", "/v1/homework/text", {"text": "Léa a 12 billes. Elle en donne 5. Combien en reste-t-il ?"}),
 ]

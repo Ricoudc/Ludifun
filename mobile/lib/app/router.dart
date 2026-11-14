@@ -7,6 +7,7 @@ import '../core/storage/credentials.dart';
 import '../features/analysis/analysis_screen.dart';
 import '../features/capture/capture_screen.dart';
 import '../features/capture/text_import_screen.dart';
+import '../features/capture/word_list_screen.dart';
 import '../features/home/child_home_screen.dart';
 import '../features/lesson/lesson_screen.dart';
 import '../features/link/link_screen.dart';
@@ -76,11 +77,13 @@ abstract final class Routes {
   static String childEdit(String childId) => '/parent/enfants/$childId/modifier';
   static String childCapture(String childId) => '/parent/enfants/$childId/photo';
   static String childPaste(String childId) => '/parent/enfants/$childId/texte';
+  static String childWords(String childId) => '/parent/enfants/$childId/mots';
   static const link = '/lier';
   static const scanQr = '/lier/qr';
   static const childHome = '/enfant';
   static const capture = '/enfant/photo';
   static const paste = '/enfant/texte';
+  static const words = '/enfant/mots';
   static const badges = '/enfant/badges';
   static const homeworkStart = '/enfant/devoirs';
   static String homework(String id, {bool fromNotebook = false}) =>
@@ -234,6 +237,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, state) => TextImportScreen(childId: state.pathParameters['id']),
               ),
               GoRoute(
+                path: 'mots',
+                builder: (_, state) => WordListScreen(childId: state.pathParameters['id']),
+              ),
+              GoRoute(
                 path: 'analyse/:lesson',
                 builder: (_, state) => AnalysisScreen(
                   lessonId: state.pathParameters['lesson']!,
@@ -252,6 +259,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: 'photo', builder: (_, _) => const CaptureScreen()),
           GoRoute(path: 'texte', builder: (_, _) => const TextImportScreen()),
+          GoRoute(path: 'mots', builder: (_, _) => const WordListScreen()),
           GoRoute(path: 'badges', builder: (_, _) => const BadgesScreen()),
           GoRoute(path: 'devoirs', builder: (_, _) => const HomeworkStartScreen()),
           GoRoute(

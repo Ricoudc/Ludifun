@@ -933,6 +933,16 @@ class LudifunApi {
     return lesson(r.data!['id'] as String, childId: childId);
   });
 
+  /// Dictée à partir d'une liste de mots (§5.99) : prête tout de suite, sans IA.
+  Future<Lesson> lessonFromWords(String text, {String? title, String? childId}) => _call(() async {
+    final r = await _dio.post<Json>(
+      '/v1/lessons/words',
+      data: {'text': text, 'title': ?title},
+      queryParameters: _forChild(childId),
+    );
+    return lesson(r.data!['id'] as String, childId: childId);
+  });
+
   /// « Peux-tu vérifier ? » : `status` confirmed, corrected (avec `text`) ou unknown, par passage.
   Future<void> reviewLesson(
     String id,

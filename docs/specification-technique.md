@@ -2614,8 +2614,9 @@ Règles :
   `understanding.py`) ; la phrase qui s'efface et le bon ordre comptent comme rappel (`RECALLED`).
 - Le garde-fou du rappel (§5.77) choisit d'abord un format pas encore présent dans la séance :
   sans cela, la phrase qui s'efface revenait dans presque toutes les séances.
-- Jeu du jour : un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer cède sa
-  place au suivant de la rotation (auparavant, la séance n'avait alors pas de jeu du jour).
+- Jeu du jour : un jeu que la leçon accepte mais qu'aucune notion ne permet de fabriquer, ou qui
+  ne tient pas dans les 10 minutes de la séance, cède sa place au suivant de la rotation
+  (auparavant, la séance n'avait alors pas de jeu du jour, même s'il y en avait un dedans).
 - **Duel contre soi** : le bilan (`ReportOut.previous_score_on_10`, champ facultatif) rappelle la
   note de la séance précédente sur la même leçon, entre séances normales seulement (pas une
   reprise des erreurs). L'application dit « 🏆 Tu as battu ta dernière note », « 🤝 Égalité » ou
@@ -2631,6 +2632,37 @@ Tests : `tests/domain/test_new_games.py`, `tests/api/test_self_duel.py`,
 `mobile/test/activities/learning_games_test.dart`, `mobile/test/features/self_duel_test.dart` ;
 séances de référence mises à jour. Non essayé : sur un vrai téléphone (lecture du train des mots,
 taille des objets à toucher).
+
+### 5.99 Dictée à partir d'une liste de mots (novembre 2026)
+
+Demande de la famille : « pouvoir créer des dictées automatiques avec une liste de mots ». Une
+liste collée passait déjà par l'analyse de l'IA (§5.68) ; elle se tape maintenant directement,
+et la dictée est prête tout de suite, **sans IA** (rien à attendre, rien qui échoue, aucun quota).
+
+- **Saisie** (« Nouvelle leçon » → « J'ai une liste de mots (dictée) ») : un mot par ligne (1 à 3
+  mots, sans chiffre), ou des mots séparés par des virgules ; puces et numéros ignorés ; doublons
+  ignorés ; de 3 à 30 mots. Pour dicter aussi une phrase : « chaton : Le chaton dort sur le lit. »
+  (la phrase doit contenir le mot). Titre facultatif (« Dictée » par défaut, « Dictée : … »
+  sinon). Une ligne refusée l'est avec sa raison (« Ligne 2 : la phrase ne contient pas le mot
+  « lapin ». »).
+- **Fabrication** (`app/domain/word_dictation.py`, pur) : une notion « mot à savoir écrire » par
+  mot, leçon de français à la classe de l'enfant, une compétence « Écrire sans erreur les mots de
+  la liste ». Le matériel d'orthographe passe par les mêmes contrôles que celui de l'IA
+  (`validate_material`) ; rien n'est inventé (pas de définition, pas de phrase que la famille n'a
+  pas écrite).
+- **Jeux** : seulement des jeux d'écriture (§5.68) : mot éclair, lettres mélangées, dictée du mot ;
+  avec une phrase, dictée de la phrase.
+- **Enregistrement** (`app/services/word_dictation.py`) : comme une leçon analysée
+  (`save_pipeline_result`, source « texte », version de matériel `liste-de-mots`), sans
+  migration. Tapée par le parent, la leçon est validée par lui ; tapée par l'enfant, elle attend
+  la validation si la famille relit les leçons (§5.69).
+- **API** : `POST /v1/lessons/words` (`{text, title?}`, 201), même portée que `POST /v1/lessons/text`
+  (l'enfant de l'appareil, ou `child_id` pour un parent de la famille) ; refus 422
+  `word_list_invalid` avec les trois premières raisons.
+
+Tests : `tests/domain/test_word_dictation.py`, `tests/api/test_word_dictation.py`,
+`tests/api/test_separation.py` ; dans l'application, `test/features/child_flow_test.dart`. Non
+essayé sur un vrai téléphone.
 
 ## 6. Contrats JSON de l'IA (versions 2)
 

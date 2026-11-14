@@ -127,6 +127,7 @@ jour, missions du jour.
 - ✅ Neuf nouveaux jeux d'apprentissage : chasse à l'erreur, phrase qui s'efface, bon ordre,
   correcteur, qui suis-je, escalier, train des mots, compte et touche, duel contre soi (§5.98) ;
   « vrai, faux ou ça dépend » reporté (demande un nouveau champ à l'IA).
+- ✅ Dictée à partir d'une liste de mots tapée, prête tout de suite et sans IA (§5.99).
 - ⬜ Séance comme machine à états explicite (§124) : à décider avec les séances de référence.
 
 ## 6. Distribution

@@ -160,6 +160,15 @@ class _CaptureScreenState extends ConsumerState<CaptureScreen> {
               label: const Text('J\'ai le texte de la leçon'),
             ),
             TextButton.icon(
+              onPressed: sending
+                  ? null
+                  : () => context.go(
+                      widget.childId == null ? Routes.words : Routes.childWords(widget.childId!),
+                    ),
+              icon: const Icon(Icons.spellcheck),
+              label: const Text('J\'ai une liste de mots (dictée)'),
+            ),
+            TextButton.icon(
               onPressed: sending ? null : _sendDocument,
               icon: const Icon(Icons.description_outlined),
               label: const Text('J\'ai la leçon en PDF ou Word'),
